@@ -1,0 +1,47 @@
+/* Navigator and sidebar colors */
+.wy-side-nav-search, .wy-nav-top {
+    background: #326d62;
+}
+
+.wy-menu-vertical a:active {
+    background: #30bba3;
+}
+
+.wy-side-nav-search>div.version {
+    color: #d8d8d8;
+}
+
+.wy-side-nav-search>a img.logo, .wy-side-nav-search .wy-dropdown>a img.logo {
+    display: block;
+    margin: 0 auto;
+    height: 20%;
+    width: 20%;
+    border-radius: 0;
+    max-width: 100%;
+    background: transparent;
+}
+
+.wy-menu-vertical header, .wy-menu-vertical p.caption {
+    color: #30bba3;
+}
+
+/* Class/function declaration colors */
+.rst-content dl:not(.docutils) dt {
+    background: #daf2ee;
+    color: #326d62;
+    border-top: solid 3px #30bba3;
+}
+
+
+/* Links colors */
+a {
+    color: #30bba3;
+}
+
+.wy-nav-content a:hover {
+    color: #326d62;
+}
+
+.wy-nav-content a:visited:hover {
+	color: #9B59B6;
+}

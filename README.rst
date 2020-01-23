@@ -6,6 +6,9 @@ OptBinning
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
 not previously addressed.
 
+.. image:: doc/source/_images/binning_binary.png
+   :target: doc/source/_images/binning_binary.png
+
 **Website**: http://gnpalencia.org/optbinning/
 
 Installation

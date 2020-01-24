@@ -30,7 +30,7 @@ matrix:
 
 # command to install dependencies
 install:
-  # - pip install codecov
+  - pip install codecov
   # - pip install coveralls
   - pip install -r requirements.txt
   - pip install -e .
@@ -38,6 +38,6 @@ install:
 script:
   - coverage run --source optbinning -m pytest tests/
 
-# after_success:
-#   - codecov
+after_success:
+  - codecov
 #   - coveralls

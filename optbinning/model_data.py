@@ -114,8 +114,8 @@ def model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
             rate *= scale
             iv *= scale
 
-            D.append(rate.astype(np.int))
-            V.append(iv.astype(np.int))
+            D.append(rate.astype(np.int64))
+            V.append(iv.astype(np.int64))
         else:
             D.append(rate)
             V.append(iv)
@@ -168,8 +168,8 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
                 rate *= scale
                 iv *= scale
 
-                rate = rate.astype(np.int)
-                iv = iv.astype(np.int)
+                rate = rate.astype(np.int64)
+                iv = iv.astype(np.int64)
 
             D.append(rate)
             V.append(iv)
@@ -214,8 +214,8 @@ def continuous_model_data(n_records, sums, stds, max_pvalue,
             mean_scaled = mean * scale
             norm_scaled = norm * scale
 
-            mean_scaled = mean_scaled.astype(np.int)
-            norm_scaled = norm_scaled.astype(np.int)
+            mean_scaled = mean_scaled.astype(np.int64)
+            norm_scaled = norm_scaled.astype(np.int64)
 
             U.append(mean_scaled)
             V.append(norm_scaled)

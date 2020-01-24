@@ -4,7 +4,10 @@ OptBinning
 
 .. image::  https://travis-ci.com/guillermo-navas-palencia/optbinning.svg?branch=master
    :target: https://travis-ci.com/guillermo-navas-palencia/optbinning
-   
+
+.. image::  https://codecov.io/gh/guillermo-navas-palencia/optbinning/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/guillermo-navas-palencia/optbinning
+
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 

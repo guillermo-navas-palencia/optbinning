@@ -62,14 +62,24 @@ def transform_woe_to_event_rate(woe, n_nonevent, n_event):
 
 
 def _check_metric_special_missing(metric_special, metric_missing):
-    if ((isinstance(metric_special, str) and metric_special != "empirical")
-            or (not isinstance(metric_special, numbers.Number))):
+    if isinstance(metric_special, str):
+        if metric_special != "empirical":
+            raise ValueError('Invalidad value for metric_special. Allowed '
+                             'value "empirical"; got {}.'
+                             .format(metric_special))
+
+    elif not isinstance(metric_special, numbers.Number):
         raise ValueError('Invalidad value for metric_special. Allowed values '
                          'are "empirical" or a numeric value; got {}.'
                          .format(metric_special))
 
-    if ((isinstance(metric_missing, str) and metric_missing != "empirical")
-            or (not isinstance(metric_missing, numbers.Number))):
+    if isinstance(metric_missing, str):
+        if metric_missing != "empirical":
+            raise ValueError('Invalidad value for metric_missing. Allowed '
+                             'value "empirical"; got {}.'
+                             .format(metric_missing))
+
+    elif not isinstance(metric_missing, numbers.Number):
         raise ValueError('Invalidad value for metric_missing. Allowed values '
                          'are "empirical" or a numeric value; got {}.'
                          .format(metric_missing))
@@ -122,10 +132,16 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
         n_nonevent = n_nonevent[:n_bins]
         n_records = n_records[:n_bins]
 
-    event_rate = n_event / n_records
+    # default woe and event rate is 0
+    mask = (n_event > 0) & (n_nonevent > 0)
+    event_rate = np.zeros(len(n_records))
+    woe = np.zeros(len(n_records))
+    event_rate[mask] = n_event[mask] / n_records[mask]
+    constant = np.log(t_n_event / t_n_nonevent)
+    woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
+
     if metric == "woe":
-        metric_value = transform_event_rate_to_woe(
-            event_rate, t_n_nonevent, t_n_event)
+        metric_value = woe
     else:
         metric_value = event_rate
 

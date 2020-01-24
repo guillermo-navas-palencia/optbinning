@@ -472,8 +472,7 @@ class OptimalBinning(BaseEstimator):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric, metric_special, metric_missing, self.user_splits,
-            check_input)
+            x, metric, metric_special, metric_missing, check_input)
 
     def transform(self, x, metric="woe", metric_special=0,
                   metric_missing=0, check_input=False):

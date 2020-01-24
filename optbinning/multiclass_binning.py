@@ -332,7 +332,7 @@ class MulticlassOptimalBinning(OptimalBinning):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, check_input)
 
     def transform(self, x, metric="mean_woe", metric_special=0,
                   metric_missing=0, check_input=False):

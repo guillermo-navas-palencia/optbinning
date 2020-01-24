@@ -2,11 +2,14 @@
 OptBinning
 ==========
 
+.. image::  https://travis-ci.com/guillermo-navas-palencia/optbinning.svg?branch=master
+   :target: https://travis-ci.com/guillermo-navas-palencia/optbinning
+   
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blue
-   :target: https://img.shields.io/pypi/v/optbinning?color=blue 
+   :target: https://img.shields.io/pypi/v/optbinning?color=blue
 
 **OptBinning** is a library written in Python implementing a rigorous and flexible mathematical programming formulation
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints

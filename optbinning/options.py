@@ -80,3 +80,26 @@ continuous_optimal_binning_default_options = {
     "time_limit": 100,
     "verbose": False
 }
+
+
+binning_process_default_options = {
+    "max_n_prebins": 20,
+    "min_prebin_size": 0.05,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "max_pvalue": None,
+    "max_pvalue_policy": "consecutive",
+    "min_iv": None,
+    "max_iv": None,
+    "min_js": None,
+    "max_js": None,
+    "quality_score_cutoff": None,
+    "special_codes": None,
+    "split_digits": None,
+    "categorical_variables": None,
+    "binning_fit_params": None,
+    "binning_transform_params": None,
+    "verbose": False
+}

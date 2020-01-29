@@ -18,6 +18,7 @@ from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
 from .binning import OptimalBinning
+from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
 
@@ -182,7 +183,12 @@ class BinningProcess(BaseEstimator):
         self._n_records = None
         self._n_variables = None
         self._target_dtype = None
+        self._n_numerical = None
+        self._n_categorical = None
+        self._n_selected = None
         self._binned_variables = {}
+        self._variables_dtype = {}
+        self._variables_stats = {}
 
         # timing
         self._time_total = None
@@ -212,24 +218,99 @@ class BinningProcess(BaseEstimator):
                                metric_missing, check_input)
 
     def information(self, print_level=1):
-        pass
+        self._check_is_fitted()
+
+        if not isinstance(print_level, numbers.Integral) or print_level < 0:
+            raise ValueError("print_level must be an integer >= 0; got {}."
+                             .format(print_level))
+
+        n_numerical = list(self._variables_dtype.values()).count("numerical")
+        n_categorical = self._n_variables - n_numerical
+
+        self._n_selected = self._n_variables
+
+        dict_user_options = self.get_params()
+
+        print_binning_process_information(
+            print_level, self._n_records, self._n_variables,
+            self._target_dtype, n_numerical, n_categorical,
+            self._n_selected, self._time_total, dict_user_options)
 
     def summary(self):
+        self._check_is_fitted()
+
         pass
 
     def get_binned_variable(self, name):
         self._check_is_fitted()
 
         if not isinstance(name, str):
-            raise TypeError("")
+            raise TypeError("name must be a string.")
 
         if name in self.variable_names:
             return self._binned_variables[name]
         else:
-            raise ValueError("")
+            raise ValueError("name {} does not match a binned variable."
+                             .format(name))
 
     def get_support(self):
+        self._check_is_fitted()
+
         pass
+
+    def _binning_variables_selection(self):
+        for name in self.variable_names:
+            optb = self._binned_variables[name]
+            optb.binning_table.build()
+
+            dtype = optb.dtype
+            splits = optb.splits
+            status = optb.status
+
+            n_bins = len(splits) + 1 if dtype == "numerical" else len(splits)
+
+            info = {
+                "name": name, "dtype": dtype, "status": status,
+                "n_bins": n_bins
+            }
+
+            if self._target_dtype == "binary":
+                optb.binning_table.analysis()
+                iv = optb.binning_table.iv,
+                gini = optb.binning_table.gini,
+                js = optb.binning_table.js,
+                quality_score = optb.binning_table.quality_score
+
+                selected = True
+
+                selected = self._binning_metric_eval(self.min_iv, iv, 0)
+                selected = self._binning_metric_eval(self.max_iv, iv, 1)
+                selected = self._binning_metric_eval(self.min_js, js, 0)
+                selected = self._binning_metric_eval(self.max_js, js, 1)
+                selected = self._binning_metric_eval(self.quality_score_cutoff,
+                                                     quality_score, 0)
+
+                info = {**info, **{"iv": iv, "gini": gini, "js": js,
+                                   "quality score": quality_score,
+                                   "selected": selected}}
+            elif self._target_dtype == "continuous":
+                pass
+            elif self._target_dtype == "multiclass":
+                pass
+
+            self._variables_stats[name] = info
+
+    def _binning_metric_eval(self, metric, binning_metric, min_max):
+        if metric is None:
+            return True
+
+        if min_max == 0:
+            if binning_metric < metric:
+                return False
+        elif binning_metric > metric:
+            return False
+
+        return True
 
     def _check_is_fitted(self):
         if not self._is_fitted:
@@ -266,6 +347,9 @@ class BinningProcess(BaseEstimator):
 
         self._time_total = time.perf_counter() - time_init
 
+        # Compute binning statistics and decide whether a variable is selected
+        self._binning_variables_selection()
+
         # Completed successfully
         self._logger.close()
         self._is_fitted = True
@@ -280,21 +364,20 @@ class BinningProcess(BaseEstimator):
             if name in self.categorical_variables:
                 dtype = "categorical"
 
+        self._variables_dtype[name] = dtype
+
         if self.binning_fit_params is not None:
             params = self.binning_fit_params.get(name, {})
 
         if self._target_dtype == "binary":
-            optb = OptimalBinning(name=name, dtype=dtype,
-                                  max_n_prebins=self.max_n_prebins,
-                                  min_prebin_size=self.min_prebin_size,
-                                  min_n_bins=self.min_n_bins,
-                                  max_n_bins=self.max_n_bins,
-                                  min_bin_size=self.min_bin_size,
-                                  max_pvalue=self.max_pvalue,
-                                  max_pvalue_policy=self.max_pvalue_policy,
-                                  special_codes=self.special_codes,
-                                  split_digits=self.split_digits,
-                                  verbose=self.verbose)
+            optb = OptimalBinning(
+                name=name, dtype=dtype, max_n_prebins=self.max_n_prebins,
+                min_prebin_size=self.min_prebin_size,
+                min_n_bins=self.min_n_bins, max_n_bins=self.max_n_bins,
+                min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
+                max_pvalue_policy=self.max_pvalue_policy,
+                special_codes=self.special_codes,
+                split_digits=self.split_digits, verbose=self.verbose)
         elif self._target_dtype == "continuous":
             optb = ContinuousOptimalBinning(
                 name=name, dtype=dtype, max_n_prebins=self.max_n_prebins,

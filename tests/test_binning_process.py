@@ -9,6 +9,8 @@ import numpy as np
 
 from pytest import approx, raises
 
+from contextlib import redirect_stdout
+
 from optbinning import BinningProcess
 from optbinning import ContinuousOptimalBinning
 from optbinning import MulticlassOptimalBinning
@@ -261,7 +263,20 @@ def test_default_fit_transform():
 
 
 def test_information():
-    pass
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names)
+    process.fit(X, y, check_input=True)
+
+    with open("tests/test_binning_process_information.txt", "w") as f:
+        with redirect_stdout(f):
+            process.information(print_level=0)
+            process.information(print_level=1)
+            process.information(print_level=2)
 
 
 def test_summary():

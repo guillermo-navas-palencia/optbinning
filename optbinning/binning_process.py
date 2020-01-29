@@ -98,6 +98,25 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
             raise ValueError("min_iv must be <= max_iv; got {} <= {}."
                              .format(min_iv, max_iv))
 
+    if min_js is not None:
+        if not isinstance(min_js, numbers.Number) or min_js < 0:
+            raise ValueError("min_js must be >= 0; got {}.".format(min_js))
+
+    if max_js is not None:
+        if not isinstance(max_js, numbers.Number) or max_js < 0:
+            raise ValueError("max_js must be >= 0; got {}.".format(max_js))
+
+    if min_js is not None and max_js is not None:
+        if min_js > max_js:
+            raise ValueError("min_js must be <= max_js; got {} <= {}."
+                             .format(min_iv, max_iv))
+
+    if quality_score_cutoff is not None:
+        if (not isinstance(quality_score_cutoff, numbers.Number) or
+                not 0 <= quality_score_cutoff <= 1.0):
+            raise ValueError("quality_score_cutoff must be in [0, 1.0]; "
+                             "got {}.".format(quality_score_cutoff))
+
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
             raise TypeError("special_codes must be a list or numpy.ndarray.")
@@ -107,6 +126,14 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                 not 0 <= split_digits <= 8):
             raise ValueError("split_digits must be an integer in [0, 8]; "
                              "got {}.".format(split_digits))
+
+    if binning_fit_params is not None:
+        if not isinstance(binning_fit_params, dict):
+            raise TypeError("binning_fit_params must be a dict.")
+
+    if binning_transform_params is not None:
+        if not isinstance(binning_transform_params, dict):
+            raise TypeError("binning_transform_params must be a dict.")
 
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
@@ -166,7 +193,7 @@ class BinningProcess(BaseEstimator):
         self._is_fitted = False
 
     def fit(self, X, y, check_input=False):
-        self._fit(X, y, check_input)
+        return self._fit(X, y, check_input)
 
     def fit_transform(self, X, y, metric=None, metric_special=0,
                       metric_missing=0, check_input=False):
@@ -201,6 +228,9 @@ class BinningProcess(BaseEstimator):
         else:
             raise ValueError("")
 
+    def get_support(self):
+        pass
+
     def _check_is_fitted(self):
         if not self._is_fitted:
             raise NotFittedError("This {} instance is not fitted yet. Call "
@@ -216,7 +246,8 @@ class BinningProcess(BaseEstimator):
         self._target_dtype = type_of_target(y)
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
-            raise ValueError("")
+            raise ValueError("Target type {} is not supported."
+                             .format(self._target_dtype))
 
         # check X and y data
         if check_input:
@@ -275,7 +306,8 @@ class BinningProcess(BaseEstimator):
                 split_digits=self.split_digits, verbose=self.verbose)
         else:
             if dtype == "categorical":
-                raise ValueError()
+                raise ValueError("MulticlassOptimalBinning does not support "
+                                 "categorical variables.")
             optb = MulticlassOptimalBinning(
                 name=name, max_n_prebins=self.max_n_prebins,
                 min_prebin_size=self.min_prebin_size,
@@ -293,25 +325,36 @@ class BinningProcess(BaseEstimator):
     def _transform(self, X, variable_names, metric, metric_special,
                    metric_missing, check_input):
 
-        if not isinstance(variable_names, (np.ndarray, list)):
-            raise TypeError("")
-
         n_records, n_variables = X.shape
 
-        if variable_names is not None and n_variables != len(variable_names):
-            raise ValueError("")
+        if variable_names is not None:
+            if not isinstance(variable_names, (np.ndarray, list)):
+                raise TypeError("variable_names must be a list or "
+                                "numpy.ndarray.")
 
-        X_transform = np.zeros((X.shape))
+            keys = list(self._binned_variables.keys())
+            n_variables = len(variable_names)
 
-        for i, name in enumerate(variable_names):
+        X_transform = np.zeros((n_records, n_variables))
+
+        for i in range(n_variables):
             params = {}
-            if name not in self._binned_variables.keys():
-                raise ValueError("")
 
-            if self.binning_transform_params is not None:
-                params = self.binning_transform_params.get(name, {})
+            if variable_names is not None:
+                name = variable_names[i]
+                if name not in keys:
+                    raise ValueError("Variable {} was not previously binned."
+                                     .format(name))
 
-            optb = self._binned_variables[name]
+                if self.binning_transform_params is not None:
+                    params = self.binning_transform_params.get(name, {})
+
+                optb = self._binned_variables[name]
+
+                idx = next(j for j, key in enumerate(keys) if key == name)
+            else:
+                optb = list(self._binned_variables.values())[i]
+                idx = i
 
             metric_missing = params.get("metric_missing", metric_special)
             metric_special = params.get("metric_special", metric_missing)
@@ -319,12 +362,12 @@ class BinningProcess(BaseEstimator):
             if metric is not None:
                 metric = params.get("metric", metric)
 
-                X_transform[:, i] = optb.transform(X[:, i], metric,
+                X_transform[:, i] = optb.transform(X[:, idx], metric,
                                                    metric_special,
                                                    metric_missing, check_input)
             else:
                 X_transform[:, i] = optb.transform(
-                    X[:, i], metric_special=metric_special,
+                    X[:, idx], metric_special=metric_special,
                     metric_missing=metric_missing, check_input=check_input)
 
         return X_transform

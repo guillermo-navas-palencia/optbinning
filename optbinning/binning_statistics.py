@@ -294,6 +294,9 @@ class BinningTable:
         constant = np.log(t_n_event / t_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
+        # Compute Gini
+        self._gini = gini(self.n_event, self.n_nonevent)
+
         # Compute divergence measures
         p_ev = p_event[mask]
         p_nev = p_nonevent[mask]
@@ -471,10 +474,6 @@ class BinningTable:
             raise ValueError("n_samples must be a positive integer; got {}."
                              .format(n_samples))
 
-        # General metrics
-        gini_ar = gini(self.n_event, self.n_nonevent)
-        self._gini = gini_ar
-
         # Significance tests
         n_bins = len(self._n_records)
         n_metric = n_bins - 2
@@ -535,7 +534,7 @@ class BinningTable:
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(gini_ar, self._iv, self._js, self._quality_score,
+            ).format(self._gini, self._iv, self._js, self._quality_score,
                      df_tests_string)
 
         print(report)

@@ -21,20 +21,13 @@ except ImportError:
 def print_header():
     header = (
         "optbinning (Version 0.1.1)\n"
-        "Copyright (c) 2019 Guillermo Navas-Palencia, Apache License 2.0\n")
+        "Copyright (c) 2020 Guillermo Navas-Palencia, Apache License 2.0\n")
 
     print(header)
 
 
-def print_optional_parameters(binning_type, dict_user_options):
-    if binning_type == "optimalbinning":
-        dict_default_options = optimal_binning_default_options
-    elif binning_type == "multiclassoptimalbinning":
-        dict_default_options = multiclass_optimal_binning_default_options
-    elif binning_type == "continuousoptimalbinning":
-        dict_default_options = continuous_optimal_binning_default_options
-
-    option_format = "    {:<20} {:>19}   * {}\n"
+def print_optional_parameters(dict_default_options, dict_user_options):
+    option_format = "    {:<24} {:>19}   * {}\n"
     str_options = "  Begin options\n"
     for key, value in dict_default_options.items():
         user_value = dict_user_options[key]
@@ -42,7 +35,7 @@ def print_optional_parameters(binning_type, dict_user_options):
 
         if user_value is None:
             user_value = "no"
-        elif isinstance(user_value, (list, np.ndarray)):
+        elif isinstance(user_value, (list, np.ndarray, dict)):
             user_value = "yes"
 
         str_options += option_format.format(key, str(user_value), user_flag)
@@ -174,7 +167,14 @@ def print_binning_information(binning_type, print_level, name, status,
     print_header()
 
     if print_level == 2:
-        print_optional_parameters(binning_type, dict_user_options)
+        if binning_type == "optimalbinning":
+            dict_default_options = optimal_binning_default_options
+        elif binning_type == "multiclassoptimalbinning":
+            dict_default_options = multiclass_optimal_binning_default_options
+        elif binning_type == "continuousoptimalbinning":
+            dict_default_options = continuous_optimal_binning_default_options
+
+        print_optional_parameters(dict_default_options, dict_user_options)
 
     if print_level == 0:
         print_main_info(name, status, time_total)

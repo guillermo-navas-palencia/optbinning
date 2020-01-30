@@ -116,7 +116,7 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
     x_clean = x[clean_mask]
 
     if dtype == "numerical":
-        if splits:
+        if len(splits):
             indices = np.digitize(x_clean, splits, right=False)
         else:
             indices = np.zeros(x_clean.shape)
@@ -206,7 +206,7 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
 
     x_clean = x[clean_mask]
 
-    if splits:
+    if len(splits):
         indices = np.digitize(x_clean, splits, right=False)
     else:
         indices = np.zeros(x_clean.shape)
@@ -286,7 +286,7 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
     x_clean = x[clean_mask]
 
     if dtype == "numerical":
-        if splits:
+        if len(splits):
             indices = np.digitize(x_clean, splits, right=False)
         else:
             indices = np.zeros(x_clean.shape)

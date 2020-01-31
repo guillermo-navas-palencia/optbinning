@@ -294,6 +294,9 @@ class BinningTable:
         constant = np.log(t_n_event / t_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
+        # Compute Gini
+        self._gini = gini(self.n_event, self.n_nonevent)
+
         # Compute divergence measures
         p_ev = p_event[mask]
         p_nev = p_nonevent[mask]
@@ -431,7 +434,7 @@ class BinningTable:
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
         plt.show()
 
-    def analysis(self, pvalue_test="chi2", n_samples=100):
+    def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the statistics
@@ -453,6 +456,11 @@ class BinningTable:
             consecutive bins to compute the probability of the event rate of
             bin A being greater than the event rate of bin B.
 
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
+
         Notes
         -----
         The Chi-square test uses `scipy.stats.chi2_contingency
@@ -470,10 +478,6 @@ class BinningTable:
         if not isinstance(n_samples, numbers.Integral) or n_samples <= 0:
             raise ValueError("n_samples must be a positive integer; got {}."
                              .format(n_samples))
-
-        # General metrics
-        gini_ar = gini(self.n_event, self.n_nonevent)
-        self._gini = gini_ar
 
         # Significance tests
         n_bins = len(self._n_records)
@@ -535,10 +539,11 @@ class BinningTable:
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(gini_ar, self._iv, self._js, self._quality_score,
+            ).format(self._gini, self._iv, self._js, self._quality_score,
                      df_tests_string)
 
-        print(report)
+        if print_output:
+            print(report)
 
     def _check_is_built(self):
         if not self._is_built:
@@ -775,13 +780,18 @@ class MulticlassBinningTable:
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
         plt.show()
 
-    def analysis(self):
+    def analysis(self, print_output=True):
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the Jensen-shannon
         divergence and the quality score. Additionally, a statistical
         significance test between consecutive bins of the contingency table is
         performed using the Chi-square test.
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
 
         Notes
         -----
@@ -842,7 +852,8 @@ class MulticlassBinningTable:
             "  Significance tests\n\n{}\n"
             ).format(self._js, self._quality_score, df_tests_string)
 
-        print(report)
+        if print_output:
+            print(report)
 
     def _check_is_built(self):
         if not self._is_built:

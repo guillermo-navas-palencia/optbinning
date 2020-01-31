@@ -63,7 +63,7 @@ install_requires = [
 
 setup(
     name="optbinning",
-    version="0.1.1",
+    version="0.2.0",
     description="OptBinning: The Python Optimal Binning library",
     long_description=long_description,
     author="Guillermo Navas-Palencia",

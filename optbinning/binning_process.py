@@ -146,7 +146,87 @@ def _check_variable_dtype(x):
 
 
 class BinningProcess(BaseEstimator):
-    """"""
+    """Binning process to compute optimal binning of variables in a dataset,
+    given a binary, continuous or multiclass target dtype.
+
+    Parameters
+    ----------
+    variable_names : array-like
+        List of variable names.
+
+    max_n_prebins : int (default=20)
+        The maximum number of bins after pre-binning (prebins).
+
+    min_prebin_size : float (default=0.05)
+        The fraction of mininum number of records for each prebin.
+
+    min_n_bins : int or None, optional (default=None)
+        The minimum number of bins. If None, then ``min_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    max_n_bins : int or None, optional (default=None)
+        The maximum number of bins. If None, then ``max_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    min_bin_size : float or None, optional (default=None)
+        The fraction of minimum number of records for each bin. If None,
+        ``min_bin_size = min_prebin_size``.
+
+    max_bin_size : float or None, optional (default=None)
+        The fraction of maximum number of records for each bin. If None,
+        ``max_bin_size = 1.0``.
+
+    max_pvalue : float or None, optional (default=0.05)
+        The maximum p-value among bins.
+
+    max_pvalue_policy : str, optional (default="consecutive")
+        The method to determine bins not satisfying the p-value constraint.
+        Supported methods are "consecutive" to compare consecutive bins and
+        "all" to compare all bins.
+
+    min_iv : float or None, optional (default=None)
+        The minimum information value. Applicable if target type is binary.
+
+    max_iv : float or None, optional (default=None)
+        The maximum information value. Applicable if target type is binary.
+
+    min_js : float or None, optional (default=None)
+        The minimum Jensen-Shannon divergence value. Applicable if target type
+        is binary or multiclass.
+
+    max_js : float or None, optional (default=None)
+        The maximum Jensen-Shannon divergence value. Applicable if target type
+        is binary or multiclass.
+
+    quality_score_cutoff : float or None, optional (default=None)
+        The quality score cutoff value. Applicable if target type is binary or
+        multiclass.
+
+    special_codes : array-like or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
+    split_digits : int or None, optional (default=None)
+        The significant digits of the split points. If ``split_digits`` is set
+        to 0, the split points are integers. If None, then all significant
+        digits in the split points are considered.
+
+    categorical_variables : array-like or None, optional (default=None)
+        List of variables numerical variables to be considered categorical.
+        These are nominal variables. Not applicable when target type is
+        multiclass.
+
+    binning_fit_params : dict or None, optional (default=None)
+        Dictionary with optimal binning fitting options for specific variables.
+        Example: ``{"variable_1": {"max_n_bins": 4}}``.
+
+    binning_transform_params : dict or None, optional (default=None)
+        Dictionary with optimal binning transform options for specific
+        variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
+
+    verbose : int or bool (default=False)
+        Enable verbose output.
+    """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, max_pvalue=None,
@@ -182,7 +262,7 @@ class BinningProcess(BaseEstimator):
         self.verbose = verbose
 
         # auxiliary
-        self._n_records = None
+        self._n_samples = None
         self._n_variables = None
         self._target_dtype = None
         self._n_numerical = None
@@ -203,12 +283,62 @@ class BinningProcess(BaseEstimator):
         self._is_fitted = False
 
     def fit(self, X, y, check_input=False):
-        """"""
+        """Fit the binning process. Fit the optimal binning to all variables
+        according to the given training data.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like of shape (n_samples,)
+            Target vector relative to x.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
+        """
         return self._fit(X, y, check_input)
 
     def fit_transform(self, X, y, metric=None, metric_special=0,
                       metric_missing=0, check_input=False):
-        """"""
+        """
+        Fit the binning process according to the given training data, then
+        transform it.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like of shape (n_samples,)
+            Target vector relative to x.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        X_new : numpy array, shape = (n_samples, n_features_new)
+            Transformed array.
+        """
         return self.fit(X, y, check_input).transform(X, None, metric,
                                                      metric_special,
                                                      metric_missing,
@@ -216,14 +346,54 @@ class BinningProcess(BaseEstimator):
 
     def transform(self, X, variable_names=None, metric=None,
                   metric_special=0, metric_missing=0, check_input=False):
-        """"""
+        """
+        Transform given data to metric using bins from each fitted optimal
+        binning.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
+
+        variable_names : array-like or None, optional (default=None)
+            List of selected variables to apply transformation. If None all
+            ``variable_names`` are transformed.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        X_new : numpy array, shape = (n_samples, n_features_new)
+            Transformed array.
+        """
         self._check_is_fitted()
 
         return self._transform(X, variable_names, metric, metric_special,
                                metric_missing, check_input)
 
     def information(self, print_level=1):
-        """"""
+        """Print overview information about the options settings and
+        statistics.
+
+        Parameters
+        ----------
+        print_level : int (default=0)
+            Level of details.
+        """
         self._check_is_fitted()
 
         if not isinstance(print_level, numbers.Integral) or print_level < 0:
@@ -238,12 +408,19 @@ class BinningProcess(BaseEstimator):
         dict_user_options = self.get_params()
 
         print_binning_process_information(
-            print_level, self._n_records, self._n_variables,
+            print_level, self._n_samples, self._n_variables,
             self._target_dtype, n_numerical, n_categorical,
             self._n_selected, self._time_total, dict_user_options)
 
     def summary(self):
-        """"""
+        """Binning process summary with main statistics for all binned
+        variables.
+
+        Parameters
+        ----------
+        df_summary : pandas.DataFrame
+            Binning process summary.
+        """
         self._check_is_fitted()
 
         df_summary = pd.DataFrame.from_dict(self._variables_stats).T
@@ -262,7 +439,13 @@ class BinningProcess(BaseEstimator):
         return df_summary[columns]
 
     def get_binned_variable(self, name):
-        """"""
+        """Return optimal binning object for a given variable name.
+
+        Parameters
+        ----------
+        name : string
+            The variable name.
+        """
         self._check_is_fitted()
 
         if not isinstance(name, str):
@@ -275,7 +458,30 @@ class BinningProcess(BaseEstimator):
                              .format(name))
 
     def get_support(self, indices=False, names=False):
-        """"""
+        """Get a mask, or integer index, or names of the variables selected.
+
+        Parameters
+        ----------
+        indices : boolean (default=False)
+            If True, the return value will be an array of integers, rather
+            than a boolean mask.
+
+        names : boolean (default=False)
+            If True, the return value will be an array of strings, rather
+            than a boolean mask.
+
+        Returns
+        -------
+        support : array
+            An index that selects the retained features from a feature vector.
+            If `indices` is False, this is a boolean array of shape
+            [# input features], in which an element is True iff its
+            corresponding feature is selected for retention. If `indices` is
+            True, this is an integer array of shape [# output features] whose
+            values are indices into the input feature vector. If `names` is
+            True, this is an string array of sahpe [# output features], whose
+            values are names of the selected features.
+        """
         self._check_is_fitted()
 
         if indices and names:
@@ -365,6 +571,10 @@ class BinningProcess(BaseEstimator):
     def _fit(self, X, y, check_input):
         time_init = time.perf_counter()
 
+        if self.verbose:
+            logging.info("Binning process started.")
+            logging.info("Options: check parameters.")
+
         _check_parameters(**self.get_params())
 
         # check target dtype
@@ -384,15 +594,29 @@ class BinningProcess(BaseEstimator):
 
             check_consistent_length(X, y)
 
-        self._n_records, self._n_variables = X.shape
+        self._n_samples, self._n_variables = X.shape
+
+        if self.verbose:
+            logging.info("Dataset: number of samples: {}."
+                         .format(self._n_samples))
+
+            logging.info("Dataset: number of variables: {}."
+                         .format(self._n_variables))
 
         for i, name in enumerate(self.variable_names):
             self._fit_variable(X[:, i], y, name)
 
         self._time_total = time.perf_counter() - time_init
 
+        if self.verbose:
+            logging.info("Binning process variable selection...")
+
         # Compute binning statistics and decide whether a variable is selected
         self._binning_variables_selection()
+
+        if self.verbose:
+            logging.info("Binning process terminated. Time: {:.4f}s"
+                         .format(self._time_total))
 
         # Completed successfully
         self._logger.close()
@@ -403,6 +627,9 @@ class BinningProcess(BaseEstimator):
     def _fit_variable(self, x, y, name):
         params = {}
         dtype = _check_variable_dtype(x)
+
+        if self.verbose:
+            logging.info("Binning variable: {}".format(name))
 
         if self.categorical_variables is not None:
             if name in self.categorical_variables:
@@ -421,7 +648,7 @@ class BinningProcess(BaseEstimator):
                 min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
                 max_pvalue_policy=self.max_pvalue_policy,
                 special_codes=self.special_codes,
-                split_digits=self.split_digits, verbose=self.verbose)
+                split_digits=self.split_digits)
         elif self._target_dtype == "continuous":
             optb = ContinuousOptimalBinning(
                 name=name, dtype=dtype, max_n_prebins=self.max_n_prebins,
@@ -430,7 +657,7 @@ class BinningProcess(BaseEstimator):
                 min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
                 max_pvalue_policy=self.max_pvalue_policy,
                 special_codes=self.special_codes,
-                split_digits=self.split_digits, verbose=self.verbose)
+                split_digits=self.split_digits)
         else:
             if dtype == "categorical":
                 raise ValueError("MulticlassOptimalBinning does not support "
@@ -442,7 +669,7 @@ class BinningProcess(BaseEstimator):
                 min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
                 max_pvalue_policy=self.max_pvalue_policy,
                 special_codes=self.special_codes,
-                split_digits=self.split_digits, verbose=self.verbose)
+                split_digits=self.split_digits)
 
         optb.set_params(**params)
         optb.fit(x, y)

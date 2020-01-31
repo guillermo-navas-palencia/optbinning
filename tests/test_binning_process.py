@@ -325,3 +325,11 @@ def test_summary_get_support():
         'mean fractal dimension', 'texture error', 'smoothness error',
         'symmetry error', 'fractal dimension error',
         'worst fractal dimension'])
+
+
+def test_verbose():
+    process = BinningProcess(variable_names, verbose=True)
+    
+    with open("tests/test_binning_process_verbose.txt", "w") as f:
+        with redirect_stdout(f):    
+            process.fit(X, y, check_input=True)

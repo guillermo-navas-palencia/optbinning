@@ -30,5 +30,6 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    binning_binary
    binning_continuous
    binning_multiclass
+   binning_process
    binning_tables
    binning_utilities

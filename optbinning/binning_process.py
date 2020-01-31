@@ -10,6 +10,7 @@ import numbers
 import time
 
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
@@ -145,6 +146,7 @@ def _check_variable_dtype(x):
 
 
 class BinningProcess(BaseEstimator):
+    """"""
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, max_pvalue=None,
@@ -190,6 +192,8 @@ class BinningProcess(BaseEstimator):
         self._variables_dtype = {}
         self._variables_stats = {}
 
+        self._support = None
+
         # timing
         self._time_total = None
 
@@ -199,11 +203,12 @@ class BinningProcess(BaseEstimator):
         self._is_fitted = False
 
     def fit(self, X, y, check_input=False):
+        """"""
         return self._fit(X, y, check_input)
 
     def fit_transform(self, X, y, metric=None, metric_special=0,
                       metric_missing=0, check_input=False):
-
+        """"""
         return self.fit(X, y, check_input).transform(X, None, metric,
                                                      metric_special,
                                                      metric_missing,
@@ -211,13 +216,14 @@ class BinningProcess(BaseEstimator):
 
     def transform(self, X, variable_names=None, metric=None,
                   metric_special=0, metric_missing=0, check_input=False):
-
+        """"""
         self._check_is_fitted()
 
         return self._transform(X, variable_names, metric, metric_special,
                                metric_missing, check_input)
 
     def information(self, print_level=1):
+        """"""
         self._check_is_fitted()
 
         if not isinstance(print_level, numbers.Integral) or print_level < 0:
@@ -237,11 +243,26 @@ class BinningProcess(BaseEstimator):
             self._n_selected, self._time_total, dict_user_options)
 
     def summary(self):
+        """"""
         self._check_is_fitted()
 
-        pass
+        df_summary = pd.DataFrame.from_dict(self._variables_stats).T
+        df_summary.reset_index(inplace=True)
+        df_summary.rename(columns={"index": "name"}, inplace=True)
+
+        columns = ["name", "dtype", "status", "selected", "n_bins"]
+
+        if self._target_dtype == "binary":
+            columns += ["iv", "gini", "js", "quality score"]
+        elif self._target_dtype == "multiclass":
+            columns += ["js", "quality score"]
+        elif self._target_dtype == "continuous":
+            pass
+
+        return df_summary[columns]
 
     def get_binned_variable(self, name):
+        """"""
         self._check_is_fitted()
 
         if not isinstance(name, str):
@@ -253,13 +274,25 @@ class BinningProcess(BaseEstimator):
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
-    def get_support(self):
+    def get_support(self, indices=False, names=False):
+        """"""
         self._check_is_fitted()
 
-        pass
+        if indices and names:
+            raise ValueError("Only indices or names can be True.")
+
+        mask = self._support
+        if indices:
+            return np.where(mask)[0]
+        elif names:
+            return self.variable_names[mask]
+        else:
+            return mask
 
     def _binning_variables_selection(self):
-        for name in self.variable_names:
+        self._support = np.zeros(self._n_variables).astype(np.bool)
+
+        for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
             optb.binning_table.build()
 
@@ -270,35 +303,46 @@ class BinningProcess(BaseEstimator):
             n_bins = len(splits) + 1 if dtype == "numerical" else len(splits)
 
             info = {
-                "name": name, "dtype": dtype, "status": status,
+                "dtype": dtype, "status": status,
                 "n_bins": n_bins
             }
 
             if self._target_dtype == "binary":
-                optb.binning_table.analysis()
-                iv = optb.binning_table.iv,
-                gini = optb.binning_table.gini,
-                js = optb.binning_table.js,
+                optb.binning_table.analysis(print_output=False)
+                iv = optb.binning_table.iv
+                gini = optb.binning_table.gini
+                js = optb.binning_table.js
                 quality_score = optb.binning_table.quality_score
 
                 selected = True
-
-                selected = self._binning_metric_eval(self.min_iv, iv, 0)
-                selected = self._binning_metric_eval(self.max_iv, iv, 1)
-                selected = self._binning_metric_eval(self.min_js, js, 0)
-                selected = self._binning_metric_eval(self.max_js, js, 1)
-                selected = self._binning_metric_eval(self.quality_score_cutoff,
-                                                     quality_score, 0)
+                selected &= self._binning_metric_eval(self.min_iv, iv, 0)
+                selected &= self._binning_metric_eval(self.max_iv, iv, 1)
+                selected &= self._binning_metric_eval(self.min_js, js, 0)
+                selected &= self._binning_metric_eval(self.max_js, js, 1)
+                selected &= self._binning_metric_eval(
+                    self.quality_score_cutoff, quality_score, 0)
 
                 info = {**info, **{"iv": iv, "gini": gini, "js": js,
                                    "quality score": quality_score,
                                    "selected": selected}}
             elif self._target_dtype == "continuous":
-                pass
+                selected = True
+                info = {**info, **{"selected": selected}}
             elif self._target_dtype == "multiclass":
-                pass
+                optb.binning_table.analysis(print_output=False)
+                js = optb.binning_table.js
+                quality_score = optb.binning_table.quality_score
+
+                selected = True
+                selected &= self._binning_metric_eval(self.max_js, js, 1)
+                selected &= self._binning_metric_eval(
+                    self.quality_score_cutoff, quality_score, 0)
+
+                info = {**info, **{"js": js, "quality score": quality_score,
+                                   "selected": selected}}
 
             self._variables_stats[name] = info
+            self._support[i] = selected
 
     def _binning_metric_eval(self, metric, binning_metric, min_max):
         if metric is None:

@@ -5,6 +5,7 @@ Binning process testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import pandas as pd
 import numpy as np
 
 from pytest import approx, raises
@@ -157,7 +158,18 @@ def test_incorrect_target_type():
 
 
 def test_categorical_variables():
-    pass
+    data = load_boston()
+
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names, categorical_variables=["CHAS"])
+    process.fit(X, y, check_input=True)
+
+    df_summary = process.summary()
+    assert df_summary[
+        df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
 
 
 def test_fit_params():
@@ -272,6 +284,9 @@ def test_information():
     process = BinningProcess(variable_names)
     process.fit(X, y, check_input=True)
 
+    with raises(ValueError):
+        process.information(print_level=-1)
+
     with open("tests/test_binning_process_information.txt", "w") as f:
         with redirect_stdout(f):
             process.information(print_level=0)
@@ -279,9 +294,34 @@ def test_information():
             process.information(print_level=2)
 
 
-def test_summary():
-    pass
+def test_summary_get_support():
+    data = load_breast_cancer()
 
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
 
-def test_get_support():
-    pass
+    process = BinningProcess(variable_names, min_iv=0.1, max_iv=0.6)
+
+    with raises(ValueError):
+        process.summary()
+
+    with raises(ValueError):
+        process.get_support()
+
+    process.fit(X, y, check_input=True)
+
+    assert isinstance(process.summary(), pd.DataFrame)
+
+    with raises(ValueError):
+        process.get_support(indices=True, names=True)
+
+    assert all(process.get_support() == [
+        False, False, False, False, False, False, False, False, False, True,
+        False,  True, False, False,  True, False, False, False, True,  True,
+        False, False, False, False, False, False, False, False, False,  True])
+    assert process.get_support(indices=True) == approx([9, 11, 14, 18, 19, 29])
+    assert all(process.get_support(names=True) == [
+        'mean fractal dimension', 'texture error', 'smoothness error',
+        'symmetry error', 'fractal dimension error',
+        'worst fractal dimension'])

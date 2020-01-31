@@ -434,7 +434,7 @@ class BinningTable:
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
         plt.show()
 
-    def analysis(self, pvalue_test="chi2", n_samples=100):
+    def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the statistics
@@ -455,6 +455,11 @@ class BinningTable:
             The number of samples to run the Bayesian A/B testing between
             consecutive bins to compute the probability of the event rate of
             bin A being greater than the event rate of bin B.
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
 
         Notes
         -----
@@ -537,7 +542,8 @@ class BinningTable:
             ).format(self._gini, self._iv, self._js, self._quality_score,
                      df_tests_string)
 
-        print(report)
+        if print_output:
+            print(report)
 
     def _check_is_built(self):
         if not self._is_built:
@@ -774,13 +780,18 @@ class MulticlassBinningTable:
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
         plt.show()
 
-    def analysis(self):
+    def analysis(self, print_output=True):
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the Jensen-shannon
         divergence and the quality score. Additionally, a statistical
         significance test between consecutive bins of the contingency table is
         performed using the Chi-square test.
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
 
         Notes
         -----
@@ -841,7 +852,8 @@ class MulticlassBinningTable:
             "  Significance tests\n\n{}\n"
             ).format(self._js, self._quality_score, df_tests_string)
 
-        print(report)
+        if print_output:
+            print(report)
 
     def _check_is_built(self):
         if not self._is_built:

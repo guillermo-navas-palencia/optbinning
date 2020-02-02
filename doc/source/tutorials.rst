@@ -23,3 +23,4 @@ Binning process tutorials
    :maxdepth: 1
 
    tutorials/tutorial_binning_process_sklearn_pipeline
+   tutorials/tutorial_binning_process_FICO_xAI

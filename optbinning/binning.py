@@ -527,7 +527,7 @@ class OptimalBinning(BaseEstimator):
 
         Parameters
         ----------
-        print_level : int (default=0)
+        print_level : int (default=1)
             Level of details.
         """
         self._check_is_fitted()

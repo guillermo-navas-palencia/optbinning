@@ -14,6 +14,9 @@ OptBinning
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blue
    :target: https://img.shields.io/pypi/v/optbinning?color=blue
 
+.. image:: https://pepy.tech/badge/optbinning
+   :target: https://pepy.tech/project/optbinning
+
 **OptBinning** is a library written in Python implementing a rigorous and flexible mathematical programming formulation
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
 not previously addressed.

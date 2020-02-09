@@ -216,6 +216,55 @@ Print overview information about the options settings, problem statistics, and t
        Post-processing                     0.00 sec   (  0.16%)
 
 
+Benchmarks
+==========
+
+The following table shows how OptBinning 0.2.0 compares to `scorecardpy <https://github.com/ShichenXie/scorecardpy>`_ 0.1.9.1.1 on a selection of variables from the public dataset, Home Credit Default Risk - Kaggle’s competition `Link <https://www.kaggle.com/c/home-credit-default-risk/data>`_. This dataset contains 307511 samples.The experiments were run on Intel(R) Core(TM) i5-3317 CPU at 1.70GHz, using a single core, running Linux. For scorecardpy, we use default settings only increasing the maximum number of bins ``bin_num_limit=20``. For OptBinning, we use default settings (``max_n_prebins=20``) only changing the maximum allowed p-value between consecutive bins, ``max_pvalue=0.05``.
+
+To compare softwares we use the shifted geometric mean, typically used in mathematical optimization benchmarks: http://plato.asu.edu/bench.html. Using the shifted (by 1 second) geometric mean we found that **OptBinning** is **17x** faster than scorecardpy, with an average IV increase of **12%**. Besides the speed and IV gains, OptBinning includes many more constraints and monotonicity options.
+
++----------------------------+------------------+----------------+-----------------+---------------+
+| Variable                   | scorecardpy_time | scorecardpy_IV | optbinning_time | optbinning_IV |
++============================+==================+================+=================+===============+
+| AMT_INCOME_TOTAL           |           6.18 s |    0.010606    |      0.363 s    |   0.011705    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| NAME_CONTRACT_TYPE (C)     |           3.72 s |    0.015039    |      0.148 s    |   0.015039    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| AMT_CREDIT                 |           7.10 s |    0.053593    |      0.634 s    |   0.059311    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| ORGANIZATION_TYPE (C)      |           6.31 s |    0.063098    |      0.274 s    |   0.071520    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| AMT_ANNUITY                |           6.51 s |    0.024295    |      0.648 s    |   0.031179    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| AMT_GOODS_PRICE            |           6.95 s |    0.056923    |      0.401 s    |   0.092032    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| NAME_HOUSING_TYPE (C)      |           3.57 s |    0.015055    |      0.140 s    |   0.015055    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| REGION_POPULATION_RELATIVE |           4.33 s |    0.026578    |      0.392 s    |   0.035567    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| DAYS_BIRTH                 |           5.18 s |    0.081270    |      0.564 s    |   0.086539    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| OWN_CAR_AGE                |           4.85 s |    0.021429    |      0.055 s    |   0.021890    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| OCCUPATION_TYPE (C)        |           4.24 s |    0.077606    |      0.201 s    |   0.079540    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| APARTMENTS_AVG             |           5.61 s |    0.032247(*) |      0.184 s    |   0.032415    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| BASEMENTAREA_AVG           |           5.14 s |    0.022320    |      0.119 s    |   0.022639    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| YEARS_BUILD_AVG            |           4.49 s |    0.016033    |      0.055 s    |   0.016932    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| EXT_SOURCE_2               |           5.21 s |    0.298463    |      0.606 s    |   0.321417    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| EXT_SOURCE_3               |           5.08 s |    0.316352    |      0.303 s    |   0.334975    |
++----------------------------+------------------+----------------+-----------------+---------------+
+| **TOTAL**                  |      **84.47 s** |**1.130907**    | **5.087 s**     | **1.247756**  |
++----------------------------+------------------+----------------+-----------------+---------------+
+
+(C): categorical variable.
+(*): max p-value between consecutive bins > 0.05.
+
+
 Citation
 ========
 

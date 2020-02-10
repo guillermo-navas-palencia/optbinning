@@ -1,8 +1,8 @@
-from .binning import OptimalBinning
-from .continuous_binning import ContinuousOptimalBinning
-from .multiclass_binning import MulticlassOptimalBinning
+from .binning.binning import OptimalBinning
+from .binning.continuous_binning import ContinuousOptimalBinning
+from .binning.multiclass_binning import MulticlassOptimalBinning
 
-from .binning_process import BinningProcess
+from .binning.binning_process import BinningProcess
 
 
 __all__ = ['OptimalBinning',

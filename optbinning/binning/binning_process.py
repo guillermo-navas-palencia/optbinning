@@ -18,12 +18,11 @@ from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
+from ..logging import Logger
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
-
-from .logging import Logger
 
 
 def _check_parameters(variable_names, max_n_prebins, min_prebin_size,

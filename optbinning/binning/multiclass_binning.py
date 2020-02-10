@@ -11,17 +11,16 @@ import time
 
 import numpy as np
 
-from .binning import OptimalBinning
-from .multiclass_cp import MulticlassBinningCP
-from .multiclass_mip import MulticlassBinningMIP
-from .preprocessing import split_data
-from .transformations import transform_multiclass_target
-
+from ..logging import Logger
+from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
+from .binning import OptimalBinning
 from .binning_statistics import multiclass_bin_info
 from .binning_statistics import MulticlassBinningTable
 from .binning_statistics import target_info
-from .logging import Logger
+from .multiclass_cp import MulticlassBinningCP
+from .multiclass_mip import MulticlassBinningMIP
+from .transformations import transform_multiclass_target
 
 
 def _check_parameters(name, prebinning_method, solver, max_n_prebins,

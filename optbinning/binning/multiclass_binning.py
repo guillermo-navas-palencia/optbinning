@@ -37,7 +37,7 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                          'values are "cart", "quantile" and "uniform".')
 
     if solver not in ("cp", "mip"):
-        raise ValueError('Invalid value for dtype. Allowed string '
+        raise ValueError('Invalid value for solver. Allowed string '
                          'values are "cp" and "mip".')
 
     if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:

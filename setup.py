@@ -76,6 +76,7 @@ setup(
     tests_require=['pytest'],
     cmdclass={'clean': CleanCommand, 'test': PyTest},
     python_requires='>=3.6',
+    install_requires=install_requires,
     classifiers=[
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Software Development :: Libraries',

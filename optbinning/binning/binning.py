@@ -156,8 +156,8 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
 
     if class_weight is not None:
         if not isinstance(class_weight, (dict, str)):
-            raise TypeError('class_weight must be dict, "balanced" or None, '
-                            'got; {}.'.format(class_weight))
+            raise TypeError('class_weight must be dict, "balanced" or None; '
+                            'got {}.'.format(class_weight))
 
         elif isinstance(class_weight, str) and class_weight != "balanced":
             raise ValueError('Invalid value for class_weight. Allowed string '

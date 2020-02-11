@@ -36,8 +36,9 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
                       max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
                       min_bin_n_event, max_bin_n_event, monotonic_trend,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
-                      class_weight, cat_cutoff, user_splits, special_codes,
-                      split_digits, mip_solver, time_limit, verbose):
+                      outliers_detector, outliers_params, class_weight,
+                      cat_cutoff, user_splits, special_codes, split_digits,
+                      mip_solver, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -153,6 +154,16 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
     if max_pvalue_policy not in ("all", "consecutive"):
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
+
+    if outliers_detector is not None:
+        if outliers_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outliers_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if outliers_params is not None:
+            if not isinstance(outliers_params, dict):
+                raise TypeError("outliers_params must be a dict or None; "
+                                "got {}.".format(outliers_params))
 
     if class_weight is not None:
         if not isinstance(class_weight, (dict, str)):
@@ -282,6 +293,14 @@ class OptimalBinning(BaseEstimator):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
+    outliers_detector : str or None, optional (default=None)
+        The outliers detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
+
+    outliers_params : dict or None, optional (default=None)
+        Dictionary of parameters to pass to the outliers detection method.
+
     class_weight : dict, "balanced" or None, optional (default=None)
         Weights associated with classes in the form ``{class_label: weight}``.
         If None, all classes are supposed to have weight one. Check
@@ -340,10 +359,10 @@ class OptimalBinning(BaseEstimator):
                  max_bin_n_nonevent=None, min_bin_n_event=None,
                  max_bin_n_event=None, monotonic_trend="auto",
                  min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", class_weight=None,
-                 cat_cutoff=None, user_splits=None, special_codes=None,
-                 split_digits=None, mip_solver="bop", time_limit=100,
-                 verbose=False):
+                 max_pvalue_policy="consecutive", outliers_detector=None,
+                 outliers_params=None, class_weight=None, cat_cutoff=None,
+                 user_splits=None, special_codes=None, split_digits=None,
+                 mip_solver="bop", time_limit=100, verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -366,6 +385,9 @@ class OptimalBinning(BaseEstimator):
         self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+
+        self.outliers_detector = outliers_detector
+        self.outliers_params = outliers_params
 
         self.class_weight = class_weight
         self.cat_cutoff = cat_cutoff
@@ -577,7 +599,8 @@ class OptimalBinning(BaseEstimator):
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          y_others, categories, cat_others] = split_data(
             self.dtype, x, y, self.special_codes, self.cat_cutoff,
-            self.user_splits, check_input)
+            self.user_splits, check_input, self.outliers_detector,
+            self.outliers_params)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -594,6 +617,11 @@ class OptimalBinning(BaseEstimator):
 
             logging.info("Pre-processing: number of special samples: {}"
                          .format(n_special))
+
+            if self.outliers_detector is not None:
+                n_outliers = self._n_samples-(n_clean + n_missing + n_special)
+                logging.info("Pre-processing: number of outlier samples: {}"
+                             .format(n_outliers))
 
             if self.dtype == "categorical":
                 n_categories = len(categories)

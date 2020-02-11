@@ -26,8 +26,9 @@ from .transformations import transform_multiclass_target
 def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
                       max_bin_size, monotonic_trend, max_pvalue,
-                      max_pvalue_policy, user_splits, special_codes,
-                      split_digits, mip_solver, time_limit, verbose):
+                      max_pvalue_policy, outliers_detector, outliers_params,
+                      user_splits, special_codes, split_digits, mip_solver,
+                      time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -103,6 +104,16 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
     if max_pvalue_policy not in ("all", "consecutive"):
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
+
+    if outliers_detector is not None:
+        if outliers_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outliers_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if outliers_params is not None:
+            if not isinstance(outliers_params, dict):
+                raise TypeError("outliers_params must be a dict or None; "
+                                "got {}.".format(outliers_params))
 
     if user_splits is not None:
         if not isinstance(user_splits, (np.ndarray, list)):
@@ -196,6 +207,14 @@ class MulticlassOptimalBinning(OptimalBinning):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
+    outliers_detector : str or None, optional (default=None)
+        The outliers detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
+
+    outliers_params : dict or None, optional (default=None)
+        Dictionary of parameters to pass to the outliers detection method.
+
     user_splits : array-like or None, optional (default=None)
         The list of pre-binning split points.
 
@@ -234,9 +253,10 @@ class MulticlassOptimalBinning(OptimalBinning):
                  max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, monotonic_trend="auto", max_pvalue=None,
-                 max_pvalue_policy="consecutive", user_splits=None,
-                 special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 max_pvalue_policy="consecutive", outliers_detector=None,
+                 outliers_params=None, user_splits=None, special_codes=None,
+                 split_digits=None, mip_solver="bop", time_limit=100,
+                 verbose=False):
 
         self.name = name
         self.dtype = "numerical"
@@ -254,6 +274,9 @@ class MulticlassOptimalBinning(OptimalBinning):
         self.monotonic_trend = monotonic_trend
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+
+        self.outliers_detector = outliers_detector
+        self.outliers_params = outliers_params
 
         self.user_splits = user_splits
         self.special_codes = special_codes
@@ -398,7 +421,8 @@ class MulticlassOptimalBinning(OptimalBinning):
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          _, _, _] = split_data(
             self.dtype, x, y, special_codes=self.special_codes,
-            check_input=check_input)
+            check_input=check_input, outliers_detector=self.outliers_detector,
+            outliers_params=self.outliers_params)
 
         # Check that x_clean is numerical
         if x_clean.dtype == np.dtype("object"):
@@ -420,6 +444,11 @@ class MulticlassOptimalBinning(OptimalBinning):
 
             logging.info("Pre-processing: number of special samples: {}"
                          .format(n_special))
+
+            if self.outliers_detector is not None:
+                n_outliers = self._n_samples-(n_clean + n_missing + n_special)
+                logging.info("Pre-processing: number of outlier samples: {}"
+                             .format(n_outliers))
 
             logging.info("Pre-processing terminated. Time: {:.4f}s"
                          .format(self._time_preprocessing))

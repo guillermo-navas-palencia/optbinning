@@ -27,8 +27,9 @@ from .transformations import transform_continuous_target
 def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
                       max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
-                      max_pvalue_policy, cat_cutoff, user_splits,
-                      special_codes, split_digits, time_limit, verbose):
+                      max_pvalue_policy, outliers_detector, outliers_params,
+                      cat_cutoff, user_splits, special_codes, split_digits,
+                      time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -103,6 +104,16 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
     if max_pvalue_policy not in ("all", "consecutive"):
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
+
+    if outliers_detector is not None:
+        if outliers_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outliers_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if outliers_params is not None:
+            if not isinstance(outliers_params, dict):
+                raise TypeError("outliers_params must be a dict or None; "
+                                "got {}.".format(outliers_params))
 
     if cat_cutoff is not None:
         if (not isinstance(cat_cutoff, numbers.Number) or
@@ -197,6 +208,14 @@ class ContinuousOptimalBinning(OptimalBinning):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
+    outliers_detector : str or None, optional (default=None)
+        The outliers detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
+
+    outliers_params : dict or None, optional (default=None)
+        Dictionary of parameters to pass to the outliers detection method.
+
     cat_cutoff : float or None, optional (default=None)
         Generate bin others with categories in which the fraction of
         occurrences is below the  ``cat_cutoff`` value. This option is
@@ -238,9 +257,10 @@ class ContinuousOptimalBinning(OptimalBinning):
                  max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
                  max_n_bins=None, min_bin_size=None, max_bin_size=None,
                  monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", cat_cutoff=None,
-                 user_splits=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False):
+                 max_pvalue_policy="consecutive", outliers_detector=None,
+                 outliers_params=None, cat_cutoff=None, user_splits=None,
+                 special_codes=None, split_digits=None, time_limit=100,
+                 verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -259,6 +279,9 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.min_mean_diff = min_mean_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+
+        self.outliers_detector = outliers_detector
+        self.outliers_params = outliers_params
 
         self.cat_cutoff = cat_cutoff
 
@@ -404,7 +427,8 @@ class ContinuousOptimalBinning(OptimalBinning):
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          y_others, categories, cat_others] = split_data(
             self.dtype, x, y, self.special_codes, self.cat_cutoff,
-            self.user_splits, check_input)
+            self.user_splits, check_input, self.outliers_detector,
+            self.outliers_params)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -421,6 +445,11 @@ class ContinuousOptimalBinning(OptimalBinning):
 
             logging.info("Pre-processing: number of special samples: {}"
                          .format(n_special))
+
+            if self.outliers_detector is not None:
+                n_outliers = self._n_samples-(n_clean + n_missing + n_special)
+                logging.info("Pre-processing: number of outlier samples: {}"
+                             .format(n_outliers))
 
             if self.dtype == "categorical":
                 n_categories = len(categories)

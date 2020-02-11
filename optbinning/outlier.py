@@ -13,7 +13,7 @@ from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 
 
-class OutliersDetector:
+class OutlierDetector:
     """Base class for all outlier detectors."""
     def __init__(self):
         self._support = None
@@ -64,7 +64,7 @@ class OutliersDetector:
         return mask if not indices else np.where(mask)[0]
 
 
-class RangeDetector(BaseEstimator, OutliersDetector):
+class RangeDetector(BaseEstimator, OutlierDetector):
     r"""Interquartile range or interval based outlier detection method.
 
     The default settings compute the usual interquartile range method.
@@ -125,7 +125,7 @@ class RangeDetector(BaseEstimator, OutliersDetector):
         self._is_fitted = True
 
 
-class ModifiedZScoreDetector(BaseEstimator, OutliersDetector):
+class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
     """Modified Z-score method.
 
     Parameters

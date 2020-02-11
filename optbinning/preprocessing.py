@@ -13,8 +13,8 @@ import pandas as pd
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
-from .outliers import ModifiedZScoreDetector
-from .outliers import RangeDetector
+from .outlier import ModifiedZScoreDetector
+from .outlier import RangeDetector
 
 
 def categorical_transform(x, y):
@@ -39,8 +39,8 @@ def categorical_cutoff(x, y, cutoff=0.01):
 
 
 def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
-               user_splits=None, check_input=True, outliers_detector=None,
-               outliers_params=None, fix_lb=None, fix_ub=None):
+               user_splits=None, check_input=True, outlier_detector=None,
+               outlier_params=None, fix_lb=None, fix_ub=None):
     """Split data into clean, missing and special values data.
 
     Parameters
@@ -72,9 +72,9 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     check_input : bool, (default=True)
         If False, the input arrays x and y will not be checked.
 
-    outliers_detector : str or None (default=None)
+    outlier_detector : str or None (default=None)
 
-    outliers_params : dict or None (default=None)
+    outlier_params : dict or None (default=None)
 
     fix_lb : float or None (default=None)
 
@@ -109,15 +109,15 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     others : array, shape (n_other_categories)
         List of other categories.
     """
-    if outliers_detector is not None:
-        if outliers_detector not in ("range", "zscore"):
-            raise ValueError('Invalid value for outliers_detector. Allowed '
+    if outlier_detector is not None:
+        if outlier_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outlier_detector. Allowed '
                              'string values are "range" and "zscore".')
 
-        if outliers_params is not None:
-            if not isinstance(outliers_params, dict):
-                raise TypeError("outliers_params must be a dict or None; "
-                                "got {}.".format(outliers_params))
+        if outlier_params is not None:
+            if not isinstance(outlier_params, dict):
+                raise TypeError("outlier_params must be a dict or None; "
+                                "got {}.".format(outlier_params))
 
     if fix_lb is not None:
         if not isinstance(fix_lb, numbers.Number):
@@ -171,18 +171,18 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         y_special = y[special_mask]
 
     if dtype == "numerical":
-        if outliers_detector is not None:
-            if outliers_detector == "range":
+        if outlier_detector is not None:
+            if outlier_detector == "range":
                 detector = RangeDetector()
-            elif outliers_detector == "zscore":
+            elif outlier_detector == "zscore":
                 detector = ModifiedZScoreDetector()
 
-            if outliers_params is not None:
-                detector.set_params(**outliers_params)
+            if outlier_params is not None:
+                detector.set_params(**outlier_params)
 
-            mask_outliers = detector.fit(x_clean).get_support()
-            x_clean = x_clean[~mask_outliers]
-            y_clean = y_clean[~mask_outliers]
+            mask_outlier = detector.fit(x_clean).get_support()
+            x_clean = x_clean[~mask_outlier]
+            y_clean = y_clean[~mask_outlier]
 
         if fix_lb is not None or fix_ub is not None:
             if fix_lb is not None:

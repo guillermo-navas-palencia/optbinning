@@ -17,7 +17,7 @@ class BinningMIP:
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_bin_n_event, max_bin_n_event,
                  min_bin_n_nonevent, max_bin_n_nonevent, min_event_rate_diff,
-                 max_pvalue, max_pvalue_policy, mip_solver, time_limit):
+                 max_pvalue, max_pvalue_policy, gamma, mip_solver, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -33,6 +33,7 @@ class BinningMIP:
         self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.gamma = gamma
 
         self.mip_solver = mip_solver
         self.time_limit = time_limit
@@ -62,9 +63,22 @@ class BinningMIP:
         x, y, t, d, u, bin_size_diff = self.decision_variables(solver, n)
 
         # Objective function
-        solver.Maximize(solver.Sum([(V[i][i] * x[i, i]) +
-                        solver.Sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                    for j in range(i)]) for i in range(n)]))
+        if self.gamma:
+            total_records = int(n_records.sum())
+            regularization = self.gamma / total_records
+            pmax = solver.IntVar(0, total_records, "pmax")
+            pmin = solver.IntVar(0, total_records, "pmin")
+
+            solver.Maximize(solver.Sum([(V[i][i] * x[i, i]) +
+                            solver.Sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                        for j in range(i)])
+                                        for i in range(n)]) -
+                            regularization * (pmax - pmin))
+        else:
+            solver.Maximize(solver.Sum([(V[i][i] * x[i, i]) +
+                            solver.Sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                        for j in range(i)])
+                                        for i in range(n)]))
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(solver, n, x)
@@ -127,6 +141,16 @@ class BinningMIP:
                 self.add_constraint_monotonic_peak(solver, n, D, x, y)
             else:
                 self.add_constraint_monotonic_valley(solver, n, D, x, y)
+
+        # Constraint: reduction of dominating bins
+        if self.gamma:
+            for i in range(n):
+                bin_size = solver.Sum([n_records[j] * x[i, j]
+                                       for j in range(i + 1)])
+
+                solver.Add(pmin <= total_records * (1 - x[i, i]) + bin_size)
+                solver.Add(pmax >= bin_size)
+                solver.Add(pmin <= pmax)
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(solver, x, pvalue_violation_indices)

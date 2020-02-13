@@ -36,7 +36,7 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
                       max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
                       min_bin_n_event, max_bin_n_event, monotonic_trend,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
-                      outlier_detector, outlier_params, class_weight,
+                      gamma, outlier_detector, outlier_params, class_weight,
                       cat_cutoff, user_splits, special_codes, split_digits,
                       mip_solver, time_limit, verbose):
 
@@ -154,6 +154,8 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
     if max_pvalue_policy not in ("all", "consecutive"):
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
+
+    # TODO: gamma parameter
 
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore"):
@@ -359,10 +361,11 @@ class OptimalBinning(BaseEstimator):
                  max_bin_n_nonevent=None, min_bin_n_event=None,
                  max_bin_n_event=None, monotonic_trend="auto",
                  min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", outlier_detector=None,
-                 outlier_params=None, class_weight=None, cat_cutoff=None,
-                 user_splits=None, special_codes=None, split_digits=None,
-                 mip_solver="bop", time_limit=100, verbose=False):
+                 max_pvalue_policy="consecutive", gamma=0,
+                 outlier_detector=None, outlier_params=None, class_weight=None,
+                 cat_cutoff=None, user_splits=None, special_codes=None,
+                 split_digits=None, mip_solver="bop", time_limit=100,
+                 verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -385,6 +388,7 @@ class OptimalBinning(BaseEstimator):
         self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.gamma = gamma
 
         self.outlier_detector = outlier_detector
         self.outlier_params = outlier_params
@@ -818,8 +822,8 @@ class OptimalBinning(BaseEstimator):
                                    self.min_bin_n_nonevent,
                                    self.max_bin_n_nonevent,
                                    self.min_event_rate_diff, self.max_pvalue,
-                                   self.max_pvalue_policy, self.mip_solver,
-                                   self.time_limit)
+                                   self.max_pvalue_policy, self.gamma,
+                                   self.mip_solver, self.time_limit)
         elif self.solver == "ls":
             optimizer = BinningLS(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,

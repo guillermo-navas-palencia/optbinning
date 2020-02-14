@@ -814,7 +814,8 @@ class OptimalBinning(BaseEstimator):
                                   self.min_bin_n_nonevent,
                                   self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
-                                  self.max_pvalue_policy, self.time_limit)
+                                  self.max_pvalue_policy, self.gamma,
+                                  self.time_limit)
         elif self.solver == "mip":
             optimizer = BinningMIP(monotonic, self.min_n_bins, self.max_n_bins,
                                    min_bin_size, max_bin_size,

@@ -17,7 +17,10 @@ from sklearn.exceptions import NotFittedError
 
 from .metrics import bayesian_probability
 from .metrics import binning_quality_score
+from .metrics import chi2_cramer_v
+from .metrics import chi2_cramer_v_multi
 from .metrics import frequentist_pvalue
+from .metrics import hhi
 from .metrics import gini
 from .metrics import jeffrey
 from .metrics import jensen_shannon
@@ -193,6 +196,20 @@ def _check_build_parameters(show_digits, add_totals):
                         .format(add_totals))
 
 
+def _check_is_built(table):
+    if not table._is_built:
+        raise NotFittedError("This {} instance is not built yet. Call "
+                             "'build' with appropriate arguments."
+                             .format(table.__class__.__name__))
+
+
+def _check_is_analyzed(table):
+    if not table._is_analyzed:
+        raise NotFittedError("This {} instance is not analyzed yet. Call "
+                             "'analysis' with appropriate arguments."
+                             .format(table.__class__.__name__))
+
+
 class BinningTable:
     """Binning table to summarize optimal binning of a numerical or categorical
     variable with respect to a binary target.
@@ -246,12 +263,15 @@ class BinningTable:
         self._n_records = None
         self._event_rate = None
         self._woe = None
+        self._hhi = None
+        self._hhi_norm = None
         self._iv = None
         self._js = None
         self._gini = None
         self._quality_score = None
 
         self._is_built = False
+        self._is_analyzed = False
 
     def build(self, show_digits=2, add_totals=True):
         """Build the binning table.
@@ -309,6 +329,10 @@ class BinningTable:
         self._iv = t_iv
         self._js = t_js
 
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)
+
         # Keep data for plotting
         self._n_records = n_records
         self._event_rate = event_rate
@@ -356,7 +380,7 @@ class BinningTable:
             Supported metrics are "woe" to show the Weight of Evidence (WoE)
             measure and "event_rate" to show the event rate.
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         if metric not in ("event_rate", "woe"):
             raise ValueError('Invalid value for metric. Allowed string '
@@ -469,7 +493,7 @@ class BinningTable:
         `scipy.stats.fisher_exact <https://docs.scipy.org/doc/scipy/reference/
         generated/scipy.stats.fisher_exact.html>`_.
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         if pvalue_test not in ("chi2", "fisher"):
             raise ValueError('Invalid value for pvalue_test. Allowed string '
@@ -489,6 +513,8 @@ class BinningTable:
         n_nev = self.n_nonevent[:n_metric]
         n_ev = self.n_event[:n_metric]
 
+        chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+
         t_statistics = []
         p_values = []
         p_a_b = []
@@ -505,7 +531,8 @@ class BinningTable:
             p_values.append(p_value)
 
         # Quality score
-        self._quality_score = binning_quality_score(self._iv, p_values)
+        self._quality_score = binning_quality_score(self._iv, p_values,
+                                                    self._hhi_norm)
 
         df_tests = pd.DataFrame({
                 "Bin A": np.arange(n_metric-1),
@@ -536,20 +563,17 @@ class BinningTable:
             "    Gini index          {:>15.8f}\n"
             "    IV (Jeffrey)        {:>15.8f}\n"
             "    JS (Jensen-Shannon) {:>15.8f}\n"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "    Cramer's V          {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._gini, self._iv, self._js, self._quality_score,
-                     df_tests_string)
+            ).format(self._gini, self._iv, self._js, self._hhi, self._hhi_norm,
+                     cramer_v, self._quality_score, df_tests_string)
 
         if print_output:
             print(report)
-
-    def _check_is_built(self):
-        if not self._is_built:
-            raise NotFittedError("This {} instance is not built yet. Call "
-                                 "'build' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     @property
     def gini(self):
@@ -563,7 +587,7 @@ class BinningTable:
         -------
         gini : float
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         return self._gini
 
@@ -577,7 +601,7 @@ class BinningTable:
         -------
         iv : float
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         return self._iv
 
@@ -591,7 +615,7 @@ class BinningTable:
         -------
         js : float
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         return self._js
 
@@ -606,7 +630,7 @@ class BinningTable:
         -------
         quality_score : float
         """
-        self._check_is_built()
+        _check_is_analyzed(self)
 
         return self._quality_score
 
@@ -644,6 +668,8 @@ class MulticlassBinningTable:
         self._n_records = None
         self._event_rate = None
         self._js = None
+        self._hhi = None
+        self._hhi_norm = None
         self._quality_score = None
 
         self._is_built = False
@@ -669,6 +695,7 @@ class MulticlassBinningTable:
 
         n_records = n_event.sum(axis=1)
         t_n_records = n_records.sum()
+        p_records = n_records / t_n_records
 
         mask = (n_event > 0)
         event_rate = np.zeros((len(n_records), len(self.classes)))
@@ -676,6 +703,14 @@ class MulticlassBinningTable:
         for i in range(len(self.classes)):
             event_rate[mask[:, i], i] = n_event[
                 mask[:, i], i] / n_records[mask[:, i]]
+
+        # Compute Jensen-Shannon multivariate divergence
+        p_event = self.n_event / self.n_event.sum(axis=0)
+        self._js = jensen_shannon_multivariate(p_event)
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)
 
         # Keep data for plotting
         self._n_records = n_records
@@ -693,7 +728,7 @@ class MulticlassBinningTable:
 
         dict_data = {**{"Bin": bin_str,
                         "Count": n_records,
-                        "Count (%)": n_records / t_n_records},
+                        "Count (%)": p_records},
                      **{**dict_event, **dict_p_event}}
 
         df = pd.DataFrame(dict_data)
@@ -714,7 +749,7 @@ class MulticlassBinningTable:
 
         Visualize event count and event rate values for each class.
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         n_bins = len(self._n_records)
         n_metric = n_bins - 2
@@ -799,18 +834,14 @@ class MulticlassBinningTable:
         <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.
         chi2_contingency.html>`_.
         """
-        self._check_is_built()
-
-        p_event = self.n_event / self.n_event.sum(axis=0)
-
-        # General metrics
-        self._js = jensen_shannon_multivariate(p_event)
+        _check_is_built(self)
 
         # Significance tests
         n_bins = len(self._n_records)
         n_metric = n_bins - 2
 
         n_ev = self.n_event[:n_metric, :]
+        chi2, cramer_v = chi2_cramer_v_multi(n_ev)
 
         t_statistics = []
         p_values = []
@@ -823,7 +854,7 @@ class MulticlassBinningTable:
 
         # Quality score
         self._quality_score = multiclass_binning_quality_score(
-            self._js, len(self.classes), p_values)
+            self._js, len(self.classes), p_values, self._hhi_norm)
 
         df_tests = pd.DataFrame({
                 "Bin A": np.arange(n_metric-1),
@@ -847,19 +878,17 @@ class MulticlassBinningTable:
             "  General metrics"
             "\n\n"
             "    JS (Jensen-Shannon) {:>15.8f}\n"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "    Cramer's V          {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._js, self._quality_score, df_tests_string)
+            ).format(self._js, self._hhi, self._hhi_norm, cramer_v,
+                     self._quality_score, df_tests_string)
 
         if print_output:
             print(report)
-
-    def _check_is_built(self):
-        if not self._is_built:
-            raise NotFittedError("This {} instance is not built yet. Call "
-                                 "'build' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     @property
     def js(self):
@@ -871,7 +900,7 @@ class MulticlassBinningTable:
         -------
         js : float
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         return self._js
 
@@ -886,7 +915,7 @@ class MulticlassBinningTable:
         -------
         quality_score : float
         """
-        self._check_is_built()
+        _check_is_analyzed(self)
 
         return self._quality_score
 
@@ -1002,7 +1031,7 @@ class ContinuousBinningTable:
 
         Visualize records count and mean values.
         """
-        self._check_is_built()
+        _check_is_built(self)
 
         n_bins = len(self.n_records)
         n_metric = n_bins - 2
@@ -1066,9 +1095,3 @@ class ContinuousBinningTable:
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=12)
         plt.show()
-
-    def _check_is_built(self):
-        if not self._is_built:
-            raise NotFittedError("This {} instance is not built yet. Call "
-                                 "'build' with appropriate arguments."
-                                 .format(self.__class__.__name__))

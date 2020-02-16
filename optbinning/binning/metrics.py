@@ -208,6 +208,22 @@ def frequentist_pvalue(obs, pvalue_method):
         return oddratio, p
 
 
+def chi2_cramer_v(n_nev, n_ev):
+    obs = np.array([n_nev, n_ev])
+    t, p, _, _ = stats.chi2_contingency(obs, correction=False)
+    cramer_v = (t / (n_nev.sum() + n_ev.sum())) ** 0.5
+
+    return t, cramer_v
+
+
+def chi2_cramer_v_multi(n_ev):
+    r, k = n_ev.shape
+    t, p, _, _ = stats.chi2_contingency(n_ev, correction=False)
+    cramer_v = (t / n_ev.sum() / min(k - 1, r - 1)) ** 0.5
+
+    return t, cramer_v
+
+
 def bayesian_probability(obs, n_samples):
     aA, aB, bA, bB = obs.ravel()
 
@@ -231,7 +247,7 @@ def hhi(s, normalized=False):
         Whether to compute the normalized HHI.
     """
     s = np.asarray(s)
-    hhi = np.sum(s ** 2)
+    h = np.sum(s ** 2)
 
     if normalized:
         n = len(s)
@@ -239,24 +255,27 @@ def hhi(s, normalized=False):
             return 1
         else:
             n1 = 1. / n
-            return (hhi - n1) / (1 - n1)
+            return (h - n1) / (1 - n1)
 
-    return hhi
+    return h
 
 
-def binning_quality_score(iv, p_values):
+def binning_quality_score(iv, p_values, hhi_norm):
     # Score 1: Information value
     c = 0.39573882184806863
     score_1 = iv * np.exp(1/2 * (1 - (iv / c) ** 2)) / c
 
-    # Score 2: pairwise p-values
+    # Score 2: statistical significance (pairwise p-values)
     p_values = np.asarray(p_values)
     score_2 = np.prod(1 - p_values)
 
-    return score_1 * score_2
+    # Score 3: homogeneity
+    score_3 = 1. - hhi_norm
+
+    return score_1 * score_2 * score_3
 
 
-def multiclass_binning_quality_score(js, n_classes, p_values):
+def multiclass_binning_quality_score(js, n_classes, p_values, hhi_norm):
     js_norm = js / np.log(n_classes)
 
-    return binning_quality_score(js_norm, p_values)
+    return binning_quality_score(js_norm, p_values, hhi_norm)

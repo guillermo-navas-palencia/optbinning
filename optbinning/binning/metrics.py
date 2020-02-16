@@ -219,6 +219,31 @@ def bayesian_probability(obs, n_samples):
     return p, 1 - p
 
 
+def hhi(s, normalized=False):
+    """Compute the Herfindahl–Hirschman Index (HHI).
+
+    Parameters
+    ----------
+    s : array-like
+        Fractions (exposure)
+
+    normalized : bool (default=False)
+        Whether to compute the normalized HHI.
+    """
+    s = np.asarray(s)
+    hhi = np.sum(s ** 2)
+
+    if normalized:
+        n = len(s)
+        if n == 1:
+            return 1
+        else:
+            n1 = 1. / n
+            return (hhi - n1) / (1 - n1)
+
+    return hhi
+
+
 def binning_quality_score(iv, p_values):
     # Score 1: Information value
     c = 0.39573882184806863

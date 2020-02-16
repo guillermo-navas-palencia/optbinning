@@ -111,6 +111,10 @@ def test_params():
         optb = OptimalBinning(max_pvalue_policy="new_policy")
         optb.fit(x, y)
 
+    with raises(ValueError):
+        optb = OptimalBinning(gamma=-0.2)
+        optb.fit(x, y)
+
     with raises(TypeError):
         optb = OptimalBinning(class_weight=[0, 1])
         optb.fit(x, y)
@@ -173,6 +177,16 @@ def test_numerical_default_solvers():
         assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
                                       13.70499992, 15.04500008, 16.92500019],
                                      rel=1e-6)
+
+
+def test_numerical_regularization():
+    optb_mip = OptimalBinning(solver="mip", gamma=4)
+    optb_cp = OptimalBinning(solver="cp", gamma=4)
+    optb_mip.fit(x, y)
+    optb_cp.fit(x, y)
+
+    assert len(optb_mip.splits) < 6
+    assert len(optb_cp.splits) < 6
 
 
 def test_numerical_default_transform():

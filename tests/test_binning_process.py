@@ -329,7 +329,7 @@ def test_summary_get_support():
 
 def test_verbose():
     process = BinningProcess(variable_names, verbose=True)
-    
+
     with open("tests/test_binning_process_verbose.txt", "w") as f:
-        with redirect_stdout(f):    
+        with redirect_stdout(f):
             process.fit(X, y, check_input=True)

@@ -5,11 +5,16 @@ Preprocessing functions.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
+import numbers
+
 import numpy as np
 import pandas as pd
 
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
+
+from .outlier import ModifiedZScoreDetector
+from .outlier import RangeDetector
 
 
 def categorical_transform(x, y):
@@ -34,24 +39,46 @@ def categorical_cutoff(x, y, cutoff=0.01):
 
 
 def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
-               user_splits=None, check_input=True):
+               user_splits=None, check_input=True, outlier_detector=None,
+               outlier_params=None, fix_lb=None, fix_ub=None):
     """Split data into clean, missing and special values data.
 
     Parameters
     ----------
+    dtype : str, optional (default="numerical")
+        The variable data type. Supported data types are "numerical" for
+        continuous and ordinal variables and "categorical" for categorical
+        and nominal variables.
+
     x : array-like, shape = (n_samples)
         Data samples, where n_samples is the number of samples.
 
     y : array-like, shape = (n_samples)
         Target vector relative to x.
 
-    special_codes : array-like or None (default=None)
-        List of special values to be considered.
+    special_codes : array-like or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
 
-    user_splits_categorical : bool
+    cat_cutoff : float or None, optional (default=None)
+        Generate bin others with categories in which the fraction of
+        occurrences is below the  ``cat_cutoff`` value. This option is
+        available when ``dtype`` is "categorical".
+
+    user_splits : array-like or None, optional (default=None)
+        The list of pre-binning split points when ``dtype`` is "numerical" or
+        the list of prebins when ``dtype`` is "categorical".
 
     check_input : bool, (default=True)
         If False, the input arrays x and y will not be checked.
+
+    outlier_detector : str or None (default=None)
+
+    outlier_params : dict or None (default=None)
+
+    fix_lb : float or None (default=None)
+
+    fix_ub : float or None (default=None)
 
     Returns
     -------
@@ -73,12 +100,38 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     y_special : array, shape = (n_special)
         Special target samples.
 
-    y_others :
+    y_others : array, shape = (n_others)
+        Others target samples.
 
-    categories :
+    categories : array, shape (n_categories)
+        List of categories.
 
-    others :
+    others : array, shape (n_other_categories)
+        List of other categories.
     """
+    if outlier_detector is not None:
+        if outlier_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outlier_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if outlier_params is not None:
+            if not isinstance(outlier_params, dict):
+                raise TypeError("outlier_params must be a dict or None; "
+                                "got {}.".format(outlier_params))
+
+    if fix_lb is not None:
+        if not isinstance(fix_lb, numbers.Number):
+            raise ValueError("fix_lb must be a number; got {}".format(fix_lb))
+
+    if fix_ub is not None:
+        if not isinstance(fix_ub, numbers.Number):
+            raise ValueError("fix_ub must be a number; got {}".format(fix_ub))
+
+    if fix_lb is not None and fix_ub is not None:
+        if fix_lb > fix_ub:
+            raise ValueError("fix_lb must be <= fix_ub; got {} <= {}."
+                             .format(fix_lb, fix_ub))
+
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
                         force_all_finite='allow-nan')
@@ -116,6 +169,31 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         y_missing = y[missing_mask]
         x_special = x[special_mask]
         y_special = y[special_mask]
+
+    if dtype == "numerical":
+        if outlier_detector is not None:
+            if outlier_detector == "range":
+                detector = RangeDetector()
+            elif outlier_detector == "zscore":
+                detector = ModifiedZScoreDetector()
+
+            if outlier_params is not None:
+                detector.set_params(**outlier_params)
+
+            mask_outlier = detector.fit(x_clean).get_support()
+            x_clean = x_clean[~mask_outlier]
+            y_clean = y_clean[~mask_outlier]
+
+        if fix_lb is not None or fix_ub is not None:
+            if fix_lb is not None:
+                mask = x_clean >= fix_lb
+            elif fix_ub is not None:
+                mask = x_clean <= fix_ub
+            else:
+                mask = (x_clean >= fix_lb) & (x_clean <= fix_ub)
+
+            x_clean = x_clean[mask]
+            y_clean = y_clean[mask]
 
     if dtype == "categorical" and user_splits is None:
         if cat_cutoff is not None:

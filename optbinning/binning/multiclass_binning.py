@@ -1,5 +1,5 @@
 """
-Optimal binning algorithm for continuous target.
+Optimal binning algorithm for multiclass target.
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
@@ -9,37 +9,37 @@ import logging
 import numbers
 import time
 
-from sklearn.utils import check_array
-
 import numpy as np
+
+from ..logging import Logger
+from ..preprocessing import split_data
+from .auto_monotonic import auto_monotonic
 from .binning import OptimalBinning
-from .continuous_cp import ContinuousBinningCP
-from .preprocessing import preprocessing_user_splits_categorical
-from .preprocessing import split_data
-from .transformations import transform_continuous_target
-
-from .auto_monotonic import auto_monotonic_continuous
-from .binning_statistics import continuous_bin_info
-from .binning_statistics import ContinuousBinningTable
-from .logging import Logger
+from .binning_statistics import multiclass_bin_info
+from .binning_statistics import MulticlassBinningTable
+from .binning_statistics import target_info
+from .multiclass_cp import MulticlassBinningCP
+from .multiclass_mip import MulticlassBinningMIP
+from .transformations import transform_multiclass_target
 
 
-def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
+def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
-                      max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
-                      max_pvalue_policy, cat_cutoff, user_splits,
-                      special_codes, split_digits, time_limit, verbose):
+                      max_bin_size, monotonic_trend, max_pvalue,
+                      max_pvalue_policy, outlier_detector, outlier_params,
+                      user_splits, special_codes, split_digits, mip_solver,
+                      time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
 
-    if dtype not in ("categorical", "numerical"):
-        raise ValueError('Invalid value for dtype. Allowed string '
-                         'values are "categorical" and "numerical".')
-
     if prebinning_method not in ("cart", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
                          'values are "cart", "quantile" and "uniform".')
+
+    if solver not in ("cp", "mip"):
+        raise ValueError('Invalid value for solver. Allowed string '
+                         'values are "cp" and "mip".')
 
     if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:
         raise ValueError("max_prebins must be an integer greater than 1; "
@@ -83,16 +83,17 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                                                     max_bin_size))
 
     if monotonic_trend is not None:
-        if monotonic_trend not in ("auto", "ascending", "descending", "convex",
-                                   "concave", "peak", "valley"):
-            raise ValueError('Invalid value for monotonic trend. Allowed '
-                             'string values are "auto", "ascending", '
-                             '"descending", "concave", "convex", "peak" and '
-                             '"valley".')
-
-    if (not isinstance(min_mean_diff, numbers.Number) or min_mean_diff < 0):
-        raise ValueError("min_mean_diff must be >= 0; got {}."
-                         .format(min_mean_diff))
+        if isinstance(monotonic_trend, list):
+            for trend in monotonic_trend:
+                if trend not in ("auto", "ascending", "descending", "convex",
+                                 "concave", "peak", "valley", None):
+                    raise ValueError('Invalid value for monotonic trend. '
+                                     'Allowed string values are "auto", '
+                                     '"ascending", "descending", "concave", '
+                                     '"convex", "peak", "valley" or None.')
+        elif not isinstance(monotonic_trend, str) or monotonic_trend != "auto":
+            raise ValueError("Invalid value for monotonic trend; got {}."
+                             .format(monotonic_trend))
 
     if max_pvalue is not None:
         if (not isinstance(max_pvalue, numbers.Number) or
@@ -104,11 +105,15 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
 
-    if cat_cutoff is not None:
-        if (not isinstance(cat_cutoff, numbers.Number) or
-                not 0. < cat_cutoff <= 1.0):
-            raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
-                             .format(cat_cutoff))
+    if outlier_detector is not None:
+        if outlier_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outlier_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if outlier_params is not None:
+            if not isinstance(outlier_params, dict):
+                raise TypeError("outlier_params must be a dict or None; "
+                                "got {}.".format(outlier_params))
 
     if user_splits is not None:
         if not isinstance(user_splits, (np.ndarray, list)):
@@ -124,6 +129,10 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
             raise ValueError("split_digist must be an integer in [0, 8]; "
                              "got {}.".format(split_digits))
 
+    if mip_solver not in ("bop", "cbc"):
+        raise ValueError('Invalid value for mip_solver. Allowed string '
+                         'values are "bop" and "cbc".')
+
     if not isinstance(time_limit, numbers.Number) or time_limit < 0:
         raise ValueError("time_limit must be a positive value in seconds; "
                          "got {}.".format(time_limit))
@@ -132,27 +141,32 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class ContinuousOptimalBinning(OptimalBinning):
-    """Optimal binning of a numerical or categorical variable with respect to a
-    continuous target.
+class MulticlassOptimalBinning(OptimalBinning):
+    """Optimal binning of a numerical variable with respect to a multiclass or
+    multilabel target.
+
+    **Note that the maximum number of classes is set to 100**. To ease
+    visualization of the binning table, a set of 100 maximally distinct colors
+    is generated using the library `glasbey
+    <https://github.com/taketwo/glasbey>`_.
 
     Parameters
     ----------
     name : str, optional (default="")
         The variable name.
 
-    dtype : str, optional (default="numerical")
-        The variable data type. Supported data types are "numerical" for
-        continuous and ordinal variables and "categorical" for categorical
-        and nominal variables.
-
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
         decision tree, "quantile" to generate prebins with approximately same
         frequency and "uniform" to generate prebins with equal width. Method
-        "cart" uses `sklearn.tree.DecisionTreeRegressor
+        "cart" uses `sklearn.tree.DecistionTreeClassifier
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
-        DecisionTreeRegressor.html>`_.
+        DecisionTreeClassifier.html>`_.
+
+    solver : str, optional (default="cp")
+        The optimizer to solve the optimal binning problem. Supported solvers
+        are "mip" to choose a mixed-integer programming solver or "cp" to
+        choose a constrained programming solver.
 
     max_n_prebins : int (default=20)
         The maximum number of bins after pre-binning (prebins).
@@ -176,20 +190,16 @@ class ContinuousOptimalBinning(OptimalBinning):
         The fraction of maximum number of records for each bin. If None,
         ``max_bin_size = 1.0``.
 
-    monotonic_trend : str or None, optional (default="auto")
-        The **mean** monotonic trend. Supported trends are “auto” to
+    monotonic_trend : str, array-like or None, optional (default="auto")
+        The **event rate** monotonic trend. Supported trends are “auto” to
         automatically determine the trend maximizing IV using a machine
-        learning classifier, "ascending", "descending", "concave", "convex",
-        "peak" to allow a peak change point and "valley" to allow a valley
-        change point. If None, then the monotonic constraint is disabled.
-
-    min_mean_diff : float, optional (default=0)
-        The minimum mean difference between consecutives bins. This
-        option currently only applies when ``monotonic_trend`` is "ascending"
-        or "descending".
+        learning classifier, a list of monotonic trends combining "auto",
+        "ascending", "descending", "concave", "convex", "peak", "valley"
+        and None, one for each class. If None, then the monotonic constraint
+        is disabled.
 
     max_pvalue : float or None, optional (default=0.05)
-        The maximum p-value among bins. The T-test is used to detect bins
+        The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint.
 
     max_pvalue_policy : str, optional (default="consecutive")
@@ -197,14 +207,16 @@ class ContinuousOptimalBinning(OptimalBinning):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
-    cat_cutoff : float or None, optional (default=None)
-        Generate bin others with categories in which the fraction of
-        occurrences is below the  ``cat_cutoff`` value. This option is
-        available when ``dtype`` is "categorical".
+    outlier_detector : str or None, optional (default=None)
+        The outlier detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
+
+    outlier_params : dict or None, optional (default=None)
+        Dictionary of parameters to pass to the outlier detection method.
 
     user_splits : array-like or None, optional (default=None)
-        The list of pre-binning split points when ``dtype`` is "numerical" or
-        the list of prebins when ``dtype`` is "categorical".
+        The list of pre-binning split points.
 
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
@@ -214,6 +226,11 @@ class ContinuousOptimalBinning(OptimalBinning):
         The significant digits of the split points. If ``split_digits`` is set
         to 0, the split points are integers. If None, then all significant
         digits in the split points are considered.
+
+    mip_solver : str, optional (default="bop")
+        The mixed-integer programming solver. Supported solvers are "bop" to
+        choose the Google OR-Tools binary optimizer or "cbc" to choose the
+        COIN-OR Branch-and-Cut solver CBC.
 
     time_limit : int (default=100)
         The maximum time in seconds to run the optimization solver.
@@ -228,24 +245,23 @@ class ContinuousOptimalBinning(OptimalBinning):
     results, however, some improvement can be achieved by increasing
     ``max_n_prebins`` and/or decreasing ``min_prebin_size``.
 
-    The T-test uses an estimate of the standard deviation of the contingency
-    table to speed up the model generation and reduce memory usage. Therefore,
-    it is not guaranteed to obtain bins satisfying the p-value constraint,
-    although it may work reasonably well in most cases. To avoid having bins
-    with similar bins the parameter ``min_mean_diff`` is recommended.
+    The pre-binning refinement phase guarantee that no prebin has either zero
+    counts of non-events or events by merging those pure prebins. Pure bins
+    produce infinity WoE and event rates.
     """
-    def __init__(self, name="", dtype="numerical", prebinning_method="cart",
-                 max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
-                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
-                 monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", cat_cutoff=None,
-                 user_splits=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False):
+    def __init__(self, name="", prebinning_method="cart", solver="cp",
+                 max_n_prebins=20, min_prebin_size=0.05,
+                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
+                 max_bin_size=None, monotonic_trend="auto", max_pvalue=None,
+                 max_pvalue_policy="consecutive", outlier_detector=None,
+                 outlier_params=None, user_splits=None, special_codes=None,
+                 split_digits=None, mip_solver="bop", time_limit=100,
+                 verbose=False):
 
         self.name = name
-        self.dtype = dtype
+        self.dtype = "numerical"
         self.prebinning_method = prebinning_method
-        self.solver = "cp"
+        self.solver = solver
 
         self.max_n_prebins = max_n_prebins
         self.min_prebin_size = min_prebin_size
@@ -256,35 +272,31 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.max_bin_size = max_bin_size
 
         self.monotonic_trend = monotonic_trend
-        self.min_mean_diff = min_mean_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
 
-        self.cat_cutoff = cat_cutoff
+        self.outlier_detector = outlier_detector
+        self.outlier_params = outlier_params
 
         self.user_splits = user_splits
         self.special_codes = special_codes
         self.split_digits = split_digits
 
+        self.mip_solver = mip_solver
         self.time_limit = time_limit
 
         self.verbose = verbose
 
         # auxiliary
-        self._categories = None
-        self._cat_others = None
-        self._n_records = None
-        self._sums = None
-        self._n_records_cat_others = None
-        self._n_records_missing = None
-        self._n_records_special = None
-        self._sum_cat_others = None
-        self._sum_missing = None
-        self._sum_special = None
-        self._problem_type = "regression"
+        self._n_event = None
+        self._n_event_missing = None
+        self._n_event_special = None
+        self._problem_type = "classification"
 
         # info
         self._binning_table = None
+        self._classes = None
+        self._n_classes = None
         self._n_prebins = None
         self._n_refinements = 0
         self._n_samples = None
@@ -304,8 +316,8 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit_transform(self, x, y, metric_special=0, metric_missing=0,
-                      check_input=False):
+    def fit_transform(self, x, y, metric="mean_woe", metric_special=0,
+                      metric_missing=0, check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -317,15 +329,21 @@ class ContinuousOptimalBinning(OptimalBinning):
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
 
+        metric : str, optional (default="mean_woe")
+            The metric used to transform the input vector. Supported metrics
+            are "mean_woe" to choose the mean of Weight of Evidence (WoE) and
+            "weighted_mean_woe" to choose weighted mean of WoE using the
+            number of records per class as weights.
+
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
-            Supported metrics are "empirical" to use the empirical mean, and
-            any numerical value.
+            Supported metrics are "empirical" to use the empirical mean WoE
+            or weighted mean WoE, and any numerical value.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
-            Supported metrics are "empirical" to use the empirical mean, and
-            any numerical value.
+            Supported metrics are "empirical" to use the empirical mean WoE
+            or weighted mean WoE, and any numerical value.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -336,27 +354,33 @@ class ContinuousOptimalBinning(OptimalBinning):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, check_input)
 
-    def transform(self, x, metric_special=0, metric_missing=0,
-                  check_input=False):
-        """Transform given data to mean using bins from the fitted
-        optimal binning.
+    def transform(self, x, metric="mean_woe", metric_special=0,
+                  metric_missing=0, check_input=False):
+        """Transform given data to mean Weight of Evidence (WoE) or weighted
+        mean WoE using bins from the fitted optimal binning.
 
         Parameters
         ----------
         x : array-like, shape = (n_samples,)
             Training vector, where n_samples is the number of samples.
 
+        metric : str, optional (default="mean_woe")
+            The metric used to transform the input vector. Supported metrics
+            are "mean_woe" to choose the mean of Weight of Evidence (WoE) and
+            "weighted_mean_woe" to choose weighted mean of WoE using the
+            number of records per class as weights.
+
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
-            Supported metrics are "empirical" to use the empirical mean, and
-            any numerical value.
+            Supported metrics are "empirical" to use the empirical mean WoE
+            or weighted mean WoE, and any numerical value.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
-            Supported metrics are "empirical" to use the empirical mean, and
-            any numerical value.
+            Supported metrics are "empirical" to use the empirical mean WoE
+            or weighted mean WoE, and any numerical value.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -365,20 +389,13 @@ class ContinuousOptimalBinning(OptimalBinning):
         -------
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
-
-        Notes
-        -----
-        Transformation of data including categories not present during training
-        return zero mean.
         """
         self._check_is_fitted()
 
-        return transform_continuous_target(self._splits_optimal, self.dtype,
-                                           x, self._n_records, self._sums,
-                                           self.special_codes,
-                                           self._categories, self._cat_others,
-                                           metric_special, metric_missing,
-                                           self.user_splits, check_input)
+        return transform_multiclass_target(self._splits_optimal, x,
+                                           self._n_event, self.special_codes,
+                                           metric,  metric_special,
+                                           metric_missing, check_input)
 
     def _fit(self, x, y, check_input):
         time_init = time.perf_counter()
@@ -402,9 +419,15 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         y_others, categories, cat_others] = split_data(
-            self.dtype, x, y, self.special_codes, self.cat_cutoff,
-            self.user_splits, check_input)
+         _, _, _] = split_data(
+            self.dtype, x, y, special_codes=self.special_codes,
+            check_input=check_input, outlier_detector=self.outlier_detector,
+            outlier_params=self.outlier_params)
+
+        # Check that x_clean is numerical
+        if x_clean.dtype == np.dtype("object"):
+            raise ValueError("x array after removing special codes and "
+                             "missing values must be numerical.")
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -422,19 +445,10 @@ class ContinuousOptimalBinning(OptimalBinning):
             logging.info("Pre-processing: number of special samples: {}"
                          .format(n_special))
 
-            if self.dtype == "categorical":
-                n_categories = len(categories)
-                n_categories_others = len(cat_others)
-                n_others = len(y_others)
-
-                logging.info("Pre-processing: number of others samples: {}"
-                             .format(n_others))
-
-                logging.info("Pre-processing: number of categories: {}"
-                             .format(n_categories))
-
-                logging.info("Pre-processing: number of categories others: {}"
-                             .format(n_categories_others))
+            if self.outlier_detector is not None:
+                n_outlier = self._n_samples-(n_clean + n_missing + n_special)
+                logging.info("Pre-processing: number of outlier samples: {}"
+                             .format(n_outlier))
 
             logging.info("Pre-processing terminated. Time: {:.4f}s"
                          .format(self._time_preprocessing))
@@ -446,52 +460,27 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_prebinning = time.perf_counter()
 
         if self.user_splits is not None:
-            n_splits = len(self.user_splits)
-
-            if self.verbose:
-                logging.info("Pre-binning: user splits supplied: {}"
-                             .format(n_splits))
-
-            if not n_splits:
-                splits = self.user_splits
-                n_records = np.array([])
-                sums = np.array([])
-                stds = np.array([])
-            else:
-                if self.dtype == "numerical":
-                    user_splits = check_array(
-                        self.user_splits, ensure_2d=False, dtype=None,
-                        force_all_finite=True)
-
-                    user_splits = np.unique(self.user_splits)
-                else:
-                    [categories, user_splits, x_clean, y_clean, y_others,
-                     cat_others] = preprocessing_user_splits_categorical(
-                        self.user_splits, x_clean, y_clean)
-
-                splits, n_records, sums, stds = self._prebinning_refinement(
-                    user_splits, x_clean, y_clean, y_missing, y_special,
-                    y_others)
+            splits, n_nonevent, n_event = self._user_splits_refinement(
+                self.user_splits, x_clean, y_clean, y_missing, y_special, None)
         else:
-            splits, n_records, sums, stds = self._fit_prebinning(
-                x_clean, y_clean, y_missing, y_special, y_others)
+            splits, n_nonevent, n_event = self._fit_prebinning(
+                x_clean, y_clean, y_missing, y_special, None)
 
-        self._n_prebins = len(n_records)
-
-        self._categories = categories
-        self._cat_others = cat_others
+        self._n_prebins = len(n_nonevent)
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
             logging.info("Pre-binning: number of prebins: {}"
                          .format(self._n_prebins))
+            logging.info("Pre-binning: number of refinements: {}"
+                         .format(self._n_refinements))
 
             logging.info("Pre-binning terminated. Time: {:.4f}s"
                          .format(self._time_prebinning))
 
         # Optimization
-        self._fit_optimizer(splits, n_records, sums, stds)
+        self._fit_optimizer(splits, n_nonevent, n_event)
 
         # Post-processing
         if self.verbose:
@@ -501,18 +490,17 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_records = n_records.sum()
-            sums = sums.sum()
+            n_event = np.zeros(self._n_classes)
 
-        self._n_records, self._sums = continuous_bin_info(
-            self._solution, n_records, sums, self._n_records_missing,
-            self._sum_missing, self._n_records_special, self._sum_special,
-            self._n_records_cat_others, self._sum_cat_others, self._cat_others)
+            for i, cl in enumerate(self._classes):
+                n_event[i] = target_info(y_clean, cl)[1]
 
-        self._binning_table = ContinuousBinningTable(
-            self.name, self.dtype, self._splits_optimal, self._n_records,
-            self._sums, self._categories, self._cat_others,
-            self.user_splits)
+        self._n_event = multiclass_bin_info(
+            self._solution, self._n_classes, n_event, self._n_event_missing,
+            self._n_event_special)
+
+        self._binning_table = MulticlassBinningTable(
+            self.name, self._splits_optimal, self._n_event, self._classes)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
@@ -533,13 +521,44 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         return self
 
-    def _fit_optimizer(self, splits, n_records, sums, stds):
+    def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
+                               y_special, y_others=None):
+        self._classes = np.unique(y)
+        self._n_classes = len(self._classes)
+
+        if self._n_classes > 100:
+            raise ValueError("Maximum number of classes exceeded; got {}."
+                             .format(self._n_classes))
+
+        special_target_info = []
+        missing_target_info = []
+        for idx, cl in enumerate(self._classes):
+            special_target_info.append(target_info(y_special, cl)[1])
+            missing_target_info.append(target_info(y_missing, cl)[1])
+
+        self._n_event_special = special_target_info
+        self._n_event_missing = missing_target_info
+
+        n_splits = len(splits_prebinning)
+
+        if not n_splits:
+            return splits_prebinning, np.array([]), np.array([])
+
+        if self.split_digits is not None:
+            splits_prebinning = np.round(splits_prebinning, self.split_digits)
+
+        splits_prebinning, n_nonevent, n_event = self._compute_prebins(
+            splits_prebinning, x, y)
+
+        return splits_prebinning, n_nonevent, n_event
+
+    def _fit_optimizer(self, splits, n_nonevent, n_event):
         if self.verbose:
             logging.info("Optimizer started.")
 
         time_init = time.perf_counter()
 
-        if not len(n_records):
+        if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
             self._solution = np.zeros(len(splits)).astype(np.bool)
@@ -562,40 +581,51 @@ class ContinuousOptimalBinning(OptimalBinning):
             max_bin_size = self.max_bin_size
 
         # Monotonic trend
-        if self.dtype == "numerical":
-            if self.monotonic_trend == "auto":
-                monotonic = auto_monotonic_continuous(n_records, sums)
-
-                if self.verbose:
-                    logging.info("Optimizer: classifier predicts {} monotonic "
-                                 "trend.".format(monotonic))
-            else:
-                monotonic = self.monotonic_trend
-
-                if self.verbose:
-                    if monotonic is None:
-                        logging.info("Optimizer: monotonic trend not set.")
-                    else:
-                        logging.info("Optimizer: monotonic trend set to {}."
-                                     .format(monotonic))
-        else:
-            monotonic = "ascending"
+        if self.monotonic_trend == "auto":
+            monotonic = [auto_monotonic(n_nonevent[:, i], n_event[:, i])
+                         for i in range(len(self._classes))]
 
             if self.verbose:
-                logging.info("Optimizer: monotonic trend set to ascending for "
-                             "categorical dtype.")
+                logging.info("Optimizer: classifier predicts {} monotonic "
+                             "trends.".format(monotonic))
+        elif isinstance(self.monotonic_trend, list):
+            if len(self.monotonic_trend) != self._n_classes:
+                raise ValueError("List of monotonic trends must be of size "
+                                 "n_classes.")
 
-        optimizer = ContinuousBinningCP(monotonic, self.min_n_bins,
-                                        self.max_n_bins, min_bin_size,
-                                        max_bin_size, self.min_mean_diff,
-                                        self.max_pvalue,
-                                        self.max_pvalue_policy,
-                                        self.time_limit)
+            monotonic = []
+            for i, trend in enumerate(self.monotonic_trend):
+                if trend == "auto":
+                    trend = auto_monotonic(n_nonevent[:, i], n_event[:, i])
+                    monotonic.append(trend)
 
+                    if self.verbose:
+                        logging.info("Optimizer: classifier predicts {} "
+                                     "monotonic trend.".format(trend))
+                else:
+                    monotonic.append(trend)
+        elif self.monotonic_trend is None:
+            monotonic = [None] * self._n_classes
+
+            if self.verbose:
+                logging.info("Optimizer: monotonic trend not set.")
+
+        if self.solver == "cp":
+            optimizer = MulticlassBinningCP(monotonic, self.min_n_bins,
+                                            self.max_n_bins, min_bin_size,
+                                            max_bin_size, self.max_pvalue,
+                                            self.max_pvalue_policy,
+                                            self.time_limit)
+        else:
+            optimizer = MulticlassBinningMIP(monotonic, self.min_n_bins,
+                                             self.max_n_bins, min_bin_size,
+                                             max_bin_size, self.max_pvalue,
+                                             self.max_pvalue_policy,
+                                             self.mip_solver, self.time_limit)
         if self.verbose:
             logging.info("Optimizer: build model...")
 
-        optimizer.build_model(n_records, sums, stds)
+        optimizer.build_model(n_nonevent, n_event)
 
         if self.verbose:
             logging.info("Optimizer: solve...")
@@ -614,52 +644,80 @@ class ContinuousOptimalBinning(OptimalBinning):
             logging.info("Optimizer terminated. Time: {:.4f}s"
                          .format(self._time_solver))
 
-    def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others):
+    def _compute_prebins(self, splits_prebinning, x, y):
         n_splits = len(splits_prebinning)
 
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
 
-        if self.split_digits is not None:
-            splits_prebinning = np.round(splits_prebinning, self.split_digits)
-
         indices = np.digitize(x, splits_prebinning, right=False)
 
-        # Compute n_records, sum and std for special, missing and others
-        self._n_records_special = len(y_special)
-        self._sum_special = np.sum(y_special)
-
-        self._n_records_missing = len(y_missing)
-        self._sum_missing = np.sum(y_missing)
-
-        if len(y_others):
-            self._n_records_cat_others = len(y_others)
-            self._sum_cat_others = np.sum(y_others)
-
         n_bins = n_splits + 1
-        n_records = np.zeros(n_bins).astype(np.int)
-        sums = np.zeros(n_bins).astype(np.float)
-        stds = np.zeros(n_bins).astype(np.float)
+        n_nonevent = np.zeros((n_bins, self._n_classes)).astype(np.int)
+        n_event = np.zeros((n_bins, self._n_classes)).astype(np.int)
+        mask_remove = np.zeros(n_bins).astype(np.bool)
 
-        # Compute prebin information
-        for i in range(n_bins):
-            mask = (indices == i)
-            n_records[i] = np.count_nonzero(mask)
-            sums[i] = np.sum(y[mask])
-            stds[i] = np.std(y[mask])
+        for idx, cl in enumerate(self._classes):
+            y1 = (y == cl)
+            y0 = ~y1
 
-        return splits_prebinning, n_records, sums, stds
+            for i in range(n_bins):
+                mask = (indices == i)
+                n_nonevent[i, idx] = np.count_nonzero(y0 & mask)
+                n_event[i, idx] = np.count_nonzero(y1 & mask)
+
+            mask_remove |= (n_nonevent[:, idx] == 0) | (n_event[:, idx] == 0)
+
+        if np.any(mask_remove):
+            self._n_refinements += 1
+
+            mask_splits = np.concatenate(
+                [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+
+            splits = splits_prebinning[~mask_splits]
+
+            if self.verbose:
+                logging.info("Pre-binning: number prebins removed: {}"
+                             .format(np.count_nonzero(mask_remove)))
+
+            [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
+                splits, x, y)
+
+        return splits_prebinning, n_nonevent, n_event
 
     @property
     def binning_table(self):
         """Return an instantiated binning table. Please refer to
-        :ref:`Binning table: continuous target`.
+        :ref:`Binning table: multiclass target`.
 
         Returns
         -------
-        binning_table : ContinuousBinningTable.
+        binning_table : MulticlassBinningTable.
         """
         self._check_is_fitted()
 
         return self._binning_table
+
+    @property
+    def classes(self):
+        """List of classes.
+
+        Returns
+        -------
+        classes : numpy.ndarray
+        """
+        self._check_is_fitted()
+
+        return self._classes
+
+    @property
+    def splits(self):
+        """List of optimal split points.
+
+        Returns
+        -------
+        splits : numpy.ndarray
+        """
+        self._check_is_fitted()
+
+        return self._splits_optimal

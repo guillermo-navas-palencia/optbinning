@@ -17,7 +17,7 @@ class BinningCP:
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_bin_n_event, max_bin_n_event,
                  min_bin_n_nonevent, max_bin_n_nonevent, min_event_rate_diff,
-                 max_pvalue, max_pvalue_policy, time_limit):
+                 max_pvalue, max_pvalue_policy, gamma, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -33,6 +33,8 @@ class BinningCP:
         self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.gamma = gamma
+
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -58,9 +60,20 @@ class BinningCP:
         x, y, t, d, u, bin_size_diff = self.decision_variables(model, n)
 
         # Objective function
-        model.Maximize(sum([(V[i][i] * x[i, i]) +
-                       sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                            for j in range(i)]) for i in range(n)]))
+        if self.gamma:
+            total_records = int(n_records.sum())
+            regularization = int(np.ceil(M * self.gamma / total_records))
+            pmax = model.NewIntVar(0, total_records, "pmax")
+            pmin = model.NewIntVar(0, total_records, "pmin")
+
+            model.Maximize(sum([(V[i][i] * x[i, i]) +
+                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                for j in range(i)]) for i in range(n)]) -
+                           regularization * (pmax - pmin))
+        else:
+            model.Maximize(sum([(V[i][i] * x[i, i]) +
+                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                for j in range(i)]) for i in range(n)]))
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -92,8 +105,7 @@ class BinningCP:
         if (self.min_bin_n_event is not None or
                 self.max_bin_n_event is not None):
             for i in range(n):
-                bin_e_size = sum([n_event[j] * x[i, j]
-                                  for j in range(i + 1)])
+                bin_e_size = sum([n_event[j] * x[i, j] for j in range(i + 1)])
 
                 if self.min_bin_n_event is not None:
                     model.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
@@ -123,6 +135,15 @@ class BinningCP:
                 self.add_constraint_monotonic_peak(model, n, D, x, y, M)
             else:
                 self.add_constraint_monotonic_valley(model, n, D, x, y, M)
+
+        # Constraint: reduction of dominating bins
+        if self.gamma:
+            for i in range(n):
+                bin_size = sum([n_records[j] * x[i, j] for j in range(i + 1)])
+
+                model.Add(pmin <= total_records * (1 - x[i, i]) + bin_size)
+                model.Add(pmax >= bin_size)
+                model.Add(pmin <= pmax)
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)

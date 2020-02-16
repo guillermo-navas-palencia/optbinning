@@ -343,7 +343,7 @@ class OptimalBinning(BaseEstimator):
     time_limit : int (default=100)
         The maximum time in seconds to run the optimization solver.
 
-    verbose : int or bool (default=False)
+    verbose : bool (default=False)
         Enable verbose output.
 
     Notes

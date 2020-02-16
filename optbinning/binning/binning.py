@@ -155,7 +155,8 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
 
-    # TODO: gamma parameter
+    if not isinstance(gamma, numbers.Number) or gamma < 0:
+        raise ValueError("gamma must be >= 0; got {}.".format(gamma))
 
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore"):
@@ -288,12 +289,18 @@ class OptimalBinning(BaseEstimator):
 
     max_pvalue : float or None, optional (default=0.05)
         The maximum p-value among bins. The Z-test is used to detect bins
-        not satisfying the p-value constraint.
+        not satisfying the p-value constraint. Option supported by solvers
+        "cp" and "mip".
 
     max_pvalue_policy : str, optional (default="consecutive")
         The method to determine bins not satisfying the p-value constraint.
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
+
+    gamma : float, optional (default=0)
+        Regularization strength to reduce the number of dominating bins. Larger
+        values specify stronger regularization. Option supported by solvers
+        "cp" and "mip".
 
     outlier_detector : str or None, optional (default=None)
         The outlier detection method. Supported methods are "range" to use

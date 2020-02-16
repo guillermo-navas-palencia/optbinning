@@ -66,7 +66,6 @@ class BinningMIP:
         if self.gamma:
             total_records = int(n_records.sum())
             regularization = self.gamma / total_records
-            print(regularization)
             pmax = solver.IntVar(0, total_records, "pmax")
             pmin = solver.IntVar(0, total_records, "pmin")
 

@@ -25,6 +25,7 @@ optimal_binning_default_options = {
     "min_event_rate_diff": 0,
     "max_pvalue": None,
     "max_pvalue_policy": "consecutive",
+    "gamma": 0,
     "class_weight": None,
     "cat_cutoff": None,
     "user_splits": None,

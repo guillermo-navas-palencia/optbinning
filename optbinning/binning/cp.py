@@ -62,11 +62,9 @@ class BinningCP:
         # Objective function
         if self.gamma:
             total_records = int(n_records.sum())
-            # TODO: nearest integer (but OK)
             regularization = int(np.ceil(M * self.gamma / total_records))
-            print(regularization)
             pmax = model.NewIntVar(0, total_records, "pmax")
-            pmin = model.NewIntVar(0, total_records, "pmin")           
+            pmin = model.NewIntVar(0, total_records, "pmin")
 
             model.Maximize(sum([(V[i][i] * x[i, i]) +
                            sum([(V[i][j] - V[i][j+1]) * x[i, j]

@@ -575,6 +575,8 @@ class BinningTable:
         if print_output:
             print(report)
 
+        self._is_analyzed = True
+
     @property
     def gini(self):
         """The Gini coefficient or Accuracy Ratio.
@@ -889,6 +891,8 @@ class MulticlassBinningTable:
 
         if print_output:
             print(report)
+
+        self._is_analyzed = True
 
     @property
     def js(self):

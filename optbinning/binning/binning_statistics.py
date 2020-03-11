@@ -151,38 +151,73 @@ def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
     return np.array(n_ev).astype(np.int)
 
 
-def continuous_bin_info(solution, n_records, sums, n_records_missing,
-                        sum_missing, n_records_special, sum_special,
-                        n_records_cat_others, sum_cat_others, cat_others):
+def continuous_bin_info(solution, n_records, sums, min_target, max_target,
+                        n_zeros, n_records_missing, sum_missing,
+                        min_target_missing, max_target_missing,
+                        n_zeros_missing, n_records_special, sum_special,
+                        min_target_special, max_target_special,
+                        n_zeros_special, n_records_cat_others, sum_cat_others,
+                        min_target_others, max_target_others, n_zeros_others,
+                        cat_others):
     r = []
     s = []
+    z = []
+    min_t = []
+    max_t = []
+    min_t
     accum_r = 0
     accum_s = 0
+    accum_z = 0
+    accum_min_t = np.inf
+    accum_max_t = -np.inf
     for i, selected in enumerate(solution):
         if selected:
             r.append(n_records[i] + accum_r)
             s.append(sums[i] + accum_s)
+            z.append(n_zeros[i] + accum_z)
+            min_t.append(min(accum_min_t, min_target[i]))
+            max_t.append(max(accum_max_t, max_target[i]))
             accum_r = 0
             accum_s = 0
+            accum_z = 0
+            accum_min_t = np.inf
+            accum_max_t = -np.inf
         else:
             accum_r += n_records[i]
             accum_s += sums[i]
+            accum_z += n_zeros[i]
+            accum_min_t = min(accum_min_t, min_target[i])
+            accum_max_t = max(accum_max_t, max_target[i])
 
     if not len(solution):
         r.append(n_records)
         s.append(sums)
+        z.append(n_zeros)
+        min_t.append(min_target)
+        max_t.append(max_target)
 
     if len(cat_others):
         r.append(n_records_cat_others)
         s.append(sum_cat_others)
+        z.append(n_zeros_others)
+        min_t.append(min_target_others)
+        max_t.append(max_target_others)
 
     r.append(n_records_special)
     s.append(sum_special)
+    z.append(n_zeros_special)
+    min_t.append(min_target_special)
+    max_t.append(max_target_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
+    z.append(n_zeros_missing)
+    min_t.append(min_target_missing)
+    max_t.append(max_target_special)
 
-    return np.array(r).astype(np.int), np.array(s).astype(np.float)
+    return (np.array(r).astype(np.int64), np.array(s).astype(np.float),
+            np.array(min_t).astype(np.float), np.array(max_t).astype(np.float),
+            np.array(z).astype(np.int64))
 
 
 def _check_build_parameters(show_digits, add_totals):
@@ -947,6 +982,15 @@ class ContinuousBinningTable:
     sums : numpy.ndarray
         Target sums.
 
+    min_target : numpy.ndarray
+        Target mininum values.
+
+    max_target : numpy.ndarray
+        Target maxinum values.
+
+    n_zeros : numpy.ndarray
+        Number of zeros.
+
     categories : list, numpy.ndarray or None, optional (default=None)
         List of categories.
 
@@ -962,14 +1006,18 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_records, sums, categories=None,
-                 cat_others=None, user_splits=None):
+    def __init__(self, name, dtype, splits, n_records, sums, min_target,
+                 max_target, n_zeros, categories=None, cat_others=None,
+                 user_splits=None):
 
         self.name = name
         self.dtype = dtype
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
+        self.min_target = min_target
+        self.max_target = max_target
+        self.n_zeros = n_zeros
         self.categories = categories
         self.cat_others = cat_others if cat_others is not None else []
         self.user_splits = user_splits
@@ -1019,11 +1067,18 @@ class ContinuousBinningTable:
             "Count": self.n_records,
             "Count (%)": p_records,
             "Sum": self.sums,
-            "Mean": self._mean
+            "Mean": self._mean,
+            "Min": self.min_target,
+            "Max": self.max_target,
+            "Zeros count": self.n_zeros
             })
 
         if add_totals:
-            totals = ["", t_n_records, 1, t_sum, t_mean]
+            t_min = np.min(self.min_target)
+            t_max = np.max(self.max_target)
+            t_n_zeros = self.n_zeros.sum()
+            totals = ["", t_n_records, 1, t_sum, t_mean, t_min, t_max,
+                      t_n_zeros]
             df.loc["Totals"] = totals
 
         self._is_built = True

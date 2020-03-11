@@ -159,8 +159,8 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.1.0)
-   Copyright (c) 2019 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.3.0)
+   Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        name                         mean radius   * U
@@ -181,6 +181,7 @@ Print overview information about the options settings, problem statistics, and t
        min_event_rate_diff                    0   * d
        max_pvalue                            no   * d
        max_pvalue_policy            consecutive   * d
+       gamma                                  0   * d
        class_weight                          no   * d
        cat_cutoff                            no   * d
        user_splits                           no   * d

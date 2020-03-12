@@ -16,8 +16,7 @@ from .binning_statistics import bin_categorical
 
 
 def transform_event_rate_to_woe(event_rate, n_nonevent, n_event):
-    """
-    Transform event rate to WoE.
+    """Transform event rate to WoE.
 
     Parameters
     ----------
@@ -39,8 +38,7 @@ def transform_event_rate_to_woe(event_rate, n_nonevent, n_event):
 
 
 def transform_woe_to_event_rate(woe, n_nonevent, n_event):
-    """
-    Transform WoE to event rate.
+    """Transform WoE to event rate.
 
     Parameters
     ----------

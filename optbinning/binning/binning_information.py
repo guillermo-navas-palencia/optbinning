@@ -28,7 +28,7 @@ def print_header():
 
 
 def print_optional_parameters(dict_default_options, dict_user_options):
-    option_format = "    {:<24} {:>19}   * {}\n"
+    option_format = "    {:<24} {:>15}   * {}\n"
     str_options = "  Begin options\n"
     for key, value in dict_default_options.items():
         user_value = dict_user_options[key]

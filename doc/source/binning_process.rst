@@ -1,7 +1,7 @@
 Binning process
 ===============
 
-.. autoclass:: optbinning.binning_process.BinningProcess
+.. autoclass:: optbinning.BinningProcess
    :members:
    :inherited-members:
    :show-inheritance:

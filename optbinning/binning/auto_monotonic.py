@@ -13,8 +13,7 @@ from .metrics import jeffrey
 
 
 def n_peaks_valleys(x):
-    """
-    Find number of peaks and valleys in an array of values.
+    """Find number of peaks and valleys in an array of values.
 
     Parameters
     ----------
@@ -30,8 +29,7 @@ def n_peaks_valleys(x):
 
 
 def extreme_points_area(x):
-    """
-    Compute area within extreme points divided by total rectangular area.
+    """Compute area within extreme points divided by total rectangular area.
 
     Parameters
     ----------

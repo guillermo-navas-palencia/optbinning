@@ -1,13 +1,29 @@
 Release Notes
 =============
 
+Version 0.3.0 (2020-03-13)
+--------------------------
+
+New additions:
+
+   - Class ``OptBinning`` introduces a new constraint to reduce dominating bins, using parameter ``gamma``.
+   - Metrics HHI, HHI regularized and Cramer's V added to ``binning_table.analysis`` method. Updated quality score.
+   - Added column min/max target and zeros count to ``ContinuousOptimalBinning`` binning table.
+   - Binning algorithms support univariate outlier detection methods.
+
+Tutorials:
+
+   - Tutorial: optimal binning with binary target. New section: Reduction of dominating bins.
+   - Enhance binning process tutorials.
+
+
 Version 0.2.0 (2020-02-02)
 --------------------------
 
 New additions:
 
    - Binning process to support optimal binning of all variables in dataset.
-   - Add ``print_output`` option to ``binning_table.analysis`` method.
+   - Added ``print_output`` option to ``binning_table.analysis`` method.
    - New unit tests added.
 
 Tutorials:

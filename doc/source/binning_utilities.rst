@@ -18,9 +18,9 @@ where :math:`D_i` can be characterized as a logistic function of :math:`\text{Wo
 The constant term :math:`\log(N_T^{E} / N_T^{NE})` is the log ratio of the total
 number of event :math:`N_T^{E}` and the total number of non-events :math:`N_T^{NE}`. This shows that WoE is inversely related to the event rate.
 
-.. autofunction:: optbinning.transformations.transform_event_rate_to_woe
+.. autofunction:: optbinning.binning.transformations.transform_event_rate_to_woe
 
-.. autofunction:: optbinning.transformations.transform_woe_to_event_rate
+.. autofunction:: optbinning.binning.transformations.transform_woe_to_event_rate
 
 
 Metrics
@@ -40,7 +40,7 @@ where :math:`N_i^{E}` and :math:`N_i^{NE}` are the number of events and non-even
 bin, respectively, and :math:`N_T^{E}` and :math:`N_T^{NE}` are the total number of
 events and non-events, respectively.
 
-.. autofunction:: optbinning.metrics.gini
+.. autofunction:: optbinning.binning.metrics.gini
 
 Divergence measures
 """""""""""""""""""
@@ -78,12 +78,12 @@ terms of the Kullback-Leibler divergence
 
 and bounded by :math:`JSD(P||Q) \in [0, \log(2)]`. We note that these measures cannot be directly used whenever :math:`p_i = 0` and/or :math:`q_i = 0`.
 
-.. autofunction:: optbinning.metrics.entropy
+.. autofunction:: optbinning.binning.metrics.entropy
 
-.. autofunction:: optbinning.metrics.kullback_leibler
+.. autofunction:: optbinning.binning.metrics.kullback_leibler
 
-.. autofunction:: optbinning.metrics.jeffrey
+.. autofunction:: optbinning.binning.metrics.jeffrey
 
-.. autofunction:: optbinning.metrics.jensen_shannon
+.. autofunction:: optbinning.binning.metrics.jensen_shannon
 
-.. autofunction:: optbinning.metrics.jensen_shannon_multivariate
+.. autofunction:: optbinning.binning.metrics.jensen_shannon_multivariate

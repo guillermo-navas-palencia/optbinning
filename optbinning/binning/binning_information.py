@@ -20,14 +20,15 @@ except ImportError:
 
 def print_header():
     header = (
-        "optbinning (Version 0.2.0)\n"
-        "Copyright (c) 2020 Guillermo Navas-Palencia, Apache License 2.0\n")
+        "optbinning (Version 0.3.0)\n"
+        "Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0"
+        "\n")
 
     print(header)
 
 
 def print_optional_parameters(dict_default_options, dict_user_options):
-    option_format = "    {:<24} {:>19}   * {}\n"
+    option_format = "    {:<24} {:>15}   * {}\n"
     str_options = "  Begin options\n"
     for key, value in dict_default_options.items():
         user_value = dict_user_options[key]

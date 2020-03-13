@@ -121,11 +121,11 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     if fix_lb is not None:
         if not isinstance(fix_lb, numbers.Number):
-            raise ValueError("fix_lb must be a number; got {}".format(fix_lb))
+            raise ValueError("fix_lb must be a number; got {}.".format(fix_lb))
 
     if fix_ub is not None:
         if not isinstance(fix_ub, numbers.Number):
-            raise ValueError("fix_ub must be a number; got {}".format(fix_ub))
+            raise ValueError("fix_ub must be a number; got {}.".format(fix_ub))
 
     if fix_lb is not None and fix_ub is not None:
         if fix_lb > fix_ub:

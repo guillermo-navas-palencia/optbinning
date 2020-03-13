@@ -302,6 +302,8 @@ class OptimalBinning(BaseEstimator):
         values specify stronger regularization. Option supported by solvers
         "cp" and "mip".
 
+        .. versionadded:: 0.3.0
+
     outlier_detector : str or None, optional (default=None)
         The outlier detection method. Supported methods are "range" to use
         the interquartile range based method or "zcore" to use the modified
@@ -343,7 +345,7 @@ class OptimalBinning(BaseEstimator):
     time_limit : int (default=100)
         The maximum time in seconds to run the optimization solver.
 
-    verbose : int or bool (default=False)
+    verbose : bool (default=False)
         Enable verbose output.
 
     Notes

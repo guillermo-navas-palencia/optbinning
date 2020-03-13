@@ -14,7 +14,10 @@ from sklearn.tree import DecisionTreeRegressor
 
 
 class PreBinning:
-    """
+    """Prebinning algorithms.
+
+    Parameters
+    ----------
     problem_type:
         The problem type depending on the target type.
 
@@ -39,7 +42,10 @@ class PreBinning:
         self._splits = None
 
     def fit(self, x, y):
-        """
+        """Fit PreBinning algorithm.
+
+        Parameters
+        ----------
         x : array-like, shape = (n_samples)
             Data samples, where n_samples is the number of samples.
 
@@ -83,4 +89,10 @@ class PreBinning:
 
     @property
     def splits(self):
+        """List of split points
+
+        Returns
+        -------
+        splits : numpy.ndarray
+        """
         return self._splits

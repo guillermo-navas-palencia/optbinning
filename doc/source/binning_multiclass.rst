@@ -2,7 +2,7 @@ Optimal binning with multiclass target
 ======================================
 
 
-.. autoclass:: optbinning.multiclass_binning.MulticlassOptimalBinning
+.. autoclass:: optbinning.MulticlassOptimalBinning
    :members:
    :inherited-members:
    :show-inheritance:

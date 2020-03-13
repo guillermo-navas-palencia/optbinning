@@ -122,7 +122,7 @@ Now that we have checked the binned data, we can transform our original data int
    x_transform_woe = optb.transform(x, metric="woe")
    x_transform_event_rate = optb.transform(x, metric="event_rate")
 
-The ``analysis`` method performs a statistical analysis of the binning table, computing the statistics Gini index, Information Value (IV), Jensen-Shannon divergence, and the quality score. Additionally, several statistical significance tests between consecutive bins of the contingency table are performed
+The ``analysis`` method performs a statistical analysis of the binning table, computing the statistics Gini index, Information Value (IV), Jensen-Shannon divergence, and the quality score. Additionally, several statistical significance tests between consecutive bins of the contingency table are performed.
 
 .. code-block:: python
 
@@ -139,6 +139,9 @@ The ``analysis`` method performs a statistical analysis of the binning table, co
        Gini index               0.87541620
        IV (Jeffrey)             5.04392547
        JS (Jensen-Shannon)      0.39378376
+       HHI                      0.15727342
+       HHI (normalized)         0.05193260
+       Cramer's V               0.80066760
        Quality score            0.00000000
 
      Significance tests
@@ -159,8 +162,8 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.1.0)
-   Copyright (c) 2019 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.3.0)
+   Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        name                         mean radius   * U
@@ -181,6 +184,7 @@ Print overview information about the options settings, problem statistics, and t
        min_event_rate_diff                    0   * d
        max_pvalue                            no   * d
        max_pvalue_policy            consecutive   * d
+       gamma                                  0   * d
        class_weight                          no   * d
        cat_cutoff                            no   * d
        user_splits                           no   * d
@@ -196,7 +200,7 @@ Print overview information about the options settings, problem statistics, and t
 
      Pre-binning statistics
        Number of pre-bins                     9
-       Number of refinements                  2
+       Number of refinements                  1
 
      Solver statistics
        Type                                  cp
@@ -207,19 +211,19 @@ Print overview information about the options settings, problem statistics, and t
        Best objective bound             5043922
 
      Timing
-       Total time                          0.05 sec
-       Pre-processing                      0.00 sec   (  0.82%)
-       Pre-binning                         0.00 sec   (  7.06%)
-       Solver                              0.04 sec   ( 89.95%)
-         model generation                  0.04 sec   ( 85.75%)
-         optimizer                         0.01 sec   ( 14.25%)
-       Post-processing                     0.00 sec   (  0.16%)
+       Total time                          0.06 sec
+       Pre-processing                      0.00 sec   (  0.80%)
+       Pre-binning                         0.00 sec   (  6.30%)
+       Solver                              0.06 sec   ( 91.45%)
+         model generation                  0.05 sec   ( 89.12%)
+         optimizer                         0.01 sec   ( 10.88%)
+       Post-processing                     0.00 sec   (  0.12%)
 
 
 Benchmarks
 ==========
 
-The following table shows how OptBinning 0.2.0 compares to `scorecardpy <https://github.com/ShichenXie/scorecardpy>`_ 0.1.9.1.1 on a selection of variables from the public dataset, Home Credit Default Risk - Kaggle’s competition `Link <https://www.kaggle.com/c/home-credit-default-risk/data>`_. This dataset contains 307511 samples.The experiments were run on Intel(R) Core(TM) i5-3317 CPU at 1.70GHz, using a single core, running Linux. For scorecardpy, we use default settings only increasing the maximum number of bins ``bin_num_limit=20``. For OptBinning, we use default settings (``max_n_prebins=20``) only changing the maximum allowed p-value between consecutive bins, ``max_pvalue=0.05``.
+The following table shows how OptBinning compares to `scorecardpy <https://github.com/ShichenXie/scorecardpy>`_ 0.1.9.1.1 on a selection of variables from the public dataset, Home Credit Default Risk - Kaggle’s competition `Link <https://www.kaggle.com/c/home-credit-default-risk/data>`_. This dataset contains 307511 samples.The experiments were run on Intel(R) Core(TM) i5-3317 CPU at 1.70GHz, using a single core, running Linux. For scorecardpy, we use default settings only increasing the maximum number of bins ``bin_num_limit=20``. For OptBinning, we use default settings (``max_n_prebins=20``) only changing the maximum allowed p-value between consecutive bins, ``max_pvalue=0.05``.
 
 To compare softwares we use the shifted geometric mean, typically used in mathematical optimization benchmarks: http://plato.asu.edu/bench.html. Using the shifted (by 1 second) geometric mean we found that **OptBinning** is **17x** faster than scorecardpy, with an average IV increase of **12%**. Besides the speed and IV gains, OptBinning includes many more constraints and monotonicity options.
 

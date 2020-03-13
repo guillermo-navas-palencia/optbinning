@@ -4,7 +4,7 @@ Binning tables
 Binning table: binary target
 ----------------------------
 
-.. autoclass:: optbinning.binning_statistics.BinningTable
+.. autoclass:: optbinning.binning.binning_statistics.BinningTable
    :members:
    :inherited-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ Binning table: binary target
 Binning table: continuous target
 --------------------------------
 
-.. autoclass:: optbinning.binning_statistics.ContinuousBinningTable
+.. autoclass:: optbinning.binning.binning_statistics.ContinuousBinningTable
    :members:
    :inherited-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ Binning table: continuous target
 Binning table: multiclass target
 --------------------------------
 
-.. autoclass:: optbinning.binning_statistics.MulticlassBinningTable
+.. autoclass:: optbinning.binning.binning_statistics.MulticlassBinningTable
    :members:
    :inherited-members:
    :show-inheritance:   

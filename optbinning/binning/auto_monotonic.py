@@ -13,8 +13,7 @@ from .metrics import jeffrey
 
 
 def n_peaks_valleys(x):
-    """
-    Find number of peaks and valleys in an array of values.
+    """Find number of peaks and valleys in an array of values.
 
     Parameters
     ----------
@@ -30,8 +29,7 @@ def n_peaks_valleys(x):
 
 
 def extreme_points_area(x):
-    """
-    Compute area within extreme points divided by total rectangular area.
+    """Compute area within extreme points divided by total rectangular area.
 
     Parameters
     ----------
@@ -284,9 +282,7 @@ def auto_monotonic_decision(lr_sense, p_records_min_left, p_records_min_right,
         return "valley"
 
 
-def auto_monotonic(n_nonevent, n_event):
-    dict_data = auto_monotonic_data(n_nonevent, n_event)
-
+def _auto_monotonic_decision(dict_data):
     lr_sense = dict_data["lr_sense"]
     p_records_min_left = dict_data["p_records_min_left"]
     p_records_min_right = dict_data["p_records_min_right"]
@@ -298,19 +294,13 @@ def auto_monotonic(n_nonevent, n_event):
     return auto_monotonic_decision(lr_sense, p_records_min_left,
                                    p_records_min_right, p_records_max_left,
                                    p_records_max_right, p_area, p_convex_hull)
+
+
+def auto_monotonic(n_nonevent, n_event):
+    dict_data = auto_monotonic_data(n_nonevent, n_event)
+    return _auto_monotonic_decision(dict_data)
 
 
 def auto_monotonic_continuous(n_records, sums):
     dict_data = auto_monotonic_data_continuous(n_records, sums)
-
-    lr_sense = dict_data["lr_sense"]
-    p_records_min_left = dict_data["p_records_min_left"]
-    p_records_min_right = dict_data["p_records_min_right"]
-    p_records_max_left = dict_data["p_records_max_left"]
-    p_records_max_right = dict_data["p_records_max_right"]
-    p_area = dict_data["p_area"]
-    p_convex_hull = dict_data["p_convex_hull"]
-
-    return auto_monotonic_decision(lr_sense, p_records_min_left,
-                                   p_records_min_right, p_records_max_left,
-                                   p_records_max_right, p_area, p_convex_hull)
+    return _auto_monotonic_decision(dict_data)

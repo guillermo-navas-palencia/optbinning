@@ -223,7 +223,7 @@ class BinningProcess(BaseEstimator):
         Dictionary with optimal binning transform options for specific
         variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
 
-    verbose : int or bool (default=False)
+    verbose : bool (default=False)
         Enable verbose output.
     """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
@@ -305,8 +305,7 @@ class BinningProcess(BaseEstimator):
 
     def fit_transform(self, X, y, metric=None, metric_special=0,
                       metric_missing=0, check_input=False):
-        """
-        Fit the binning process according to the given training data, then
+        """Fit the binning process according to the given training data, then
         transform it.
 
         Parameters
@@ -345,8 +344,7 @@ class BinningProcess(BaseEstimator):
 
     def transform(self, X, variable_names=None, metric=None,
                   metric_special=0, metric_missing=0, check_input=False):
-        """
-        Transform given data to metric using bins from each fitted optimal
+        """Transform given data to metric using bins from each fitted optimal
         binning.
 
         Parameters

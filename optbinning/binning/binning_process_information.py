@@ -24,13 +24,13 @@ def print_binning_process_statistics(n_records, n_variables, target_dtype,
 
     stats = (
         "  Statistics\n"
-        "    Number of records      {:>10}\n"
-        "    Number of variables    {:>10}\n"
-        "    Target type            {:>10}\n\n"
-        "    Number of numerical    {:>10}\n"
-        "    Number of categorical  {:>10}\n"
-        "    Number of selected     {:>10}\n\n"
-        "  Time                         {:<7.4f} sec\n"
+        "    Number of records             {:>10}\n"
+        "    Number of variables           {:>10}\n"
+        "    Target type                   {:>10}\n\n"
+        "    Number of numerical           {:>10}\n"
+        "    Number of categorical         {:>10}\n"
+        "    Number of selected            {:>10}\n\n"
+        "  Time                                {:<7.4f} sec\n"
         ).format(n_records, n_variables, target_dtype, n_numerical,
                  n_categorical, n_selected, cpu_time)
 

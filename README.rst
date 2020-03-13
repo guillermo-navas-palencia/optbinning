@@ -122,7 +122,7 @@ Now that we have checked the binned data, we can transform our original data int
    x_transform_woe = optb.transform(x, metric="woe")
    x_transform_event_rate = optb.transform(x, metric="event_rate")
 
-The ``analysis`` method performs a statistical analysis of the binning table, computing the statistics Gini index, Information Value (IV), Jensen-Shannon divergence, and the quality score. Additionally, several statistical significance tests between consecutive bins of the contingency table are performed
+The ``analysis`` method performs a statistical analysis of the binning table, computing the statistics Gini index, Information Value (IV), Jensen-Shannon divergence, and the quality score. Additionally, several statistical significance tests between consecutive bins of the contingency table are performed.
 
 .. code-block:: python
 
@@ -139,6 +139,9 @@ The ``analysis`` method performs a statistical analysis of the binning table, co
        Gini index               0.87541620
        IV (Jeffrey)             5.04392547
        JS (Jensen-Shannon)      0.39378376
+       HHI                      0.15727342
+       HHI (normalized)         0.05193260
+       Cramer's V               0.80066760
        Quality score            0.00000000
 
      Significance tests
@@ -197,7 +200,7 @@ Print overview information about the options settings, problem statistics, and t
 
      Pre-binning statistics
        Number of pre-bins                     9
-       Number of refinements                  2
+       Number of refinements                  1
 
      Solver statistics
        Type                                  cp
@@ -208,13 +211,13 @@ Print overview information about the options settings, problem statistics, and t
        Best objective bound             5043922
 
      Timing
-       Total time                          0.05 sec
-       Pre-processing                      0.00 sec   (  0.82%)
-       Pre-binning                         0.00 sec   (  7.06%)
-       Solver                              0.04 sec   ( 89.95%)
-         model generation                  0.04 sec   ( 85.75%)
-         optimizer                         0.01 sec   ( 14.25%)
-       Post-processing                     0.00 sec   (  0.16%)
+       Total time                          0.06 sec
+       Pre-processing                      0.00 sec   (  0.80%)
+       Pre-binning                         0.00 sec   (  6.30%)
+       Solver                              0.06 sec   ( 91.45%)
+         model generation                  0.05 sec   ( 89.12%)
+         optimizer                         0.01 sec   ( 10.88%)
+       Post-processing                     0.00 sec   (  0.12%)
 
 
 Benchmarks

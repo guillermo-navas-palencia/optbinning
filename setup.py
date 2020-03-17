@@ -3,7 +3,7 @@
 import os
 import sys
 
-from setuptools import setup, Command
+from setuptools import find_packages, setup, Command
 from setuptools.command.test import test as TestCommand
 
 
@@ -68,7 +68,7 @@ setup(
     long_description=long_description,
     author="Guillermo Navas-Palencia",
     author_email="g.navas.palencia@gmail.com",
-    packages=["optbinning"],
+    packages=find_packages(),
     platforms="any",
     include_package_data=True,
     license="Apache Licence 2.0",

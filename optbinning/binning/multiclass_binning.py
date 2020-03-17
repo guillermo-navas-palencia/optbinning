@@ -14,6 +14,7 @@ import numpy as np
 from ..logging import Logger
 from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
+from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning
 from .binning_statistics import multiclass_bin_info
 from .binning_statistics import MulticlassBinningTable
@@ -85,13 +86,21 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
     if monotonic_trend is not None:
         if isinstance(monotonic_trend, list):
             for trend in monotonic_trend:
-                if trend not in ("auto", "ascending", "descending", "convex",
-                                 "concave", "peak", "valley", None):
+                if trend not in ("auto", "auto_heuristic", "auto_asc_desc",
+                                 "ascending", "descending", "convex",
+                                 "concave", "peak", "valley", "peak_heuristic",
+                                 "valley_heuristic", None):
                     raise ValueError('Invalid value for monotonic trend. '
                                      'Allowed string values are "auto", '
+                                     '"auto_heuristic", "auto_asc_desc", '
                                      '"ascending", "descending", "concave", '
-                                     '"convex", "peak", "valley" or None.')
-        elif not isinstance(monotonic_trend, str) or monotonic_trend != "auto":
+                                     '"convex", "peak" "valley", '
+                                     '"peak_heuristic", "valley_heuristic" '
+                                     'and None')
+
+        elif (not isinstance(monotonic_trend, str) or
+                monotonic_trend not in ("auto", "auto_heuristic",
+                                        "auto_asc_desc")):
             raise ValueError("Invalid value for monotonic trend; got {}."
                              .format(monotonic_trend))
 
@@ -191,12 +200,13 @@ class MulticlassOptimalBinning(OptimalBinning):
         ``max_bin_size = 1.0``.
 
     monotonic_trend : str, array-like or None, optional (default="auto")
-        The **event rate** monotonic trend. Supported trends are “auto” to
-        automatically determine the trend maximizing IV using a machine
-        learning classifier, a list of monotonic trends combining "auto",
-        "ascending", "descending", "concave", "convex", "peak", "valley"
-        and None, one for each class. If None, then the monotonic constraint
-        is disabled.
+        The **event rate** monotonic trend. Supported trends are “auto”,
+        "auto_heuristic" and "auto_asc_desc" to automatically determine the
+        trend maximizing IV using a machine learning classifier, a list of
+        monotonic trends combining "auto", "auto_heuristic", "auto_asc_desc",
+        "ascending", "descending", "concave", "convex", "peak", "valley",
+        "peak_heuristic", "valley_heuristic" and None, one for each class.
+        If None, then the monotonic constraint is disabled.
 
     max_pvalue : float or None, optional (default=0.05)
         The maximum p-value among bins. The Z-test is used to detect bins
@@ -581,8 +591,12 @@ class MulticlassOptimalBinning(OptimalBinning):
             max_bin_size = self.max_bin_size
 
         # Monotonic trend
-        if self.monotonic_trend == "auto":
-            monotonic = [auto_monotonic(n_nonevent[:, i], n_event[:, i])
+        trend_changes = [None] * self._n_classes
+
+        auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
+        if self.monotonic_trend in auto_monotonic_modes:
+            monotonic = [auto_monotonic(n_nonevent[:, i], n_event[:, i],
+                                        self.monotonic_trend)
                          for i in range(len(self._classes))]
 
             if self.verbose:
@@ -594,9 +608,24 @@ class MulticlassOptimalBinning(OptimalBinning):
                                  "n_classes.")
 
             monotonic = []
-            for i, trend in enumerate(self.monotonic_trend):
-                if trend == "auto":
-                    trend = auto_monotonic(n_nonevent[:, i], n_event[:, i])
+            for i, m_trend in enumerate(self.monotonic_trend):
+                if m_trend in auto_monotonic_modes:
+                    trend = auto_monotonic(n_nonevent[:, i], n_event[:, i],
+                                           m_trend)
+
+                    if m_trend == "auto_heuristic":
+                        if trend in ("peak", "valley"):
+                            if trend == "peak":
+                                trend = "peak_heuristic"
+                            else:
+                                trend = "valley_heuristic"
+
+                            event_rate = n_event[:, i] / (n_nonevent[:, i] +
+                                                          n_event[:, i])
+                            trend_change = peak_valley_trend_change_heuristic(
+                                event_rate, trend)
+                            trend_changes[i] = trend_change
+
                     monotonic.append(trend)
 
                     if self.verbose:
@@ -625,7 +654,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         if self.verbose:
             logging.info("Optimizer: build model...")
 
-        optimizer.build_model(n_nonevent, n_event)
+        optimizer.build_model(n_nonevent, n_event, trend_changes)
 
         if self.verbose:
             logging.info("Optimizer: solve...")

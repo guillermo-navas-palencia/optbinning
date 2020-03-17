@@ -343,7 +343,7 @@ def _auto_monotonic_decision(dict_data, auto_mode):
     p_area = dict_data["p_area"]
     p_convex_hull = dict_data["p_convex_hull"]
 
-    if auto_mode == "auto":
+    if auto_mode in ("auto", "auto_heuristic"):
         return auto_monotonic_decision(
             lr_sense, p_records_min_left, p_records_min_right,
             p_records_max_left, p_records_max_right, p_area, p_convex_hull)

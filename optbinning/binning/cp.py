@@ -142,7 +142,7 @@ class BinningCP:
 
         elif self.monotonic_trend == "valley_heuristic":
             self.add_constraint_monotonic_valley_heuristic(
-                model, n, D, x, trend_change)
+                model, n, D, x, trend_change, M)
 
         # Constraint: reduction of dominating bins
         if self.gamma:

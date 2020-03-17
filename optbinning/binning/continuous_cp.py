@@ -35,7 +35,7 @@ class ContinuousBinningCP(BinningCP):
         self._n = None
         self._x = None
 
-    def build_model(self, n_records, sums, stds):
+    def build_model(self, n_records, sums, stds, trend_change):
         # Parameters
         M = int(1e6)
         U, V, pvalue_violation_indices = continuous_model_data(
@@ -89,6 +89,14 @@ class ContinuousBinningCP(BinningCP):
                 self.add_constraint_monotonic_peak(model, n, U, x, y)
             else:
                 self.add_constraint_monotonic_valley(model, n, U, x, y)
+
+        elif self.monotonic_trend == "peak_heuristic":
+            self.add_constraint_monotonic_peak_heuristic(
+                model, n, U, x, trend_change, M)
+
+        elif self.monotonic_trend == "valley_heuristic":
+            self.add_constraint_monotonic_valley_heuristic(
+                model, n, U, x, trend_change, M)
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
@@ -186,3 +194,47 @@ class ContinuousBinningCP(BinningCP):
                     sum([(U[i][j] - U[i][j + 1]) * x[i, j]
                          for j in range(i)]) -
                     U[i][i] * x[i, i] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
+
+    def add_constraint_monotonic_peak_heuristic(self, model, n, U, x, tc, M):
+        min_mean_diff = int(M * self.min_mean_diff)
+        for i in range(1, tc):
+            for z in range(i):
+                model.Add(
+                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    U[z][z] * x[z, z] - U[i][i] * x[i, i] -
+                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + min_mean_diff <= 0
+                    ).OnlyEnforceIf([x[z, z], x[i, i]])
+
+        for i in range(tc, n):
+            for z in range(tc, i):
+                model.Add(
+                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + U[i][i] * x[i, i] -
+                    U[z][z] * x[z, z] -
+                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
+                         for j in range(z)]) + min_mean_diff <= 0
+                    ).OnlyEnforceIf([x[z, z], x[i, i]])
+
+    def add_constraint_monotonic_valley_heuristic(self, model, n, U, x, tc, M):
+        min_mean_diff = int(M * self.min_mean_diff)
+        for i in range(1, tc):
+            for z in range(i):
+                model.Add(
+                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + U[i][i] * x[i, i] -
+                    U[z][z] * x[z, z] -
+                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
+                         for j in range(z)]) + min_mean_diff <= 0
+                    ).OnlyEnforceIf([x[z, z], x[i, i]])
+
+        for i in range(tc, n):
+            for z in range(tc, i):
+                model.Add(
+                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    U[z][z] * x[z, z] - U[i][i] * x[i, i] -
+                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + min_mean_diff <= 0
+                    ).OnlyEnforceIf([x[z, z], x[i, i]])

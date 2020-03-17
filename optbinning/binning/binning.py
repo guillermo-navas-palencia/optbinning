@@ -19,14 +19,15 @@ from ..logging import Logger
 from ..preprocessing import preprocessing_user_splits_categorical
 from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
+from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning_information import print_binning_information
 from .binning_statistics import bin_categorical
 from .binning_statistics import bin_info
 from .binning_statistics import BinningTable
 from .binning_statistics import target_info
 from .cp import BinningCP
-from .mip import BinningMIP
 from .ls import BinningLS
+from .mip import BinningMIP
 from .prebinning import PreBinning
 from .transformations import transform_binary_target
 
@@ -133,12 +134,15 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
                              .format(min_bin_n_event, max_bin_n_event))
 
     if monotonic_trend is not None:
-        if monotonic_trend not in ("auto", "ascending", "descending", "convex",
-                                   "concave", "peak", "valley"):
+        if monotonic_trend not in ("auto", "auto_heuristic", "auto_asc_desc",
+                                   "ascending", "descending", "convex",
+                                   "concave", "peak", "valley",
+                                   "peak_heuristic", "valley_heuristic"):
             raise ValueError('Invalid value for monotonic trend. Allowed '
-                             'string values are "auto", "ascending", '
-                             '"descending", "concave", "convex", "peak" and '
-                             '"valley".')
+                             'string values are "auto", "auto_heuristic", '
+                             '"auto_asc_desc", "ascending", "descending", '
+                             '"concave", "convex", "peak" "valley", '
+                             '"peak_heuristic" and "valley_heuristic".')
 
     if (not isinstance(min_event_rate_diff, numbers.Number) or
             not 0. <= min_event_rate_diff <= 1.0):
@@ -276,16 +280,22 @@ class OptimalBinning(BaseEstimator):
         unlimited number of event records for each bin.
 
     monotonic_trend : str or None, optional (default="auto")
-        The **event rate** monotonic trend. Supported trends are “auto” to
-        automatically determine the trend maximizing IV using a machine
-        learning classifier, "ascending", "descending", "concave", "convex",
-        "peak" to allow a peak change point and "valley" to allow a valley
-        change point. If None, then the monotonic constraint is disabled.
+        The **event rate** monotonic trend. Supported trends are “auto”,
+        "auto_heuristic" and "auto_asc_desc" to automatically determine the
+        trend maximizing IV using a machine learning classifier, "ascending",
+        "descending", "concave", "convex", "peak" and "peak_heuristic" to allow
+        a peak change point, and "valley" and "valley_heuristic" to allow a
+        valley change point. Trends "auto_heuristic", "peak_heuristic" and
+        "valley_heuristic" use a heuristic to determine the change point,
+        and are significantly faster for large size instances (``max_n_prebins
+        > 20``). Trend "auto_asc_desc" is used to automatically select the best
+        monotonic trend between "ascending" and "descending". If None, then the
+        monotonic constraint is disabled.
 
     min_event_rate_diff : float, optional (default=0)
         The minimum event rate difference between consecutives bins. This
-        option currently only applies when ``monotonic_trend`` is "ascending"
-        or "descending".
+        option currently only applies when ``monotonic_trend`` is "ascending",
+        "descending", "peak_heuristic" or "valley_heuristic".
 
     max_pvalue : float or None, optional (default=0.05)
         The maximum p-value among bins. The Z-test is used to detect bins
@@ -793,15 +803,39 @@ class OptimalBinning(BaseEstimator):
             max_bin_size = self.max_bin_size
 
         # Monotonic trend
+        trend_change = None
+
         if self.dtype == "numerical":
-            if self.monotonic_trend == "auto":
-                monotonic = auto_monotonic(n_nonevent, n_event)
+            auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
+            if self.monotonic_trend in auto_monotonic_modes:
+                monotonic = auto_monotonic(n_nonevent, n_event,
+                                           self.monotonic_trend)
+
+                if self.monotonic_trend == "auto_heuristic":
+                    if monotonic in ("peak", "valley"):
+                        if monotonic == "peak":
+                            monotonic = "peak_heuristic"
+                        else:
+                            monotonic = "valley_heuristic"
+
+                        event_rate = n_event / (n_nonevent + n_event)
+                        trend_change = peak_valley_trend_change_heuristic(
+                            event_rate, monotonic)
 
                 if self.verbose:
                     logging.info("Optimizer: classifier predicts {} monotonic "
                                  "trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
+
+                if monotonic in ("peak_heuristic", "valley_heuristic"):
+                    event_rate = n_event / (n_nonevent + n_event)
+                    trend_change = peak_valley_trend_change_heuristic(
+                        event_rate, monotonic)
+
+                    if self.verbose:
+                        logging.info("Optimizer: trend change position {}."
+                                     .format(trend_change))
 
                 if self.verbose:
                     if monotonic is None:
@@ -846,7 +880,7 @@ class OptimalBinning(BaseEstimator):
         if self.verbose:
             logging.info("Optimizer: build model...")
 
-        optimizer.build_model(n_nonevent, n_event)
+        optimizer.build_model(n_nonevent, n_event, trend_change)
 
         if self.verbose:
             logging.info("Optimizer: solve...")

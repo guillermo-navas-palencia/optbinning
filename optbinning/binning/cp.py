@@ -43,7 +43,7 @@ class BinningCP:
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event):
+    def build_model(self, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
         D, V, pvalue_violation_indices = model_data(n_nonevent, n_event,
@@ -135,6 +135,14 @@ class BinningCP:
                 self.add_constraint_monotonic_peak(model, n, D, x, y, M)
             else:
                 self.add_constraint_monotonic_valley(model, n, D, x, y, M)
+
+        elif self.monotonic_trend == "peak_heuristic":
+            self.add_constraint_monotonic_peak_heuristic(
+                model, n, D, x, trend_change, M)
+
+        elif self.monotonic_trend == "valley_heuristic":
+            self.add_constraint_monotonic_valley_heuristic(
+                model, n, D, x, trend_change)
 
         # Constraint: reduction of dominating bins
         if self.gamma:
@@ -344,6 +352,83 @@ class BinningCP:
                     sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                          for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)
+
+    def add_constraint_monotonic_peak_heuristic(self, model, n, D, x, tc, M):
+        min_event_rate_diff = int(M * self.min_event_rate_diff)
+        for i in range(1, tc):
+            for z in range(i):
+                model.Add(
+                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    D[z][z] * x[z, z] - M - (D[i][i] - M) * x[i, i] -
+                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
+                         for j in range(i)]) +
+                    min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+
+        # Preprocessing
+        for i in range(tc - 1):
+            if D[i+1][i] - D[i+1][i+1] > 0:
+                model.Add(x[i, i] == 0)
+                for j in range(tc - i - 1):
+                    if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
+                        model.Add(x[i+j, i+j] == 0)
+
+        for i in range(tc, n):
+            for z in range(tc, i):
+                model.Add(
+                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + D[i][i] * x[i, i] -
+                    M - (D[z][z] - M) * x[z, z] -
+                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+
+        # Preprocessing
+        for i in range(tc, n - 1):
+            if D[i+1][i] - D[i+1][i+1] < 0:
+                model.Add(x[i, i] == 0)
+                for j in range(tc, n - i - 1):
+                    if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
+                        model.Add(x[i+j, i+j] == 0)
+
+    def add_constraint_monotonic_valley_heuristic(self, model, n, D, x, tc, M):
+
+        min_event_rate_diff = int(M * self.min_event_rate_diff)
+        for i in range(1, tc):
+            for z in range(i):
+                model.Add(
+                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
+                         for j in range(i)]) + D[i][i] * x[i, i] -
+                    M - (D[z][z] - M) * x[z, z] -
+                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+
+        # Preprocessing
+        for i in range(tc - 1):
+            if D[i+1][i] - D[i+1][i+1] < 0:
+                model.Add(x[i, i] == 0)
+                for j in range(tc - i - 1):
+                    if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
+                        model.Add(x[i+j, i+j] == 0)
+
+        for i in range(tc, n):
+            for z in range(tc, i):
+                model.Add(
+                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
+                         for j in range(z)]) +
+                    D[z][z] * x[z, z] - M - (D[i][i] - M) * x[i, i] -
+                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
+                         for j in range(i)]) +
+                    min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+
+        # Preprocessing
+        for i in range(tc, n - 1):
+            if D[i+1][i] - D[i+1][i+1] > 0:
+                model.Add(x[i, i] == 0)
+                for j in range(tc, n - i - 1):
+                    if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
+                        model.Add(x[i+j, i+j] == 0)
 
     def add_max_pvalue_constraint(self, model, x, pvalue_violation_indices):
         for ind1, ind2 in pvalue_violation_indices:

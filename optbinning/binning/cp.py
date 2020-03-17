@@ -392,7 +392,6 @@ class BinningCP:
                         model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, D, x, tc, M):
-
         min_event_rate_diff = int(M * self.min_event_rate_diff)
         for i in range(1, tc):
             for z in range(i):

@@ -194,15 +194,16 @@ class ContinuousOptimalBinning(OptimalBinning):
     monotonic_trend : str or None, optional (default="auto")
         The **mean** monotonic trend. Supported trends are “auto”,
         "auto_heuristic" and "auto_asc_desc" to automatically determine the
-        trend maximizing IV using a machine learning classifier, "ascending",
-        "descending", "concave", "convex", "peak" and "peak_heuristic" to allow
-        a peak change point, and "valley" and "valley_heuristic" to allow a
-        valley change point. Trends "auto_heuristic", "peak_heuristic" and
-        "valley_heuristic" use a heuristic to determine the change point,
-        and are significantly faster for large size instances (``max_n_prebins
-        > 20``). Trend "auto_asc_desc" is used to automatically select the best
-        monotonic trend between "ascending" and "descending". If None, then the
-        monotonic constraint is disabled.
+        trend minimize the L1-norm using a machine learning classifier,
+        "ascending", "descending", "concave", "convex", "peak" and
+        "peak_heuristic" to allow a peak change point, and "valley" and
+        "valley_heuristic" to allow a valley change point. Trends
+        "auto_heuristic", "peak_heuristic" and "valley_heuristic" use a
+        heuristic to determine the change point, and are significantly faster
+        for large size instances (``max_n_prebins> 20``). Trend "auto_asc_desc"
+        is used to automatically select the best monotonic trend between
+        "ascending" and "descending". If None, then the monotonic constraint
+        is disabled.
 
     min_mean_diff : float, optional (default=0)
         The minimum mean difference between consecutives bins. This

@@ -5,6 +5,8 @@ Minimum Description Length Principle (MDLP)
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import numbers
+
 import numpy as np
 
 from scipy import special
@@ -14,10 +16,57 @@ from sklearn.utils import check_array
 
 
 def _check_parameters(min_samples_split, min_samples_leaf, max_candidates):
-    pass
+    if (not isinstance(min_samples_split, numbers.Integral) or
+            min_samples_split < 2):
+        raise ValueError("min_samples_split must be a positive integer >= 2; "
+                         "got {}.".format(min_samples_split))
+
+    if (not isinstance(min_samples_leaf, numbers.Integral) or
+            min_samples_leaf < 1):
+        raise ValueError("min_samples_leaf must be a positive integer >= 1; "
+                         "got {}.".format(min_samples_leaf))
+
+    if not isinstance(max_candidates, numbers.Integral) or max_candidates < 1:
+        raise ValueError("max_candidates must be a positive integer >= 1; "
+                         "got {}.".format(max_candidates))
 
 
 class MDLP(BaseEstimator):
+    """
+    Minimum Description Length Principle (MDLP) discretization algorithm.
+
+    Parameters
+    ----------
+    min_samples_split : int (default=2)
+        The minimum number of samples required to split an internal node.
+
+    min_samples_leaf : int (default=2)
+        The minimum number of samples required to be at a leaf node.
+
+    max_candidates : int (default=32)
+        The maximum number of split points to evaluate at each partition.
+
+    Notes
+    -----
+    Implementation of the discretization algorithm in [FI93]. A dynamic
+    split strategy based on binning the number of candidate splits [CMR2001]
+    is implemented to increase efficiency. For large size datasets, it is
+    recommended to use a smaller ``max_candidates`` (e.g. 16) to get a
+    significant speed up.
+
+    References
+    ----------
+
+    .. [FI93] U. M. Fayyad and K. B. Irani. "Multi-Interval Discretization of
+              Continuous-Valued Attributes for Classification Learning".
+              International Joint Conferences on Artificial Intelligence,
+              13:1022–1027, 1993.
+
+    .. [CMR2001] D. M. Chickering, C. Meek and R. Rounthwaite. "Efficient
+                 Determination of Dynamic Split Points in a Decision Tree". In
+                 Proceedings of the 2001 IEEE International Conference on Data
+                 Mining, 91-98, 2001.
+    """
     def __init__(self, min_samples_split=2, min_samples_leaf=2,
                  max_candidates=32):
 
@@ -31,6 +80,20 @@ class MDLP(BaseEstimator):
         self._is_fitted = None
 
     def fit(self, x, y):
+        """Fit MDLP discretization algorithm.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples)
+            Data samples, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples)
+            Target vector relative to x.
+
+        Returns
+        -------
+        self : object
+        """
         return self._fit(x, y)
 
     def _fit(self, x, y):
@@ -127,9 +190,7 @@ class MDLP(BaseEstimator):
         t3 = k2 * ent_y2
         delta = t0 - (t1 - t2 - t3)
 
-        stop3 = gain <= (np.log(n - 1) + delta) / n
-
-        return stop3 or not splittable
+        return gain <= (np.log(n - 1) + delta) / n or not splittable
 
     @property
     def splits(self):

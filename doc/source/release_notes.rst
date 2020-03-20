@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 0.3.1 (2020-03-17)
+--------------------------
+
+Bugfixes:
+
+   - Fix setup.py packages using find_packages.
+
+
 Version 0.3.0 (2020-03-13)
 --------------------------
 

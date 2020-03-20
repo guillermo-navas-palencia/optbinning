@@ -164,16 +164,52 @@ def test_numerical_default():
 
 def test_numerical_default_solvers():
     optb_mip_cbc = OptimalBinning(solver="mip", mip_solver="cbc")
-    optb_mip_cbc.fit(x, y)
-
     optb_mip_bop = OptimalBinning(solver="mip", mip_solver="bop")
-    optb_mip_bop.fit(x, y)
-
     optb_cp = OptimalBinning(solver="cp")
-    optb_cp.fit(x, y)
 
     for optb in [optb_mip_bop, optb_mip_cbc, optb_cp]:
+        optb.fit(x, y)
         assert optb.status == "OPTIMAL"
+        assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                      13.70499992, 15.04500008, 16.92500019],
+                                     rel=1e-6)
+
+
+def test_numerical_min_max_n_bins():
+    optb_mip = OptimalBinning(solver="mip", min_n_bins=2, max_n_bins=5)
+    optb_cp = OptimalBinning(solver="cp", min_n_bins=2, max_n_bins=5)
+
+    for optb in [optb_mip, optb_cp]:
+        optb.fit(x, y)
+        assert optb.status == "OPTIMAL"
+        assert 2 <= len(optb.splits + 1) <= 5
+
+
+def test_outlier():
+    with raises(ValueError):
+        optb = OptimalBinning(outlier_detector="new_outlier")
+        optb.fit(x, y)
+
+    with raises(TypeError):
+        optb = OptimalBinning(outlier_detector="range", outlier_params=[])
+        optb.fit(x, y)
+
+    optb = OptimalBinning(outlier_detector="zscore")
+    optb.fit(x, y)
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+    optb_eti = OptimalBinning(outlier_detector="range",
+                              outlier_params={"interval_length": 0.9,
+                                              "method": "ETI"})
+
+    optb_hdi = OptimalBinning(outlier_detector="range",
+                              outlier_params={"interval_length": 0.9,
+                                              "method": "HDI"})
+
+    for optb in [optb_eti, optb_hdi]:
+        optb.fit(x, y)
         assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
                                       13.70499992, 15.04500008, 16.92500019],
                                      rel=1e-6)

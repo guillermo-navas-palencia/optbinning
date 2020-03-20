@@ -11,7 +11,6 @@ from scipy import special
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
-from sklearn.utils import check_X_y
 
 
 def _check_parameters(min_samples_split, min_samples_leaf, max_candidates):
@@ -38,9 +37,7 @@ class MDLP(BaseEstimator):
         _check_parameters(**self.get_params())
 
         x = check_array(x, ensure_2d=False, force_all_finite=True)
-        y = check_array(y, ensure_2d=False)
-
-        x, y = check_X_y(x, y)
+        y = check_array(y, ensure_2d=False, force_all_finite=True)
 
         idx = np.argsort(x)
         x = x[idx]
@@ -55,11 +52,9 @@ class MDLP(BaseEstimator):
     def _recurse(self, x, y, id):
         u_x = np.unique(x)
         n_x = len(u_x)
-
         n_y = len(np.bincount(y))
-        u_y = np.arange(n_y)
 
-        split = self._find_split(u_x, u_y, x, y)
+        split = self._find_split(u_x, x, y)
 
         if split is not None:
             self._splits.append(split)
@@ -69,7 +64,7 @@ class MDLP(BaseEstimator):
                 self._recurse(x[:t], y[:t], id + 1)
                 self._recurse(x[t:], y[t:], id + 2)
 
-    def _find_split(self, u_x, u_y, x, y):
+    def _find_split(self, u_x, x, y):
         n_x = len(x)
         u_x = np.unique(0.5 * (x[1:] + x[:-1])[(y[1:] - y[:-1]) != 0])
 

@@ -168,6 +168,45 @@ def test_default_pandas():
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
 
 
+def test_auto_modes():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    binning_fit_params0 = {v: {"monotonic_trend": "auto", "solver": "mip"}
+                           for v in data.feature_names}
+
+    binning_fit_params1 = {v: {"monotonic_trend": "auto_heuristic",
+                               "solver": "mip"}
+                           for v in data.feature_names}
+
+    binning_fit_params2 = {v: {"monotonic_trend": "auto", "solver": "cp"}
+                           for v in data.feature_names}
+
+    binning_fit_params3 = {v: {"monotonic_trend": "auto_heuristic",
+                               "solver": "cp"}
+                           for v in data.feature_names}
+
+    process0 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params0)
+
+    process1 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params1)
+
+    process2 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params2)
+
+    process3 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params3)
+
+    process0.fit(df, y)
+    process1.fit(df, y)
+    process2.fit(df, y)
+    process3.fit(df, y)
+
+    assert process0.summary().iv.sum() == process1.summary().iv.sum()
+    assert process2.summary().iv.sum() == process3.summary().iv.sum()
+    assert process0.summary().iv.sum() == process2.summary().iv.sum()
+
+
 def test_incorrect_target_type():
     variable_names = ["var_{}".format(i) for i in range(2)]
     X = np.zeros((2, 2))

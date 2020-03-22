@@ -211,36 +211,37 @@ def test_numerical_user_splits():
 def test_categorical_default_user_splits():
     x = np.array([
         'Working', 'State servant', 'Working', 'Working', 'Working',
-       'State servant', 'Commercial associate', 'State servant',
-       'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
-       'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
-       'State servant', 'Working', 'Commercial associate', 'Working',
-       'Pensioner', 'Working', 'Working', 'Working', 'Working',
-       'State servant', 'Working', 'Commercial associate', 'Working',
-       'Working', 'Commercial associate', 'State servant', 'Working',
-       'Commercial associate', 'Working', 'Pensioner', 'Working',
-       'Commercial associate', 'Working', 'Working', 'Pensioner',
-       'Working', 'Working', 'Pensioner', 'Working', 'State servant',
-       'Working', 'State servant', 'Commercial associate', 'Working',
-       'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
-       'Working', 'Working', 'Working', 'Commercial associate', 'Working',
-       'Pensioner', 'Working', 'Commercial associate',
-       'Commercial associate', 'State servant', 'Working',
-       'Commercial associate', 'Commercial associate',
-       'Commercial associate', 'Working', 'Working', 'Working',
-       'Commercial associate', 'Working', 'Commercial associate',
-       'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
-       'Working', 'Working', 'Pensioner', 'Working', 'State servant',
-       'Working', 'Working', 'Working', 'Working', 'Working',
-       'Commercial associate', 'Commercial associate',
-       'Commercial associate', 'Working', 'Commercial associate',
-       'Working', 'Working', 'Pensioner'], dtype=object)
+        'State servant', 'Commercial associate', 'State servant',
+        'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
+        'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Working', 'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Working', 'Pensioner', 'Working',
+        'Commercial associate', 'Working', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'State servant', 'Commercial associate', 'Working',
+        'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Commercial associate',
+        'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'Working', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner'], dtype=object)
 
-    y = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+    y = np.array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
 
     optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
                           verbose=True)
@@ -256,14 +257,16 @@ def test_categorical_default_user_splits():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+    assert len(optb.splits) == 1
 
 
 def test_auto_modes():
     optb0 = OptimalBinning(monotonic_trend="auto")
     optb1 = OptimalBinning(monotonic_trend="auto_heuristic")
     optb2 = OptimalBinning(monotonic_trend="auto_asc_desc")
+    optb3 = OptimalBinning(monotonic_trend="descending", verbose=True)
 
-    for optb in [optb0, optb1, optb2]:
+    for optb in [optb0, optb1, optb2, optb3]:
         optb.fit(x, y)
         assert optb.status == "OPTIMAL"
         assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
@@ -344,36 +347,37 @@ def test_numerical_default_fit_transform():
 def test_categorical_transform():
     x = np.array([
         'Working', 'State servant', 'Working', 'Working', 'Working',
-       'State servant', 'Commercial associate', 'State servant',
-       'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
-       'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
-       'State servant', 'Working', 'Commercial associate', 'Working',
-       'Pensioner', 'Working', 'Working', 'Working', 'Working',
-       'State servant', 'Working', 'Commercial associate', 'Working',
-       'Working', 'Commercial associate', 'State servant', 'Working',
-       'Commercial associate', 'Working', 'Pensioner', 'Working',
-       'Commercial associate', 'Working', 'Working', 'Pensioner',
-       'Working', 'Working', 'Pensioner', 'Working', 'State servant',
-       'Working', 'State servant', 'Commercial associate', 'Working',
-       'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
-       'Working', 'Working', 'Working', 'Commercial associate', 'Working',
-       'Pensioner', 'Working', 'Commercial associate',
-       'Commercial associate', 'State servant', 'Working',
-       'Commercial associate', 'Commercial associate',
-       'Commercial associate', 'Working', 'Working', 'Working',
-       'Commercial associate', 'Working', 'Commercial associate',
-       'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
-       'Working', 'Working', 'Pensioner', 'Working', 'State servant',
-       'Working', 'Working', 'Working', 'Working', 'Working',
-       'Commercial associate', 'Commercial associate',
-       'Commercial associate', 'Working', 'Commercial associate',
-       'Working', 'Working', 'Pensioner'], dtype=object)
+        'State servant', 'Commercial associate', 'State servant',
+        'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
+        'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Working', 'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Working', 'Pensioner', 'Working',
+        'Commercial associate', 'Working', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'State servant', 'Commercial associate', 'Working',
+        'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Commercial associate',
+        'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'Working', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner'], dtype=object)
 
-    y = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+    y = np.array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
 
     optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
                           verbose=True)

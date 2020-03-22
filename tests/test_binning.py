@@ -173,8 +173,8 @@ def test_numerical_default():
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
 
-    optb.binning_table.plot(metric="woe")
-    optb.binning_table.plot(metric="event_rate")
+    # optb.binning_table.plot(metric="woe")
+    # optb.binning_table.plot(metric="event_rate")
 
 
 def test_numerical_default_solvers():

@@ -28,3 +28,9 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    binning_process
    binning_tables
    binning_utilities
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Other binning algorithms
+
+   mdlp

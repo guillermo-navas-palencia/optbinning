@@ -17,6 +17,7 @@ from ..logging import Logger
 from ..preprocessing import preprocessing_user_splits_categorical
 from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic_continuous
+from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning
 from .binning_statistics import continuous_bin_info
 from .binning_statistics import ContinuousBinningTable
@@ -84,12 +85,15 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                                                     max_bin_size))
 
     if monotonic_trend is not None:
-        if monotonic_trend not in ("auto", "ascending", "descending", "convex",
-                                   "concave", "peak", "valley"):
+        if monotonic_trend not in ("auto", "auto_heuristic", "auto_asc_desc",
+                                   "ascending", "descending", "convex",
+                                   "concave", "peak", "valley",
+                                   "peak_heuristic", "valley_heuristic"):
             raise ValueError('Invalid value for monotonic trend. Allowed '
-                             'string values are "auto", "ascending", '
-                             '"descending", "concave", "convex", "peak" and '
-                             '"valley".')
+                             'string values are "auto", "auto_heuristic", '
+                             '"auto_asc_desc", "ascending", "descending", '
+                             '"concave", "convex", "peak" "valley", '
+                             '"peak_heuristic" and "valley_heuristic".')
 
     if (not isinstance(min_mean_diff, numbers.Number) or min_mean_diff < 0):
         raise ValueError("min_mean_diff must be >= 0; got {}."
@@ -188,11 +192,18 @@ class ContinuousOptimalBinning(OptimalBinning):
         ``max_bin_size = 1.0``.
 
     monotonic_trend : str or None, optional (default="auto")
-        The **mean** monotonic trend. Supported trends are “auto” to
-        automatically determine the trend maximizing IV using a machine
-        learning classifier, "ascending", "descending", "concave", "convex",
-        "peak" to allow a peak change point and "valley" to allow a valley
-        change point. If None, then the monotonic constraint is disabled.
+        The **mean** monotonic trend. Supported trends are “auto”,
+        "auto_heuristic" and "auto_asc_desc" to automatically determine the
+        trend minimize the L1-norm using a machine learning classifier,
+        "ascending", "descending", "concave", "convex", "peak" and
+        "peak_heuristic" to allow a peak change point, and "valley" and
+        "valley_heuristic" to allow a valley change point. Trends
+        "auto_heuristic", "peak_heuristic" and "valley_heuristic" use a
+        heuristic to determine the change point, and are significantly faster
+        for large size instances (``max_n_prebins> 20``). Trend "auto_asc_desc"
+        is used to automatically select the best monotonic trend between
+        "ascending" and "descending". If None, then the monotonic constraint
+        is disabled.
 
     min_mean_diff : float, optional (default=0)
         The minimum mean difference between consecutives bins. This
@@ -611,15 +622,35 @@ class ContinuousOptimalBinning(OptimalBinning):
             max_bin_size = self.max_bin_size
 
         # Monotonic trend
+        trend_change = None
+
         if self.dtype == "numerical":
-            if self.monotonic_trend == "auto":
-                monotonic = auto_monotonic_continuous(n_records, sums)
+            auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
+            if self.monotonic_trend in auto_monotonic_modes:
+                monotonic = auto_monotonic_continuous(n_records, sums,
+                                                      self.monotonic_trend)
+
+                if self.monotonic_trend == "auto_heuristic":
+                    if monotonic in ("peak", "valley"):
+                        if monotonic == "peak":
+                            monotonic = "peak_heuristic"
+                        else:
+                            monotonic = "valley_heuristic"
+
+                        mean = sums / n_records
+                        trend_change = peak_valley_trend_change_heuristic(
+                            mean, monotonic)
 
                 if self.verbose:
                     logging.info("Optimizer: classifier predicts {} monotonic "
                                  "trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
+
+                if monotonic in ("peak_heuristic", "valley_heuristic"):
+                    mean = sums / n_records
+                    trend_change = peak_valley_trend_change_heuristic(
+                        mean, monotonic)
 
                 if self.verbose:
                     if monotonic is None:
@@ -644,7 +675,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         if self.verbose:
             logging.info("Optimizer: build model...")
 
-        optimizer.build_model(n_records, sums, stds)
+        optimizer.build_model(n_records, sums, stds, trend_change)
 
         if self.verbose:
             logging.info("Optimizer: solve...")

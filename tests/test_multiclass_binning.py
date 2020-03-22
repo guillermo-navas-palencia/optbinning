@@ -116,6 +116,11 @@ def test_numerical_default():
     assert optb.splits == approx([2.1450001, 2.245, 2.31499994, 2.6049999,
                                   2.6450001], rel=1e-6)
 
+    optb.binning_table.build()
+    optb.binning_table.analysis()
+    assert optb.binning_table.js == approx(0.10989515, rel=1e-6)
+    assert optb.binning_table.quality_score == approx(0.05279822, rel=1e-6)
+
 
 def test_numerical_default_solvers():
     optb_mip_bop = MulticlassOptimalBinning(solver="mip", mip_solver="bop")

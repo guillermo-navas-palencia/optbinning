@@ -147,6 +147,66 @@ def test_default():
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
 
 
+def test_default_pandas():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    process = BinningProcess(variable_names)
+
+    with raises(TypeError):
+        process.fit(df.to_dict(), y, check_input=True)
+
+    process.fit(df, y, check_input=True)
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
+
+
+def test_auto_modes():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    binning_fit_params0 = {v: {"monotonic_trend": "auto", "solver": "mip"}
+                           for v in data.feature_names}
+
+    binning_fit_params1 = {v: {"monotonic_trend": "auto_heuristic",
+                               "solver": "mip"}
+                           for v in data.feature_names}
+
+    binning_fit_params2 = {v: {"monotonic_trend": "auto", "solver": "cp"}
+                           for v in data.feature_names}
+
+    binning_fit_params3 = {v: {"monotonic_trend": "auto_heuristic",
+                               "solver": "cp"}
+                           for v in data.feature_names}
+
+    process0 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params0)
+
+    process1 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params1)
+
+    process2 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params2)
+
+    process3 = BinningProcess(variable_names,
+                              binning_fit_params=binning_fit_params3)
+
+    process0.fit(df, y)
+    process1.fit(df, y)
+    process2.fit(df, y)
+    process3.fit(df, y)
+
+    assert process0.summary().iv.sum() == process1.summary().iv.sum()
+    assert process2.summary().iv.sum() == process3.summary().iv.sum()
+    assert process0.summary().iv.sum() == process2.summary().iv.sum()
+
+
 def test_incorrect_target_type():
     variable_names = ["var_{}".format(i) for i in range(2)]
     X = np.zeros((2, 2))
@@ -182,7 +242,7 @@ def test_fit_params():
     optb = process.get_binned_variable("mean radius")
 
     assert optb.status == "OPTIMAL"
-    assert len(optb.splits) <= 3
+    assert len(optb.splits) <= 4
 
 
 def test_default_transform():
@@ -192,6 +252,27 @@ def test_default_transform():
 
     process.fit(X, y)
     X_transform = process.transform(X)
+
+    optb = OptimalBinning()
+    x = X[:, 5]
+    optb.fit(x, y)
+
+    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+
+
+def test_default_transform_pandas():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    process = BinningProcess(variable_names)
+    process.fit(df, y)
+
+    with raises(TypeError):
+        X_transform = process.transform(df.to_dict())
+
+    with raises(ValueError):
+        X_transform = process.transform(df)
+
+    X_transform = process.transform(df, data.feature_names)
 
     optb = OptimalBinning()
     x = X[:, 5]

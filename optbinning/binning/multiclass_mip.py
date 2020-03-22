@@ -37,7 +37,7 @@ class MulticlassBinningMIP(BinningMIP):
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event):
+    def build_model(self, n_nonevent, n_event, trend_changes):
         # Parameters
         D, V, pvalue_violation_indices = multiclass_model_data(
             n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy)
@@ -96,6 +96,14 @@ class MulticlassBinningMIP(BinningMIP):
                 else:
                     self.add_constraint_monotonic_valley(
                         solver, n, D[c], x, c, y)
+
+            elif self.monotonic_trend == "peak_heuristic":
+                self.add_constraint_monotonic_peak_heuristic(
+                    solver, n, D[c], x, trend_changes[c])
+
+            elif self.monotonic_trend == "valley_heuristic":
+                self.add_constraint_monotonic_valley_heuristic(
+                    solver, n, D[c], x, trend_changes[c])
 
         # constraint: max-pvalue
         for c in range(n_classes):

@@ -45,7 +45,7 @@ class BinningLS:
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event):
+    def build_model(self, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
         D, V, NE, E, pvalue_violation_indices = model_data(
@@ -125,6 +125,14 @@ class BinningLS:
             elif self.monotonic_trend == "valley":
                 self.add_constraint_monotonic_valley(
                     model, n, array_D, D, x, z, y, M)
+
+        elif self.monotonic_trend == "peak_heuristic":
+            self.add_constraint_monotonic_peak_heuristic(
+                model, n, array_D, D, x, z, trend_change, M)
+
+        elif self.monotonic_trend == "valley_heuristic":
+            self.add_constraint_monotonic_valley_heuristic(
+                model, n, array_D, D, x, z, trend_change, M)
 
         # Constraint: min / max bins
         if self.min_n_bins is not None or self.max_n_bins is not None:
@@ -283,3 +291,55 @@ class BinningLS:
                     M * (2 - y[i] - y[j]) + M +
                     (model.at(DD, j, z[j]) - M) * x[j] -
                     x[i] * model.at(DD, i, z[i]) >= 0)
+
+    def add_constraint_monotonic_peak_heuristic(
+            self, model, n, DD, D, x, z, tc, M):
+
+        min_event_rate_diff = int(M * self.min_event_rate_diff)
+        for i in range(1, tc):
+            for j in range(i):
+                model.constraint(
+                    x[i] * model.at(DD, i, z[i]) + M * (1 - x[i]) >=
+                    x[j] * model.at(DD, j, z[j]) +
+                    min_event_rate_diff * (x[i] + x[j] - 1))
+
+        for i in range(tc - 1):
+            if D[i+1][i] - D[i+1][i+1] > 0:
+                model.constraint(x[i] == 0)
+
+        for i in range(tc, n):
+            for j in range(tc, i):
+                model.constraint(
+                    x[i] * model.at(DD, i, z[i]) +
+                    min_event_rate_diff * (x[i] + x[j] - 1) <=
+                    x[j] * model.at(DD, j, z[j]) + M * (1 - x[j]))
+
+        for i in range(tc, n - 1):
+            if D[i+1][i] - D[i+1][i+1] < 0:
+                model.constraint(x[i] == 0)
+
+    def add_constraint_monotonic_valley_heuristic(
+            self, model, n, DD, D, x, z, tc, M):
+
+        min_event_rate_diff = int(M * self.min_event_rate_diff)
+        for i in range(1, tc):
+            for j in range(i):
+                model.constraint(
+                    x[i] * model.at(DD, i, z[i]) +
+                    min_event_rate_diff * (x[i] + x[j] - 1) <=
+                    x[j] * model.at(DD, j, z[j]) + M * (1 - x[j]))
+
+        for i in range(tc - 1):
+            if D[i+1][i] - D[i+1][i+1] < 0:
+                model.constraint(x[i] == 0)
+
+        for i in range(tc, n):
+            for j in range(tc, i):
+                model.constraint(
+                    x[i] * model.at(DD, i, z[i]) + M * (1 - x[i]) >=
+                    x[j] * model.at(DD, j, z[j]) +
+                    min_event_rate_diff * (x[i] + x[j] - 1))
+
+        for i in range(tc, n - 1):
+            if D[i+1][i] - D[i+1][i+1] > 0:
+                model.constraint(x[i] == 0)

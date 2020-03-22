@@ -28,6 +28,15 @@ def n_peaks_valleys(x):
     return np.count_nonzero(diff_sign[1:] != diff_sign[:-1])
 
 
+def peak_valley_trend_change_heuristic(x, monotonic_trend):
+    if monotonic_trend == "peak_heuristic":
+        trend_change = np.argmax(x)
+    else:
+        trend_change = np.argmin(x)
+
+    return trend_change
+
+
 def extreme_points_area(x):
     """Compute area within extreme points divided by total rectangular area.
 
@@ -282,7 +291,50 @@ def auto_monotonic_decision(lr_sense, p_records_min_left, p_records_min_right,
         return "valley"
 
 
-def _auto_monotonic_decision(dict_data):
+def auto_monotonic_asc_desc_decision(p_trend_changes, lr_sense,
+                                     p_records_min_left, p_records_min_right,
+                                     p_records_max_left, p_records_max_right,
+                                     p_area, p_convex_hull):
+    if lr_sense == 0:
+        if p_area <= 0.4890555590391159:
+            if p_records_max_right <= 0.029244758188724518:
+                monotonic_trend = 0
+            else:
+                monotonic_trend = 1
+        else:
+            if p_convex_hull <= 0.5553120970726013:
+                monotonic_trend = 0
+            else:
+                monotonic_trend = 1
+    else:
+        if p_records_max_left <= 0.03698493912816048:
+            monotonic_trend = 1
+        else:
+            if p_records_min_left <= 0.7991077601909637:
+                if p_area <= 0.48206718266010284:
+                    monotonic_trend = 0
+                else:
+                    if p_records_max_left <= 0.8631451725959778:
+                        monotonic_trend = 0
+                    else:
+                        monotonic_trend = 1
+            else:
+                if p_trend_changes <= 0.5277777910232544:
+                    if p_records_min_left <= 0.8155287206172943:
+                        monotonic_trend = 1
+                    else:
+                        monotonic_trend = 0
+                else:
+                    monotonic_trend = 1
+
+    if monotonic_trend == 0:
+        return "ascending"
+    elif monotonic_trend == 1:
+        return "descending"
+
+
+def _auto_monotonic_decision(dict_data, auto_mode):
+    p_trend_changes = dict_data["p_trend_changes"]
     lr_sense = dict_data["lr_sense"]
     p_records_min_left = dict_data["p_records_min_left"]
     p_records_min_right = dict_data["p_records_min_right"]
@@ -291,16 +343,22 @@ def _auto_monotonic_decision(dict_data):
     p_area = dict_data["p_area"]
     p_convex_hull = dict_data["p_convex_hull"]
 
-    return auto_monotonic_decision(lr_sense, p_records_min_left,
-                                   p_records_min_right, p_records_max_left,
-                                   p_records_max_right, p_area, p_convex_hull)
+    if auto_mode in ("auto", "auto_heuristic"):
+        return auto_monotonic_decision(
+            lr_sense, p_records_min_left, p_records_min_right,
+            p_records_max_left, p_records_max_right, p_area, p_convex_hull)
+
+    elif auto_mode == "auto_asc_desc":
+        return auto_monotonic_asc_desc_decision(
+            p_trend_changes, lr_sense, p_records_min_left, p_records_min_right,
+            p_records_max_left, p_records_max_right, p_area, p_convex_hull)
 
 
-def auto_monotonic(n_nonevent, n_event):
+def auto_monotonic(n_nonevent, n_event, auto_mode):
     dict_data = auto_monotonic_data(n_nonevent, n_event)
-    return _auto_monotonic_decision(dict_data)
+    return _auto_monotonic_decision(dict_data, auto_mode)
 
 
-def auto_monotonic_continuous(n_records, sums):
+def auto_monotonic_continuous(n_records, sums, auto_mode):
     dict_data = auto_monotonic_data_continuous(n_records, sums)
-    return _auto_monotonic_decision(dict_data)
+    return _auto_monotonic_decision(dict_data, auto_mode)

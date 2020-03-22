@@ -118,6 +118,36 @@ def test_numerical_default():
                                   19.89999962, 23.31500053],
                                  rel=1e-6)
 
+    optb.binning_table.build()
+
+
+def test_numerical_max_pvalue():
+    optb0 = ContinuousOptimalBinning(max_pvalue=0.05,
+                                     max_pvalue_policy="consecutive")
+    optb1 = ContinuousOptimalBinning(max_pvalue=0.05, max_pvalue_policy="all")
+
+    for optb in [optb0, optb1]:
+        optb.fit(x, y)
+        assert optb.status == "OPTIMAL"
+
+    assert optb0.splits == approx(optb1.splits, rel=1e-6)
+
+
+def test_auto_modes():
+    x = df["INDUS"].values
+
+    optb0 = ContinuousOptimalBinning(monotonic_trend="auto")
+    optb1 = ContinuousOptimalBinning(monotonic_trend="auto_heuristic")
+    optb2 = ContinuousOptimalBinning(monotonic_trend="auto_asc_desc")
+    optb3 = ContinuousOptimalBinning(monotonic_trend="descending")
+
+    for optb in [optb0, optb1, optb2, optb3]:
+        optb.fit(x, y)
+        assert optb.status == "OPTIMAL"
+
+    assert optb0.splits == approx(optb1.splits, rel=1e-6)
+    assert optb2.splits == approx(optb3.splits, rel=1e-6)
+
 
 def test_numerical_default_transform():
     optb = ContinuousOptimalBinning()

@@ -161,6 +161,20 @@ def test_numerical_default():
                                   13.70499992, 15.04500008, 16.92500019],
                                  rel=1e-6)
 
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
+
+    optb.binning_table.analysis()
+    assert optb.binning_table.gini == approx(0.87541620, rel=1e-6)
+    assert optb.binning_table.js == approx(0.39378376, rel=1e-6)
+    assert optb.binning_table.quality_score == approx(0.0, rel=1e-6)
+
+    with raises(ValueError):
+        optb.binning_table.plot(metric="new_metric")
+
+    optb.binning_table.plot(metric="woe")
+    optb.binning_table.plot(metric="event_rate")
+
 
 def test_numerical_default_solvers():
     optb_mip_cbc = OptimalBinning(solver="mip", mip_solver="cbc")
@@ -168,6 +182,62 @@ def test_numerical_default_solvers():
     optb_cp = OptimalBinning(solver="cp")
 
     for optb in [optb_mip_bop, optb_mip_cbc, optb_cp]:
+        optb.fit(x, y)
+        assert optb.status == "OPTIMAL"
+        assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                      13.70499992, 15.04500008, 16.92500019],
+                                     rel=1e-6)
+
+
+def test_numerical_user_splits():
+    user_splits = [11, 12, 13, 14, 15, 17]
+    optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([13, 15, 17], rel=1e-6)
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == 4.819661314733627
+
+    optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05,
+                          max_pvalue_policy="all")
+    optb.fit(x, y)
+    optb.binning_table.build()
+    assert optb.binning_table.iv == 4.819661314733627
+
+
+def test_categorical_default_user_splits():
+    df = pd.read_csv("data/test_categorical.csv", sep=",", engine="c")
+    x = df.NAME_INCOME_TYPE.values
+    y = df.TARGET.values
+
+    optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
+                          verbose=True)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == [['Pensioner'], ['Working'],
+                           ['Commercial associate'], ['State servant']]
+
+    user_splits = [['Pensioner', 'Working'],
+                   ['Commercial associate'], ['State servant']]
+
+    optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
+                          user_splits=user_splits, verbose=True)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == [['State servant', 'Pensioner', 'Working',
+                            'Commercial associate']]
+
+
+def test_auto_modes():
+    optb0 = OptimalBinning(monotonic_trend="auto")
+    optb1 = OptimalBinning(monotonic_trend="auto_heuristic")
+    optb2 = OptimalBinning(monotonic_trend="auto_asc_desc")
+
+    for optb in [optb0, optb1, optb2]:
         optb.fit(x, y)
         assert optb.status == "OPTIMAL"
         assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
@@ -194,7 +264,7 @@ def test_outlier():
         optb = OptimalBinning(outlier_detector="range", outlier_params=[])
         optb.fit(x, y)
 
-    optb = OptimalBinning(outlier_detector="zscore")
+    optb = OptimalBinning(outlier_detector="zscore", verbose=True)
     optb.fit(x, y)
     assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
                                   13.70499992, 15.04500008, 16.92500019],
@@ -243,6 +313,21 @@ def test_numerical_default_fit_transform():
     x_transform = optb.fit_transform(x, y, metric="woe")
     assert x_transform[:5] == approx([5.28332344, 5.28332344, 5.28332344,
                                       -3.12517033, 5.28332344], rel=1e-6)
+
+
+def test_categorical_transform():
+    df = pd.read_csv("data/test_categorical.csv", sep=",", engine="c")
+    x = df.NAME_INCOME_TYPE.values
+    y = df.TARGET.values
+
+    optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
+                          verbose=True)
+    optb.fit(x, y)
+    x_transform = optb.transform(["Pensioner", "Working",
+                                  "Commercial associate", "State servant"])
+
+    assert x_transform == approx([0.10793784, -0.00524477, -0.18017333,
+                                  0.81450804], rel=1e-6)
 
 
 def test_information():

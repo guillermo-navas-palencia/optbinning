@@ -1,0 +1,1001 @@
+,NAME_INCOME_TYPE,TARGET
+0,Working,1
+1,State servant,0
+2,Working,0
+3,Working,0
+4,Working,0
+5,State servant,0
+6,Commercial associate,0
+7,State servant,0
+8,Pensioner,0
+9,Working,0
+10,Working,0
+11,Pensioner,0
+12,Working,0
+13,Working,0
+14,Working,0
+15,Working,0
+16,Working,0
+17,Working,0
+18,Working,0
+19,State servant,0
+20,Working,0
+21,Commercial associate,0
+22,Working,0
+23,Pensioner,0
+24,Working,0
+25,Working,0
+26,Working,1
+27,Working,0
+28,State servant,0
+29,Working,0
+30,Commercial associate,0
+31,Working,0
+32,Working,0
+33,Commercial associate,0
+34,State servant,0
+35,Working,0
+36,Commercial associate,0
+37,Working,0
+38,Pensioner,0
+39,Working,0
+40,Commercial associate,1
+41,Working,0
+42,Working,1
+43,Pensioner,0
+44,Working,0
+45,Working,0
+46,Pensioner,0
+47,Working,0
+48,State servant,0
+49,Working,0
+50,State servant,0
+51,Commercial associate,0
+52,Working,0
+53,Commercial associate,0
+54,Pensioner,0
+55,Working,0
+56,Pensioner,0
+57,Working,0
+58,Working,0
+59,Working,0
+60,Commercial associate,0
+61,Working,0
+62,Pensioner,0
+63,Working,0
+64,Commercial associate,0
+65,Commercial associate,0
+66,State servant,0
+67,Working,0
+68,Commercial associate,0
+69,Commercial associate,0
+70,Commercial associate,0
+71,Working,0
+72,Working,0
+73,Working,0
+74,Commercial associate,0
+75,Working,0
+76,Commercial associate,0
+77,Working,0
+78,Working,0
+79,Pensioner,0
+80,Working,0
+81,Pensioner,1
+82,Working,0
+83,Working,0
+84,Pensioner,0
+85,Working,0
+86,State servant,0
+87,Working,0
+88,Working,0
+89,Working,0
+90,Working,0
+91,Working,0
+92,Commercial associate,0
+93,Commercial associate,0
+94,Commercial associate,1
+95,Working,0
+96,Commercial associate,0
+97,Working,0
+98,Working,0
+99,Pensioner,0
+100,Working,0
+101,Working,0
+102,Working,0
+103,Commercial associate,0
+104,Working,0
+105,Pensioner,0
+106,Pensioner,0
+107,Working,0
+108,Pensioner,0
+109,Working,0
+110,Commercial associate,1
+111,Commercial associate,0
+112,Commercial associate,0
+113,Working,0
+114,Commercial associate,0
+115,Commercial associate,0
+116,State servant,0
+117,Pensioner,0
+118,Pensioner,0
+119,Working,0
+120,Commercial associate,0
+121,State servant,0
+122,State servant,0
+123,Working,0
+124,Working,0
+125,Pensioner,0
+126,Working,0
+127,Commercial associate,0
+128,Working,0
+129,Commercial associate,0
+130,Working,0
+131,Working,0
+132,Working,0
+133,Working,0
+134,Commercial associate,0
+135,Working,0
+136,Commercial associate,0
+137,Commercial associate,0
+138,Working,1
+139,Commercial associate,0
+140,Pensioner,0
+141,Working,0
+142,Commercial associate,0
+143,Pensioner,0
+144,Working,0
+145,Commercial associate,0
+146,Working,0
+147,Working,0
+148,Working,0
+149,Working,0
+150,Working,0
+151,Working,0
+152,Commercial associate,0
+153,Commercial associate,0
+154,Working,1
+155,Working,0
+156,Pensioner,0
+157,Pensioner,0
+158,Pensioner,0
+159,Working,0
+160,Working,0
+161,Commercial associate,0
+162,Working,0
+163,Commercial associate,1
+164,Commercial associate,0
+165,Working,0
+166,Commercial associate,0
+167,Working,0
+168,Working,0
+169,Working,0
+170,Working,0
+171,Working,0
+172,Commercial associate,0
+173,Pensioner,0
+174,Pensioner,0
+175,Pensioner,0
+176,Working,0
+177,Commercial associate,0
+178,Working,0
+179,Commercial associate,0
+180,Commercial associate,1
+181,Working,0
+182,Commercial associate,0
+183,Working,0
+184,Commercial associate,1
+185,Pensioner,0
+186,Working,0
+187,Working,0
+188,Commercial associate,0
+189,Commercial associate,0
+190,Commercial associate,0
+191,Commercial associate,0
+192,Commercial associate,0
+193,Commercial associate,0
+194,Working,0
+195,Working,0
+196,State servant,0
+197,Working,0
+198,Working,0
+199,Commercial associate,0
+200,Working,0
+201,Working,0
+202,Working,0
+203,Working,0
+204,Working,0
+205,Commercial associate,0
+206,Working,0
+207,Working,0
+208,Working,0
+209,Working,0
+210,Working,0
+211,Working,1
+212,Working,0
+213,Pensioner,0
+214,Working,0
+215,Working,0
+216,Working,0
+217,Working,0
+218,Commercial associate,0
+219,Working,0
+220,Pensioner,0
+221,Working,0
+222,Pensioner,0
+223,Working,0
+224,Commercial associate,0
+225,Working,0
+226,Pensioner,0
+227,Pensioner,0
+228,Commercial associate,0
+229,Commercial associate,0
+230,Commercial associate,0
+231,Working,0
+232,Commercial associate,0
+233,Pensioner,0
+234,Working,0
+235,Working,1
+236,Working,0
+237,Pensioner,0
+238,Working,0
+239,Pensioner,0
+240,Pensioner,0
+241,Commercial associate,0
+242,Commercial associate,1
+243,Commercial associate,0
+244,Working,0
+245,Working,0
+246,Working,1
+247,Pensioner,0
+248,Working,0
+249,Working,0
+250,Working,0
+251,Working,0
+252,Pensioner,0
+253,Working,0
+254,Commercial associate,0
+255,Commercial associate,1
+256,Commercial associate,0
+257,Working,0
+258,Working,0
+259,State servant,0
+260,Commercial associate,1
+261,Working,1
+262,Working,0
+263,Pensioner,0
+264,Working,0
+265,Working,0
+266,State servant,0
+267,Working,0
+268,State servant,0
+269,Working,0
+270,Pensioner,0
+271,Working,0
+272,Working,0
+273,Working,0
+274,Working,0
+275,Working,0
+276,Commercial associate,0
+277,Working,0
+278,Commercial associate,0
+279,Working,0
+280,Commercial associate,0
+281,Commercial associate,0
+282,State servant,0
+283,Pensioner,1
+284,Working,0
+285,State servant,0
+286,Working,0
+287,Pensioner,0
+288,Commercial associate,0
+289,Working,0
+290,Pensioner,0
+291,Commercial associate,1
+292,Commercial associate,0
+293,Working,0
+294,Commercial associate,0
+295,Commercial associate,0
+296,Working,0
+297,Working,0
+298,Working,0
+299,Commercial associate,0
+300,Working,0
+301,State servant,0
+302,Pensioner,0
+303,Working,0
+304,Pensioner,0
+305,Pensioner,0
+306,Pensioner,0
+307,Working,0
+308,Commercial associate,0
+309,Working,0
+310,Working,0
+311,Commercial associate,0
+312,Working,0
+313,Commercial associate,0
+314,Working,0
+315,Commercial associate,0
+316,Commercial associate,0
+317,Working,0
+318,Pensioner,0
+319,Commercial associate,0
+320,Working,0
+321,Commercial associate,0
+322,Pensioner,0
+323,Commercial associate,0
+324,Pensioner,0
+325,State servant,0
+326,Working,0
+327,Commercial associate,0
+328,Working,0
+329,Working,0
+330,Working,0
+331,Working,0
+332,Working,0
+333,Commercial associate,0
+334,Working,0
+335,Commercial associate,0
+336,Working,0
+337,Working,0
+338,State servant,0
+339,Working,0
+340,Working,0
+341,Working,0
+342,Pensioner,0
+343,Commercial associate,0
+344,Pensioner,1
+345,State servant,0
+346,Working,0
+347,Pensioner,0
+348,Pensioner,1
+349,Pensioner,0
+350,Working,0
+351,Working,0
+352,Pensioner,0
+353,Working,0
+354,Commercial associate,0
+355,Commercial associate,0
+356,Working,0
+357,Working,0
+358,Working,0
+359,Pensioner,0
+360,Working,0
+361,Working,0
+362,Working,0
+363,Working,0
+364,Pensioner,0
+365,Working,0
+366,Commercial associate,0
+367,Working,0
+368,Working,1
+369,Working,0
+370,Working,0
+371,Working,0
+372,Working,0
+373,Working,0
+374,Working,0
+375,Working,0
+376,Working,0
+377,State servant,0
+378,Commercial associate,0
+379,Commercial associate,0
+380,Pensioner,0
+381,Working,1
+382,Pensioner,0
+383,Pensioner,0
+384,State servant,0
+385,Pensioner,0
+386,Working,0
+387,Working,0
+388,Commercial associate,0
+389,Working,1
+390,Working,0
+391,Commercial associate,0
+392,Working,0
+393,Working,0
+394,Working,0
+395,Pensioner,0
+396,Commercial associate,0
+397,Commercial associate,0
+398,Working,0
+399,Commercial associate,0
+400,Pensioner,0
+401,Working,0
+402,Working,0
+403,Working,0
+404,Pensioner,0
+405,Commercial associate,0
+406,Commercial associate,0
+407,Working,0
+408,Working,1
+409,Commercial associate,0
+410,Commercial associate,0
+411,Commercial associate,0
+412,Working,0
+413,Working,1
+414,Working,0
+415,Working,0
+416,Commercial associate,0
+417,Working,0
+418,Commercial associate,0
+419,Working,1
+420,Pensioner,0
+421,Pensioner,0
+422,Commercial associate,0
+423,Working,0
+424,Working,1
+425,Working,0
+426,State servant,0
+427,Working,0
+428,Working,0
+429,Working,0
+430,Commercial associate,0
+431,Working,0
+432,Working,0
+433,Commercial associate,0
+434,Working,0
+435,Commercial associate,0
+436,Pensioner,0
+437,Commercial associate,0
+438,Working,0
+439,Working,0
+440,Commercial associate,0
+441,Commercial associate,0
+442,Pensioner,0
+443,Working,0
+444,Commercial associate,0
+445,Pensioner,0
+446,Commercial associate,0
+447,Pensioner,0
+448,Pensioner,0
+449,Pensioner,0
+450,Working,0
+451,Pensioner,0
+452,Working,0
+453,Commercial associate,0
+454,Working,0
+455,Working,0
+456,Commercial associate,0
+457,Commercial associate,0
+458,Working,0
+459,Working,0
+460,Commercial associate,0
+461,Working,0
+462,Working,0
+463,Working,0
+464,Commercial associate,0
+465,Working,0
+466,Commercial associate,0
+467,Working,0
+468,Working,0
+469,State servant,0
+470,State servant,1
+471,Working,1
+472,Working,0
+473,Pensioner,0
+474,Commercial associate,0
+475,Working,0
+476,Pensioner,0
+477,Working,1
+478,Commercial associate,0
+479,Commercial associate,0
+480,Commercial associate,0
+481,Working,0
+482,Pensioner,0
+483,Commercial associate,0
+484,Working,0
+485,State servant,0
+486,Pensioner,0
+487,State servant,0
+488,Working,0
+489,Commercial associate,0
+490,Pensioner,0
+491,Working,0
+492,Working,1
+493,Commercial associate,0
+494,Working,0
+495,Pensioner,0
+496,Working,0
+497,Commercial associate,0
+498,Pensioner,0
+499,Commercial associate,0
+500,Pensioner,0
+501,Commercial associate,0
+502,Working,0
+503,Working,0
+504,Commercial associate,0
+505,Pensioner,0
+506,Commercial associate,0
+507,Working,0
+508,Working,0
+509,Pensioner,0
+510,Working,0
+511,Commercial associate,0
+512,Working,0
+513,Working,0
+514,Working,0
+515,Commercial associate,0
+516,Working,0
+517,Working,0
+518,Working,0
+519,Working,0
+520,Commercial associate,0
+521,State servant,0
+522,Working,0
+523,Commercial associate,0
+524,Commercial associate,0
+525,Working,0
+526,Pensioner,0
+527,Pensioner,0
+528,Commercial associate,0
+529,Commercial associate,0
+530,Working,0
+531,Commercial associate,0
+532,Commercial associate,0
+533,Working,0
+534,Working,1
+535,Commercial associate,0
+536,Commercial associate,0
+537,Commercial associate,0
+538,State servant,0
+539,Pensioner,0
+540,Commercial associate,0
+541,Commercial associate,0
+542,Commercial associate,0
+543,Working,0
+544,Working,0
+545,Working,0
+546,Commercial associate,0
+547,Working,0
+548,Commercial associate,0
+549,Commercial associate,0
+550,Commercial associate,1
+551,Commercial associate,0
+552,Working,0
+553,Working,0
+554,Working,0
+555,Commercial associate,1
+556,Pensioner,0
+557,Pensioner,0
+558,Working,0
+559,Working,0
+560,Working,1
+561,Working,0
+562,Working,0
+563,Working,1
+564,Commercial associate,1
+565,Working,0
+566,Pensioner,0
+567,Working,0
+568,Working,0
+569,Working,0
+570,Pensioner,0
+571,Working,0
+572,Working,0
+573,Working,0
+574,Commercial associate,0
+575,Commercial associate,0
+576,Working,0
+577,State servant,0
+578,Commercial associate,0
+579,Working,0
+580,Working,0
+581,Pensioner,0
+582,Working,0
+583,Pensioner,0
+584,Working,0
+585,Commercial associate,0
+586,Pensioner,1
+587,Working,0
+588,Working,0
+589,Pensioner,0
+590,Commercial associate,0
+591,Working,0
+592,Working,0
+593,Commercial associate,0
+594,Working,0
+595,Working,0
+596,Working,0
+597,Working,0
+598,Working,0
+599,State servant,0
+600,Working,0
+601,Working,0
+602,Pensioner,0
+603,Working,1
+604,Working,0
+605,State servant,0
+606,Working,0
+607,State servant,0
+608,Pensioner,0
+609,Working,0
+610,Pensioner,0
+611,Commercial associate,0
+612,Commercial associate,0
+613,Pensioner,0
+614,Pensioner,0
+615,State servant,0
+616,Working,0
+617,Pensioner,0
+618,Pensioner,0
+619,Commercial associate,0
+620,Working,0
+621,Working,0
+622,Working,0
+623,Working,1
+624,Pensioner,1
+625,Working,0
+626,Commercial associate,0
+627,Working,1
+628,Commercial associate,0
+629,Working,0
+630,Working,0
+631,Pensioner,0
+632,Working,0
+633,Working,0
+634,Working,0
+635,Working,0
+636,Working,0
+637,Working,0
+638,Commercial associate,0
+639,Commercial associate,0
+640,Working,0
+641,Working,0
+642,Working,0
+643,Working,0
+644,Working,0
+645,Commercial associate,0
+646,Pensioner,0
+647,Working,0
+648,Commercial associate,0
+649,Commercial associate,0
+650,Pensioner,0
+651,Working,0
+652,Pensioner,0
+653,Working,0
+654,Working,0
+655,Working,0
+656,Commercial associate,0
+657,Working,0
+658,Working,0
+659,Commercial associate,0
+660,Commercial associate,0
+661,Commercial associate,0
+662,Working,0
+663,Working,0
+664,Commercial associate,0
+665,Working,0
+666,Working,0
+667,Working,0
+668,Pensioner,0
+669,Working,0
+670,Working,0
+671,Commercial associate,0
+672,Commercial associate,0
+673,Working,0
+674,Working,0
+675,Commercial associate,0
+676,Working,0
+677,Commercial associate,0
+678,Pensioner,1
+679,Pensioner,0
+680,Working,0
+681,Working,0
+682,Commercial associate,0
+683,Working,0
+684,Working,0
+685,State servant,0
+686,Pensioner,0
+687,Working,0
+688,Commercial associate,1
+689,Working,0
+690,Commercial associate,0
+691,Pensioner,0
+692,Working,0
+693,Working,0
+694,Commercial associate,0
+695,Commercial associate,0
+696,Working,0
+697,State servant,0
+698,Working,0
+699,Working,1
+700,Commercial associate,0
+701,Commercial associate,0
+702,Working,0
+703,Commercial associate,0
+704,Working,0
+705,State servant,0
+706,Pensioner,0
+707,Pensioner,1
+708,Working,0
+709,Working,0
+710,Pensioner,0
+711,Working,0
+712,Working,0
+713,Commercial associate,0
+714,Working,0
+715,Pensioner,0
+716,Working,0
+717,Commercial associate,0
+718,Pensioner,0
+719,Commercial associate,0
+720,Commercial associate,0
+721,Working,0
+722,Working,0
+723,Commercial associate,0
+724,Commercial associate,0
+725,Working,0
+726,Commercial associate,1
+727,Commercial associate,1
+728,Working,0
+729,Working,0
+730,State servant,0
+731,Commercial associate,0
+732,Working,0
+733,Pensioner,0
+734,Working,0
+735,Working,0
+736,State servant,0
+737,Pensioner,0
+738,Working,0
+739,Working,0
+740,Working,0
+741,Working,0
+742,Working,0
+743,Working,0
+744,Pensioner,0
+745,Working,0
+746,Working,0
+747,Working,0
+748,Working,0
+749,Working,0
+750,Pensioner,0
+751,Commercial associate,0
+752,State servant,0
+753,Working,0
+754,Pensioner,0
+755,Commercial associate,0
+756,Working,0
+757,State servant,0
+758,Commercial associate,0
+759,Commercial associate,0
+760,Commercial associate,0
+761,Commercial associate,0
+762,Working,0
+763,Working,0
+764,Working,0
+765,Working,1
+766,Pensioner,0
+767,State servant,0
+768,Working,0
+769,Working,0
+770,Working,0
+771,Working,0
+772,State servant,0
+773,Pensioner,0
+774,Commercial associate,0
+775,Commercial associate,0
+776,Working,0
+777,Pensioner,0
+778,Pensioner,0
+779,Working,0
+780,Working,0
+781,Working,0
+782,Working,1
+783,Working,0
+784,Pensioner,0
+785,Working,0
+786,Working,0
+787,State servant,0
+788,Pensioner,1
+789,Working,0
+790,Working,0
+791,Working,0
+792,Working,0
+793,Working,0
+794,Commercial associate,0
+795,Pensioner,0
+796,Commercial associate,0
+797,Commercial associate,0
+798,Commercial associate,0
+799,State servant,0
+800,State servant,0
+801,Working,0
+802,Pensioner,0
+803,Working,0
+804,Working,0
+805,Pensioner,0
+806,Commercial associate,0
+807,Working,0
+808,State servant,0
+809,Working,0
+810,Working,0
+811,Working,0
+812,Working,0
+813,Commercial associate,0
+814,Working,0
+815,Working,0
+816,Working,0
+817,Commercial associate,0
+818,Pensioner,1
+819,Working,0
+820,Pensioner,0
+821,Working,0
+822,State servant,0
+823,Pensioner,0
+824,Working,0
+825,Commercial associate,0
+826,Working,0
+827,Commercial associate,1
+828,Pensioner,0
+829,Commercial associate,0
+830,Pensioner,0
+831,Working,0
+832,Commercial associate,0
+833,Working,0
+834,Working,0
+835,Pensioner,0
+836,State servant,0
+837,Commercial associate,0
+838,Working,0
+839,State servant,0
+840,Working,0
+841,Commercial associate,0
+842,Commercial associate,0
+843,Commercial associate,1
+844,Working,0
+845,Working,0
+846,Working,0
+847,Working,0
+848,Commercial associate,0
+849,Commercial associate,1
+850,Working,0
+851,State servant,0
+852,Pensioner,0
+853,Working,0
+854,Working,0
+855,Pensioner,0
+856,Working,0
+857,Working,0
+858,Working,0
+859,Pensioner,0
+860,Working,0
+861,Working,0
+862,Working,0
+863,Working,0
+864,Working,0
+865,Working,0
+866,Working,1
+867,Working,0
+868,Working,0
+869,Working,0
+870,State servant,1
+871,Commercial associate,0
+872,Commercial associate,0
+873,Commercial associate,0
+874,Commercial associate,0
+875,Commercial associate,0
+876,Pensioner,0
+877,Working,0
+878,Commercial associate,0
+879,Working,0
+880,Working,0
+881,Commercial associate,0
+882,Working,0
+883,Working,0
+884,Working,0
+885,Working,0
+886,Pensioner,0
+887,Working,0
+888,Working,0
+889,Pensioner,0
+890,Working,0
+891,Working,0
+892,Commercial associate,0
+893,Working,0
+894,Working,0
+895,Working,0
+896,Commercial associate,0
+897,Commercial associate,0
+898,Pensioner,0
+899,Working,0
+900,Pensioner,0
+901,Working,0
+902,Commercial associate,0
+903,Pensioner,0
+904,Working,1
+905,Pensioner,0
+906,Working,0
+907,Working,0
+908,Working,0
+909,Working,0
+910,Working,0
+911,Working,0
+912,Working,0
+913,Working,0
+914,Working,0
+915,Working,0
+916,Working,0
+917,Working,0
+918,Working,0
+919,Working,0
+920,Commercial associate,0
+921,Working,1
+922,Working,0
+923,Working,0
+924,Working,0
+925,Working,0
+926,Working,0
+927,Working,0
+928,Commercial associate,0
+929,Working,0
+930,Working,1
+931,Commercial associate,0
+932,Working,0
+933,Working,1
+934,Commercial associate,0
+935,Working,0
+936,Commercial associate,0
+937,Working,0
+938,Working,0
+939,State servant,0
+940,Working,0
+941,Working,0
+942,Working,0
+943,Working,0
+944,State servant,0
+945,Pensioner,0
+946,Commercial associate,1
+947,Working,0
+948,Working,0
+949,Working,1
+950,Working,0
+951,Working,0
+952,Working,0
+953,Commercial associate,0
+954,Commercial associate,0
+955,Pensioner,0
+956,Commercial associate,0
+957,Working,0
+958,Working,0
+959,Working,0
+960,Commercial associate,0
+961,Commercial associate,0
+962,Commercial associate,0
+963,State servant,0
+964,Commercial associate,0
+965,Working,0
+966,Working,0
+967,Pensioner,0
+968,Working,0
+969,Working,0
+970,Working,1
+971,State servant,0
+972,Pensioner,0
+973,Working,0
+974,Working,1
+975,Pensioner,0
+976,Pensioner,0
+977,Working,0
+978,Commercial associate,0
+979,Pensioner,0
+980,State servant,0
+981,Working,0
+982,Commercial associate,0
+983,Commercial associate,0
+984,State servant,0
+985,Working,0
+986,Working,1
+987,Working,0
+988,Working,0
+989,State servant,0
+990,Pensioner,0
+991,Commercial associate,1
+992,Working,0
+993,Commercial associate,0
+994,Working,0
+995,Pensioner,0
+996,Commercial associate,0
+997,Pensioner,0
+998,Commercial associate,0
+999,Working,0

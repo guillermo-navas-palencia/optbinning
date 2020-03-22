@@ -208,7 +208,7 @@ def test_numerical_user_splits():
 
 
 def test_categorical_default_user_splits():
-    df = pd.read_csv("data/test_categorical.csv", sep=",", engine="c")
+    df = pd.read_csv("tests/data/test_categorical.csv", sep=",", engine="c")
     x = df.NAME_INCOME_TYPE.values
     y = df.TARGET.values
 
@@ -316,7 +316,7 @@ def test_numerical_default_fit_transform():
 
 
 def test_categorical_transform():
-    df = pd.read_csv("data/test_categorical.csv", sep=",", engine="c")
+    df = pd.read_csv("tests/data/test_categorical.csv", sep=",", engine="c")
     x = df.NAME_INCOME_TYPE.values
     y = df.TARGET.values
 

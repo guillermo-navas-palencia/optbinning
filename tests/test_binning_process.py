@@ -149,14 +149,14 @@ def test_default():
 
 def test_default_pandas():
     df = pd.DataFrame(data.data, columns=data.feature_names)
-    
+
     process = BinningProcess(variable_names)
 
     with raises(TypeError):
         process.fit(df.to_dict(), y, check_input=True)
 
     process.fit(df, y, check_input=True)
-    
+
     optb = process.get_binned_variable("mean radius")
 
     assert optb.status == "OPTIMAL"
@@ -223,7 +223,7 @@ def test_default_transform():
 
 def test_default_transform_pandas():
     df = pd.DataFrame(data.data, columns=data.feature_names)
-    
+
     process = BinningProcess(variable_names)
     process.fit(df, y)
 

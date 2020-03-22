@@ -173,9 +173,6 @@ def test_numerical_default():
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
 
-    # optb.binning_table.plot(metric="woe")
-    # optb.binning_table.plot(metric="event_rate")
-
 
 def test_numerical_default_solvers():
     optb_mip_cbc = OptimalBinning(solver="mip", mip_solver="cbc")
@@ -257,7 +254,6 @@ def test_categorical_default_user_splits():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
-    assert len(optb.splits) == 1
 
 
 def test_auto_modes():

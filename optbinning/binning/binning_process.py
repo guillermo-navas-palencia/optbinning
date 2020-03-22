@@ -290,6 +290,9 @@ class BinningProcess(BaseEstimator):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
+            .. versionchanged:: 0.4.0
+            X supports ``numpy.ndarray`` and ``pandas.DataFrame``.
+
         y : array-like of shape (n_samples,)
             Target vector relative to x.
 
@@ -574,6 +577,10 @@ class BinningProcess(BaseEstimator):
 
         _check_parameters(**self.get_params())
 
+        # check X dtype
+        if not isinstance(X, (pd.DataFrame, np.ndarray)):
+            raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
+
         # check target dtype
         self._target_dtype = type_of_target(y)
 
@@ -601,7 +608,10 @@ class BinningProcess(BaseEstimator):
                          .format(self._n_variables))
 
         for i, name in enumerate(self.variable_names):
-            self._fit_variable(X[:, i], y, name)
+            if isinstance(X, np.ndarray):
+                self._fit_variable(X[:, i], y, name)
+            else:
+                self._fit_variable(X[name], y, name)
 
         self._time_total = time.perf_counter() - time_init
 
@@ -676,6 +686,14 @@ class BinningProcess(BaseEstimator):
     def _transform(self, X, variable_names, metric, metric_special,
                    metric_missing, check_input):
 
+        # check X dtype
+        if not isinstance(X, (pd.DataFrame, np.ndarray)):
+            raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
+
+        if isinstance(X, pd.DataFrame) and variable_names is None:
+            raise ValueError("variable_names must be provided if X is of type "
+                             "pandas.DataFrame.")
+
         n_records, n_variables = X.shape
 
         if variable_names is not None:
@@ -707,18 +725,22 @@ class BinningProcess(BaseEstimator):
                 optb = list(self._binned_variables.values())[i]
                 idx = i
 
-            metric_missing = params.get("metric_missing", metric_special)
-            metric_special = params.get("metric_special", metric_missing)
+            metric_missing = params.get("metric_missing", metric_missing)
+            metric_special = params.get("metric_special", metric_special)
+
+            if isinstance(X, np.ndarray):
+                x = X[:, idx]
+            else:
+                x = X[name]
 
             if metric is not None:
                 metric = params.get("metric", metric)
 
-                X_transform[:, i] = optb.transform(X[:, idx], metric,
-                                                   metric_special,
+                X_transform[:, i] = optb.transform(x, metric, metric_special,
                                                    metric_missing, check_input)
             else:
                 X_transform[:, i] = optb.transform(
-                    X[:, idx], metric_special=metric_special,
+                    x, metric_special=metric_special,
                     metric_missing=metric_missing, check_input=check_input)
 
         return X_transform

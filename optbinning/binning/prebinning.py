@@ -31,13 +31,14 @@ class PreBinning:
         The minimum bin size.
     """
     def __init__(self, problem_type, method, n_bins, min_bin_size,
-                 class_weight=None):
+                 class_weight=None, sample_weight=None):
 
         self.problem_type = problem_type
         self.method = method
         self.n_bins = n_bins
         self.min_bin_size = min_bin_size
         self.class_weight = class_weight
+        self.sample_weight = sample_weight
 
         self._splits = None
 
@@ -81,7 +82,7 @@ class PreBinning:
                     min_samples_leaf=self.min_bin_size,
                     max_leaf_nodes=self.n_bins)
 
-            est.fit(x.reshape(-1, 1), y)
+            est.fit(x.reshape(-1, 1), y, sample_weight=self.sample_weight)
             splits = np.unique(est.tree_.threshold)
             self._splits = splits[splits != _tree.TREE_UNDEFINED]
 

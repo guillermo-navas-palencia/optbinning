@@ -38,8 +38,9 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
                       min_bin_n_event, max_bin_n_event, monotonic_trend,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
                       gamma, outlier_detector, outlier_params, class_weight,
-                      cat_cutoff, user_splits, special_codes, split_digits,
-                      mip_solver, time_limit, verbose):
+                      cat_cutoff, user_splits, user_splits_fixed,
+                      special_codes, split_digits, mip_solver, time_limit,
+                      verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -191,6 +192,21 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
         if not isinstance(user_splits, (np.ndarray, list)):
             raise TypeError("user_splits must be a list or numpy.ndarray.")
 
+    if user_splits_fixed is not None:
+        if user_splits is None:
+            raise ValueError("user_splits must be provided.")
+        else:
+            if not isinstance(user_splits_fixed, (np.ndarray, list)):
+                raise TypeError("user_splits_fixed must be a list or "
+                                "numpy.ndarray.")
+            elif not all(isinstance(s, bool) for s in user_splits_fixed):
+                raise ValueError("user_splits_fixed must be list of boolean.")
+            elif len(user_splits) != len(user_splits_fixed):
+                raise ValueError("Inconsistent length of user_splits and "
+                                 "user_splits_fixed: {} != {}. Lengths must "
+                                 "be equal".format(len(user_splits),
+                                                   len(user_splits_fixed)))
+
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
             raise TypeError("special_codes must be a list or numpy.ndarray.")
@@ -338,6 +354,9 @@ class OptimalBinning(BaseEstimator):
         The list of pre-binning split points when ``dtype`` is "numerical" or
         the list of prebins when ``dtype`` is "categorical".
 
+    user_splits_fixed : array-like or None (default=None)
+        The list of pre-binning split points that must be fixed.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
@@ -382,9 +401,9 @@ class OptimalBinning(BaseEstimator):
                  min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", gamma=0,
                  outlier_detector=None, outlier_params=None, class_weight=None,
-                 cat_cutoff=None, user_splits=None, special_codes=None,
-                 split_digits=None, mip_solver="bop", time_limit=100,
-                 verbose=False):
+                 cat_cutoff=None, user_splits=None, user_splits_fixed=None,
+                 special_codes=None, split_digits=None, mip_solver="bop",
+                 time_limit=100, verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -416,6 +435,7 @@ class OptimalBinning(BaseEstimator):
         self.cat_cutoff = cat_cutoff
 
         self.user_splits = user_splits
+        self.user_splits_fixed = user_splits_fixed
         self.special_codes = special_codes
         self.split_digits = split_digits
 
@@ -436,6 +456,8 @@ class OptimalBinning(BaseEstimator):
         self._n_nonevent_cat_others = None
         self._n_event_cat_others = None
         self._problem_type = "classification"
+        self._user_splits = user_splits
+        self._user_splits_fixed = user_splits_fixed
 
         # info
         self._binning_table = None
@@ -858,7 +880,7 @@ class OptimalBinning(BaseEstimator):
                                   self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy, self.gamma,
-                                  self.time_limit)
+                                  self._user_splits_fixed, self.time_limit)
         elif self.solver == "mip":
             optimizer = BinningMIP(monotonic, self.min_n_bins, self.max_n_bins,
                                    min_bin_size, max_bin_size,
@@ -867,7 +889,8 @@ class OptimalBinning(BaseEstimator):
                                    self.max_bin_n_nonevent,
                                    self.min_event_rate_diff, self.max_pvalue,
                                    self.max_pvalue_policy, self.gamma,
-                                   self.mip_solver, self.time_limit)
+                                   self._user_splits_fixed, self.mip_solver,
+                                   self.time_limit)
         elif self.solver == "ls":
             optimizer = BinningLS(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,
@@ -875,7 +898,8 @@ class OptimalBinning(BaseEstimator):
                                   self.min_bin_n_nonevent,
                                   self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
-                                  self.max_pvalue_policy, self.time_limit)
+                                  self.max_pvalue_policy,
+                                  self._user_splits_fixed, self.time_limit)
 
         if self.verbose:
             logging.info("Optimizer: build model...")
@@ -961,6 +985,21 @@ class OptimalBinning(BaseEstimator):
 
             mask_splits = np.concatenate(
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+
+            if self.user_splits_fixed is not None:
+                user_splits_fixed = np.asarray(self._user_splits_fixed)
+                user_splits = np.asarray(self._user_splits)
+                fixed_remove = user_splits_fixed & mask_splits
+
+                if any(fixed_remove):
+                    raise ValueError("Fixed user_splits {} are removed "
+                                     "because produce pure prebins. Provide "
+                                     "different splits to be fixed."
+                                     .format(user_splits[fixed_remove]))
+
+                # Update boolean array of fixed user splits.
+                self._user_splits_fixed = user_splits_fixed[~mask_splits]
+                self._user_splits = user_splits[~mask_splits]
 
             splits = splits_prebinning[~mask_splits]
 

@@ -22,7 +22,7 @@ class BinningLS:
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_bin_n_event, max_bin_n_event,
                  min_bin_n_nonevent, max_bin_n_nonevent, min_event_rate_diff,
-                 max_pvalue, max_pvalue_policy, time_limit):
+                 max_pvalue, max_pvalue_policy, user_splits_fixed, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -38,6 +38,7 @@ class BinningLS:
         self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.user_splits_fixed = user_splits_fixed
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -186,6 +187,12 @@ class BinningLS:
 
                 if self.max_bin_n_event is not None:
                     model.constraint(bin_e_size <= self.max_bin_n_event * x[i])
+
+        # Constraint: fixed splits
+        if self.user_splits_fixed is not None:
+            for i in range(n - 1):
+                if self.user_splits_fixed[i]:
+                    model.constraint(x[i] == 1)
 
         # Objective function
         model.maximize(model.sum(x[i] * model.at(array_V, i, z[i])

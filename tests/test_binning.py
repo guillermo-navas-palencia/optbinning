@@ -208,6 +208,11 @@ def test_numerical_user_splits():
 def test_numerical_user_splits_fixed():
     user_splits = [11, 12, 13, 14, 15, 16, 17]
 
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, False, False, True, False]
+        optb = OptimalBinning(user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
     with raises(TypeError):
         user_splits_fixed = (False, False, False, False, False, True, False)
         optb = OptimalBinning(user_splits=user_splits,

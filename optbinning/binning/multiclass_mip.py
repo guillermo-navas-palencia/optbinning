@@ -15,7 +15,7 @@ from .model_data import multiclass_model_data
 class MulticlassBinningMIP(BinningMIP):
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, max_pvalue, max_pvalue_policy, mip_solver,
-                 time_limit):
+                 user_splits_fixed, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -28,6 +28,7 @@ class MulticlassBinningMIP(BinningMIP):
         self.max_pvalue_policy = max_pvalue_policy
 
         self.mip_solver = mip_solver
+        self.user_splits_fixed = user_splits_fixed
         self.time_limit = time_limit
 
         self.min_event_rate_diff = 0
@@ -109,6 +110,9 @@ class MulticlassBinningMIP(BinningMIP):
         for c in range(n_classes):
             self.add_max_pvalue_constraint(solver, x,
                                            pvalue_violation_indices[c])
+
+        # Constraint: fixed splits
+        self.add_constraint_fixed_splits(solver, n, x)
 
         self.solver_ = solver
         self._n = n

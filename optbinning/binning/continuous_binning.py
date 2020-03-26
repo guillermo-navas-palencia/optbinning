@@ -29,8 +29,8 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
                       max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
                       max_pvalue_policy, outlier_detector, outlier_params,
-                      cat_cutoff, user_splits, special_codes, split_digits,
-                      time_limit, verbose):
+                      cat_cutoff, user_splits, user_splits_fixed,
+                      special_codes, split_digits, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -128,6 +128,21 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
     if user_splits is not None:
         if not isinstance(user_splits, (np.ndarray, list)):
             raise TypeError("user_splits must be a list or numpy.ndarray.")
+
+    if user_splits_fixed is not None:
+        if user_splits is None:
+            raise ValueError("user_splits must be provided.")
+        else:
+            if not isinstance(user_splits_fixed, (np.ndarray, list)):
+                raise TypeError("user_splits_fixed must be a list or "
+                                "numpy.ndarray.")
+            elif not all(isinstance(s, bool) for s in user_splits_fixed):
+                raise ValueError("user_splits_fixed must be list of boolean.")
+            elif len(user_splits) != len(user_splits_fixed):
+                raise ValueError("Inconsistent length of user_splits and "
+                                 "user_splits_fixed: {} != {}. Lengths must "
+                                 "be equal".format(len(user_splits),
+                                                   len(user_splits_fixed)))
 
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
@@ -236,6 +251,9 @@ class ContinuousOptimalBinning(OptimalBinning):
         The list of pre-binning split points when ``dtype`` is "numerical" or
         the list of prebins when ``dtype`` is "categorical".
 
+    user_splits_fixed : array-like or None (default=None)
+        The list of pre-binning split points that must be fixed.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
@@ -270,8 +288,8 @@ class ContinuousOptimalBinning(OptimalBinning):
                  monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, cat_cutoff=None, user_splits=None,
-                 special_codes=None, split_digits=None, time_limit=100,
-                 verbose=False):
+                 user_splits_fixed=None, special_codes=None, split_digits=None,
+                 time_limit=100, verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -297,6 +315,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.cat_cutoff = cat_cutoff
 
         self.user_splits = user_splits
+        self.user_splits_fixed = user_splits_fixed
         self.special_codes = special_codes
         self.split_digits = split_digits
 
@@ -670,6 +689,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                                         max_bin_size, self.min_mean_diff,
                                         self.max_pvalue,
                                         self.max_pvalue_policy,
+                                        self.user_splits_fixed,
                                         self.time_limit)
 
         if self.verbose:

@@ -205,6 +205,34 @@ def test_numerical_user_splits():
     assert optb.binning_table.iv == 4.819661314733627
 
 
+def test_numerical_user_splits_fixed():
+    user_splits = [11, 12, 13, 14, 15, 16, 17]
+    user_splits_fixed = [False, False, False, False, False, True, False]
+    optb = OptimalBinning(user_splits=user_splits,
+                          user_splits_fixed=user_splits_fixed)
+    optb.fit(x, y)
+
+    assert optb.status == "INFEASIBLE"
+
+    user_splits = [11, 12, 13, 14, 15, 17]
+    user_splits_fixed = [False, True, False, False, False, False]
+
+    optb = OptimalBinning(user_splits=user_splits,
+                          user_splits_fixed=user_splits_fixed)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert 12 in optb.splits
+
+    optb2 = OptimalBinning()
+    optb2.fit(x, y)
+
+    optb.binning_table.build()
+    optb2.binning_table.build()
+
+    assert optb.binning_table.iv <= optb2.binning_table.iv
+
+
 def test_categorical_default_user_splits():
     x = np.array([
         'Working', 'State servant', 'Working', 'Working', 'Working',

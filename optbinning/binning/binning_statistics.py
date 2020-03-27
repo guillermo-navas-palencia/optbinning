@@ -62,8 +62,14 @@ def bin_str_format(bins, show_digits):
 def bin_categorical(splits_categorical, categories, cat_others, user_splits):
     splits = np.ceil(splits_categorical).astype(np.int)
     n_categories = len(categories)
-    indices = np.digitize(np.arange(n_categories), splits, right=False)
-    n_bins = len(splits) + 1
+
+    if user_splits:
+        indices = np.digitize(np.arange(n_categories), splits, right=True)
+        n_bins = len(splits)
+    else:
+        indices = np.digitize(np.arange(n_categories), splits, right=False)
+        n_bins = len(splits) + 1
+
     bins = []
     for i in range(n_bins):
         mask = (indices == i)

@@ -313,6 +313,33 @@ def test_categorical_default_user_splits():
     assert optb.status == "OPTIMAL"
 
 
+def test_categorical_user_splits():
+    np.random.seed(0)
+    n = 100000
+
+    x = sum([[i] * n for i in [-1, 2, 3, 4, 7, 8, 9, 10]], [])
+    y = list(np.random.binomial(1, 0.011665, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.0133333, n))
+    y += list(np.random.binomial(1, 0.166667, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.0246041, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.025641, n))
+
+    user_splits = [[2., 7., 9., 3., 10., 4.], [8], [-1]]
+    user_splits_fixed = [True, True, True]
+
+    optb1 = OptimalBinning(dtype="categorical", user_splits=user_splits)
+    optb2 = OptimalBinning(dtype="categorical", user_splits=user_splits,
+                           user_splits_fixed=user_splits_fixed)
+
+    for optb in (optb1, optb2):
+        optb.fit(x, y)
+        optb.binning_table.build()
+        assert optb.binning_table.iv == approx(0.09345086993827473, rel=1e-6)
+
+
 def test_auto_modes():
     optb0 = OptimalBinning(monotonic_trend="auto")
     optb1 = OptimalBinning(monotonic_trend="auto_heuristic")

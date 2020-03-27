@@ -18,7 +18,8 @@ class BinningMIP:
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_bin_n_event, max_bin_n_event,
                  min_bin_n_nonevent, max_bin_n_nonevent, min_event_rate_diff,
-                 max_pvalue, max_pvalue_policy, gamma, mip_solver, time_limit):
+                 max_pvalue, max_pvalue_policy, gamma, user_splits_fixed,
+                 mip_solver, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -35,6 +36,7 @@ class BinningMIP:
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
         self.gamma = gamma
+        self.user_splits_fixed = user_splits_fixed
 
         self.mip_solver = mip_solver
         self.time_limit = time_limit
@@ -163,6 +165,9 @@ class BinningMIP:
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(solver, x, pvalue_violation_indices)
+
+        # Constraint: fixed splits
+        self.add_constraint_fixed_splits(solver, n, x)
 
         self.solver_ = solver
         self._n = n
@@ -518,3 +523,9 @@ class BinningMIP:
     def add_max_pvalue_constraint(self, solver, x, pvalue_violation_indices):
         for ind1, ind2 in pvalue_violation_indices:
             solver.Add(x[ind1[0], ind1[1]] + x[ind2[0], ind2[1]] <= 1)
+
+    def add_constraint_fixed_splits(self, solver, n, x):
+        if self.user_splits_fixed is not None:
+            for i in range(n - 1):
+                if self.user_splits_fixed[i]:
+                    solver.Add(x[i, i] == 1)

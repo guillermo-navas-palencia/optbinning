@@ -17,7 +17,8 @@ class BinningCP:
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_bin_n_event, max_bin_n_event,
                  min_bin_n_nonevent, max_bin_n_nonevent, min_event_rate_diff,
-                 max_pvalue, max_pvalue_policy, gamma, time_limit):
+                 max_pvalue, max_pvalue_policy, gamma, user_splits_fixed,
+                 time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -34,6 +35,7 @@ class BinningCP:
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
         self.gamma = gamma
+        self.user_splits_fixed = user_splits_fixed
 
         self.time_limit = time_limit
 
@@ -155,6 +157,9 @@ class BinningCP:
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
+
+        # Constraint: fixed splits
+        self.add_constraint_fixed_splits(model, n, x)
 
         self._model = model
         self._x = x
@@ -433,3 +438,9 @@ class BinningCP:
         for ind1, ind2 in pvalue_violation_indices:
             model.AddImplication(x[ind1[0], ind1[1]],
                                  x[ind2[0], ind2[1]].Not())
+
+    def add_constraint_fixed_splits(self, model, n, x):
+        if self.user_splits_fixed is not None:
+            for i in range(n - 1):
+                if self.user_splits_fixed[i]:
+                    model.Add(x[i, i] == 1)

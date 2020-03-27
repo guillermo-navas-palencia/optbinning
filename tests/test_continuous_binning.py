@@ -121,6 +121,40 @@ def test_numerical_default():
     optb.binning_table.build()
 
 
+def test_numerical_user_splits_fixed():
+    user_splits = [4, 7, 7.1, 10, 16, 20, 23]
+
+    with raises(ValueError):
+        user_splits_fixed = [True, True, True, True, False, False, False]
+        optb = ContinuousOptimalBinning(user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(TypeError):
+        user_splits_fixed = (False, False, False, False, False, True, False)
+        optb = ContinuousOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [0, 0, 0, 0, 0, 1, 0]
+        optb = ContinuousOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, False]
+        optb = ContinuousOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    user_splits_fixed = [True, True, True, True, False, False, False]
+    optb = ContinuousOptimalBinning(user_splits=user_splits,
+                                    user_splits_fixed=user_splits_fixed)
+    optb.fit(x, y)
+
+    assert optb.status == "INFEASIBLE"
+
+
 def test_numerical_max_pvalue():
     optb0 = ContinuousOptimalBinning(max_pvalue=0.05,
                                      max_pvalue_policy="consecutive")

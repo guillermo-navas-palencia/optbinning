@@ -24,7 +24,15 @@ class DSOptimalBinning(BaseEstimator):
     Parameters
     ----------
     """
-    def __init__(self):
+    def __init__(self, name, dtype, prebinning_method, max_n_prebins,
+                 min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
+                 max_bin_size, monotonic_trend, max_pvalue, max_pvalue_policy,
+                 outlier_detector, outlier_params, user_splits,
+                 user_splits_fixed, special_codes, split_digits, time_limit,
+                 verbose):
         pass
 
+
+    def fit(self, X, Y, weights=None, check_input=False):
+        pass
 

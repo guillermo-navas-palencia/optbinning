@@ -205,6 +205,63 @@ def test_numerical_user_splits():
     assert optb.binning_table.iv == 4.819661314733627
 
 
+def test_numerical_user_splits_fixed():
+    user_splits = [11, 12, 13, 14, 15, 16, 17]
+
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, False, False, True, False]
+        optb = OptimalBinning(user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(TypeError):
+        user_splits_fixed = (False, False, False, False, False, True, False)
+        optb = OptimalBinning(user_splits=user_splits,
+                              user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [0, 0, 0, 0, 0, 1, 0]
+        optb = OptimalBinning(user_splits=user_splits,
+                              user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, False]
+        optb = OptimalBinning(user_splits=user_splits,
+                              user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    user_splits_fixed = [False, False, False, False, False, True, False]
+    optb = OptimalBinning(user_splits=user_splits,
+                          user_splits_fixed=user_splits_fixed)
+    optb.fit(x, y)
+
+    assert optb.status == "INFEASIBLE"
+
+    user_splits = [11, 12, 13, 14, 15, 17]
+    user_splits_fixed = [False, True, False, False, False, False]
+
+    optb_mip = OptimalBinning(user_splits=user_splits,
+                              user_splits_fixed=user_splits_fixed,
+                              solver="mip")
+
+    optb_cp = OptimalBinning(user_splits=user_splits,
+                             user_splits_fixed=user_splits_fixed, solver="cp")
+
+    for optb in (optb_mip, optb_cp):
+        optb.fit(x, y)
+        assert optb.status == "OPTIMAL"
+        assert 12 in optb.splits
+
+    optb2 = OptimalBinning()
+    optb2.fit(x, y)
+
+    optb.binning_table.build()
+    optb2.binning_table.build()
+
+    assert optb.binning_table.iv <= optb2.binning_table.iv
+
+
 def test_categorical_default_user_splits():
     x = np.array([
         'Working', 'State servant', 'Working', 'Working', 'Working',

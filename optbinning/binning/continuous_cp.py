@@ -15,7 +15,7 @@ from .model_data import continuous_model_data
 class ContinuousBinningCP(BinningCP):
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_mean_diff, max_pvalue, max_pvalue_policy,
-                 time_limit):
+                 user_splits_fixed, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -27,6 +27,7 @@ class ContinuousBinningCP(BinningCP):
         self.min_mean_diff = min_mean_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.user_splits_fixed = user_splits_fixed
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -100,6 +101,9 @@ class ContinuousBinningCP(BinningCP):
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
+
+        # Constraint: fixed splits
+        self.add_constraint_fixed_splits(model, n, x)
 
         self._model = model
         self._x = x

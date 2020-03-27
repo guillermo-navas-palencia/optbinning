@@ -135,6 +135,49 @@ def test_numerical_default_solvers():
                                       2.6450001], rel=1e-6)
 
 
+def test_numerical_user_splits_fixed():
+    user_splits = [2.1, 2.2, 2.3, 2.6, 2.9]
+
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, True, False]
+        optb = MulticlassOptimalBinning(user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(TypeError):
+        user_splits_fixed = (False, False, False, True, False)
+        optb = MulticlassOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [0, 0, 0, 1, 0]
+        optb = MulticlassOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    with raises(ValueError):
+        user_splits_fixed = [False, False, False, False]
+        optb = MulticlassOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    user_splits_fixed = [False, False, False, True, True]
+
+    with raises(ValueError):
+        # pure pre-bins
+        optb = MulticlassOptimalBinning(user_splits=user_splits,
+                                        user_splits_fixed=user_splits_fixed)
+        optb.fit(x, y)
+
+    user_splits = [2.1, 2.2, 2.3, 2.6, 2.7]
+    optb = MulticlassOptimalBinning(user_splits=user_splits,
+                                    user_splits_fixed=user_splits_fixed)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert 2.7 in optb.splits
+
+
 def test_numerical_default_transform():
     optb = MulticlassOptimalBinning()
     with raises(NotFittedError):

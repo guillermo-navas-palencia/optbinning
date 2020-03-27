@@ -11,6 +11,8 @@ import time
 
 import numpy as np
 
+from sklearn.utils import check_array
+
 from ..logging import Logger
 from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
@@ -491,8 +493,19 @@ class MulticlassOptimalBinning(OptimalBinning):
         time_prebinning = time.perf_counter()
 
         if self.user_splits is not None:
-            splits, n_nonevent, n_event = self._user_splits_refinement(
-                self.user_splits, x_clean, y_clean, y_missing, y_special, None)
+            n_splits = len(self.user_splits)
+
+            if self.verbose:
+                logging.info("Pre-binning: user splits supplied: {}"
+                             .format(n_splits))
+
+            user_splits = check_array(self.user_splits, ensure_2d=False,
+                                      dtype=None, force_all_finite=True)
+
+            user_splits = np.unique(self.user_splits)
+
+            splits, n_nonevent, n_event = self._prebinning_refinement(
+                user_splits, x_clean, y_clean, y_missing, y_special, None)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, None)

@@ -915,7 +915,11 @@ class OptimalBinning(BaseEstimator):
 
         self._optimizer = optimizer
         self._status = status
-        self._splits_optimal = splits[solution[:-1]]
+
+        if self.dtype == "categorical" and self.user_splits is not None:
+            self._splits_optimal = splits[solution]
+        else:
+            self._splits_optimal = splits[solution[:-1]]
 
         self._time_solver = time.perf_counter() - time_init
 
@@ -963,13 +967,16 @@ class OptimalBinning(BaseEstimator):
 
     def _compute_prebins(self, splits_prebinning, x, y0, y1):
         n_splits = len(splits_prebinning)
-
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
 
-        indices = np.digitize(x, splits_prebinning, right=False)
+        if self.dtype == "categorical" and self.user_splits is not None:
+            indices = np.digitize(x, splits_prebinning, right=True)
+            n_bins = n_splits
+        else:
+            indices = np.digitize(x, splits_prebinning, right=False)
+            n_bins = n_splits + 1
 
-        n_bins = n_splits + 1
         n_nonevent = np.zeros(n_bins).astype(np.int)
         n_event = np.zeros(n_bins).astype(np.int)
 
@@ -983,8 +990,11 @@ class OptimalBinning(BaseEstimator):
         if np.any(mask_remove):
             self._n_refinements += 1
 
-            mask_splits = np.concatenate(
-                [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+            if self.dtype == "categorical" and self.user_splits is not None:
+                mask_splits = mask_remove
+            else:
+                mask_splits = np.concatenate(
+                    [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
             if self.user_splits_fixed is not None:
                 user_splits_fixed = np.asarray(self._user_splits_fixed)

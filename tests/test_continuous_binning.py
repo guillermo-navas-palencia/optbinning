@@ -5,6 +5,7 @@ ContinuousOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import numpy as np
 import pandas as pd
 
 from pytest import approx, raises
@@ -153,6 +154,35 @@ def test_numerical_user_splits_fixed():
     optb.fit(x, y)
 
     assert optb.status == "INFEASIBLE"
+
+
+def test_categorical_user_splits():
+    np.random.seed(0)
+    n = 100000
+
+    x = sum([[i] * n for i in [-1, 2, 3, 4, 7, 8, 9, 10]], [])
+    y = list(np.random.binomial(1, 0.011665, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.0133333, n))
+    y += list(np.random.binomial(1, 0.166667, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.0246041, n))
+    y += list(np.zeros(n))
+    y += list(np.random.binomial(1, 0.025641, n))
+
+    user_splits = [[2., 7., 9., 3., 10., 4.], [8], [-1]]
+    user_splits_fixed = [True, True, True]
+
+    optb1 = ContinuousOptimalBinning(dtype="categorical",
+                                     user_splits=user_splits)
+    optb2 = ContinuousOptimalBinning(dtype="categorical",
+                                     user_splits=user_splits,
+                                     user_splits_fixed=user_splits_fixed)
+
+    for optb in (optb1, optb2):
+        optb.fit(x, y)
+        optb.binning_table.build()
+        assert optb.status == "OPTIMAL"
 
 
 def test_numerical_max_pvalue():

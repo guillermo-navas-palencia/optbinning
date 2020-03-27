@@ -706,7 +706,11 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         self._optimizer = optimizer
         self._status = status
-        self._splits_optimal = splits[solution[:-1]]
+
+        if self.dtype == "categorical" and self.user_splits is not None:
+            self._splits_optimal = splits[solution]
+        else:
+            self._splits_optimal = splits[solution[:-1]]
 
         self._time_solver = time.perf_counter() - time_init
 
@@ -724,7 +728,12 @@ class ContinuousOptimalBinning(OptimalBinning):
         if self.split_digits is not None:
             splits_prebinning = np.round(splits_prebinning, self.split_digits)
 
-        indices = np.digitize(x, splits_prebinning, right=False)
+        if self.dtype == "categorical" and self.user_splits is not None:
+            indices = np.digitize(x, splits_prebinning, right=True)
+            n_bins = n_splits
+        else:
+            indices = np.digitize(x, splits_prebinning, right=False)
+            n_bins = n_splits + 1
 
         # Compute n_records, sum and std for special, missing and others
         self._n_records_special = len(y_special)
@@ -748,7 +757,6 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._max_target_others = np.max(y_others)
             self._n_zeros_others = np.count_nonzero(y_others == 0)
 
-        n_bins = n_splits + 1
         n_records = np.zeros(n_bins).astype(np.int64)
         sums = np.zeros(n_bins)
         stds = np.zeros(n_bins)

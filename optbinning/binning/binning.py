@@ -11,8 +11,6 @@ import time
 
 import numpy as np
 
-from sklearn.base import BaseEstimator
-from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
 
 from ..logging import Logger
@@ -20,6 +18,7 @@ from ..preprocessing import preprocessing_user_splits_categorical
 from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
 from .auto_monotonic import peak_valley_trend_change_heuristic
+from .base import BaseOptimalBinning
 from .binning_information import print_binning_information
 from .binning_statistics import bin_categorical
 from .binning_statistics import bin_info
@@ -142,7 +141,7 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
             raise ValueError('Invalid value for monotonic trend. Allowed '
                              'string values are "auto", "auto_heuristic", '
                              '"auto_asc_desc", "ascending", "descending", '
-                             '"concave", "convex", "peak" "valley", '
+                             '"concave", "convex", "peak", "valley", '
                              '"peak_heuristic" and "valley_heuristic".')
 
     if (not isinstance(min_event_rate_diff, numbers.Number) or
@@ -229,7 +228,7 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class OptimalBinning(BaseEstimator):
+class OptimalBinning(BaseOptimalBinning):
     """Optimal binning of a numerical or categorical variable with respect to a
     binary target.
 
@@ -958,12 +957,6 @@ class OptimalBinning(BaseEstimator):
             splits_prebinning, x, y0, y1)
 
         return splits_prebinning, n_nonevent, n_event
-
-    def _check_is_fitted(self):
-        if not self._is_fitted:
-            raise NotFittedError("This {} instance is not fitted yet. Call "
-                                 "'fit' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     def _compute_prebins(self, splits_prebinning, x, y0, y1):
         n_splits = len(splits_prebinning)

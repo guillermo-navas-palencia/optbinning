@@ -166,7 +166,7 @@ class BinningCP:
         self._x = x
         self._n = n
 
-    def build_model_scenarios(self, n_nonevent, n_event, w, trend_change):
+    def build_model_scenarios(self, n_nonevent, n_event, w):
         # Parameters
         M = int(1e6)
         D, V, pvalue_violation_indices = multiclass_model_data(
@@ -214,6 +214,14 @@ class BinningCP:
         elif self.monotonic_trend == "descending":
             for s in range(n_scenarios):
                 self.add_constraint_monotonic_descending(model, n, D[s], x, M)
+
+        elif self.monotonic_trend == "concave":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_concave(model, n, D[s], x, M)
+
+        elif self.monotonic_trend == "convex":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_convex(model, n, D[s], x, M)
 
         elif self.monotonic_trend in ("peak", "valley"):
             for i in range(n):

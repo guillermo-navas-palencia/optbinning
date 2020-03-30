@@ -15,7 +15,7 @@ import numpy as np
 # from sklearn.utils import check_array
 
 from ..logging import Logger
-from ..preprocessing import split_data
+from ..preprocessing import split_data_scenarios
 from .binning import OptimalBinning
 from .binning_statistics import bin_info
 from .binning_statistics import BinningTable
@@ -80,13 +80,11 @@ def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,
                                                     max_bin_size))
 
     if monotonic_trend is not None:
-        if monotonic_trend not in ("auto", "auto_asc_desc", "ascending",
-                                   "descending", "convex", "concave", "peak",
-                                   "valley"):
+        if monotonic_trend not in ("ascending", "descending", "convex",
+                                   "concave", "peak", "valley"):
             raise ValueError('Invalid value for monotonic trend. Allowed '
-                             'string values are "auto", "auto_asc_desc", '
-                             '"ascending", "descending", "concave", "convex", '
-                             '"peak" and "valley"')
+                             'string values are "ascending", "descending", '
+                             '"concave", "convex", "peak" and "valley."')
 
     if (not isinstance(min_event_rate_diff, numbers.Number) or
             not 0. <= min_event_rate_diff <= 1.0):
@@ -149,16 +147,101 @@ def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class DSOptimalBinning(OptimalBinning):
-    """Deterministic equivalent of the stochastic optimal binning of a
-    numerical variable with respect to a binary target.
+class SBOptimalBinning(OptimalBinning):
+    """Scenario-based stochastic optimal binning of a numerical variable with
+    respect to a binary target.
+
+    Deterministic equivalent of the stochastic optimal binning given a finite
+    number of scenarios. The goal is to maximize the expected IV, satisfying
+    constraints from all scenarios.
 
     Parameters
     ----------
+    name : str, optional (default="")
+        The variable name.
+
+    prebinning_method : str, optional (default="cart")
+        The pre-binning method. Supported methods are "cart" for a CART
+        decision tree, "quantile" to generate prebins with approximately same
+        frequency and "uniform" to generate prebins with equal width. Method
+        "cart" uses `sklearn.tree.DecistionTreeClassifier
+        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
+        DecisionTreeClassifier.html>`_.
+
+    max_n_prebins : int (default=20)
+        The maximum number of bins after pre-binning (prebins).
+
+    min_prebin_size : float (default=0.05)
+        The fraction of mininum number of records for each prebin.
+
+    min_n_bins : int or None, optional (default=None)
+        The minimum number of bins. If None, then ``min_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    max_n_bins : int or None, optional (default=None)
+        The maximum number of bins. If None, then ``max_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    min_bin_size : float or None, optional (default=None)
+        The fraction of minimum number of records for each bin. If None,
+        ``min_bin_size = min_prebin_size``.
+
+    max_bin_size : float or None, optional (default=None)
+        The fraction of maximum number of records for each bin. If None,
+        ``max_bin_size = 1.0``.
+
+    monotonic_trend : str or None, optional (default=None)
+        The **event rate** monotonic trend. Supported trends are "ascending",
+        "descending", "concave", "convex", "peak" and "valley". If None, then
+        the monotonic constraint is disabled.
+
+    min_event_rate_diff : float, optional (default=0)
+        The minimum event rate difference between consecutives bins. This
+        option currently only applies when ``monotonic_trend`` is "ascending",
+        "descending", "peak_heuristic" or "valley_heuristic".
+
+    max_pvalue : float or None, optional (default=0.05)
+        The maximum p-value among bins. The Z-test is used to detect bins
+        not satisfying the p-value constraint. Option supported by solvers
+        "cp" and "mip".
+
+    max_pvalue_policy : str, optional (default="consecutive")
+        The method to determine bins not satisfying the p-value constraint.
+        Supported methods are "consecutive" to compare consecutive bins and
+        "all" to compare all bins.
+
+    class_weight : dict, "balanced" or None, optional (default=None)
+        Weights associated with classes in the form ``{class_label: weight}``.
+        If None, all classes are supposed to have weight one. Check
+        `sklearn.tree.DecistionTreeClassifier
+        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
+        DecisionTreeClassifier.html>`_.
+
+    user_splits : array-like or None, optional (default=None)
+        The list of pre-binning split points when ``dtype`` is "numerical" or
+        the list of prebins when ``dtype`` is "categorical".
+
+    user_splits_fixed : array-like or None (default=None)
+        The list of pre-binning split points that must be fixed.
+
+    special_codes : array-like or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
+    split_digits : int or None, optional (default=None)
+        The significant digits of the split points. If ``split_digits`` is set
+        to 0, the split points are integers. If None, then all significant
+        digits in the split points are considered.
+
+    time_limit : int (default=100)
+        The maximum time in seconds to run the optimization solver.
+
+    verbose : bool (default=False)
+        Enable verbose output.
     """
     def __init__(self, name="", prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
+                 min_bin_size=None, max_bin_size=None, monotonic_trend=None,
                  min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", class_weight=None,
                  user_splits=None, user_splits_fixed=None, special_codes=None,
@@ -206,7 +289,14 @@ class DSOptimalBinning(OptimalBinning):
         self._user_splits_fixed = user_splits_fixed
 
         # info
+        self._binning_table = None
+        self._binning_tables = None
+        self._n_prebins = None
         self._n_refinements = 0
+        self._n_samples = None
+        self._optimizer = None
+        self._splits_optimal = None
+        self._status = None
 
         # timing
         self._time_total = None
@@ -221,17 +311,80 @@ class DSOptimalBinning(OptimalBinning):
         self._is_fitted = False
 
     def fit(self, X, Y, weights=None, check_input=False):
+        """Fit the optimal binning given a list of scenarios.
+
+        Parameters
+        ----------
+        X : array-like, shape = (n_scenarios,)
+            Lit of training vectors, where n_scenarios is the number of
+            scenarios.
+
+        Y : array-like, shape = (n_scenarios,)
+            List of target vectors relative to X.
+
+        weights : array-like, shape = (n_scenarios,)
+            Scenarios weights. If None, then scenarios are equally weighted.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        self : object
+            Fitted optimal binning.
+        """
         return self._fit(X, Y, weights, check_input)
 
-    def fit_transform(self, X, Y, weights=None, metric="woe", metric_special=0,
-                      metric_missing=0, check_input=False):
-        """Fit the optimal binning according to the given training data, then
-        transform it."""
+    def fit_transform(self, x, X, Y, weights=None, metric="woe",
+                      metric_special=0, metric_missing=0, check_input=False):
+        """Fit the optimal binning given a list of scenarios, then
+        transform it.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        X : array-like, shape = (n_scenarios,)
+            Lit of training vectors, where n_scenarios is the number of
+            scenarios.
+
+        Y : array-like, shape = (n_scenarios,)
+            List of target vectors relative to X.
+
+        weights : array-like, shape = (n_scenarios,)
+            Scenarios weights. If None, then scenarios are equally weighted.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence and "event_rate" to
+            choose the event rate.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        x_new : numpy array, shape = (n_samples,)
+            Transformed array.
+        """
+        return self.fit(X, Y, weights, check_input).transform(
+            x, metric, metric_special, metric_missing, check_input)
 
     def _fit(self, X, Y, weights, check_input):
         time_init = time.perf_counter()
 
-        # _check_parameters(**self.get_params())
+        _check_parameters(**self.get_params())
 
         # Check X, Y and weights
         self._n_scenarios = len(X)
@@ -243,43 +396,32 @@ class DSOptimalBinning(OptimalBinning):
         _check_parameters(**self.get_params())
 
         # Pre-processing
+        if self.verbose:
+            logging.info("Pre-processing started.")
+
         time_preprocessing = time.perf_counter()
 
         self._n_samples = sum(len(x) for x in X)
 
-        x_clean = []
-        y_clean = []
-        x_missing = []
-        y_missing = []
-        x_special = []
-        y_special = []
+        if self.verbose:
+            logging.info("Pre-processing: number of samples: {}"
+                         .format(self._n_samples))
 
-        if weights is None:
-            w = None
-        else:
-            w = []
-
-        for s in range(self._n_scenarios):
-            x = X[s]
-            y = Y[s]
-
-            x_c, y_c, x_m, y_m, x_s, y_s, _, _, _ = split_data(
-                self.dtype, x, y, special_codes=self.special_codes,
-                check_input=check_input)
-
-            x_clean.append(x_c)
-            y_clean.append(y_c)
-            x_missing.append(x_m)
-            y_missing.append(y_m)
-            x_special.append(x_s)
-            y_special.append(y_s)
-
-            if weights is not None:
-                w.extend(np.full(len(x_c), weights[s]))
+        [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
+         w] = split_data_scenarios(X, Y, weights, self.special_codes,
+                                   check_input)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
+        if self.verbose:
+
+            logging.info("Pre-processing terminated. Time: {:.4f}s"
+                         .format(self._time_preprocessing))
+
         # Pre-binning
+        if self.verbose:
+            logging.info("Pre-binning started.")
+
         time_prebinning = time.perf_counter()
 
         if self.user_splits is not None:
@@ -291,6 +433,15 @@ class DSOptimalBinning(OptimalBinning):
         self._n_prebins = len(n_nonevent)
 
         self._time_prebinning = time.perf_counter() - time_prebinning
+
+        if self.verbose:
+            logging.info("Pre-binning: number of prebins: {}"
+                         .format(self._n_prebins))
+            logging.info("Pre-binning: number of refinements: {}"
+                         .format(self._n_refinements))
+
+            logging.info("Pre-binning terminated. Time: {:.4f}s"
+                         .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event, weights)
@@ -455,22 +606,15 @@ class DSOptimalBinning(OptimalBinning):
         else:
             max_bin_size = self.max_bin_size
 
-        # Monotonic trend
-        auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
-        if self.monotonic_trend in auto_monotonic_modes:
-            pass
-        else:
-            monotonic = self.monotonic_trend
-
-        optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
-                              min_bin_size, max_bin_size, None,
-                              None, None, None, 0,
+        optimizer = BinningCP(self.monotonic_trend, self.min_n_bins,
+                              self.max_n_bins, min_bin_size, max_bin_size,
+                              None, None, None, None, self.min_event_rate_diff,
                               self.max_pvalue, self.max_pvalue_policy, None,
                               self.user_splits_fixed, self.time_limit)
         if weights is None:
-            weights = np.ones(n_event.shape[1], np.int)
+            weights = np.ones(self._n_scenarios, np.int)
 
-        optimizer.build_model_scenarios(n_nonevent, n_event, weights, None)
+        optimizer.build_model_scenarios(n_nonevent, n_event, weights)
 
         status, solution = optimizer.solve()
 
@@ -483,8 +627,7 @@ class DSOptimalBinning(OptimalBinning):
 
         self._time_solver = time.perf_counter() - time_init
 
-    @property
-    def binning_table_scenarios(self, scenario_id):
+    def binning_table_scenario(self, scenario_id):
         """Return the instantiated binning table corresponding to
         ``scenario_id``. Please refer to :ref:`Binning table: binary target`.
 
@@ -496,6 +639,11 @@ class DSOptimalBinning(OptimalBinning):
         -------
         binning_table : BinningTable.
         """
+        if (not isinstance(scenario_id, numbers.Integral) or
+                not 0 <= scenario_id < self._n_scenarios):
+            raise ValueError("scenario_id must be < {}; got {}."
+                             .format(self._n_scenarios, scenario_id))
+
         return self._binning_tables[scenario_id]
 
     @property

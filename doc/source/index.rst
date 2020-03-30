@@ -31,6 +31,12 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
 
 .. toctree::
    :maxdepth: 1
+   :caption: Binning under uncertainty
+
+   binning_scenarios
+
+.. toctree::
+   :maxdepth: 1
    :caption: Other binning algorithms
 
    mdlp

@@ -4,6 +4,8 @@ from .binning.multiclass_binning import MulticlassOptimalBinning
 
 from .binning.binning_process import BinningProcess
 
+from .binning.binning_scenarios import SBOptimalBinning
+
 from .binning.mdlp import MDLP
 
 
@@ -11,4 +13,5 @@ __all__ = ['OptimalBinning',
            'ContinuousOptimalBinning',
            'MulticlassOptimalBinning',
            'BinningProcess',
+           'SBOptimalBinning',
            'MDLP']

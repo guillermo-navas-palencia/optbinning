@@ -298,6 +298,8 @@ class SBOptimalBinning(OptimalBinning):
         self.verbose = verbose
 
         # auxiliary
+        self._categories = None
+        self._cat_others = None
         self._n_scenarios = None
         self._n_event = None
         self._n_nonevent = None
@@ -511,9 +513,6 @@ class SBOptimalBinning(OptimalBinning):
                 self._n_nonevent_special[s], self._n_event_special[s], None,
                 None, [])
 
-            self._n_nonevent.append(s_n_nonevent)
-            self._n_event.append(s_n_event)
-
             t_n_nonevent += s_n_nonevent
             t_n_event += s_n_event
 
@@ -523,9 +522,12 @@ class SBOptimalBinning(OptimalBinning):
 
             self._binning_tables.append(binning_table)
 
+        self._n_nonevent = t_n_nonevent
+        self._n_event = t_n_event
+
         self._binning_table = BinningTable(
-            self.name, self.dtype, self._splits_optimal, t_n_nonevent,
-            t_n_event, None, None, self.user_splits)
+            self.name, self.dtype, self._splits_optimal, self._n_nonevent,
+            self._n_event, None, None, self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

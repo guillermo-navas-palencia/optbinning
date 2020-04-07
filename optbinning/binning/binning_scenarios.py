@@ -1,6 +1,6 @@
 """
-Optimal binning algorithm given scenarions. Deterministic equivalent to
-stochastic optimal binning.
+Optimal binning algorithm given scenarions. Extensive form of the stochastic
+optimal binning.
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-# from sklearn.utils import check_array
+from sklearn.utils import check_array
 
 from ..logging import Logger
 from ..preprocessing import split_data_scenarios
@@ -147,13 +147,34 @@ def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
+def _check_X_Y_weights(X, Y, weights):
+    if not isinstance(X, list):
+        raise TypeError("X must be a list of numpy.ndarray.")
+
+    if not isinstance(Y, list):
+        raise TypeError("Y must be a list of numpy.ndarray.")
+
+    n_scenarios_x = len(X)
+    n_scenarios_y = len(Y)
+
+    if n_scenarios_x != n_scenarios_y:
+        raise ValueError("X and Y must have the same length.")
+
+    if weights is not None:
+        n_weights = len(weights)
+        if n_scenarios_x != n_weights:
+            raise ValueError("Number of scenarios and number of weights must "
+                             "coincide; got {} != {}."
+                             .format(n_scenarios_x, n_weights))
+
+
 class SBOptimalBinning(OptimalBinning):
     """Scenario-based stochastic optimal binning of a numerical variable with
     respect to a binary target.
 
-    Deterministic equivalent of the stochastic optimal binning given a finite
-    number of scenarios. The goal is to maximize the expected IV, satisfying
-    constraints from all scenarios.
+    Extensive form of the stochastic optimal binning given a finite number of
+    scenarios. The goal is to maximize the expected IV obtaining a solution
+    feasible for all scenarios.
 
     Parameters
     ----------
@@ -384,9 +405,10 @@ class SBOptimalBinning(OptimalBinning):
     def _fit(self, X, Y, weights, check_input):
         time_init = time.perf_counter()
 
+        # Check parameters and input arrays
         _check_parameters(**self.get_params())
+        _check_X_Y_weights(X, Y, weights)
 
-        # Check X, Y and weights
         self._n_scenarios = len(X)
 
         if self.verbose:
@@ -414,6 +436,18 @@ class SBOptimalBinning(OptimalBinning):
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
         if self.verbose:
+            n_clean = len(x_clean)
+            n_missing = len(x_missing)
+            n_special = len(x_special)
+
+            logging.info("Pre-processing: number of clean samples: {}"
+                         .format(n_clean))
+
+            logging.info("Pre-processing: number of missing samples: {}"
+                         .format(n_missing))
+
+            logging.info("Pre-processing: number of special samples: {}"
+                         .format(n_special))
 
             logging.info("Pre-processing terminated. Time: {:.4f}s"
                          .format(self._time_preprocessing))
@@ -425,7 +459,14 @@ class SBOptimalBinning(OptimalBinning):
         time_prebinning = time.perf_counter()
 
         if self.user_splits is not None:
-            pass
+            user_splits = check_array(
+                self.user_splits, ensure_2d=False, dtype=None,
+                force_all_finite=True)
+
+            user_splits = np.unique(self.user_splits)
+
+            splits, n_nonevent, n_event = self._prebinning_refinement(
+                user_splits, x_clean, y_clean, y_missing, y_special)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 w, x_clean, y_clean, y_missing, y_special, self.class_weight)
@@ -447,10 +488,16 @@ class SBOptimalBinning(OptimalBinning):
         self._fit_optimizer(splits, n_nonevent, n_event, weights)
 
         # Post-processing
+        if self.verbose:
+            logging.info("Post-processing started.")
+            logging.info("Post-processing: compute binning information.")
+
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            pass
+            t_info = target_info(y_clean)
+            n_nonevent = np.array([t_info[0]])
+            n_event = np.array([t_info[1]])
 
         self._n_nonevent = []
         self._n_event = []
@@ -485,7 +532,16 @@ class SBOptimalBinning(OptimalBinning):
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
+        if self.verbose:
+            logging.info("Post-processing terminated. Time: {:.4f}s"
+                         .format(self._time_postprocessing))
+
         self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            logging.info("Optimal binning terminated. Status: {}. "
+                         "Time: {:.4f}s".format(
+                            self._status, self._time_total))
 
         # Completed successfully
         self._logger.close()
@@ -614,9 +670,15 @@ class SBOptimalBinning(OptimalBinning):
         if weights is None:
             weights = np.ones(self._n_scenarios, np.int)
 
+        if self.verbose:
+            logging.info("Optimizer: build model...")
+
         optimizer.build_model_scenarios(n_nonevent, n_event, weights)
 
         status, solution = optimizer.solve()
+
+        if self.verbose:
+            logging.info("Optimizer: solve...")
 
         self._solution = solution
 
@@ -627,13 +689,17 @@ class SBOptimalBinning(OptimalBinning):
 
         self._time_solver = time.perf_counter() - time_init
 
+        if self.verbose:
+            logging.info("Optimizer terminated. Time: {:.4f}s"
+                         .format(self._time_solver))
+
     def binning_table_scenario(self, scenario_id):
         """Return the instantiated binning table corresponding to
         ``scenario_id``. Please refer to :ref:`Binning table: binary target`.
 
         Parameters
         ----------
-        scenario_id
+        scenario_id : int
 
         Returns
         -------

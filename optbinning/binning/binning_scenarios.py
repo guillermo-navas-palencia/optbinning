@@ -314,6 +314,7 @@ class SBOptimalBinning(OptimalBinning):
         self._binning_tables = None
         self._n_prebins = None
         self._n_refinements = 0
+        self._n_samples_scenario = None
         self._n_samples = None
         self._optimizer = None
         self._splits_optimal = None
@@ -423,7 +424,8 @@ class SBOptimalBinning(OptimalBinning):
 
         time_preprocessing = time.perf_counter()
 
-        self._n_samples = sum(len(x) for x in X)
+        self._n_samples_scenario = [len(x) for x in X]
+        self._n_samples = sum(self._n_samples_scenario)
 
         if self.verbose:
             logging.info("Pre-processing: number of samples: {}"
@@ -493,11 +495,6 @@ class SBOptimalBinning(OptimalBinning):
             logging.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
-
-        if not len(splits):
-            t_info = target_info(y_clean)
-            n_nonevent = np.array([t_info[0]])
-            n_event = np.array([t_info[1]])
 
         self._n_nonevent = []
         self._n_event = []
@@ -651,14 +648,16 @@ class SBOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            # min_bin_size = np.int(np.ceil(self.min_bin_size))
-            pass
+            min_bin_size = [np.int(np.ceil(
+                self.min_bin_size * self._n_samples_scenario[s]))
+                for s in range(self._n_scenarios)]
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            # max_bin_size = np.int(np.ceil(self.max_bin_size))
-            pass
+            max_bin_size = [np.int(np.ceil(
+                self.max_bin_size * self._n_samples_scenario[s]))
+                for s in range(self._n_scenarios)]
         else:
             max_bin_size = self.max_bin_size
 

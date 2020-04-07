@@ -184,7 +184,7 @@ class BinningCP:
         model = cp_model.CpModel()
 
         # Decision variables
-        x, y, t, d, u, bin_size_diff = self.decision_variables(model, n)
+        x, y, t, d = self.decision_variables_scenarios(model, n)
 
         # Objective function
         model.Maximize(sum([w[s] * sum([(V[s][i][i] * x[i, i]) +
@@ -202,9 +202,7 @@ class BinningCP:
         self.add_constraint_min_max_bins(model, n, x, d)
 
         # Constraint: min / max bin size
-        # TODO: update n_records is not constant
-        self.add_constraint_min_max_bin_size(model, n, x, u, n_records,
-                                             bin_size_diff)
+        self.add_constraint_min_max_bin_size_scenarios(model, n, x, n_records)
 
         # Constraints: monotonicity
         if self.monotonic_trend == "ascending":
@@ -302,6 +300,33 @@ class BinningCP:
 
         return x, y, t, d, u, bin_size_diff
 
+    def decision_variables_scenarios(self, model, n):
+        x = {}
+        for i in range(n):
+            for j in range(i + 1):
+                x[i, j] = model.NewBoolVar("x[{}, {}]".format(i, j))
+
+        y = None
+        t = None
+        d = None
+
+        if self.monotonic_trend in ("peak", "valley"):
+            # Auxiliary binary variables
+            y = {}
+            for i in range(n):
+                y[i] = model.NewBoolVar("y[{}]".format(i))
+
+            # Change point
+            t = model.NewIntVar(0, n, "t")
+
+        if self.min_n_bins is not None and self.max_n_bins is not None:
+            n_bin_diff = self.max_n_bins - self.min_n_bins
+
+            # Range constraints auxiliary variables
+            d = model.NewIntVar(0, n_bin_diff, "n_bin_diff")
+
+        return x, y, t, d
+
     def add_constraint_unique_assignment(self, model, n, x):
         for j in range(n):
             model.Add(sum([x[i, j] for i in range(j, n)]) == 1)
@@ -337,6 +362,20 @@ class BinningCP:
                     model.Add(bin_size >= self.min_bin_size * x[i, i])
                 elif self.max_bin_size is not None:
                     model.Add(bin_size <= self.max_bin_size * x[i, i])
+
+    def add_constraint_min_max_bin_size_scenarios(self, model, n, x,
+                                                  n_records):
+        if self.min_bin_size is not None or self.max_bin_size is not None:
+            n_scenarios = n_records.shape[1]
+            for s in range(n_scenarios):
+                for i in range(n):
+                    bin_size = sum([n_records[j, s] * x[i, j]
+                                    for j in range(i + 1)])
+
+                    if self.min_bin_size is not None:
+                        model.Add(bin_size >= self.min_bin_size[s] * x[i, i])
+                    if self.max_bin_size is not None:
+                        model.Add(bin_size <= self.max_bin_size[s] * x[i, i])
 
     def add_constraint_monotonic_ascending(self, model, n, D, x, M):
         min_event_rate_diff = int(M * self.min_event_rate_diff)

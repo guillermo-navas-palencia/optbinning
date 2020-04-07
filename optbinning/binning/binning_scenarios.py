@@ -498,13 +498,9 @@ class SBOptimalBinning(OptimalBinning):
 
         time_postprocessing = time.perf_counter()
 
-        self._n_nonevent = []
-        self._n_event = []
-
+        self._n_nonevent = 0
+        self._n_event = 0
         self._binning_tables = []
-
-        t_n_nonevent = 0
-        t_n_event = 0
 
         for s in range(self._n_scenarios):
             s_n_nonevent, s_n_event = bin_info(
@@ -513,17 +509,14 @@ class SBOptimalBinning(OptimalBinning):
                 self._n_nonevent_special[s], self._n_event_special[s], None,
                 None, [])
 
-            t_n_nonevent += s_n_nonevent
-            t_n_event += s_n_event
+            self._n_nonevent += s_n_nonevent
+            self._n_event += s_n_event
 
             binning_table = BinningTable(
                 self.name, self.dtype, self._splits_optimal, s_n_nonevent,
                 s_n_event, None, None, self.user_splits)
 
             self._binning_tables.append(binning_table)
-
-        self._n_nonevent = t_n_nonevent
-        self._n_event = t_n_event
 
         self._binning_table = BinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_nonevent,
@@ -604,8 +597,8 @@ class SBOptimalBinning(OptimalBinning):
             return splits_prebinning, np.array([]), np.array([])
 
         n_bins = n_splits + 1
-        n_nonevent = np.zeros((n_bins, self._n_scenarios)).astype(np.int)
-        n_event = np.zeros((n_bins, self._n_scenarios)).astype(np.int)
+        n_nonevent = np.empty((n_bins, self._n_scenarios)).astype(np.int)
+        n_event = np.empty((n_bins, self._n_scenarios)).astype(np.int)
         mask_remove = np.zeros(n_bins).astype(np.bool)
 
         for s in range(self._n_scenarios):

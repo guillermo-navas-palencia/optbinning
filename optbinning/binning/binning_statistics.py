@@ -409,7 +409,7 @@ class BinningTable:
 
         return df
 
-    def plot(self, metric="woe"):
+    def plot(self, metric="woe", savefig=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -420,6 +420,9 @@ class BinningTable:
         metric : str, optional (default="woe")
             Supported metrics are "woe" to show the Weight of Evidence (WoE)
             measure and "event_rate" to show the event rate.
+
+        savefig : str or None (default=None)
+            Path to save the plot figure.
         """
         _check_is_built(self)
 
@@ -497,7 +500,15 @@ class BinningTable:
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
-        plt.show()
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
         """Binning table analysis.
@@ -787,10 +798,15 @@ class MulticlassBinningTable:
 
         return df
 
-    def plot(self):
+    def plot(self, savefig=None):
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
+
+        Parameters
+        ----------
+        savefig : str or None (default=None)
+            Path to save the plot figure.
         """
         _check_is_built(self)
 
@@ -856,7 +872,15 @@ class MulticlassBinningTable:
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
-        plt.show()
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
 
     def analysis(self, print_output=True):
         """Binning table analysis.
@@ -1091,10 +1115,15 @@ class ContinuousBinningTable:
 
         return df
 
-    def plot(self):
+    def plot(self, savefig=None):
         """Plot the binning table.
 
         Visualize records count and mean values.
+
+        Parameters
+        ----------
+        savefig : str or None (default=None)
+            Path to save the plot figure.
         """
         _check_is_built(self)
 
@@ -1159,4 +1188,12 @@ class ContinuousBinningTable:
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=12)
-        plt.show()
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()

@@ -73,12 +73,18 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         If False, the input arrays x and y will not be checked.
 
     outlier_detector : str or None (default=None)
+        The outlier detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
 
     outlier_params : dict or None (default=None)
+        Dictionary of parameters to pass to the outlier detection method.
 
     fix_lb : float or None (default=None)
+        Lower bound or minimum admissible value.
 
     fix_ub : float or None (default=None)
+        Upper bound or maximum admissible value.
 
     Returns
     -------

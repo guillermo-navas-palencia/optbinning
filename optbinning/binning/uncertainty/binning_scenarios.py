@@ -620,7 +620,26 @@ class SBOptimalBinning(OptimalBinning):
             mask_splits = np.concatenate(
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
+            if self.user_splits_fixed is not None:
+                user_splits_fixed = np.asarray(self._user_splits_fixed)
+                user_splits = np.asarray(self._user_splits)
+                fixed_remove = user_splits_fixed & mask_splits
+
+                if any(fixed_remove):
+                    raise ValueError("Fixed user_splits {} are removed "
+                                     "because produce pure prebins. Provide "
+                                     "different splits to be fixed."
+                                     .format(user_splits[fixed_remove]))
+
+                # Update boolean array of fixed user splits.
+                self._user_splits_fixed = user_splits_fixed[~mask_splits]
+                self._user_splits = user_splits[~mask_splits]
+
             splits = splits_prebinning[~mask_splits]
+
+            if self.verbose:
+                logging.info("Pre-binning: number prebins removed: {}"
+                             .format(np.count_nonzero(mask_remove)))
 
             [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
                 splits, x, y)
@@ -699,6 +718,8 @@ class SBOptimalBinning(OptimalBinning):
         -------
         binning_table : BinningTable.
         """
+        self._check_is_fitted()
+
         if (not isinstance(scenario_id, numbers.Integral) or
                 not 0 <= scenario_id < self._n_scenarios):
             raise ValueError("scenario_id must be < {}; got {}."

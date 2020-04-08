@@ -10,6 +10,7 @@ import pandas as pd
 
 from pytest import approx, raises
 
+from optbinning.binning.binning_statistics import BinningTable
 from optbinning.binning.uncertainty import SBOptimalBinning
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
@@ -152,12 +153,103 @@ def test_input_scenarios():
 
 
 def test_default():
-    pass
+    sboptb = SBOptimalBinning(monotonic_trend="descending")
+    sboptb.fit(x_s, y_s)
+
+    assert sboptb.status == "OPTIMAL"
+    assert sboptb.splits == approx([13.09499979, 14.14999962, 15.24499989],
+                                   rel=1e-6)
+
+
+def test_default_transform():
+    sboptb = SBOptimalBinning(monotonic_trend="descending")
+    sboptb.fit(x_s, y_s)
+
+    x_transform = sboptb.transform([12, 14, 15, 21], metric="woe")
+    assert x_transform == approx([-2.46667422, -0.55591146, 0.24544931,
+                                  2.8963411], rel=1e-6)
+
+
+def test_default_fit_transform():
+    sboptb = SBOptimalBinning(monotonic_trend="descending")
+
+    x_transform = sboptb.fit_transform([12, 14, 15, 21], x_s, y_s)
+    assert x_transform == approx([-2.46667422, -0.55591146, 0.24544931,
+                                  2.8963411], rel=1e-6)
 
 
 def test_user_splits():
-    pass
+    user_splits = [11, 12, 13, 14, 15, 16, 17]
+
+    sboptb = SBOptimalBinning(monotonic_trend="descending",
+                              user_splits=user_splits)
+    sboptb.fit(x_s, y_s)
+
+    assert sboptb.status == "OPTIMAL"
+    assert sboptb.splits == approx([12, 14, 15], rel=1e-6)
 
 
 def test_user_splits_fixed():
-    pass
+    user_splits = [11, 12, 13, 14, 14.7, 15.5, 17]
+    user_splits_fixed = [False, False, False, False, False, True, False]
+
+    sboptb = SBOptimalBinning(monotonic_trend="descending",
+                              user_splits=user_splits,
+                              user_splits_fixed=user_splits_fixed)
+    sboptb.fit(x_s, y_s)
+
+    assert sboptb.status == "OPTIMAL"
+    assert 15.5 in sboptb.splits
+
+
+def test_min_bin_size():
+    sboptb = SBOptimalBinning(monotonic_trend="descending", min_bin_size=0.1)
+    sboptb.fit(x_s, y_s)
+
+    n_scenarios = len(x_s)
+
+    for s in range(n_scenarios):
+        bt_s = sboptb.binning_table_scenario(s)
+        bt = bt_s.build()
+
+        count = bt["Count (%)"].values[:-3]
+        assert np.all(count >= 0.1)
+
+
+def test_max_bin_size():
+    sboptb = SBOptimalBinning(monotonic_trend="descending", max_bin_size=0.6)
+    sboptb.fit(x_s, y_s)
+
+    assert sboptb.status == "OPTIMAL"
+
+    n_scenarios = len(x_s)
+
+    for s in range(n_scenarios):
+        bt_s = sboptb.binning_table_scenario(s)
+        bt = bt_s.build()
+
+        count = bt["Count (%)"].values[:-3]
+        assert np.all(count <= 0.6)
+
+
+def test_binning_table_scenario():
+    sboptb = SBOptimalBinning(monotonic_trend="descending")
+
+    with raises(NotFittedError):
+        sboptb.binning_table_scenario(scenario_id=2)
+
+    sboptb.fit(x_s, y_s)
+
+    with raises(ValueError):
+        bt = sboptb.binning_table_scenario(scenario_id=4)
+
+    bt = sboptb.binning_table_scenario(scenario_id=2)
+
+    assert isinstance(bt, BinningTable)
+
+
+def test_verbose():
+    sboptb = SBOptimalBinning(monotonic_trend="descending", verbose=True)
+    sboptb.fit(x_s, y_s)
+
+    assert sboptb.status == "OPTIMAL"

@@ -14,14 +14,14 @@ import numpy as np
 
 from sklearn.utils import check_array
 
-from ..logging import Logger
-from ..preprocessing import split_data_scenarios
-from .binning import OptimalBinning
-from .binning_statistics import bin_info
-from .binning_statistics import BinningTable
-from .binning_statistics import target_info
-from .cp import BinningCP
-from .prebinning import PreBinning
+from ...logging import Logger
+from ...preprocessing import split_data_scenarios
+from ..binning import OptimalBinning
+from ..binning_statistics import bin_info
+from ..binning_statistics import BinningTable
+from ..binning_statistics import target_info
+from ..cp import BinningCP
+from ..prebinning import PreBinning
 
 
 def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,

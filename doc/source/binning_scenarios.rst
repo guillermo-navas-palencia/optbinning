@@ -8,7 +8,7 @@ Introduction
 SBSOB with binary target
 ------------------------
 
-.. autoclass:: optbinning.SBOptimalBinning
+.. autoclass:: optbinning.binning.uncertainty.SBOptimalBinning
    :members:
    :inherited-members:
    :show-inheritance:

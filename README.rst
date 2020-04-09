@@ -273,6 +273,7 @@ Contributing
 ============
 Found a bug? Want to contribute with a new feature, improve documentation, or add examples? We encourage you to create pull requests and/or open GitHub issues. Thanks!
 
+
 Citation
 ========
 

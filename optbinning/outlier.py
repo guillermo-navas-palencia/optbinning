@@ -136,7 +136,10 @@ class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
 
     References
     ----------
-        https://www.itl.nist.gov/div898/handbook/eda/section3/eda35h.htm
+
+    .. [IH93] B. Iglewicz and D. Hoaglin. "Volume 16: How to Detect and Handle
+              Outliers", The ASQC Basic References in Quality Control:
+              Statistical Techniques, Edward F. Mykytka, Ph.D., Editor, 1993.
     """
     def __init__(self, threshold=3.5):
         self.threshold = threshold

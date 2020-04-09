@@ -24,7 +24,7 @@ not previously addressed.
 .. image:: doc/source/_images/binning_binary.png
    :target: doc/source/_images/binning_binary.png
 
-**Website**: http://gnpalencia.org/optbinning/
+**Documentation**: http://gnpalencia.org/optbinning/
 
 **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 
@@ -268,6 +268,10 @@ To compare softwares we use the shifted geometric mean, typically used in mathem
 (C): categorical variable.
 (*): max p-value between consecutive bins > 0.05.
 
+
+Contributing
+============
+Found a bug? Want to contribute with a new feature, improve documentation, or add examples? We encourage you to create pull requests and/or open GitHub issues. Thanks!
 
 Citation
 ========

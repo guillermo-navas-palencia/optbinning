@@ -716,7 +716,7 @@ class SBOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        binning_table : BinningTable.
+        binning_table : BinningTable
         """
         self._check_is_fitted()
 

@@ -11,6 +11,7 @@ import numpy as np
 from ortools.linear_solver import pywraplp
 
 from .model_data import model_data
+from .model_data import multiclass_model_data
 
 
 class BinningMIP:
@@ -167,6 +168,72 @@ class BinningMIP:
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(solver, n, x)
+
+        self.solver_ = solver
+        self._n = n
+        self._x = x
+
+    def build_model_scenarios(self, n_nonevent, n_event, w, trend_change):
+        # Parameters
+        D, V, pvalue_violation_indices = multiclass_model_data(
+            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy)
+
+        # Initialize solver
+        if self.mip_solver == "bop":
+            solver = pywraplp.Solver(
+                'BinningMIP', pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
+        elif self.mip_solver == "cbc":
+            solver = pywraplp.Solver(
+                'BinningMIP', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+
+        n = len(n_nonevent)
+        n_records = n_nonevent + n_event
+        n_scenarios = len(w)
+
+        # Decision variables
+        x, y, t, d, u, bin_size_diff = self.decision_variables(solver, n)
+        # Objective function
+        solver.Maximize(solver.Sum([w[s] * solver.Sum([(V[s][i][i] * x[i, i]) +
+                        solver.Sum([(V[s][i][j] - V[s][i][j+1]) * x[i, j]
+                                    for j in range(i)]) for i in range(n)])
+                        for s in range(n_scenarios)]))
+
+        # Constraint: unique assignment
+        self.add_constraint_unique_assignment(solver, n, x)
+
+        # Constraint: continuity
+        self.add_constraint_continuity(solver, n, x)
+
+        # Constraint: min / max bins
+        self.add_constraint_min_max_bins(solver, n, x, d)
+
+        # Constraint: min / max bin size
+        self.add_constraint_min_max_bin_size(solver, n, x, u, n_records,
+                                             bin_size_diff)
+
+        # Constraints: monotonicity
+        if self.monotonic_trend == "ascending":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_ascending(solver, n, D[s], x)
+
+        elif self.monotonic_trend == "descending":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_descending(solver, n, D[s], x)
+
+        elif self.monotonic_trend == "peak_heuristic":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_peak_heuristic(
+                    solver, n, D[s], x, trend_change)
+
+        elif self.monotonic_trend == "valley_heuristic":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_valley_heuristic(
+                    solver, n, D[s], x, trend_change)
+
+        # constraint: max-pvalue
+        for s in range(n_scenarios):
+            self.add_max_pvalue_constraint(solver, x,
+                                           pvalue_violation_indices[s])
 
         self.solver_ = solver
         self._n = n

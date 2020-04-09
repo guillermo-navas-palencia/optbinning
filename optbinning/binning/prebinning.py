@@ -41,7 +41,7 @@ class PreBinning:
 
         self._splits = None
 
-    def fit(self, x, y):
+    def fit(self, x, y, sample_weight=None):
         """Fit PreBinning algorithm.
 
         Parameters
@@ -81,7 +81,7 @@ class PreBinning:
                     min_samples_leaf=self.min_bin_size,
                     max_leaf_nodes=self.n_bins)
 
-            est.fit(x.reshape(-1, 1), y)
+            est.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)
             splits = np.unique(est.tree_.threshold)
             self._splits = splits[splits != _tree.TREE_UNDEFINED]
 

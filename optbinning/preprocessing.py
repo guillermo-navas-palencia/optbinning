@@ -73,12 +73,18 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         If False, the input arrays x and y will not be checked.
 
     outlier_detector : str or None (default=None)
+        The outlier detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
 
     outlier_params : dict or None (default=None)
+        Dictionary of parameters to pass to the outlier detection method.
 
     fix_lb : float or None (default=None)
+        Lower bound or minimum admissible value.
 
     fix_ub : float or None (default=None)
+        Upper bound or maximum admissible value.
 
     Returns
     -------
@@ -214,6 +220,39 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     else:
         return (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
                 [], [], [])
+
+
+def split_data_scenarios(X, Y, weights, special_codes, check_input):
+    n_scenarios = len(X)
+
+    x_clean = []
+    y_clean = []
+    x_missing = []
+    y_missing = []
+    x_special = []
+    y_special = []
+
+    w = None if weights is None else []
+
+    for s in range(n_scenarios):
+        x = X[s]
+        y = Y[s]
+
+        x_c, y_c, x_m, y_m, x_s, y_s, _, _, _ = split_data(
+            "numerical", x, y, special_codes=special_codes,
+            check_input=check_input)
+
+        x_clean.append(x_c)
+        y_clean.append(y_c)
+        x_missing.append(x_m)
+        y_missing.append(y_m)
+        x_special.append(x_s)
+        y_special.append(y_s)
+
+        if weights is not None:
+            w.extend(np.full(len(x_c), weights[s]))
+
+    return x_clean, y_clean, x_missing, y_missing, x_special, y_special, w
 
 
 def preprocessing_user_splits_categorical(user_splits, x, y):

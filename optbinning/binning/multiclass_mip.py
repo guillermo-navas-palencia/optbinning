@@ -83,7 +83,7 @@ class MulticlassBinningMIP(BinningMIP):
             if self.monotonic_trend[c] == "ascending":
                 self.add_constraint_monotonic_ascending(solver, n, D[c], x)
 
-            if self.monotonic_trend[c] == "descending":
+            elif self.monotonic_trend[c] == "descending":
                 self.add_constraint_monotonic_descending(solver, n, D[c], x)
 
             elif self.monotonic_trend[c] in ("peak", "valley"):

@@ -11,6 +11,7 @@ import numpy as np
 from ortools.sat.python import cp_model
 
 from .model_data import model_data
+from .model_data import multiclass_model_data
 
 
 class BinningCP:
@@ -119,7 +120,7 @@ class BinningCP:
         if self.monotonic_trend == "ascending":
             self.add_constraint_monotonic_ascending(model, n, D, x, M)
 
-        if self.monotonic_trend == "descending":
+        elif self.monotonic_trend == "descending":
             self.add_constraint_monotonic_descending(model, n, D, x, M)
 
         elif self.monotonic_trend == "concave":
@@ -157,6 +158,87 @@ class BinningCP:
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
+
+        # Constraint: fixed splits
+        self.add_constraint_fixed_splits(model, n, x)
+
+        self._model = model
+        self._x = x
+        self._n = n
+
+    def build_model_scenarios(self, n_nonevent, n_event, w):
+        # Parameters
+        M = int(1e6)
+        D, V, pvalue_violation_indices = multiclass_model_data(
+            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy, M)
+
+        n = len(n_nonevent)
+        n_records = n_nonevent + n_event
+        n_scenarios = len(w)
+
+        if w is not None:
+            sw = 10 ** np.abs(np.log10(np.min(w)))
+            w = [np.int64(w[s] * sw) for s in range(n_scenarios)]
+
+        # Initialize model
+        model = cp_model.CpModel()
+
+        # Decision variables
+        x, y, t, d = self.decision_variables_scenarios(model, n)
+
+        # Objective function
+        model.Maximize(sum([w[s] * sum([(V[s][i][i] * x[i, i]) +
+                            sum([(V[s][i][j] - V[s][i][j+1]) * x[i, j]
+                                 for j in range(i)]) for i in range(n)])
+                            for s in range(n_scenarios)]))
+
+        # Constraint: unique assignment
+        self.add_constraint_unique_assignment(model, n, x)
+
+        # Constraint: continuity
+        self.add_constraint_continuity(model, n, x)
+
+        # Constraint: min / max bins
+        self.add_constraint_min_max_bins(model, n, x, d)
+
+        # Constraint: min / max bin size
+        self.add_constraint_min_max_bin_size_scenarios(model, n, x, n_records)
+
+        # Constraints: monotonicity
+        if self.monotonic_trend == "ascending":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_ascending(model, n, D[s], x, M)
+
+        elif self.monotonic_trend == "descending":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_descending(model, n, D[s], x, M)
+
+        elif self.monotonic_trend == "concave":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_concave(model, n, D[s], x, M)
+
+        elif self.monotonic_trend == "convex":
+            for s in range(n_scenarios):
+                self.add_constraint_monotonic_convex(model, n, D[s], x, M)
+
+        elif self.monotonic_trend in ("peak", "valley"):
+            for i in range(n):
+                model.Add(t >= i - n * (1 - y[i]))
+                model.Add(t <= i + n * y[i])
+
+            if self.monotonic_trend == "peak":
+                for s in range(n_scenarios):
+                    self.add_constraint_monotonic_peak(
+                        model, n, D[s], x, y, M)
+            else:
+                for s in range(n_scenarios):
+                    self.add_constraint_monotonic_valley(
+                        model, n, D[s], x, y, M)
+
+        # Constraint: max-pvalue
+        for s in range(n_scenarios):
+            self.add_max_pvalue_constraint(model, x,
+                                           pvalue_violation_indices[s])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)
@@ -218,6 +300,33 @@ class BinningCP:
 
         return x, y, t, d, u, bin_size_diff
 
+    def decision_variables_scenarios(self, model, n):
+        x = {}
+        for i in range(n):
+            for j in range(i + 1):
+                x[i, j] = model.NewBoolVar("x[{}, {}]".format(i, j))
+
+        y = None
+        t = None
+        d = None
+
+        if self.monotonic_trend in ("peak", "valley"):
+            # Auxiliary binary variables
+            y = {}
+            for i in range(n):
+                y[i] = model.NewBoolVar("y[{}]".format(i))
+
+            # Change point
+            t = model.NewIntVar(0, n, "t")
+
+        if self.min_n_bins is not None and self.max_n_bins is not None:
+            n_bin_diff = self.max_n_bins - self.min_n_bins
+
+            # Range constraints auxiliary variables
+            d = model.NewIntVar(0, n_bin_diff, "n_bin_diff")
+
+        return x, y, t, d
+
     def add_constraint_unique_assignment(self, model, n, x):
         for j in range(n):
             model.Add(sum([x[i, j] for i in range(j, n)]) == 1)
@@ -253,6 +362,20 @@ class BinningCP:
                     model.Add(bin_size >= self.min_bin_size * x[i, i])
                 elif self.max_bin_size is not None:
                     model.Add(bin_size <= self.max_bin_size * x[i, i])
+
+    def add_constraint_min_max_bin_size_scenarios(self, model, n, x,
+                                                  n_records):
+        if self.min_bin_size is not None or self.max_bin_size is not None:
+            n_scenarios = n_records.shape[1]
+            for s in range(n_scenarios):
+                for i in range(n):
+                    bin_size = sum([n_records[j, s] * x[i, j]
+                                    for j in range(i + 1)])
+
+                    if self.min_bin_size is not None:
+                        model.Add(bin_size >= self.min_bin_size[s] * x[i, i])
+                    if self.max_bin_size is not None:
+                        model.Add(bin_size <= self.max_bin_size[s] * x[i, i])
 
     def add_constraint_monotonic_ascending(self, model, n, D, x, M):
         min_event_rate_diff = int(M * self.min_event_rate_diff)

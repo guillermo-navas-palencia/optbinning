@@ -9,6 +9,7 @@ Model data for optimal binning formulations.
 import numpy as np
 
 from scipy import stats
+from scipy import special
 
 
 def test_proportions(e1, ne1, e2, ne2, zscore):
@@ -108,7 +109,7 @@ def model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
         p = s_event / t_n_event
         q = s_nonevent / t_n_nonevent
-        iv = (p - q) * np.log(p / q)
+        iv = special.xlogy(p - q, p / q)
 
         if scale is not None:
             rate *= scale
@@ -162,7 +163,7 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
             p = s_event / t_n_event
             q = s_nonevent / t_n_nonevent
-            iv = (p - q) * np.log(p / q)
+            iv = special.xlogy(p - q, p / q)
 
             if scale is not None:
                 rate *= scale

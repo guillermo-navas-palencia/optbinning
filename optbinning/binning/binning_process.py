@@ -403,7 +403,7 @@ class BinningProcess(BaseEstimator):
         n_numerical = list(self._variables_dtype.values()).count("numerical")
         n_categorical = self._n_variables - n_numerical
 
-        self._n_selected = self._n_variables
+        self._n_selected = np.count_nonzero(self._support)
 
         dict_user_options = self.get_params()
 

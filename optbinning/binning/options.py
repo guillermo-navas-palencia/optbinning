@@ -106,3 +106,26 @@ binning_process_default_options = {
     "binning_transform_params": None,
     "verbose": False
 }
+
+
+sboptimal_binning_default_options = {
+    "name": "",
+    "prebinning_method": "cart",
+    "max_n_prebins": 20,
+    "min_prebin_size": 0.05,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "monotonic_trend": None,
+    "min_event_rate_diff": 0,
+    "max_pvalue": None,
+    "max_pvalue_policy": "consecutive",
+    "class_weight": None,
+    "user_splits": None,
+    "user_splits_fixed": None,
+    "special_codes": None,
+    "split_digits": None,
+    "time_limit": 100,
+    "verbose": False
+}

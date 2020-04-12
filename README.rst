@@ -162,7 +162,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.4.0)
+   optbinning (Version 0.5.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -188,6 +188,7 @@ Print overview information about the options settings, problem statistics, and t
        class_weight                          no   * d
        cat_cutoff                            no   * d
        user_splits                           no   * d
+       user_splits_fixed                     no   * d
        special_codes                         no   * d
        split_digits                          no   * d
        mip_solver                           bop   * d

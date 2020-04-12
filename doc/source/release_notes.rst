@@ -1,6 +1,28 @@
 Release Notes
 =============
 
+Version 0.5.0 (2020-04-13)
+--------------------------
+
+New features:
+
+   - Scenario-based stochastic optimal binning.
+   - New parameter ``user_split_fixed`` to force user-defined split points.
+
+Improvements:
+   
+   - Use ``scipy.special.xlogy`` to compute Jeffrey's divergence.
+
+Tutorials:
+   
+   - Tutorial: Telco customer churn.
+   - Tutorial: optimal binning with binary target under uncertainty.
+
+Bugfixes:
+
+   - Fix monotonic trend for non-auto mode in ``MulticlassOptimalBinning``.
+
+
 Version 0.4.0 (2020-03-22)
 --------------------------
 
@@ -9,7 +31,6 @@ New features:
    - New ``monotonic_trend`` auto modes options: "auto_heuristic" and "auto_asc_desc".
    - New ``monotonic_trend`` options: "peak_heuristic" and "valley_heuristic". These options produce a remarkable speedup for large size instances.
    - Minimum Description Length Principle (MDLP) discretization algorithm.
-
 
 Improvements:
 

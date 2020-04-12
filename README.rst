@@ -24,7 +24,7 @@ not previously addressed.
 .. image:: doc/source/_images/binning_binary.png
    :target: doc/source/_images/binning_binary.png
 
-**Website**: http://gnpalencia.org/optbinning/
+**Documentation**: http://gnpalencia.org/optbinning/
 
 **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 
@@ -45,10 +45,21 @@ To install from source, download or clone the git repository
    cd optbinning
    python setup.py install
 
+Dependencies
+------------
+OptBinning requires
+
+* matplotlib
+* numpy
+* ortools (>=7.2)
+* pandas
+* scikit-learn (>=0.20.0)
+* scipy
+
 Getting started
 ===============
 
-If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_.
+If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
 Example
 -------
@@ -162,7 +173,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.4.0)
+   optbinning (Version 0.5.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -188,6 +199,7 @@ Print overview information about the options settings, problem statistics, and t
        class_weight                          no   * d
        cat_cutoff                            no   * d
        user_splits                           no   * d
+       user_splits_fixed                     no   * d
        special_codes                         no   * d
        split_digits                          no   * d
        mip_solver                           bop   * d
@@ -267,6 +279,11 @@ To compare softwares we use the shifted geometric mean, typically used in mathem
 
 (C): categorical variable.
 (*): max p-value between consecutive bins > 0.05.
+
+
+Contributing
+============
+Found a bug? Want to contribute with a new feature, improve documentation, or add examples? We encourage you to create pull requests and/or open GitHub issues. Thanks! :octocat: :tada: :+1:
 
 
 Citation

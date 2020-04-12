@@ -666,7 +666,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                         logging.info("Optimizer: classifier predicts {} "
                                      "monotonic trend.".format(trend))
                 else:
-                    monotonic.append(trend)
+                    monotonic.append(m_trend)
         elif self.monotonic_trend is None:
             monotonic = [None] * self._n_classes
 

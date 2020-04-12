@@ -40,3 +40,9 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    :caption: Other binning algorithms
 
    mdlp
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Utilities
+
+   outlier

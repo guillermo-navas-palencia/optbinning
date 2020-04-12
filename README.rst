@@ -45,10 +45,21 @@ To install from source, download or clone the git repository
    cd optbinning
    python setup.py install
 
+Dependencies
+------------
+OptBinning requires
+
+* matplotlib
+* numpy
+* ortools (>=7.2)
+* pandas
+* scikit-learn (>=0.20.0)
+* scipy
+
 Getting started
 ===============
 
-If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_.
+If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
 Example
 -------

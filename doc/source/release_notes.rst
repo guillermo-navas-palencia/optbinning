@@ -9,10 +9,6 @@ New features:
    - Scenario-based stochastic optimal binning.
    - New parameter ``user_split_fixed`` to force user-defined split points.
 
-Improvements:
-   
-   - Use ``scipy.special.xlogy`` to compute Jeffrey's divergence.
-
 Tutorials:
    
    - Tutorial: Telco customer churn.

@@ -169,7 +169,7 @@ def print_binning_information(binning_type, print_level, name, status,
     print_header()
 
     if print_level == 2:
-        if binning_type in "optimalbinning":
+        if binning_type == "optimalbinning":
             dict_default_options = optimal_binning_default_options
         elif binning_type == "multiclassoptimalbinning":
             dict_default_options = multiclass_optimal_binning_default_options

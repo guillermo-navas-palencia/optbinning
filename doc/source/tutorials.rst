@@ -32,3 +32,5 @@ Optimal binning under uncertainty
 
 .. toctree::
    :maxdepth: 1
+
+   tutorials/tutorial_binary_under_uncertainty

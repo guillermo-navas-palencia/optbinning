@@ -12,6 +12,7 @@ Optimal binning tutorials
 
    tutorials/tutorial_binary
    tutorials/tutorial_binary_localsolver
+   tutorials/tutorial_binary_large_scale
    tutorials/tutorial_continuous
    tutorials/tutorial_multiclass
 

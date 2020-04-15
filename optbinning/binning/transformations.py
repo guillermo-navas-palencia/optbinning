@@ -88,9 +88,9 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
                             metric_special, metric_missing, user_splits,
                             check_input=False):
 
-    if metric not in ("event_rate", "woe"):
+    if metric not in ("event_rate", "woe", "indices"):
         raise ValueError('Invalid value for metric. Allowed string '
-                         'values are "event_rate" and "woe".')
+                         'values are "event_rate", "woe" and "indices".')
 
     _check_metric_special_missing(metric_special, metric_missing)
 
@@ -123,30 +123,35 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
         bins = bin_categorical(splits, categories, cat_others, user_splits)
         n_bins = len(bins)
 
-    # Compute event rate and WoE
-    n_records = n_event + n_nonevent
-    t_n_nonevent = n_nonevent.sum()
-    t_n_event = n_event.sum()
+    if metric in ("woe", "event_rate"):
+        # Compute event rate and WoE
+        n_records = n_event + n_nonevent
+        t_n_nonevent = n_nonevent.sum()
+        t_n_event = n_event.sum()
 
-    if "empirical" not in (metric_special, metric_missing):
-        n_event = n_event[:n_bins]
-        n_nonevent = n_nonevent[:n_bins]
-        n_records = n_records[:n_bins]
+        if "empirical" not in (metric_special, metric_missing):
+            n_event = n_event[:n_bins]
+            n_nonevent = n_nonevent[:n_bins]
+            n_records = n_records[:n_bins]
 
-    # default woe and event rate is 0
-    mask = (n_event > 0) & (n_nonevent > 0)
-    event_rate = np.zeros(len(n_records))
-    woe = np.zeros(len(n_records))
-    event_rate[mask] = n_event[mask] / n_records[mask]
-    constant = np.log(t_n_event / t_n_nonevent)
-    woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
+        # default woe and event rate is 0
+        mask = (n_event > 0) & (n_nonevent > 0)
+        event_rate = np.zeros(len(n_records))
+        woe = np.zeros(len(n_records))
+        event_rate[mask] = n_event[mask] / n_records[mask]
+        constant = np.log(t_n_event / t_n_nonevent)
+        woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
-    if metric == "woe":
-        metric_value = woe
+        if metric == "woe":
+            metric_value = woe
+        else:
+            metric_value = event_rate
+
+        x_transform = np.zeros(x.shape)
     else:
-        metric_value = event_rate
-
-    x_transform = np.zeros(x.shape)
+        # Assign corresponding indices
+        x_transform = np.full(x.shape, -1)
+        metric_value = np.arange(n_bins + 2)
 
     if dtype == "numerical":
         x_clean_transform = np.zeros(x_clean.shape)
@@ -162,12 +167,12 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
             x_transform[mask] = metric_value[i]
 
     if special_codes:
-        if metric_special == "empirical":
+        if metric_special == "empirical" or metric == "indices":
             x_transform[special_mask] = metric_value[n_bins]
         else:
             x_transform[special_mask] = metric_special
 
-    if metric_missing == "empirical":
+    if metric_missing == "empirical" or metric == "indices":
         x_transform[missing_mask] = metric_value[n_bins + 1]
     else:
         x_transform[missing_mask] = metric_missing

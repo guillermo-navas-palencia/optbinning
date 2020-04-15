@@ -517,8 +517,9 @@ class OptimalBinning(BaseOptimalBinning):
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
-            are "woe" to choose the Weight of Evidence and "event_rate" to
-            choose the event rate.
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate and "indices" to assign the corresponding
+            indices of the bins.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -553,8 +554,9 @@ class OptimalBinning(BaseOptimalBinning):
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
-            are "woe" to choose the Weight of Evidence and "event_rate" to
-            choose the event rate.
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate and "indices" to assign the corresponding
+            indices of the bins.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.

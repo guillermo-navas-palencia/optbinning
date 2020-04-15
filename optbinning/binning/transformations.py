@@ -150,8 +150,8 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
         x_transform = np.zeros(x.shape)
     else:
         # Assign corresponding indices
-        x_transform = np.full(x.shape, -1)
         metric_value = np.arange(n_bins + 2)
+        x_transform = np.full(x.shape, -1)
 
     if dtype == "numerical":
         x_clean_transform = np.zeros(x_clean.shape)
@@ -263,9 +263,13 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
 
 
 def transform_continuous_target(splits, dtype, x, n_records, sums,
-                                special_codes, categories, cat_others,
+                                special_codes, categories, cat_others, metric,
                                 metric_special, metric_missing, user_splits,
                                 check_input):
+
+    if metric not in ("mean", "indices"):
+        raise ValueError('Invalid value for metric. Allowed string '
+                         'values are "mean" and "indices".')
 
     _check_metric_special_missing(metric_special, metric_missing)
 
@@ -302,9 +306,14 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
         n_records = n_records[:n_bins]
         sums = sums[:n_bins]
 
-    metric_value = sums / n_records
-
-    x_transform = np.zeros(x.shape)
+    if metric == "mean":
+        # Compute mean
+        metric_value = sums / n_records
+        x_transform = np.zeros(x.shape)
+    else:
+        # Assign corresponding indices
+        metric_value = np.arange(n_bins + 2)
+        x_transform = np.full(x.shape, -1)
 
     if dtype == "numerical":
         x_clean_transform = np.zeros(x_clean.shape)
@@ -320,12 +329,12 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
             x_transform[mask] = metric_value[i]
 
     if special_codes:
-        if metric_special == "empirical":
+        if metric_special == "empirical" or metric == "indices":
             x_transform[special_mask] = metric_value[n_bins]
         else:
             x_transform[special_mask] = metric_special
 
-    if metric_missing == "empirical":
+    if metric_missing == "empirical" or metric == "indices":
         x_transform[missing_mask] = metric_value[n_bins + 1]
     else:
         x_transform[missing_mask] = metric_missing

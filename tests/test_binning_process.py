@@ -248,16 +248,17 @@ def test_fit_params():
 def test_default_transform():
     process = BinningProcess(variable_names)
     with raises(NotFittedError):
-        process.transform(X)
+        process.transform(X, metric="woe")
 
     process.fit(X, y)
-    X_transform = process.transform(X)
+    X_transform = process.transform(X, metric="woe")
 
     optb = OptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
 
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="woe") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_transform_pandas():
@@ -267,18 +268,20 @@ def test_default_transform_pandas():
     process.fit(df, y)
 
     with raises(TypeError):
-        X_transform = process.transform(df.to_dict())
+        X_transform = process.transform(df.to_dict(), metric="woe")
 
     with raises(ValueError):
-        X_transform = process.transform(df)
+        X_transform = process.transform(df, metric="woe")
 
-    X_transform = process.transform(df, data.feature_names)
+    X_transform = process.transform(df, metric="woe",
+                                    variable_names=data.feature_names)
 
     optb = OptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
 
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="woe") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_transform_continuous():
@@ -289,7 +292,7 @@ def test_default_transform_continuous():
 
     process = BinningProcess(variable_names)
     process.fit(X, y)
-    X_transform = process.transform(X)
+    X_transform = process.transform(X, metric="mean")
 
     optb = process.get_binned_variable(variable_names[0])
     assert isinstance(optb, ContinuousOptimalBinning)
@@ -297,7 +300,8 @@ def test_default_transform_continuous():
     optb = ContinuousOptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="mean") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_transform_multiclass():
@@ -308,7 +312,7 @@ def test_default_transform_multiclass():
 
     process = BinningProcess(variable_names)
     process.fit(X, y)
-    X_transform = process.transform(X)
+    X_transform = process.transform(X, metric="mean_woe")
 
     optb = process.get_binned_variable(variable_names[0])
     assert isinstance(optb, MulticlassOptimalBinning)
@@ -316,7 +320,8 @@ def test_default_transform_multiclass():
     optb = MulticlassOptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="mean_woe") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_transform_some_variables():
@@ -324,15 +329,16 @@ def test_transform_some_variables():
     process.fit(X, y)
 
     with raises(TypeError):
-        process.transform(X, {})
+        process.transform(X, metric="woe", variable_names={})
 
     with raises(ValueError):
-        process.transform(X, ["new_1", "new_2"])
+        process.transform(X, metric="woe", variable_names=["new_1", "new_2"])
 
     selected_variables = ['mean area', 'mean smoothness', 'mean compactness',
                           'mean concavity']
 
-    X_transform = process.transform(X, selected_variables)
+    X_transform = process.transform(X, metric="woe",
+                                    variable_names=selected_variables)
     assert X_transform.shape[1] == 4
 
     for i in range(3, 7):
@@ -340,7 +346,8 @@ def test_transform_some_variables():
         x = X[:, i]
         optb.fit(x, y)
 
-        assert optb.transform(x) == approx(X_transform[:, i-3], rel=1e-6)
+        assert optb.transform(x, metric="woe") == approx(
+            X_transform[:, i-3], rel=1e-6)
 
 
 def test_default_fit_transform():

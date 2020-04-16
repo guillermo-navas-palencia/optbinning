@@ -306,8 +306,8 @@ class BinningProcess(BaseEstimator):
         """
         return self._fit(X, y, check_input)
 
-    def fit_transform(self, X, y, metric=None, metric_special=0,
-                      metric_missing=0, check_input=False):
+    def fit_transform(self, X, y, metric, metric_special=0, metric_missing=0,
+                      show_digits=2, check_input=False):
         """Fit the binning process according to the given training data, then
         transform it.
 
@@ -319,7 +319,7 @@ class BinningProcess(BaseEstimator):
         y : array-like of shape (n_samples,)
             Target vector relative to x.
 
-        metric : str (default="woe")
+        metric : str
             The metric used to transform the input vector.
 
         metric_special : float or str (default=0)
@@ -331,6 +331,10 @@ class BinningProcess(BaseEstimator):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -340,13 +344,13 @@ class BinningProcess(BaseEstimator):
         X_new : numpy array, shape = (n_samples, n_features_new)
             Transformed array.
         """
-        return self.fit(X, y, check_input).transform(X, None, metric,
+        return self.fit(X, y, check_input).transform(X, metric, None,
                                                      metric_special,
                                                      metric_missing,
-                                                     check_input)
+                                                     show_digits, check_input)
 
-    def transform(self, X, variable_names=None, metric=None,
-                  metric_special=0, metric_missing=0, check_input=False):
+    def transform(self, X, metric, variable_names=None, metric_special=0,
+                  metric_missing=0, show_digits=2, check_input=False):
         """Transform given data to metric using bins from each fitted optimal
         binning.
 
@@ -355,12 +359,12 @@ class BinningProcess(BaseEstimator):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
+        metric : str
+            The metric used to transform the input vector.
+
         variable_names : array-like or None, optional (default=None)
             List of selected variables to apply transformation. If None all
             ``variable_names`` are transformed.
-
-        metric : str (default="woe")
-            The metric used to transform the input vector.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -371,6 +375,10 @@ class BinningProcess(BaseEstimator):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -383,7 +391,7 @@ class BinningProcess(BaseEstimator):
         self._check_is_fitted()
 
         return self._transform(X, variable_names, metric, metric_special,
-                               metric_missing, check_input)
+                               metric_missing, show_digits, check_input)
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -684,7 +692,7 @@ class BinningProcess(BaseEstimator):
         self._binned_variables[name] = optb
 
     def _transform(self, X, variable_names, metric, metric_special,
-                   metric_missing, check_input):
+                   metric_missing, show_digits, check_input):
 
         # check X dtype
         if not isinstance(X, (pd.DataFrame, np.ndarray)):
@@ -733,14 +741,9 @@ class BinningProcess(BaseEstimator):
             else:
                 x = X[name]
 
-            if metric is not None:
-                metric = params.get("metric", metric)
+            _metric = params.get("metric", metric)
 
-                X_transform[:, i] = optb.transform(x, metric, metric_special,
-                                                   metric_missing, check_input)
-            else:
-                X_transform[:, i] = optb.transform(
-                    x, metric_special=metric_special,
-                    metric_missing=metric_missing, check_input=check_input)
-
+            X_transform[:, i] = optb.transform(x, _metric, metric_special,
+                                               metric_missing, show_digits,
+                                               check_input)
         return X_transform

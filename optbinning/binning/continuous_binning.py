@@ -370,7 +370,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._is_fitted = False
 
     def fit_transform(self, x, y, metric="mean", metric_special=0,
-                      metric_missing=0, check_input=False):
+                      metric_missing=0, show_digits=2, check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -384,8 +384,9 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         metric : str (default="mean"):
             The metric used to transform the input vector. Supported metrics
-            are "mean" to choose the mean and "indices" to assign the
-            corresponding indices of the bins.
+            are "mean" to choose the mean, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -396,6 +397,10 @@ class ContinuousOptimalBinning(OptimalBinning):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical mean, and
             any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -406,10 +411,11 @@ class ContinuousOptimalBinning(OptimalBinning):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, show_digits,
+            check_input)
 
     def transform(self, x, metric="mean", metric_special=0, metric_missing=0,
-                  check_input=False):
+                  show_digits=2, check_input=False):
         """Transform given data to mean using bins from the fitted
         optimal binning.
 
@@ -420,8 +426,9 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         metric : str (default="mean"):
             The metric used to transform the input vector. Supported metrics
-            are "mean" to choose the mean and "indices" to assign the
-            corresponding indices of the bins.
+            are "mean" to choose the mean, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -432,6 +439,10 @@ class ContinuousOptimalBinning(OptimalBinning):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical mean, and
             any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -454,7 +465,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                                            self._categories, self._cat_others,
                                            metric, metric_special,
                                            metric_missing, self.user_splits,
-                                           check_input)
+                                           show_digits, check_input)
 
     def _fit(self, x, y, check_input):
         time_init = time.perf_counter()

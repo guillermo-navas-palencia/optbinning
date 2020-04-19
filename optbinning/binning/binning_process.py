@@ -220,6 +220,7 @@ class BinningProcess(BaseEstimator):
         "all" to compare all bins.
 
     selection_criteria : dict or None (default=None)
+        Variable selection criteria. See notes.
 
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
@@ -245,6 +246,27 @@ class BinningProcess(BaseEstimator):
 
     verbose : bool (default=False)
         Enable verbose output.
+
+    Notes
+    -----
+    Parameter ``selection_criteria`` allows to specify criteria for
+    variable selection. The input is a dictionary as follows
+
+    .. code::
+
+        selection_criteria = {
+            "metric_1": {"min": 0, "max": 1, "strategy": "best", "top": 0.25},
+            "metric_2": {"min": 0.02}
+        }
+
+    where several metrics can be combined. For example, above dictionary
+    indicates that top 25% best variables with "metric_1" in [0, 1] and
+    "metric:2" greater or equal than 0.02 are selected. Supported key values
+    are:
+
+    * keys ``min`` and ``max`` support numerical values.
+    * key ``strategy`` supports options "best" and "worst".
+    * key ``top`` supports an integer or decimal (percentage).
     """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,

@@ -9,6 +9,8 @@ import logging
 import numbers
 import time
 
+from warnings import warn
+
 import numpy as np
 import pandas as pd
 
@@ -25,12 +27,71 @@ from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
 
 
+_METRICS = {
+    "binary": {
+        "metrics": ["iv", "js", "gini", "quality_score"],
+        "iv": {"min": 0, "max": np.inf},
+        "gini": {"min": 0, "max": 1},
+        "js": {"min": 0, "max": np.inf},
+        "quality_score": {"min": 0, "max": 1}
+    },
+    "multiclass": {
+        "metrics": ["js", "quality_score"],
+        "js": {"min": 0, "max": np.inf},
+        "quality_score": {"min": 0, "max": 1}
+    },
+    "continuous": {
+        "metrics": []
+    }
+}
+
+
+def _check_selection_criteria(selection_criteria, target_dtype):
+    default_metrics_info = _METRICS[target_dtype]
+    default_metrics = default_metrics_info["metrics"]
+
+    if not all(m in default_metrics for m in selection_criteria.keys()):
+        raise ValueError("metric for {} target must be in {}."
+                         .format(target_dtype, default_metrics))
+
+    for metric, info in selection_criteria.items():
+        if not isinstance(info, dict):
+            raise TypeError("metric {} info is not a dict.".format(metric))
+
+        for key, value in info.items():
+            if key == "min":
+                min_ref = default_metrics_info[metric][key]
+                if value < min_ref:
+                    raise ValueError("metric {} min value {} < {}."
+                                     .format(metric, value, min_ref))
+            elif key == "max":
+                max_ref = default_metrics_info[metric][key]
+                if value > max_ref:
+                    raise ValueError("metric {} max value {} > {}."
+                                     .format(metric, value, max_ref))
+            elif key == "strategy":
+                if value not in ("highest", "lowest"):
+                    raise ValueError('strategy value for metric {} must be '
+                                     '"highest" or "lowest"; got {}.'
+                                     .format(value, metric))
+            elif key == "top":
+                if isinstance(value, numbers.Integral):
+                    if value < 1:
+                        raise ValueError("top value must be at least 1 or "
+                                         "in (0, 1); got {}.".format(value))
+                else:
+                    if not 0. < value < 1.:
+                        raise ValueError("top value must be at least 1 or "
+                                         "in (0, 1); got {}.".format(value))
+            else:
+                raise KeyError(key)
+
+
 def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       min_n_bins, max_n_bins, min_bin_size, max_bin_size,
-                      max_pvalue, max_pvalue_policy, min_iv, max_iv, min_js,
-                      max_js, quality_score_cutoff, special_codes,
-                      split_digits, categorical_variables, binning_fit_params,
-                      binning_transform_params, verbose):
+                      max_pvalue, max_pvalue_policy, selection_criteria,
+                      categorical_variables, special_codes, split_digits,
+                      binning_fit_params, binning_transform_params, verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -86,37 +147,18 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
 
-    if min_iv is not None:
-        if not isinstance(min_iv, numbers.Number) or min_iv < 0:
-            raise ValueError("min_iv must be >= 0; got {}.".format(min_iv))
+    if selection_criteria is not None:
+        if not isinstance(selection_criteria, dict):
+            raise TypeError("selection_criteria must be a dict.")
 
-    if max_iv is not None:
-        if not isinstance(max_iv, numbers.Number) or max_iv < 0:
-            raise ValueError("max_iv must be >= 0; got {}.".format(max_iv))
+    if categorical_variables is not None:
+        if not isinstance(categorical_variables, (np.ndarray, list)):
+            raise TypeError("categorical_variables must be a list or "
+                            "numpy.ndarray.")
 
-    if min_iv is not None and max_iv is not None:
-        if min_iv > max_iv:
-            raise ValueError("min_iv must be <= max_iv; got {} <= {}."
-                             .format(min_iv, max_iv))
-
-    if min_js is not None:
-        if not isinstance(min_js, numbers.Number) or min_js < 0:
-            raise ValueError("min_js must be >= 0; got {}.".format(min_js))
-
-    if max_js is not None:
-        if not isinstance(max_js, numbers.Number) or max_js < 0:
-            raise ValueError("max_js must be >= 0; got {}.".format(max_js))
-
-    if min_js is not None and max_js is not None:
-        if min_js > max_js:
-            raise ValueError("min_js must be <= max_js; got {} <= {}."
-                             .format(min_iv, max_iv))
-
-    if quality_score_cutoff is not None:
-        if (not isinstance(quality_score_cutoff, numbers.Number) or
-                not 0 <= quality_score_cutoff <= 1.0):
-            raise ValueError("quality_score_cutoff must be in [0, 1.0]; "
-                             "got {}.".format(quality_score_cutoff))
+        if not all(isinstance(c, str) for c in categorical_variables):
+            raise TypeError("variables in categorical_variables must be "
+                            "strings.")
 
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
@@ -183,23 +225,8 @@ class BinningProcess(BaseEstimator):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
-    min_iv : float or None, optional (default=None)
-        The minimum information value. Applicable if target type is binary.
-
-    max_iv : float or None, optional (default=None)
-        The maximum information value. Applicable if target type is binary.
-
-    min_js : float or None, optional (default=None)
-        The minimum Jensen-Shannon divergence value. Applicable if target type
-        is binary or multiclass.
-
-    max_js : float or None, optional (default=None)
-        The maximum Jensen-Shannon divergence value. Applicable if target type
-        is binary or multiclass.
-
-    quality_score_cutoff : float or None, optional (default=None)
-        The quality score cutoff value. Applicable if target type is binary or
-        multiclass.
+    selection_criteria : dict or None (default=None)
+        Variable selection criteria. See notes.
 
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
@@ -225,14 +252,39 @@ class BinningProcess(BaseEstimator):
 
     verbose : bool (default=False)
         Enable verbose output.
+
+    Notes
+    -----
+    Parameter ``selection_criteria`` allows to specify criteria for
+    variable selection. The input is a dictionary as follows
+
+    .. code::
+
+        selection_criteria = {
+            "metric_1":
+                {
+                    "min": 0, "max": 1, "strategy": "highest", "top": 0.25
+                },
+            "metric_2":
+                {
+                    "min": 0.02
+                }
+        }
+
+    where several metrics can be combined. For example, above dictionary
+    indicates that top 25% variables with "metric_1" in [0, 1] and "metric:2"
+    greater or equal than 0.02 are selected. Supported key values are:
+
+    * keys ``min`` and ``max`` support numerical values.
+    * key ``strategy`` supports options "highest" and "lowest".
+    * key ``top`` supports an integer or decimal (percentage).
     """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, max_pvalue=None,
-                 max_pvalue_policy="consecutive", min_iv=None, max_iv=None,
-                 min_js=None, max_js=None, quality_score_cutoff=None,
-                 special_codes=None, split_digits=None,
-                 categorical_variables=None, binning_fit_params=None,
+                 max_pvalue_policy="consecutive", selection_criteria=None,
+                 categorical_variables=None, special_codes=None,
+                 split_digits=None, binning_fit_params=None,
                  binning_transform_params=None, verbose=False):
 
         self.variable_names = variable_names
@@ -246,11 +298,7 @@ class BinningProcess(BaseEstimator):
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
 
-        self.min_iv = min_iv
-        self.max_iv = max_iv
-        self.min_js = min_js
-        self.max_js = max_js
-        self.quality_score_cutoff = quality_score_cutoff
+        self.selection_criteria = selection_criteria
 
         self.binning_fit_params = binning_fit_params
         self.binning_transform_params = binning_transform_params
@@ -268,8 +316,8 @@ class BinningProcess(BaseEstimator):
         self._n_categorical = None
         self._n_selected = None
         self._binned_variables = {}
-        self._variables_dtype = {}
-        self._variables_stats = {}
+        self._variable_dtypes = {}
+        self._variable_stats = {}
 
         self._support = None
 
@@ -307,7 +355,7 @@ class BinningProcess(BaseEstimator):
         return self._fit(X, y, check_input)
 
     def fit_transform(self, X, y, metric=None, metric_special=0,
-                      metric_missing=0, check_input=False):
+                      metric_missing=0, show_digits=2, check_input=False):
         """Fit the binning process according to the given training data, then
         transform it.
 
@@ -319,8 +367,9 @@ class BinningProcess(BaseEstimator):
         y : array-like of shape (n_samples,)
             Target vector relative to x.
 
-        metric : str (default="woe")
-            The metric used to transform the input vector.
+        metric : str or None, (default=None)
+            The metric used to transform the input vector. If None, the default
+            transformation metric for each target type is applied.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -331,6 +380,10 @@ class BinningProcess(BaseEstimator):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -340,13 +393,12 @@ class BinningProcess(BaseEstimator):
         X_new : numpy array, shape = (n_samples, n_features_new)
             Transformed array.
         """
-        return self.fit(X, y, check_input).transform(X, None, metric,
-                                                     metric_special,
+        return self.fit(X, y, check_input).transform(X, metric, metric_special,
                                                      metric_missing,
-                                                     check_input)
+                                                     show_digits, check_input)
 
-    def transform(self, X, variable_names=None, metric=None,
-                  metric_special=0, metric_missing=0, check_input=False):
+    def transform(self, X, metric=None, metric_special=0, metric_missing=0,
+                  show_digits=2, check_input=False):
         """Transform given data to metric using bins from each fitted optimal
         binning.
 
@@ -355,12 +407,9 @@ class BinningProcess(BaseEstimator):
         X : {array-like, sparse matrix} of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
-        variable_names : array-like or None, optional (default=None)
-            List of selected variables to apply transformation. If None all
-            ``variable_names`` are transformed.
-
-        metric : str (default="woe")
-            The metric used to transform the input vector.
+        metric : str or None, (default=None)
+            The metric used to transform the input vector. If None, the default
+            transformation metric for each target type is applied.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -371,6 +420,10 @@ class BinningProcess(BaseEstimator):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -382,8 +435,8 @@ class BinningProcess(BaseEstimator):
         """
         self._check_is_fitted()
 
-        return self._transform(X, variable_names, metric, metric_special,
-                               metric_missing, check_input)
+        return self._transform(X, metric, metric_special, metric_missing,
+                               show_digits, check_input)
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -400,7 +453,7 @@ class BinningProcess(BaseEstimator):
             raise ValueError("print_level must be an integer >= 0; got {}."
                              .format(print_level))
 
-        n_numerical = list(self._variables_dtype.values()).count("numerical")
+        n_numerical = list(self._variable_dtypes.values()).count("numerical")
         n_categorical = self._n_variables - n_numerical
 
         self._n_selected = np.count_nonzero(self._support)
@@ -423,18 +476,13 @@ class BinningProcess(BaseEstimator):
         """
         self._check_is_fitted()
 
-        df_summary = pd.DataFrame.from_dict(self._variables_stats).T
+        df_summary = pd.DataFrame.from_dict(self._variable_stats).T
         df_summary.reset_index(inplace=True)
         df_summary.rename(columns={"index": "name"}, inplace=True)
+        df_summary["selected"] = self._support
 
         columns = ["name", "dtype", "status", "selected", "n_bins"]
-
-        if self._target_dtype == "binary":
-            columns += ["iv", "gini", "js", "quality score"]
-        elif self._target_dtype == "multiclass":
-            columns += ["js", "quality score"]
-        elif self._target_dtype == "continuous":
-            pass
+        columns += _METRICS[self._target_dtype]["metrics"]
 
         return df_summary[columns]
 
@@ -491,76 +539,84 @@ class BinningProcess(BaseEstimator):
         if indices:
             return np.where(mask)[0]
         elif names:
-            return self.variable_names[mask]
+            return np.asarray(self.variable_names)[mask]
         else:
             return mask
 
-    def _binning_variables_selection(self):
-        self._support = np.zeros(self._n_variables).astype(np.bool)
+    def _support_selection_criteria(self):
+        self._support = np.full(self._n_variables, True, dtype=np.bool)
 
+        if self.selection_criteria is None:
+            return
+
+        default_metrics_info = _METRICS[self._target_dtype]
+        criteria_metrics = self.selection_criteria.keys()
+
+        binning_metrics = pd.DataFrame.from_dict(self._variable_stats).T
+
+        for metric in default_metrics_info["metrics"]:
+            if metric in criteria_metrics:
+                metric_info = self.selection_criteria[metric]
+                metric_values = binning_metrics[metric].values
+
+                if "min" in metric_info:
+                    self._support &= metric_values >= metric_info["min"]
+                if "max" in metric_info:
+                    self._support &= metric_values <= metric_info["max"]
+                if all(m in metric_info for m in ("strategy", "top")):
+                    indices_valid = np.where(self._support)[0]
+                    metric_values = metric_values[indices_valid]
+                    n_valid = len(metric_values)
+
+                    # Auxiliary support
+                    support = np.full(self._n_variables, False, dtype=np.bool)
+
+                    top = metric_info["top"]
+                    if not isinstance(top, numbers.Integral):
+                        top = int(np.ceil(n_valid * top))
+                    n_selected = min(n_valid, top)
+
+                    if metric_info["strategy"] == "highest":
+                        mask = np.argsort(-metric_values)[:n_selected]
+                    elif metric_info["strategy"] == "lowest":
+                        mask = np.argsort(metric_values)[:n_selected]
+
+                    support[indices_valid[mask]] = True
+                    self._support &= support
+
+    def _binning_selection_criteria(self):
         for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
             optb.binning_table.build()
 
-            dtype = optb.dtype
-            splits = optb.splits
-            status = optb.status
+            n_bins = len(optb.splits)
+            if optb.dtype == "numerical":
+                n_bins += 1
 
-            n_bins = len(splits) + 1 if dtype == "numerical" else len(splits)
+            info = {"dtype": optb.dtype,
+                    "status": optb.status,
+                    "n_bins": n_bins}
 
-            info = {
-                "dtype": dtype, "status": status,
-                "n_bins": n_bins
-            }
-
-            if self._target_dtype == "binary":
+            if self._target_dtype in ("binary", "multiclass"):
                 optb.binning_table.analysis(print_output=False)
-                iv = optb.binning_table.iv
-                gini = optb.binning_table.gini
-                js = optb.binning_table.js
-                quality_score = optb.binning_table.quality_score
 
-                selected = True
-                selected &= self._binning_metric_eval(self.min_iv, iv, 0)
-                selected &= self._binning_metric_eval(self.max_iv, iv, 1)
-                selected &= self._binning_metric_eval(self.min_js, js, 0)
-                selected &= self._binning_metric_eval(self.max_js, js, 1)
-                selected &= self._binning_metric_eval(
-                    self.quality_score_cutoff, quality_score, 0)
-
-                info = {**info, **{"iv": iv, "gini": gini, "js": js,
-                                   "quality score": quality_score,
-                                   "selected": selected}}
+                if self._target_dtype == "binary":
+                    metrics = {
+                        "iv": optb.binning_table.iv,
+                        "gini": optb.binning_table.gini,
+                        "js": optb.binning_table.js,
+                        "quality_score": optb.binning_table.quality_score}
+                else:
+                    metrics = {
+                        "js": optb.binning_table.js,
+                        "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
-                selected = True
-                info = {**info, **{"selected": selected}}
-            elif self._target_dtype == "multiclass":
-                optb.binning_table.analysis(print_output=False)
-                js = optb.binning_table.js
-                quality_score = optb.binning_table.quality_score
+                metrics = {}
 
-                selected = True
-                selected &= self._binning_metric_eval(self.max_js, js, 1)
-                selected &= self._binning_metric_eval(
-                    self.quality_score_cutoff, quality_score, 0)
+            info = {**info, **metrics}
+            self._variable_stats[name] = info
 
-                info = {**info, **{"js": js, "quality score": quality_score,
-                                   "selected": selected}}
-
-            self._variables_stats[name] = info
-            self._support[i] = selected
-
-    def _binning_metric_eval(self, metric, binning_metric, min_max):
-        if metric is None:
-            return True
-
-        if min_max == 0:
-            if binning_metric < metric:
-                return False
-        elif binning_metric > metric:
-            return False
-
-        return True
+        self._support_selection_criteria()
 
     def _check_is_fitted(self):
         if not self._is_fitted:
@@ -587,6 +643,10 @@ class BinningProcess(BaseEstimator):
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
             raise ValueError("Target type {} is not supported."
                              .format(self._target_dtype))
+
+        if self.selection_criteria is not None:
+            _check_selection_criteria(self.selection_criteria,
+                                      self._target_dtype)
 
         # check X and y data
         if check_input:
@@ -619,7 +679,7 @@ class BinningProcess(BaseEstimator):
             logging.info("Binning process variable selection...")
 
         # Compute binning statistics and decide whether a variable is selected
-        self._binning_variables_selection()
+        self._binning_selection_criteria()
 
         if self.verbose:
             logging.info("Binning process terminated. Time: {:.4f}s"
@@ -642,7 +702,7 @@ class BinningProcess(BaseEstimator):
             if name in self.categorical_variables:
                 dtype = "categorical"
 
-        self._variables_dtype[name] = dtype
+        self._variable_dtypes[name] = dtype
 
         if self.binning_fit_params is not None:
             params = self.binning_fit_params.get(name, {})
@@ -683,47 +743,43 @@ class BinningProcess(BaseEstimator):
 
         self._binned_variables[name] = optb
 
-    def _transform(self, X, variable_names, metric, metric_special,
-                   metric_missing, check_input):
+    def _transform(self, X, metric, metric_special, metric_missing,
+                   show_digits, check_input):
 
         # check X dtype
         if not isinstance(X, (pd.DataFrame, np.ndarray)):
             raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
 
-        if isinstance(X, pd.DataFrame) and variable_names is None:
-            raise ValueError("variable_names must be provided if X is of type "
-                             "pandas.DataFrame.")
+        n_samples, n_variables = X.shape
 
-        n_records, n_variables = X.shape
+        mask = self.get_support()
+        if not mask.any():
+            warn("No variables were selected: either the data is"
+                 " too noisy or the selection_criteria too strict.",
+                 UserWarning)
+            return np.empty(0).reshape((n_samples, 0))
+        if len(mask) != n_variables:
+            raise ValueError("X has a different shape that during fitting.")
 
-        if variable_names is not None:
-            if not isinstance(variable_names, (np.ndarray, list)):
-                raise TypeError("variable_names must be a list or "
-                                "numpy.ndarray.")
+        indices_selected_variables = self.get_support(indices=True)
+        n_selected_variables = len(indices_selected_variables)
 
-            keys = list(self._binned_variables.keys())
-            n_variables = len(variable_names)
+        if metric == "indices":
+            X_transform = np.full(
+                (n_samples, n_selected_variables), -1, dtype=np.int)
+        elif metric == "bins":
+            X_transform = np.full(
+                (n_samples, n_selected_variables), "", dtype=np.object)
+        else:
+            X_transform = np.zeros((n_samples, n_selected_variables))
 
-        X_transform = np.zeros((n_records, n_variables))
+        for i, idx in enumerate(indices_selected_variables):
+            name = self.variable_names[idx]
+            optb = self._binned_variables[name]
 
-        for i in range(n_variables):
             params = {}
-
-            if variable_names is not None:
-                name = variable_names[i]
-                if name not in keys:
-                    raise ValueError("Variable {} was not previously binned."
-                                     .format(name))
-
-                if self.binning_transform_params is not None:
-                    params = self.binning_transform_params.get(name, {})
-
-                optb = self._binned_variables[name]
-
-                idx = next(j for j, key in enumerate(keys) if key == name)
-            else:
-                optb = list(self._binned_variables.values())[i]
-                idx = i
+            if self.binning_transform_params is not None:
+                params = self.binning_transform_params.get(name, {})
 
             metric_missing = params.get("metric_missing", metric_missing)
             metric_special = params.get("metric_special", metric_special)
@@ -733,14 +789,21 @@ class BinningProcess(BaseEstimator):
             else:
                 x = X[name]
 
-            if metric is not None:
-                metric = params.get("metric", metric)
-
-                X_transform[:, i] = optb.transform(x, metric, metric_special,
-                                                   metric_missing, check_input)
-            else:
+            if metric is None:
+                # Use default metric for each target type
                 X_transform[:, i] = optb.transform(
-                    x, metric_special=metric_special,
-                    metric_missing=metric_missing, check_input=check_input)
+                    x=x, metric_special=metric_special,
+                    metric_missing=metric_missing, show_digits=show_digits,
+                    check_input=check_input)
+            else:
+                _metric = params.get("metric", metric)
+
+                X_transform[:, i] = optb.transform(
+                    x, _metric, metric_special, metric_missing, show_digits,
+                    check_input)
+
+        if isinstance(X, pd.DataFrame):
+            selected_variables = self.get_support(names=True)
+            return pd.DataFrame(X_transform, columns=selected_variables)
 
         return X_transform

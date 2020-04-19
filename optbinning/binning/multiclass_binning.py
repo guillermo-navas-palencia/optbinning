@@ -350,7 +350,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         self._is_fitted = False
 
     def fit_transform(self, x, y, metric="mean_woe", metric_special=0,
-                      metric_missing=0, check_input=False):
+                      metric_missing=0, show_digits=2, check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -364,9 +364,11 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         metric : str, optional (default="mean_woe")
             The metric used to transform the input vector. Supported metrics
-            are "mean_woe" to choose the mean of Weight of Evidence (WoE) and
+            are "mean_woe" to choose the mean of Weight of Evidence (WoE),
             "weighted_mean_woe" to choose weighted mean of WoE using the
-            number of records per class as weights.
+            number of records per class as weights, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -377,6 +379,10 @@ class MulticlassOptimalBinning(OptimalBinning):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical mean WoE
             or weighted mean WoE, and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -387,10 +393,11 @@ class MulticlassOptimalBinning(OptimalBinning):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, show_digits,
+            check_input)
 
     def transform(self, x, metric="mean_woe", metric_special=0,
-                  metric_missing=0, check_input=False):
+                  metric_missing=0, show_digits=2, check_input=False):
         """Transform given data to mean Weight of Evidence (WoE) or weighted
         mean WoE using bins from the fitted optimal binning.
 
@@ -401,9 +408,11 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         metric : str, optional (default="mean_woe")
             The metric used to transform the input vector. Supported metrics
-            are "mean_woe" to choose the mean of Weight of Evidence (WoE) and
+            are "mean_woe" to choose the mean of Weight of Evidence (WoE),
             "weighted_mean_woe" to choose weighted mean of WoE using the
-            number of records per class as weights.
+            number of records per class as weights, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -414,6 +423,10 @@ class MulticlassOptimalBinning(OptimalBinning):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical mean WoE
             or weighted mean WoE, and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -428,7 +441,8 @@ class MulticlassOptimalBinning(OptimalBinning):
         return transform_multiclass_target(self._splits_optimal, x,
                                            self._n_event, self.special_codes,
                                            metric,  metric_special,
-                                           metric_missing, check_input)
+                                           metric_missing, show_digits,
+                                           check_input)
 
     def _fit(self, x, y, check_input):
         time_init = time.perf_counter()

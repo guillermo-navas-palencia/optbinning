@@ -360,7 +360,8 @@ class SBOptimalBinning(OptimalBinning):
         return self._fit(X, Y, weights, check_input)
 
     def fit_transform(self, x, X, Y, weights=None, metric="woe",
-                      metric_special=0, metric_missing=0, check_input=False):
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the optimal binning given a list of scenarios, then
         transform it.
 
@@ -381,8 +382,10 @@ class SBOptimalBinning(OptimalBinning):
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
-            are "woe" to choose the Weight of Evidence and "event_rate" to
-            choose the event rate.
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -394,6 +397,10 @@ class SBOptimalBinning(OptimalBinning):
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
 
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -403,7 +410,8 @@ class SBOptimalBinning(OptimalBinning):
             Transformed array.
         """
         return self.fit(X, Y, weights, check_input).transform(
-            x, metric, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, show_digits,
+            check_input)
 
     def _fit(self, X, Y, weights, check_input):
         time_init = time.perf_counter()

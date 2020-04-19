@@ -76,32 +76,18 @@ def test_params():
                                  max_pvalue_policy="new_policy")
         process.fit(X, y)
 
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], min_iv=-0.2)
+    with raises(TypeError):
+        process = BinningProcess(variable_names=[], selection_criteria=[])
         process.fit(X, y)
 
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], max_iv=-0.2)
+    with raises(TypeError):
+        process = BinningProcess(variable_names=[],
+                                 categorical_variables={})
         process.fit(X, y)
 
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], min_iv=1.0, max_iv=0.8)
-        process.fit(X, y)
-
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], min_js=-0.2)
-        process.fit(X, y)
-
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], max_js=-0.2)
-        process.fit(X, y)
-
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], min_js=1.0, max_js=0.8)
-        process.fit(X, y)
-
-    with raises(ValueError):
-        process = BinningProcess(variable_names=[], quality_score_cutoff=-0.1)
+    with raises(TypeError):
+        process = BinningProcess(variable_names=[],
+                                 categorical_variables=[1, 2])
         process.fit(X, y)
 
     with raises(TypeError):
@@ -123,6 +109,56 @@ def test_params():
 
     with raises(TypeError):
         process = BinningProcess(variable_names=[], verbose=1)
+        process.fit(X, y)
+
+
+def test_selection_criteria():
+    with raises(ValueError):
+        selection_criteria = {"new_metric": {"min": 0}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(TypeError):
+        selection_criteria = {"iv": ["min", 0]}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(ValueError):
+        selection_criteria = {"iv": {"min": -10}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(ValueError):
+        selection_criteria = {"quality_score": {"max": 10}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(ValueError):
+        selection_criteria = {"iv": {"strategy": "new_strategy"}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(ValueError):
+        selection_criteria = {"iv": {"top": -2}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(ValueError):
+        selection_criteria = {"iv": {"top": 1.1}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
+        process.fit(X, y)
+
+    with raises(KeyError):
+        selection_criteria = {"iv": {"new_threshold": 2}}
+        process = BinningProcess(variable_names=[],
+                                 selection_criteria=selection_criteria)
         process.fit(X, y)
 
 
@@ -248,16 +284,21 @@ def test_fit_params():
 def test_default_transform():
     process = BinningProcess(variable_names)
     with raises(NotFittedError):
-        process.transform(X)
+        process.transform(X, metric="woe")
 
     process.fit(X, y)
+
+    with raises(ValueError):
+        X_transform = process.transform(X[:, :3], metric="woe")
+
     X_transform = process.transform(X)
 
     optb = OptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
 
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="woe") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_transform_pandas():
@@ -267,18 +308,16 @@ def test_default_transform_pandas():
     process.fit(df, y)
 
     with raises(TypeError):
-        X_transform = process.transform(df.to_dict())
+        X_transform = process.transform(df.to_dict(), metric="woe")
 
-    with raises(ValueError):
-        X_transform = process.transform(df)
-
-    X_transform = process.transform(df, data.feature_names)
+    X_transform = process.transform(df, metric="woe")
 
     optb = OptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
 
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="woe") == approx(
+        X_transform.values[:, 5], rel=1e-6)
 
 
 def test_default_transform_continuous():
@@ -289,7 +328,7 @@ def test_default_transform_continuous():
 
     process = BinningProcess(variable_names)
     process.fit(X, y)
-    X_transform = process.transform(X)
+    X_transform = process.transform(X, metric="mean")
 
     optb = process.get_binned_variable(variable_names[0])
     assert isinstance(optb, ContinuousOptimalBinning)
@@ -297,7 +336,8 @@ def test_default_transform_continuous():
     optb = ContinuousOptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="mean") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_transform_multiclass():
@@ -308,7 +348,7 @@ def test_default_transform_multiclass():
 
     process = BinningProcess(variable_names)
     process.fit(X, y)
-    X_transform = process.transform(X)
+    X_transform = process.transform(X, metric="mean_woe")
 
     optb = process.get_binned_variable(variable_names[0])
     assert isinstance(optb, MulticlassOptimalBinning)
@@ -316,43 +356,29 @@ def test_default_transform_multiclass():
     optb = MulticlassOptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
-    assert optb.transform(x) == approx(X_transform[:, 5], rel=1e-6)
-
-
-def test_transform_some_variables():
-    process = BinningProcess(variable_names)
-    process.fit(X, y)
-
-    with raises(TypeError):
-        process.transform(X, {})
-
-    with raises(ValueError):
-        process.transform(X, ["new_1", "new_2"])
-
-    selected_variables = ['mean area', 'mean smoothness', 'mean compactness',
-                          'mean concavity']
-
-    X_transform = process.transform(X, selected_variables)
-    assert X_transform.shape[1] == 4
-
-    for i in range(3, 7):
-        optb = OptimalBinning()
-        x = X[:, i]
-        optb.fit(x, y)
-
-        assert optb.transform(x) == approx(X_transform[:, i-3], rel=1e-6)
+    assert optb.transform(x, metric="mean_woe") == approx(
+        X_transform[:, 5], rel=1e-6)
 
 
 def test_default_fit_transform():
     process = BinningProcess(variable_names)
-    X_transform = process.fit_transform(X, y, metric="event_rate")
+    X_transform = process.fit_transform(X, y, metric="indices")
 
     optb = OptimalBinning()
     x = X[:, 5]
     optb.fit(x, y)
 
-    assert optb.transform(x, metric="event_rate") == approx(
-        X_transform[:, 5], rel=1e-6)
+    assert optb.transform(x, metric="indices") == approx(
+        X_transform[:, 5])
+
+
+def test_default_fit_transform_no_selected_variables():
+    selection_criteria = {"quality_score": {"min": 0.99}}
+    process = BinningProcess(variable_names,
+                             selection_criteria=selection_criteria)
+
+    X_transform = process.fit_transform(X, y, metric="event_rate")
+    assert X_transform == approx(np.empty(0).reshape((X.shape[0], 0)))
 
 
 def test_information():
@@ -382,7 +408,11 @@ def test_summary_get_support():
     X = data.data
     y = data.target
 
-    process = BinningProcess(variable_names, min_iv=0.1, max_iv=0.6)
+    selection_criteria = {"iv": {"min": 0.1, "max": 0.6,
+                                 "strategy": "highest", "top": 10}}
+
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
 
     with raises(ValueError):
         process.summary()

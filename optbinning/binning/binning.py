@@ -503,7 +503,7 @@ class OptimalBinning(BaseOptimalBinning):
         return self._fit(x, y, check_input)
 
     def fit_transform(self, x, y, metric="woe", metric_special=0,
-                      metric_missing=0, check_input=False):
+                      metric_missing=0, show_digits=2, check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -517,8 +517,10 @@ class OptimalBinning(BaseOptimalBinning):
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
-            are "woe" to choose the Weight of Evidence and "event_rate" to
-            choose the event rate.
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -530,6 +532,10 @@ class OptimalBinning(BaseOptimalBinning):
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
 
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -539,10 +545,11 @@ class OptimalBinning(BaseOptimalBinning):
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
-            x, metric, metric_special, metric_missing, check_input)
+            x, metric, metric_special, metric_missing, show_digits,
+            check_input)
 
     def transform(self, x, metric="woe", metric_special=0,
-                  metric_missing=0, check_input=False):
+                  metric_missing=0, show_digits=2, check_input=False):
         """Transform given data to Weight of Evidence (WoE) or event rate using
         bins from the fitted optimal binning.
 
@@ -553,8 +560,10 @@ class OptimalBinning(BaseOptimalBinning):
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
-            are "woe" to choose the Weight of Evidence and "event_rate" to
-            choose the event rate.
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -565,6 +574,10 @@ class OptimalBinning(BaseOptimalBinning):
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
             event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -586,7 +599,8 @@ class OptimalBinning(BaseOptimalBinning):
                                        self.special_codes, self._categories,
                                        self._cat_others, metric,
                                        metric_special, metric_missing,
-                                       self.user_splits, check_input)
+                                       self.user_splits, show_digits,
+                                       check_input)
 
     def information(self, print_level=1):
         """Print overview information about the options settings, problem

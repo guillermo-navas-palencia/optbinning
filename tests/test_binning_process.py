@@ -331,7 +331,7 @@ def test_summary_get_support():
     X = data.data
     y = data.target
 
-    selection_criteria = {"iv": {"min_value": 0.1, "max_value": 0.6}}
+    selection_criteria = {"iv": {"min": 0.1, "max": 0.6}}
 
     process = BinningProcess(variable_names=variable_names,
                              selection_criteria=selection_criteria)

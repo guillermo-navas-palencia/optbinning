@@ -170,11 +170,11 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
         elif metric == "bins":
             bins_str.extend(["Special", "Missing"])
             metric_value = bins_str
-            x_transform = np.full(x.shape, "",)
+            x_transform = np.full(x.shape, "", dtype=np.object)
 
     if dtype == "numerical":
         if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, "").astype(np.object)
+            x_clean_transform = np.full(x_clean.shape, "", dtype=np.object)
         else:
             x_clean_transform = np.zeros(x_clean.shape)
 

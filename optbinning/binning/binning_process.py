@@ -9,6 +9,8 @@ import logging
 import numbers
 import time
 
+from warnings import warn
+
 import numpy as np
 import pandas as pd
 
@@ -44,9 +46,45 @@ _METRICS = {
 }
 
 
-def _check_selection_criteria(selection_criteria):
-    # check if metric is repeated.
-    pass
+def _check_selection_criteria(selection_criteria, target_dtype):
+    default_metrics_info = _METRICS[target_dtype]
+    default_metrics = default_metrics_info["metrics"]
+
+    if not all(m in default_metrics for m in selection_criteria.keys()):
+        raise ValueError("metric for {} target must be in {}."
+                         .format(target_dtype, default_metrics))
+
+    for metric, info in selection_criteria.items():
+        if not isinstance(info, dict):
+            raise TypeError("metric {} info is not a dict.".format(metric))
+
+        for key, value in info.items():
+            if key == "min":
+                min_ref = default_metrics_info[metric][key]
+                if value < min_ref:
+                    raise ValueError("metric {} min value {} < {}."
+                                     .format(metric, value, min_ref))
+            elif key == "max":
+                max_ref = default_metrics_info[metric][key]
+                if value > max_ref:
+                    raise ValueError("metric {} max value {} > {}."
+                                     .format(metric, value, max_ref))
+            elif key == "strategy":
+                if value not in ("best", "worst"):
+                    raise ValueError('strategy value for metric {} must be '
+                                     '"best" or "worst"; got {}.'
+                                     .format(value, metric))
+            elif key == "top":
+                if isinstance(value, numbers.Integral):
+                    if value < 1:
+                        raise ValueError("top value must be at least 1 or "
+                                         "in (0, 1); got {}.".format(value))
+                else:
+                    if not 0. < value < 1.:
+                        raise ValueError("top value must be at least 1 or "
+                                         "in (0, 1); got {}.".format(value))
+            else:
+                raise KeyError(key)
 
 
 def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
@@ -110,7 +148,8 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                          'values are "all" and "consecutive".')
 
     if selection_criteria is not None:
-        _check_selection_criteria(selection_criteria)
+        if not isinstance(selection_criteria, dict):
+            raise TypeError("selection_criteria must be a dict.")
 
     if categorical_variables is not None:
         pass
@@ -487,12 +526,10 @@ class BinningProcess(BaseEstimator):
                 metric_info = self.selection_criteria[metric]
                 metric_values = binning_metrics[metric].values
 
-                if "min_value" in metric_info:
-                    min_value = metric_info["min_value"]
-                    self._support &= metric_values >= min_value
-                if "max_value" in metric_info:
-                    max_value = metric_info["max_value"]
-                    self._support &= metric_values <= max_value
+                if "min" in metric_info:
+                    self._support &= metric_values >= metric_info["min"]
+                if "max" in metric_info:
+                    self._support &= metric_values <= metric_info["max"]
                 if all(m in metric_info for m in ("strategy", "top")):
                     indices_valid = np.where(self._support)[0]
                     metric_values = metric_values[indices_valid]
@@ -573,6 +610,10 @@ class BinningProcess(BaseEstimator):
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
             raise ValueError("Target type {} is not supported."
                              .format(self._target_dtype))
+
+        if self.selection_criteria is not None:
+            _check_selection_criteria(self.selection_criteria,
+                                      self._target_dtype)
 
         # check X and y data
         if check_input:
@@ -680,7 +721,9 @@ class BinningProcess(BaseEstimator):
 
         mask = self.get_support()
         if not mask.any():
-            # Add warning
+            warn("No variables were selected: either the data is"
+                 " too noisy or the selection_criteria too strict.",
+                 UserWarning)
             return np.empty(0).reshape((n_samples, 0))
         if len(mask) != n_variables:
             raise ValueError("X has a different shape that during fitting.")
@@ -688,7 +731,10 @@ class BinningProcess(BaseEstimator):
         indices_selected_variables = self.get_support(indices=True)
         n_selected_variables = len(indices_selected_variables)
 
-        if metric == "bins":
+        if metric == "indices":
+            X_transform = np.full(
+                (n_samples, n_selected_variables), -1, dtype=np.int)
+        elif metric == "bins":
             X_transform = np.full(
                 (n_samples, n_selected_variables), "", dtype=np.object)
         else:

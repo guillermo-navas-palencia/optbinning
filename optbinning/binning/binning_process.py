@@ -70,9 +70,9 @@ def _check_selection_criteria(selection_criteria, target_dtype):
                     raise ValueError("metric {} max value {} > {}."
                                      .format(metric, value, max_ref))
             elif key == "strategy":
-                if value not in ("best", "worst"):
+                if value not in ("highest", "lowest"):
                     raise ValueError('strategy value for metric {} must be '
-                                     '"best" or "worst"; got {}.'
+                                     '"highest" or "lowest"; got {}.'
                                      .format(value, metric))
             elif key == "top":
                 if isinstance(value, numbers.Integral):
@@ -152,7 +152,13 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
             raise TypeError("selection_criteria must be a dict.")
 
     if categorical_variables is not None:
-        pass
+        if not isinstance(categorical_variables, (np.ndarray, list)):
+            raise TypeError("categorical_variables must be a list or "
+                            "numpy.ndarray.")
+
+        if not all(isinstance(c, str) for c in categorical_variables):
+            raise TypeError("variables in categorical_variables must be "
+                            "strings.")
 
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
@@ -255,17 +261,22 @@ class BinningProcess(BaseEstimator):
     .. code::
 
         selection_criteria = {
-            "metric_1": {"min": 0, "max": 1, "strategy": "best", "top": 0.25},
-            "metric_2": {"min": 0.02}
+            "metric_1":
+                {
+                    "min": 0, "max": 1, "strategy": "highest", "top": 0.25
+                },
+            "metric_2":
+                {
+                    "min": 0.02
+                }
         }
 
     where several metrics can be combined. For example, above dictionary
-    indicates that top 25% best variables with "metric_1" in [0, 1] and
-    "metric:2" greater or equal than 0.02 are selected. Supported key values
-    are:
+    indicates that top 25% variables with "metric_1" in [0, 1] and "metric:2"
+    greater or equal than 0.02 are selected. Supported key values are:
 
     * keys ``min`` and ``max`` support numerical values.
-    * key ``strategy`` supports options "best" and "worst".
+    * key ``strategy`` supports options "highest" and "lowest".
     * key ``top`` supports an integer or decimal (percentage).
     """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
@@ -565,9 +576,9 @@ class BinningProcess(BaseEstimator):
                         top = int(np.ceil(n_valid * top))
                     n_selected = min(n_valid, top)
 
-                    if metric_info["strategy"] == "best":
+                    if metric_info["strategy"] == "highest":
                         mask = np.argsort(-metric_values)[:n_selected]
-                    elif metric_info["strategy"] == "worst":
+                    elif metric_info["strategy"] == "lowest":
                         mask = np.argsort(metric_values)[:n_selected]
 
                     support[indices_valid[mask]] = True

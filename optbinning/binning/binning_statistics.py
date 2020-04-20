@@ -1083,6 +1083,10 @@ class ContinuousBinningTable:
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
 
+        woe = self._mean - t_mean
+        iv = np.absolute(woe) * p_records
+        t_iv = iv.sum()
+
         if self.dtype == "numerical":
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
@@ -1100,7 +1104,9 @@ class ContinuousBinningTable:
             "Mean": self._mean,
             "Min": self.min_target,
             "Max": self.max_target,
-            "Zeros count": self.n_zeros
+            "Zeros count": self.n_zeros,
+            "WoE": woe,
+            "IV": iv,
             })
 
         if add_totals:
@@ -1108,7 +1114,7 @@ class ContinuousBinningTable:
             t_max = np.max(self.max_target)
             t_n_zeros = self.n_zeros.sum()
             totals = ["", t_n_records, 1, t_sum, t_mean, t_min, t_max,
-                      t_n_zeros]
+                      t_n_zeros, "", t_iv]
             df.loc["Totals"] = totals
 
         self._is_built = True

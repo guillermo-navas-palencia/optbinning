@@ -565,7 +565,10 @@ class BinningTable:
         n_nev = self.n_nonevent[:n_metric]
         n_ev = self.n_event[:n_metric]
 
-        chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        if len(n_nev) >= 2:
+            chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        else:
+            cramer_v = 0
 
         t_statistics = []
         p_values = []
@@ -908,7 +911,10 @@ class MulticlassBinningTable:
         n_metric = n_bins - 2
 
         n_ev = self.n_event[:n_metric, :]
-        chi2, cramer_v = chi2_cramer_v_multi(n_ev)
+        if len(n_ev) >= 2:
+            chi2, cramer_v = chi2_cramer_v_multi(n_ev)
+        else:
+            cramer_v = 0
 
         t_statistics = []
         p_values = []

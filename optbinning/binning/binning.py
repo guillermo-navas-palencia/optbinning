@@ -481,7 +481,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, check_input=False):
+    def fit(self, x, y, sample_weight=None, check_input=False):
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -492,6 +492,11 @@ class OptimalBinning(BaseOptimalBinning):
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
 
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -500,10 +505,11 @@ class OptimalBinning(BaseOptimalBinning):
         self : object
             Fitted optimal binning.
         """
-        return self._fit(x, y, check_input)
+        return self._fit(x, y, sample_weight, check_input)
 
-    def fit_transform(self, x, y, metric="woe", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(self, x, y, sample_weight=None, metric="woe",
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -514,6 +520,11 @@ class OptimalBinning(BaseOptimalBinning):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
@@ -544,7 +555,7 @@ class OptimalBinning(BaseOptimalBinning):
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
         """
-        return self.fit(x, y, check_input).transform(
+        return self.fit(x, y, sample_weight, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
@@ -635,7 +646,7 @@ class OptimalBinning(BaseOptimalBinning):
                                   self._time_postprocessing, self._n_prebins,
                                   self._n_refinements, dict_user_options)
 
-    def _fit(self, x, y, check_input):
+    def _fit(self, x, y, sample_weight, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -735,7 +746,7 @@ class OptimalBinning(BaseOptimalBinning):
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, y_others,
-                self.class_weight)
+                self.class_weight, sample_weight)
 
         self._n_prebins = len(n_nonevent)
 
@@ -799,14 +810,15 @@ class OptimalBinning(BaseOptimalBinning):
         return self
 
     def _fit_prebinning(self, x, y, y_missing, y_special, y_others,
-                        class_weight=None):
+                        class_weight=None, sample_weight=None):
         min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
-                                class_weight=class_weight).fit(x, y)
+                                class_weight=class_weight
+                                ).fit(x, y, sample_weight)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
                                            y_special, y_others)

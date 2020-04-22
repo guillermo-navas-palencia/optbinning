@@ -349,8 +349,9 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit_transform(self, x, y, metric="mean_woe", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(self, x, y, sample_weight=None, metric="mean_woe",
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -361,6 +362,11 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
 
         metric : str, optional (default="mean_woe")
             The metric used to transform the input vector. Supported metrics
@@ -392,7 +398,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
         """
-        return self.fit(x, y, check_input).transform(
+        return self.fit(x, y, sample_weight, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
@@ -444,7 +450,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                            metric_missing, show_digits,
                                            check_input)
 
-    def _fit(self, x, y, check_input):
+    def _fit(self, x, y, sample_weight, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -522,7 +528,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                 user_splits, x_clean, y_clean, y_missing, y_special, None)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
-                x_clean, y_clean, y_missing, y_special, None)
+                x_clean, y_clean, y_missing, y_special, None, sample_weight)
 
         self._n_prebins = len(n_nonevent)
 

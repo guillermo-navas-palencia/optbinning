@@ -102,6 +102,19 @@ def target_info(y, cl=0):
         return n_nonevent, n_event
 
 
+def target_info_samples(y, sw, cl=0):
+    if not len(y):
+        return 0, 0
+    elif not len(sw):
+        return target_info(y, cl)
+    else:
+        y0 = (y == cl)
+        n_nonevent = np.sum(sw[y0])
+        n_event = np.sum(sw[~y0])
+
+        return n_nonevent, n_event
+
+
 def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
              n_event_missing, n_nonevent_special, n_event_special,
              n_nonevent_cat_others, n_event_cat_others, cat_others):

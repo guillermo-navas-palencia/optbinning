@@ -349,9 +349,29 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit_transform(self, x, y, sample_weight=None, metric="mean_woe",
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit(self, x, y, check_input=False):
+        """Fit the optimal binning according to the given training data.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Target vector relative to x.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        self : object
+            Fitted optimal binning.
+        """
+        return self._fit(x, y, check_input)
+
+    def fit_transform(self, x, y, metric="mean_woe", metric_special=0,
+                      metric_missing=0, show_digits=2, check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -362,11 +382,6 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
-
-        sample_weight : array-like of shape (n_samples,) (default=None)
-            Array of weights that are assigned to individual samples.
-            If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``.
 
         metric : str, optional (default="mean_woe")
             The metric used to transform the input vector. Supported metrics
@@ -398,7 +413,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
         """
-        return self.fit(x, y, sample_weight, check_input).transform(
+        return self.fit(x, y, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
@@ -450,7 +465,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                            metric_missing, show_digits,
                                            check_input)
 
-    def _fit(self, x, y, sample_weight, check_input):
+    def _fit(self, x, y, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -472,7 +487,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         _, _, _] = split_data(
+         _, _, _, _, _, _, _] = split_data(
             self.dtype, x, y, special_codes=self.special_codes,
             check_input=check_input, outlier_detector=self.outlier_detector,
             outlier_params=self.outlier_params)
@@ -528,7 +543,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                 user_splits, x_clean, y_clean, y_missing, y_special, None)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
-                x_clean, y_clean, y_missing, y_special, None, sample_weight)
+                x_clean, y_clean, y_missing, y_special, None)
 
         self._n_prebins = len(n_nonevent)
 
@@ -586,7 +601,10 @@ class MulticlassOptimalBinning(OptimalBinning):
         return self
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others=None):
+                               y_special, y_others=None, sw_clean=None,
+                               sw_missing=None, sw_special=None,
+                               sw_others=None):
+
         self._classes = np.unique(y)
         self._n_classes = len(self._classes)
 

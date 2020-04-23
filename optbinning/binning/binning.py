@@ -23,7 +23,7 @@ from .binning_information import print_binning_information
 from .binning_statistics import bin_categorical
 from .binning_statistics import bin_info
 from .binning_statistics import BinningTable
-from .binning_statistics import target_info
+from .binning_statistics import target_info_samples
 from .cp import BinningCP
 from .ls import BinningLS
 from .mip import BinningMIP
@@ -668,10 +668,11 @@ class OptimalBinning(BaseOptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         y_others, categories, cat_others] = split_data(
+         y_others, categories, cat_others, sw_clean, sw_missing,
+         sw_special, sw_others] = split_data(
             self.dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params)
+            self.outlier_params, None, None, self.class_weight, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -742,11 +743,12 @@ class OptimalBinning(BaseOptimalBinning):
 
                 splits, n_nonevent, n_event = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, y_special,
-                    y_others)
+                    y_others, sw_clean, sw_missing, sw_special, sw_others)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, y_others,
-                self.class_weight, sample_weight)
+                self.class_weight, sample_weight, sw_clean, sw_missing,
+                sw_special, sw_others)
 
         self._n_prebins = len(n_nonevent)
 
@@ -775,7 +777,7 @@ class OptimalBinning(BaseOptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            t_info = target_info(y_clean)
+            t_info = target_info_samples(y_clean, sw_clean)
             n_nonevent = np.array([t_info[0]])
             n_event = np.array([t_info[1]])
 
@@ -810,7 +812,9 @@ class OptimalBinning(BaseOptimalBinning):
         return self
 
     def _fit_prebinning(self, x, y, y_missing, y_special, y_others,
-                        class_weight=None, sample_weight=None):
+                        class_weight=None, sample_weight=None, sw_clean=None,
+                        sw_missing=None, sw_special=None, sw_others=None):
+
         min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
@@ -821,7 +825,8 @@ class OptimalBinning(BaseOptimalBinning):
                                 ).fit(x, y, sample_weight)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
-                                           y_special, y_others)
+                                           y_special, y_others, sw_clean,
+                                           sw_missing, sw_special, sw_others)
 
     def _fit_optimizer(self, splits, n_nonevent, n_event):
         if self.verbose:
@@ -955,21 +960,22 @@ class OptimalBinning(BaseOptimalBinning):
                          .format(self._time_solver))
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others):
+                               y_special, y_others, sw_clean, sw_missing,
+                               sw_special, sw_others):
         y0 = (y == 0)
         y1 = ~y0
 
         # Compute n_nonevent and n_event for special, missing and others.
-        special_target_info = target_info(y_special)
+        special_target_info = target_info_samples(y_special, sw_special)
         self._n_nonevent_special = special_target_info[0]
         self._n_event_special = special_target_info[1]
 
-        missing_target_info = target_info(y_missing)
+        missing_target_info = target_info_samples(y_missing, sw_missing)
         self._n_nonevent_missing = missing_target_info[0]
         self._n_event_missing = missing_target_info[1]
 
         if len(y_others):
-            others_target_info = target_info(y_others)
+            others_target_info = target_info_samples(y_others, sw_others)
             self._n_nonevent_cat_others = others_target_info[0]
             self._n_event_cat_others = others_target_info[1]
 
@@ -982,11 +988,11 @@ class OptimalBinning(BaseOptimalBinning):
             splits_prebinning = np.round(splits_prebinning, self.split_digits)
 
         splits_prebinning, n_nonevent, n_event = self._compute_prebins(
-            splits_prebinning, x, y0, y1)
+            splits_prebinning, x, y0, y1, sw_clean)
 
         return splits_prebinning, n_nonevent, n_event
 
-    def _compute_prebins(self, splits_prebinning, x, y0, y1):
+    def _compute_prebins(self, splits_prebinning, x, y0, y1, sw):
         n_splits = len(splits_prebinning)
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
@@ -1003,8 +1009,8 @@ class OptimalBinning(BaseOptimalBinning):
 
         for i in range(n_bins):
             mask = (indices == i)
-            n_nonevent[i] = np.count_nonzero(y0 & mask)
-            n_event[i] = np.count_nonzero(y1 & mask)
+            n_nonevent[i] = np.sum(sw[y0 & mask])
+            n_event[i] = np.sum(sw[y1 & mask])
 
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
@@ -1039,7 +1045,7 @@ class OptimalBinning(BaseOptimalBinning):
                              .format(np.count_nonzero(mask_remove)))
 
             [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
-                splits, x, y0, y1)
+                splits, x, y0, y1, sw)
 
         return splits_prebinning, n_nonevent, n_event
 

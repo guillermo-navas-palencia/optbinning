@@ -16,6 +16,12 @@ from sklearn.utils.multiclass import type_of_target
 from ..binning.binning_process import BinningProcess
 
 
+def _check_parameters(target, binning_process, estimator, scaling_method,
+                      scaling_method_data, intercept_based, reverse_scorecard,
+                      rounding):
+    pass
+
+
 def _check_scorecard_scaling(scaling_method, scaling_method_data):
     if scaling_method is not None:
         if scaling_method == "pd_odds":
@@ -27,37 +33,39 @@ def _check_scorecard_scaling(scaling_method, scaling_method_data):
 
 
 def compute_scorecard_points(points, binning_tables, method, method_data,
-                             intercept):
+                             intercept, reverse_scorecard):
     """Apply scaling method to scorecard."""
     n = len(binning_tables)
+
+    sense = -1 if reverse_scorecard else 1
 
     if method == "pdo_odds":
         pdo = method_data["pdo"]
         odds = method_data["odds"]
         scorecard_points = method_data["scorecard_points"]
 
-        slope = pdo / np.log(2)
-        shift = scorecard_points - slope * np.log(odds)
+        factor = pdo / np.log(2)
+        offset = scorecard_points - factor * np.log(odds)
 
-    elif method == "shift_slope":
-        shift = method_data["shift"]
-        slope = method_data["slope"]
-
+        new_points = -(sense * points + intercept / n) * factor + offset / n
     elif method == "min_max":
         a = method_data["min"]
         b = method_data["max"]
 
-        min_point = np.sum([np.min(bt.Points) for bt in binning_tables])
-        max_point = np.sum([np.max(bt.Points) for bt in binning_tables])
+        min_p = np.sum([np.min(bt.Points) for bt in binning_tables])
+        max_p = np.sum([np.max(bt.Points) for bt in binning_tables])
 
-        smin = intercept + min_point
-        smax = intercept + max_point
+        smin = intercept + min_p
+        smax = intercept + max_p
 
-        slope = (b - a) / (smax - smin)
-        shift = b * smax / (smax - smin)
+        slope = sense * (a - b) / (smax - smin)
+        if reverse_scorecard:
+            shift = a - slope * smin
+        else:
+            shift = b - slope * smin
 
-    base_points = shift - slope * intercept
-    new_points = base_points / n - slope * points
+        base_points = shift + slope * intercept
+        new_points = base_points / n + slope * points
 
     return new_points
 
@@ -82,7 +90,8 @@ def compute_intercept_based(df_scorecard):
 
 class Scorecard(BaseEstimator):
     def __init__(self, target, binning_process, estimator, scaling_method=None,
-                 scaling_method_data=None, intercept_based=False):
+                 scaling_method_data=None, intercept_based=False,
+                 reverse_scorecard=True, rounding=False):
         """Scorecard.
 
         Parameters
@@ -98,6 +107,8 @@ class Scorecard(BaseEstimator):
         scaling_method_data : dict or None (default=None)
 
         intercept_based : bool (default=False)
+
+        rounding : bool (default=False)
 
         Attributes
         ----------
@@ -116,6 +127,8 @@ class Scorecard(BaseEstimator):
         self.scaling_method = scaling_method
         self.scaling_method_data = scaling_method_data
         self.intercept_based = intercept_based
+        self.reverse_scorecard = reverse_scorecard
+        self.rounding = rounding
 
         self.binning_process_ = None
         self.estimator_ = None
@@ -190,6 +203,8 @@ class Scorecard(BaseEstimator):
     def _fit(self, df, metric_special, metric_missing, show_digits,
              check_input):
 
+        _check_parameters(**self.get_params(deep=False))
+
         # Target type and metric
         target = df[self.target]
         self._target_dtype = type_of_target(target)
@@ -200,10 +215,10 @@ class Scorecard(BaseEstimator):
 
         if self._target_dtype == "binary":
             metric = "woe"
-            binning_table_metric = "WoE"
+            bt_metric = "WoE"
         elif self._target_dtype == "continuous":
             metric = "mean"
-            binning_table_metric = "Mean"
+            bt_metric = "Mean"
 
         # Fit binning process
         self.binning_process_ = clone(self.binning_process)
@@ -216,9 +231,17 @@ class Scorecard(BaseEstimator):
         # Fit estimator
         self.estimator_ = clone(self.estimator)
 
-        self.estimator_.fit(df_t, df[self.target])
-        coef = self.estimator_.coef_
-        intercept = self.estimator_.intercept_
+        self.estimator_.fit(df_t, target)
+
+        # Get coefs
+        intercept = 0
+        if hasattr(self.estimator_, 'coef_'):
+            coefs = self.estimator_.coef_
+            if hasattr(self.estimator_, 'intercept_'):
+                intercept = self.estimator_.intercept_
+        else:
+            raise RuntimeError('The classifier does not expose '
+                               '"coef_" attribute.')
 
         # Build scorecard
         selected_variables = self.binning_process_.get_support(names=True)
@@ -226,10 +249,10 @@ class Scorecard(BaseEstimator):
         for i, variable in enumerate(selected_variables):
             optb = self.binning_process_.get_binned_variable(variable)
             binning_table = optb.binning_table.build(add_totals=False)
-            c = coef.ravel()[i]
+            c = coefs.ravel()[i]
             binning_table["Variable"] = variable
             binning_table["Coefficient"] = c
-            binning_table["Points"] = binning_table[binning_table_metric] * c
+            binning_table["Points"] = binning_table[bt_metric] * c
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)
             binning_tables.append(binning_table)
@@ -242,7 +265,7 @@ class Scorecard(BaseEstimator):
             points = df_scorecard["Points"]
             scaled_points = compute_scorecard_points(
                 points, binning_tables, self.scaling_method,
-                self.scaling_method_data, intercept)
+                self.scaling_method_data, intercept, self.reverse_scorecard)
 
             df_scorecard["Points"] = scaled_points
 

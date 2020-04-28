@@ -22,11 +22,9 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
     pass
 
 
-def _check_scorecard_scaling(scaling_method, scaling_method_data):
+def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
     if scaling_method is not None:
         if scaling_method == "pd_odds":
-            pass
-        elif scaling_method == "shift_slope":
             pass
         elif scaling_method == "min_max":
             pass

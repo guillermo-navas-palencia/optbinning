@@ -55,6 +55,8 @@ COLORS_RGB = [
 
 
 def bin_str_format(bins, show_digits):
+    # Auto
+    show_digits = 2 if show_digits is None else show_digits
     return ["[{0:.{2}f}, {1:.{2}f})".format(bins[i], bins[i+1], show_digits)
             for i in range(len(bins)-1)]
 

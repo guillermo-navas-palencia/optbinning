@@ -10,9 +10,10 @@ import sys
 
 
 class Logger:
-    def __init__(self, filename=None):
-        self.logger = logging.getLogger()
+    def __init__(self, logger_name=None, filename=None):
+        self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
 
         formatter = logging.Formatter(
             '%(asctime)s | %(levelname)s : %(message)s')

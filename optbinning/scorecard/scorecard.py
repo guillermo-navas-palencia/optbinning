@@ -5,7 +5,6 @@ Scorecard development.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-import logging
 import numbers
 import time
 
@@ -18,12 +17,13 @@ from sklearn.exceptions import NotFittedError
 from sklearn.utils.multiclass import type_of_target
 
 from ..binning.binning_process import BinningProcess
+from ..logging import Logger
 from .rounding import RoundingMIP
 
 
 def _check_parameters(target, binning_process, estimator, scaling_method,
                       scaling_method_data, intercept_based, reverse_scorecard,
-                      rounding):
+                      rounding, verbose):
 
     if not isinstance(target, str):
         raise TypeError("target must be a string.")
@@ -66,6 +66,9 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
     if not isinstance(rounding, bool):
         raise TypeError("rounding must be a boolean; got {}.".format(rounding))
 
+    if not isinstance(verbose, bool):
+        raise TypeError("verbose must be a boolean; got {}.".format(verbose))
+
 
 def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
     if scaling_method is not None:
@@ -104,8 +107,8 @@ def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
                                          scaling_method_data["max"]))
 
 
-def compute_scorecard_points(points, binning_tables, method, method_data,
-                             intercept, reverse_scorecard):
+def _compute_scorecard_points(points, binning_tables, method, method_data,
+                              intercept, reverse_scorecard):
     """Apply scaling method to scorecard."""
     n = len(binning_tables)
 
@@ -142,7 +145,7 @@ def compute_scorecard_points(points, binning_tables, method, method_data,
     return new_points
 
 
-def compute_intercept_based(df_scorecard):
+def _compute_intercept_based(df_scorecard):
     """Compute an intercept-based scorecard.
 
     All points within a variable are adjusted so that the lowest point is zero.
@@ -161,38 +164,42 @@ def compute_intercept_based(df_scorecard):
 
 
 class Scorecard(BaseEstimator):
+    """Scorecard.
+
+    Parameters
+    ----------
+    target : str
+
+    binning_process : object
+
+    estimator : object
+
+    scaling_method : str or None (default=None)
+
+    scaling_method_data : dict or None (default=None)
+
+    intercept_based : bool (default=False)
+
+    rounding : bool (default=False)
+
+    verbose : bool (default=False)
+        Enable verbose output.
+
+    Attributes
+    ----------
+    binning_process_ : object
+        The external binning process.
+
+    estimator_ : object
+        The external estimator fit on the reduced dataset.
+
+    intercept_ : float
+        The intercept if ``intercept_based=True``.
+    """
     def __init__(self, target, binning_process, estimator, scaling_method=None,
                  scaling_method_data=None, intercept_based=False,
-                 reverse_scorecard=True, rounding=False):
-        """Scorecard.
+                 reverse_scorecard=True, rounding=False, verbose=True):
 
-        Parameters
-        ----------
-        target : str
-
-        binning_process : object
-
-        estimator : object
-
-        scaling_method : str or None (default=None)
-
-        scaling_method_data : dict or None (default=None)
-
-        intercept_based : bool (default=False)
-
-        rounding : bool (default=False)
-
-        Attributes
-        ----------
-        binning_process_ : object
-            The external binning process.
-
-        estimator_ : object
-            The external estimator fit on the reduced dataset.
-
-        intercept_ : float
-            The intercept if ``intercept_based=True``.
-        """
         self.target = target
         self.binning_process = binning_process
         self.estimator = estimator
@@ -201,6 +208,7 @@ class Scorecard(BaseEstimator):
         self.intercept_based = intercept_based
         self.reverse_scorecard = reverse_scorecard
         self.rounding = rounding
+        self.verbose = verbose
 
         # attributes
         self.binning_process_ = None
@@ -209,6 +217,19 @@ class Scorecard(BaseEstimator):
 
         # auxiliary
         self._target_dtype = None
+
+        # timing
+        self._time_total = None
+        self._time_binning_process = None
+        self._time_estimator = None
+        self._time_build_scorecard = None
+        self._time_rounding = None
+
+        # logger
+        self._rootlogger = Logger("scorecard")
+        self._logger = self._rootlogger.logger
+
+        self._is_fitted = False
 
     def fit(self, df, metric_special=0, metric_missing=0, show_digits=2,
             check_input=False):
@@ -243,6 +264,21 @@ class Scorecard(BaseEstimator):
         return self._fit(df, metric_special, metric_missing, show_digits,
                          check_input)
 
+    def information(self, print_level=1):
+        """Print overview information about the options settings and
+        statistics.
+
+        Parameters
+        ----------
+        print_level : int (default=1)
+            Level of details.
+        """
+        self._check_is_fitted()
+
+        if not isinstance(print_level, numbers.Integral) or print_level < 0:
+            raise ValueError("print_level must be an integer >= 0; got {}."
+                             .format(print_level))
+
     def predict(self, df):
         """
 
@@ -254,6 +290,8 @@ class Scorecard(BaseEstimator):
         Returns
         -------
         """
+        self._check_is_fitted()
+
         df_t = df[self.binning_process_.variable_names]
         df_t = self.binning_process_.transform(df_t)
         return self.estimator_.predict(df_t)
@@ -269,6 +307,8 @@ class Scorecard(BaseEstimator):
         Returns
         -------
         """
+        self._check_is_fitted()
+
         df_t = df[self.binning_process_.variable_names]
         df_t = self.binning_process_.transform(df_t)
         return self.estimator_.predict_proba(df_t)
@@ -284,6 +324,8 @@ class Scorecard(BaseEstimator):
         Returns
         -------
         """
+        self._check_is_fitted()
+
         df_t = df[self.binning_process_.variable_names]
         df_t = self.binning_process_.transform(df_t, metric="indices")
 
@@ -308,9 +350,15 @@ class Scorecard(BaseEstimator):
         -------
         table : pandas.DataFrame
         """
+        self._check_is_fitted()
+
+        if style not in ("summary", "detailed"):
+            raise ValueError('Invalid value for style. Allowed string '
+                             'values are "summary" and "detailed".')
+
         if style == "summary":
             columns = ["Variable", "Bin", "Points"]
-        else:
+        elif style == "detailed":
             main_columns = ["Variable", "Bin id", "Bin"]
             columns = self._df_scorecard.columns
             rest_columns = [col for col in columns if col not in main_columns]
@@ -320,6 +368,12 @@ class Scorecard(BaseEstimator):
 
     def _fit(self, df, metric_special, metric_missing, show_digits,
              check_input):
+
+        time_init = time.perf_counter()
+
+        if self.verbose:
+            self._logger.info("Scorecard building process started.")
+            self._logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params(deep=False))
 
@@ -341,18 +395,42 @@ class Scorecard(BaseEstimator):
             metric = "mean"
             bt_metric = "Mean"
 
+        if self.verbose:
+            self._logger.info("Dataset: {} target.".format(self._target_dtype))
+
         # Fit binning process
+        if self.verbose:
+            self._logger.info("Binning process started.")
+
+        time_binning_process = time.perf_counter()
         self.binning_process_ = clone(self.binning_process)
+        # Suppress binning process verbosity
+        self.binning_process_.set_params(verbose=False)
 
         df_t = self.binning_process_.fit_transform(
             df[self.binning_process.variable_names], target,
             metric, metric_special, metric_missing, show_digits,
             check_input)
 
-        # Fit estimator
-        self.estimator_ = clone(self.estimator)
+        self._time_binning_process = time.perf_counter() - time_binning_process
 
+        if self.verbose:
+            self._logger.info("Binning process terminated. Time: {:.4f}s"
+                              .format(self._time_binning_process))
+
+        # Fit estimator
+        time_estimator = time.perf_counter()
+        if self.verbose:
+            self._logger.info("Fitting estimator.")
+
+        self.estimator_ = clone(self.estimator)
         self.estimator_.fit(df_t, target)
+
+        self._time_estimator = time.perf_counter() - time_estimator
+
+        if self.verbose:
+            self._logger.info("Fitting terminated. Time {:.4f}s"
+                              .format(self._time_estimator))
 
         # Get coefs
         intercept = 0
@@ -365,6 +443,11 @@ class Scorecard(BaseEstimator):
                                '"coef_" attribute.')
 
         # Build scorecard
+        time_build_scorecard = time.perf_counter()
+
+        if self.verbose:
+            self._logger.info("Scorecard table building started.")
+
         selected_variables = self.binning_process_.get_support(names=True)
         binning_tables = []
         for i, variable in enumerate(selected_variables):
@@ -384,14 +467,14 @@ class Scorecard(BaseEstimator):
         # Apply score points
         if self.scaling_method is not None:
             points = df_scorecard["Points"]
-            scaled_points = compute_scorecard_points(
+            scaled_points = _compute_scorecard_points(
                 points, binning_tables, self.scaling_method,
                 self.scaling_method_data, intercept, self.reverse_scorecard)
 
             df_scorecard["Points"] = scaled_points
 
             if self.intercept_based:
-                scaled_points, self.intercept_ = compute_intercept_based(
+                scaled_points, self.intercept_ = _compute_intercept_based(
                     df_scorecard)
                 df_scorecard["Points"] = scaled_points
 
@@ -405,7 +488,7 @@ class Scorecard(BaseEstimator):
                 status, round_points = round_mip.solve()
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
-                    # Add logging message
+                    # Add self._logger message
                     # Back-up method
                     round_points = np.rint(points)
 
@@ -413,4 +496,23 @@ class Scorecard(BaseEstimator):
 
         self._df_scorecard = df_scorecard
 
+        self._time_build_scorecard = time.perf_counter() - time_build_scorecard
+        self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Scorecard table terminated. Time: {:.4f}s"
+                              .format(self._time_build_scorecard))
+            self._logger.info("Scorecard building process terminated. Time: "
+                              "{:.4f}s".format(self._time_total))
+
+        # Completed successfully
+        self._rootlogger.close()
+        self._is_fitted = True
+
         return self
+
+    def _check_is_fitted(self):
+        if not self._is_fitted:
+            raise NotFittedError("This {} instance is not fitted yet. Call "
+                                 "'fit' with appropriate arguments."
+                                 .format(self.__class__.__name__))

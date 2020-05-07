@@ -5,7 +5,6 @@ Binning process.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-import logging
 import numbers
 import time
 
@@ -325,7 +324,8 @@ class BinningProcess(BaseEstimator):
         self._time_total = None
 
         # logger
-        self._logger = Logger()
+        self._rootlogger = Logger("binning_process")
+        self._logger = self._rootlogger.logger
 
         self._is_fitted = False
 
@@ -628,8 +628,8 @@ class BinningProcess(BaseEstimator):
         time_init = time.perf_counter()
 
         if self.verbose:
-            logging.info("Binning process started.")
-            logging.info("Options: check parameters.")
+            self._logger.info("Binning process started.")
+            self._logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
 
@@ -661,11 +661,11 @@ class BinningProcess(BaseEstimator):
         self._n_samples, self._n_variables = X.shape
 
         if self.verbose:
-            logging.info("Dataset: number of samples: {}."
-                         .format(self._n_samples))
+            self._logger.info("Dataset: number of samples: {}."
+                              .format(self._n_samples))
 
-            logging.info("Dataset: number of variables: {}."
-                         .format(self._n_variables))
+            self._logger.info("Dataset: number of variables: {}."
+                              .format(self._n_variables))
 
         for i, name in enumerate(self.variable_names):
             if isinstance(X, np.ndarray):
@@ -676,17 +676,17 @@ class BinningProcess(BaseEstimator):
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logging.info("Binning process variable selection...")
+            self._logger.info("Binning process variable selection...")
 
         # Compute binning statistics and decide whether a variable is selected
         self._binning_selection_criteria()
 
         if self.verbose:
-            logging.info("Binning process terminated. Time: {:.4f}s"
-                         .format(self._time_total))
+            self._logger.info("Binning process terminated. Time: {:.4f}s"
+                              .format(self._time_total))
 
         # Completed successfully
-        self._logger.close()
+        self._rootlogger.close()
         self._is_fitted = True
 
         return self
@@ -696,7 +696,7 @@ class BinningProcess(BaseEstimator):
         dtype = _check_variable_dtype(x)
 
         if self.verbose:
-            logging.info("Binning variable: {}".format(name))
+            self._logger.info("Binning variable: {}".format(name))
 
         if self.categorical_variables is not None:
             if name in self.categorical_variables:

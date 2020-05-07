@@ -11,27 +11,36 @@ from ortools.linear_solver import pywraplp
 
 
 class RoundingMIP:
-    def __init__(self, min_point, max_point):
-        self.min_point = np.rint(min_point)
-        self.max_point = np.rint(max_point)
-
+    def __init__(self):
         self.solver_ = None
 
         self._nb = None
         self._nn = None
         self._p = None
 
-    def build_model(binning_tables):
+    def build_model(self, df_scorecard):
         # Parameters
-        nb = len(binning_tables)
-        nn = [len(bt) for bt in binning_tables]
-        
-        min_p = np.min([np.min(bt.Points) for bt in binning_tables])
-        max_p = np.max([np.max(bt.Points) for bt in binning_tables])
+        points = []
+        mins = []
+        maxs = []
+        for variable in df_scorecard.Variable.unique():
+            mask = df_scorecard.Variable == variable
+            p = df_scorecard[mask].Points.values
+            mins.append(p.min())
+            maxs.append(p.max())
+            points.append(p)
+
+        nb = len(points)
+        nn = [len(p) for p in points]
+
+        min_point = np.sum(mins)
+        max_point = np.sum(maxs)
+        min_p = np.min(mins)
+        max_p = np.max(maxs)
 
         # Initialize solver
         solver = pywraplp.Solver(
-                'RoundingMIP', pywraplp.Solver.BOP_INTEGER_PROGRAMMING)
+                'RoundingMIP', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
         # Decision variables
         p = {}
@@ -40,32 +49,31 @@ class RoundingMIP:
         min_b = {}
         max_b = {}
         for i in range(nb):
-            max_b[i] = solver.IntVar(min_p, max_p, "max_b[{}]".format(i))
             min_b[i] = solver.IntVar(min_p, max_p, "min_b[{}]".format(i))
+            max_b[i] = solver.IntVar(min_p, max_p, "max_b[{}]".format(i))
             for j in range(nn[i]):
                 p[i, j] = solver.IntVar(min_p, max_p, "p[{}, {}]".format(i, j))
-                tp[i, j] = solver.Var(0, np.inf, "tp[{}, {}]".format(i, j))
-                tm[i, j] = solver.Var(0, np.inf, "tm[{}, {}]".format(i, j))
+                tp[i, j] = solver.NumVar(0, np.inf, "tp[{}, {}]".format(i, j))
+                tm[i, j] = solver.NumVar(0, np.inf, "tm[{}, {}]".format(i, j))
 
         # Objective function
         solver.Minimize(solver.Sum([solver.Sum([tp[i, j] + tm[i, j]
-                        for i in range(nn[i])]) for i in range(nb)]))
+                        for j in range(nn[i])]) for i in range(nb)]))
 
         # Constraints
         for i in range(nb):
-            points = binning_tables[i].Points
             for j in range(nn[i]):
-                solver.Add(tp[i, j] - tm[i, j] = points[j] - p[i, j])
+                solver.Add(tp[i, j] - tm[i, j] == points[i][j] - p[i, j])
 
                 # Max score constraint for each variable
                 solver.Add(max_b[i] >= p[i, j])
-        
+
                 # Min score constraints for each variable
-                solver.Add(max_b[i] <= p[i, j])
+                solver.Add(min_b[i] <= p[i, j])
 
         # Sum of minimum/maximum point by variable must be min_point/max_point
-        solver.Add(solver.Sum([min_b[i] for i in range(nb)]) == self.min_point)
-        solver.Add(solver.Sum([max_b[i] for i in range(nb)]) == self.max_point)
+        solver.Add(solver.Sum([min_b[i] for i in range(nb)]) == min_point)
+        solver.Add(solver.Sum([max_b[i] for i in range(nb)]) == max_point)
 
         self.solver_ = solver
         self._nb = nb
@@ -98,5 +106,4 @@ class RoundingMIP:
 
             solution = None
 
-        return status_name, solution            
-
+        return status_name, solution

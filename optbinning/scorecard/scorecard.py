@@ -24,7 +24,7 @@ from .rounding import RoundingMIP
 def _check_parameters(target, binning_process, estimator, scaling_method,
                       scaling_method_data, intercept_based, reverse_scorecard,
                       rounding):
-    
+
     if not isinstance(target, str):
         raise TypeError("target must be a string.")
 
@@ -44,7 +44,7 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
                         "predict.")
 
     if scaling_method is not None:
-        if scaling_method not in ("pd_odds", "min_max"):
+        if scaling_method not in ("pdo_odds", "min_max"):
             raise ValueError('Invalid value for scaling_method. Allowed '
                              'string values are "pd_odds" and "min_max".')
 
@@ -69,8 +69,8 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
 
 def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
     if scaling_method is not None:
-        if scaling_method == "pd_odds":
-            default_keys = ["pdo", "odds"]
+        if scaling_method == "pdo_odds":
+            default_keys = ["pdo", "odds", "scorecard_points"]
 
             if target_type != "binary":
                 raise ValueError('scaling_method "pd_odds" is not supported '
@@ -84,7 +84,7 @@ def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
                              "scaling_method = {}."
                              .format(default_keys, scaling_method))
 
-        if scaling_method == "pd_odds":
+        if scaling_method == "pdo_odds":
             for param in default_keys:
                 value = scaling_method_data[param]
                 if not isinstance(value, numbers.Number) or value <= 0:
@@ -400,15 +400,13 @@ class Scorecard(BaseEstimator):
             if self.scaling_method == "pdo_odds":
                 round_points = np.rint(points)
             elif self.scaling_method == "min_max":
-                min_p = np.sum([np.min(bt.Points) for bt in binning_tables])
-                max_p = np.sum([np.max(bt.Points) for bt in binning_tables])
-
-                round_mip = RoundingMIP(min_p, max_p)
-                round_mip.build_model(binning_tables)
+                round_mip = RoundingMIP()
+                round_mip.build_model(df_scorecard)
                 status, round_points = round_mip.solve()
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
                     # Add logging message
+                    # Back-up method
                     round_points = np.rint(points)
 
             df_scorecard["Points"] = round_points

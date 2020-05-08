@@ -226,8 +226,8 @@ class Scorecard(BaseEstimator):
         self._time_rounding = None
 
         # logger
-        self._rootlogger = Logger("scorecard")
-        self._logger = self._rootlogger.logger
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
@@ -506,7 +506,7 @@ class Scorecard(BaseEstimator):
                               "{:.4f}s".format(self._time_total))
 
         # Completed successfully
-        self._rootlogger.close()
+        self._class_logger.close()
         self._is_fitted = True
 
         return self

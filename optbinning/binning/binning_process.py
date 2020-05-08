@@ -324,8 +324,8 @@ class BinningProcess(BaseEstimator):
         self._time_total = None
 
         # logger
-        self._rootlogger = Logger("binning_process")
-        self._logger = self._rootlogger.logger
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
@@ -686,7 +686,7 @@ class BinningProcess(BaseEstimator):
                               .format(self._time_total))
 
         # Completed successfully
-        self._rootlogger.close()
+        self._class_logger.close()
         self._is_fitted = True
 
         return self

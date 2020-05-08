@@ -22,8 +22,8 @@ from .rounding import RoundingMIP
 
 
 def _check_parameters(target, binning_process, estimator, scaling_method,
-                      scaling_method_data, intercept_based, reverse_scorecard,
-                      rounding, verbose):
+                      scaling_method_params, intercept_based,
+                      reverse_scorecard, rounding, verbose):
 
     if not isinstance(target, str):
         raise TypeError("target must be a string.")
@@ -48,12 +48,12 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
             raise ValueError('Invalid value for scaling_method. Allowed '
                              'string values are "pd_odds" and "min_max".')
 
-        if scaling_method_data is None:
-            raise ValueError("scaling_method_data cannot be None if "
+        if scaling_method_params is None:
+            raise ValueError("scaling_method_params cannot be None if "
                              "scaling_method is provided.")
 
-        if not isinstance(scaling_method_data, dict):
-            raise TypeError("scaling_method_data must be a dict.")
+        if not isinstance(scaling_method_params, dict):
+            raise TypeError("scaling_method_params must be a dict.")
 
     if not isinstance(intercept_based, bool):
         raise TypeError("intercept_based must be a boolean; got {}."
@@ -70,7 +70,8 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
+def _check_scorecard_scaling(scaling_method, scaling_method_params,
+                             target_type):
     if scaling_method is not None:
         if scaling_method == "pdo_odds":
             default_keys = ["pdo", "odds", "scorecard_points"]
@@ -82,29 +83,29 @@ def _check_scorecard_scaling(scaling_method, scaling_method_data, target_type):
         elif scaling_method == "min_max":
             default_keys = ["min", "max"]
 
-        if set(scaling_method_data.keys()) != set(default_keys):
-            raise ValueError("scaling_method_data must be {} given "
+        if set(scaling_method_params.keys()) != set(default_keys):
+            raise ValueError("scaling_method_params must be {} given "
                              "scaling_method = {}."
                              .format(default_keys, scaling_method))
 
         if scaling_method == "pdo_odds":
             for param in default_keys:
-                value = scaling_method_data[param]
+                value = scaling_method_params[param]
                 if not isinstance(value, numbers.Number) or value <= 0:
                     raise ValueError("{} must be a positive number; got {}."
                                      .format(param, value))
 
         elif scaling_method == "min_max":
             for param in default_keys:
-                value = scaling_method_data[param]
+                value = scaling_method_params[param]
                 if not isinstance(value, numbers.Number):
                     raise ValueError("{} must be numeric; got {}."
                                      .format(param, value))
 
-            if scaling_method_data["min"] > scaling_method_data["max"]:
+            if scaling_method_params["min"] > scaling_method_params["max"]:
                 raise ValueError("min must be <= max; got {} <= {}."
-                                 .format(scaling_method_data["min"],
-                                         scaling_method_data["max"]))
+                                 .format(scaling_method_params["min"],
+                                         scaling_method_params["max"]))
 
 
 def _compute_scorecard_points(points, binning_tables, method, method_data,
@@ -164,23 +165,42 @@ def _compute_intercept_based(df_scorecard):
 
 
 class Scorecard(BaseEstimator):
-    """Scorecard.
+    """Scorecard development.
 
     Parameters
     ----------
     target : str
+        Target column.
 
     binning_process : object
+        A ``BinningProcess`` instance.
 
     estimator : object
+        A supervised learning estimator with a ``fit`` and ``predict`` method
+        that provides information about feature coefficients through a
+        ``coef_`` attribute. For binary classification, the estimator must
+        include a ``predict_proba`` method.
 
     scaling_method : str or None (default=None)
+        The scaling method to control the range of the scores. Supported
+        methods are "pdo_odds" and "min_max". Method "pdo_odds" is only
+        applicable for binary classification. If None, no scaling is applied.
 
-    scaling_method_data : dict or None (default=None)
+    scaling_method_params : dict or None (default=None)
+        Dictionary with scaling method parameters. If
+        ``scaling_method="pdo_odds"`` parameters required are: "pdo", "odds",
+        and "scorecard_points". If ``scaling_method="min_max"`` parameters
+        required are "min" and "max". If ``scaling_method=None``, this
+        parameter is not used.
 
     intercept_based : bool (default=False)
+        Build a intercept based scorecard.
 
     rounding : bool (default=False)
+        Whether to round scorecard points. If ``scaling_method="min_max"`` a
+        mixed-integer programming problem is solved to guarantee the
+        minimum/maximum score after rounding. Otherwise, the scorecard points
+        are round to the nearest integer.
 
     verbose : bool (default=False)
         Enable verbose output.
@@ -195,16 +215,19 @@ class Scorecard(BaseEstimator):
 
     intercept_ : float
         The intercept if ``intercept_based=True``.
+
+    Notes
+    -----
     """
     def __init__(self, target, binning_process, estimator, scaling_method=None,
-                 scaling_method_data=None, intercept_based=False,
+                 scaling_method_params=None, intercept_based=False,
                  reverse_scorecard=True, rounding=False, verbose=True):
 
         self.target = target
         self.binning_process = binning_process
         self.estimator = estimator
         self.scaling_method = scaling_method
-        self.scaling_method_data = scaling_method_data
+        self.scaling_method_params = scaling_method_params
         self.intercept_based = intercept_based
         self.reverse_scorecard = reverse_scorecard
         self.rounding = rounding
@@ -385,7 +408,8 @@ class Scorecard(BaseEstimator):
             raise ValueError("Target type {} is not supported."
                              .format(self._target_dtype))
 
-        _check_scorecard_scaling(self.scaling_method, self.scaling_method_data,
+        _check_scorecard_scaling(self.scaling_method,
+                                 self.scaling_method_params,
                                  self._target_dtype)
 
         if self._target_dtype == "binary":
@@ -469,7 +493,7 @@ class Scorecard(BaseEstimator):
             points = df_scorecard["Points"]
             scaled_points = _compute_scorecard_points(
                 points, binning_tables, self.scaling_method,
-                self.scaling_method_data, intercept, self.reverse_scorecard)
+                self.scaling_method_params, intercept, self.reverse_scorecard)
 
             df_scorecard["Points"] = scaled_points
 

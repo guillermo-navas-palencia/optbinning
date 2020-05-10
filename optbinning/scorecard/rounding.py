@@ -33,8 +33,9 @@ class RoundingMIP:
         nb = len(points)
         nn = [len(p) for p in points]
 
-        min_point = np.sum(mins)
-        max_point = np.sum(maxs)
+        min_point = np.rint(np.sum(mins))
+        max_point = np.rint(np.sum(maxs))
+
         min_p = np.min(mins)
         max_p = np.max(maxs)
 

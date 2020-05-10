@@ -136,6 +136,24 @@ def test_scaling_params():
         scorecard.fit(df)
 
 
+def test_input():
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    target = data.target
+    target[0] = 4
+    df["target"] = target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    with raises(ValueError):
+        scorecard = Scorecard(target="target", binning_process=binning_process,
+                              estimator=estimator)
+        scorecard.fit(df)
+
+
 def test_default():
     data = load_breast_cancer()
 
@@ -182,16 +200,153 @@ def test_default_continuous():
 
 
 def test_scaling_method_pdo_odd():
-    pass
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+    odds = 1 / data.target.mean()
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"pdo": 20, "odds": odds, "scorecard_points": 600}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="pdo_odds",
+                          scaling_method_params=scaling_method_params).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(-612.2266586867094, rel=1e-6)
+    assert sc_max == approx(1879.4396115559216, rel=1e-6)
 
 
 def test_scaling_method_min_max():
-    pass
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"min": 300, "max": 850}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="min_max",
+                          scaling_method_params=scaling_method_params).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(300, rel=1e-6)
+    assert sc_max == approx(850, rel=1e-6)
 
 
 def test_intercept_based():
-    pass
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"min": 300, "max": 850}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="min_max",
+                          scaling_method_params=scaling_method_params,
+                          intercept_based=True).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(300 - scorecard.intercept_, rel=1e-6)
+    assert sc_max == approx(850 - scorecard.intercept_, rel=1e-6)
 
 
 def test_reverse_scorecard():
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"min": 300, "max": 850}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="min_max",
+                          scaling_method_params=scaling_method_params,
+                          reverse_scorecard=True).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(300, rel=1e-6)
+    assert sc_max == approx(850, rel=1e-6)
+
+
+def test_rounding():
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"min": 200.52, "max": 850.66}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="min_max",
+                          scaling_method_params=scaling_method_params,
+                          rounding=True).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(201, rel=1e-6)
+    assert sc_max == approx(851, rel=1e-6)
+
+
+def test_predict():
     pass
+
+
+def test_score():
+    pass
+
+
+def test_information():
+    pass
+
+
+def test_verbose():
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator)
+
+    with open("tests/test_scorecard_verbose.txt", "w") as f:
+        with redirect_stdout(f):
+            scorecard.fit(df)

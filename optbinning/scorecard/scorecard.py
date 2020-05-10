@@ -216,7 +216,7 @@ class Scorecard(BaseEstimator):
     """
     def __init__(self, target, binning_process, estimator, scaling_method=None,
                  scaling_method_params=None, intercept_based=False,
-                 reverse_scorecard=True, rounding=False, verbose=True):
+                 reverse_scorecard=False, rounding=False, verbose=False):
 
         self.target = target
         self.binning_process = binning_process
@@ -518,6 +518,8 @@ class Scorecard(BaseEstimator):
                 round_mip = RoundingMIP()
                 round_mip.build_model(df_scorecard)
                 status, round_points = round_mip.solve()
+
+                print(status)
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
                     # Add self._logger message

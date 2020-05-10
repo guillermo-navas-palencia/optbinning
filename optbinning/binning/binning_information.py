@@ -7,6 +7,8 @@ Optimal binning information.
 
 import numpy as np
 
+from sklearn.base import BaseEstimator
+
 from .options import continuous_optimal_binning_default_options
 from .options import multiclass_optimal_binning_default_options
 from .options import optimal_binning_default_options
@@ -38,6 +40,8 @@ def print_optional_parameters(dict_default_options, dict_user_options):
         if user_value is None:
             user_value = "no"
         elif isinstance(user_value, (list, np.ndarray, dict)):
+            user_value = "yes"
+        elif isinstance(user_value, BaseEstimator):
             user_value = "yes"
 
         str_options += option_format.format(key, str(user_value), user_flag)

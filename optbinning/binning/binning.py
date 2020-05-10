@@ -5,7 +5,6 @@ Optimal binning algorithm.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
-import logging
 import numbers
 import time
 
@@ -23,7 +22,7 @@ from .binning_information import print_binning_information
 from .binning_statistics import bin_categorical
 from .binning_statistics import bin_info
 from .binning_statistics import BinningTable
-from .binning_statistics import target_info
+from .binning_statistics import target_info_samples
 from .cp import BinningCP
 from .ls import BinningLS
 from .mip import BinningMIP
@@ -477,11 +476,12 @@ class OptimalBinning(BaseOptimalBinning):
         self._time_postprocessing = None
 
         # logger
-        self._logger = Logger()
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
-    def fit(self, x, y, check_input=False):
+    def fit(self, x, y, sample_weight=None, check_input=False):
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -492,6 +492,11 @@ class OptimalBinning(BaseOptimalBinning):
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
 
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -500,10 +505,11 @@ class OptimalBinning(BaseOptimalBinning):
         self : object
             Fitted optimal binning.
         """
-        return self._fit(x, y, check_input)
+        return self._fit(x, y, sample_weight, check_input)
 
-    def fit_transform(self, x, y, metric="woe", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(self, x, y, sample_weight=None, metric="woe",
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -514,6 +520,11 @@ class OptimalBinning(BaseOptimalBinning):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
@@ -544,7 +555,7 @@ class OptimalBinning(BaseOptimalBinning):
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
         """
-        return self.fit(x, y, check_input).transform(
+        return self.fit(x, y, sample_weight, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
@@ -635,32 +646,33 @@ class OptimalBinning(BaseOptimalBinning):
                                   self._time_postprocessing, self._n_prebins,
                                   self._n_refinements, dict_user_options)
 
-    def _fit(self, x, y, check_input):
+    def _fit(self, x, y, sample_weight, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
-            logging.info("Optimal binning started.")
-            logging.info("Options: check parameters.")
+            self._logger.info("Optimal binning started.")
+            self._logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
 
         # Pre-processing
         if self.verbose:
-            logging.info("Pre-processing started.")
+            self._logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
 
         if self.verbose:
-            logging.info("Pre-processing: number of samples: {}"
-                         .format(self._n_samples))
+            self._logger.info("Pre-processing: number of samples: {}"
+                              .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         y_others, categories, cat_others] = split_data(
+         y_others, categories, cat_others, sw_clean, sw_missing,
+         sw_special, sw_others] = split_data(
             self.dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params)
+            self.outlier_params, None, None, self.class_weight, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -669,40 +681,40 @@ class OptimalBinning(BaseOptimalBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            logging.info("Pre-processing: number of clean samples: {}"
-                         .format(n_clean))
+            self._logger.info("Pre-processing: number of clean samples: {}"
+                              .format(n_clean))
 
-            logging.info("Pre-processing: number of missing samples: {}"
-                         .format(n_missing))
+            self._logger.info("Pre-processing: number of missing samples: {}"
+                              .format(n_missing))
 
-            logging.info("Pre-processing: number of special samples: {}"
-                         .format(n_special))
+            self._logger.info("Pre-processing: number of special samples: {}"
+                              .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                logging.info("Pre-processing: number of outlier samples: {}"
-                             .format(n_outlier))
+                self._logger.info("Pre-processing: number of outlier samples: "
+                                  "{}".format(n_outlier))
 
             if self.dtype == "categorical":
                 n_categories = len(categories)
                 n_categories_others = len(cat_others)
                 n_others = len(y_others)
 
-                logging.info("Pre-processing: number of others samples: {}"
-                             .format(n_others))
+                self._logger.info("Pre-processing: number of others samples: "
+                                  "{}".format(n_others))
 
-                logging.info("Pre-processing: number of categories: {}"
-                             .format(n_categories))
+                self._logger.info("Pre-processing: number of categories: {}"
+                                  .format(n_categories))
 
-                logging.info("Pre-processing: number of categories others: {}"
-                             .format(n_categories_others))
+                self._logger.info("Pre-processing: number of categories "
+                                  "others: {}".format(n_categories_others))
 
-            logging.info("Pre-processing terminated. Time: {:.4f}s"
-                         .format(self._time_preprocessing))
+            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+                              .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
-            logging.info("Pre-binning started.")
+            self._logger.info("Pre-binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -710,8 +722,8 @@ class OptimalBinning(BaseOptimalBinning):
             n_splits = len(self.user_splits)
 
             if self.verbose:
-                logging.info("Pre-binning: user splits supplied: {}"
-                             .format(n_splits))
+                self._logger.info("Pre-binning: user splits supplied: {}"
+                                  .format(n_splits))
 
             if not n_splits:
                 splits = self.user_splits
@@ -731,11 +743,12 @@ class OptimalBinning(BaseOptimalBinning):
 
                 splits, n_nonevent, n_event = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, y_special,
-                    y_others)
+                    y_others, sw_clean, sw_missing, sw_special, sw_others)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, y_others,
-                self.class_weight)
+                self.class_weight, sample_weight, sw_clean, sw_missing,
+                sw_special, sw_others)
 
         self._n_prebins = len(n_nonevent)
 
@@ -745,26 +758,26 @@ class OptimalBinning(BaseOptimalBinning):
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            logging.info("Pre-binning: number of prebins: {}"
-                         .format(self._n_prebins))
-            logging.info("Pre-binning: number of refinements: {}"
-                         .format(self._n_refinements))
+            self._logger.info("Pre-binning: number of prebins: {}"
+                              .format(self._n_prebins))
+            self._logger.info("Pre-binning: number of refinements: {}"
+                              .format(self._n_refinements))
 
-            logging.info("Pre-binning terminated. Time: {:.4f}s"
-                         .format(self._time_prebinning))
+            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+                              .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event)
 
         # Post-processing
         if self.verbose:
-            logging.info("Post-processing started.")
-            logging.info("Post-processing: compute binning information.")
+            self._logger.info("Post-processing started.")
+            self._logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            t_info = target_info(y_clean)
+            t_info = target_info_samples(y_clean, sw_clean)
             n_nonevent = np.array([t_info[0]])
             n_event = np.array([t_info[1]])
 
@@ -782,38 +795,42 @@ class OptimalBinning(BaseOptimalBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            logging.info("Post-processing terminated. Time: {:.4f}s"
-                         .format(self._time_postprocessing))
+            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+                              .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logging.info("Optimal binning terminated. Status: {}. "
-                         "Time: {:.4f}s".format(
-                            self._status, self._time_total))
+            self._logger.info("Optimal binning terminated. Status: {}. "
+                              "Time: {:.4f}s"
+                              .format(self._status, self._time_total))
 
         # Completed successfully
-        self._logger.close()
+        self._class_logger.close()
         self._is_fitted = True
 
         return self
 
     def _fit_prebinning(self, x, y, y_missing, y_special, y_others,
-                        class_weight=None):
+                        class_weight=None, sample_weight=None, sw_clean=None,
+                        sw_missing=None, sw_special=None, sw_others=None):
+
         min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
-                                class_weight=class_weight).fit(x, y)
+                                class_weight=class_weight
+                                ).fit(x, y, sample_weight)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
-                                           y_special, y_others)
+                                           y_special, y_others, sw_clean,
+                                           sw_missing, sw_special, sw_others)
 
     def _fit_optimizer(self, splits, n_nonevent, n_event):
         if self.verbose:
-            logging.info("Optimizer started.")
+            self._logger.info("Optimizer started.")
 
         time_init = time.perf_counter()
 
@@ -823,10 +840,10 @@ class OptimalBinning(BaseOptimalBinning):
             self._solution = np.zeros(len(splits)).astype(np.bool)
 
             if self.verbose:
-                logging.warning("Optimizer: no bins after pre-binning.")
-                logging.warning("Optimizer: solver not run.")
+                self._logger.warning("Optimizer: no bins after pre-binning.")
+                self._logger.warning("Optimizer: solver not run.")
 
-                logging.info("Optimizer terminated. Time: 0s")
+                self._logger.info("Optimizer terminated. Time: 0s")
             return
 
         if self.min_bin_size is not None:
@@ -860,8 +877,8 @@ class OptimalBinning(BaseOptimalBinning):
                             event_rate, monotonic)
 
                 if self.verbose:
-                    logging.info("Optimizer: classifier predicts {} monotonic "
-                                 "trend.".format(monotonic))
+                    self._logger.info("Optimizer: classifier predicts {} "
+                                      "monotonic trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
 
@@ -871,21 +888,22 @@ class OptimalBinning(BaseOptimalBinning):
                         event_rate, monotonic)
 
                     if self.verbose:
-                        logging.info("Optimizer: trend change position {}."
-                                     .format(trend_change))
+                        self._logger.info("Optimizer: trend change position "
+                                          "{}.".format(trend_change))
 
                 if self.verbose:
                     if monotonic is None:
-                        logging.info("Optimizer: monotonic trend not set.")
+                        self._logger.info(
+                            "Optimizer: monotonic trend not set.")
                     else:
-                        logging.info("Optimizer: monotonic trend set to {}."
-                                     .format(monotonic))
+                        self._logger.info("Optimizer: monotonic trend set to "
+                                          "{}.".format(monotonic))
         else:
             monotonic = "ascending"
 
             if self.verbose:
-                logging.info("Optimizer: monotonic trend set to ascending for "
-                             "categorical dtype.")
+                self._logger.info("Optimizer: monotonic trend set to "
+                                  "ascending for categorical dtype.")
 
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
@@ -917,12 +935,12 @@ class OptimalBinning(BaseOptimalBinning):
                                   self._user_splits_fixed, self.time_limit)
 
         if self.verbose:
-            logging.info("Optimizer: build model...")
+            self._logger.info("Optimizer: build model...")
 
         optimizer.build_model(n_nonevent, n_event, trend_change)
 
         if self.verbose:
-            logging.info("Optimizer: solve...")
+            self._logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
@@ -939,25 +957,26 @@ class OptimalBinning(BaseOptimalBinning):
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
-            logging.info("Optimizer terminated. Time: {:.4f}s"
-                         .format(self._time_solver))
+            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+                              .format(self._time_solver))
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others):
+                               y_special, y_others, sw_clean, sw_missing,
+                               sw_special, sw_others):
         y0 = (y == 0)
         y1 = ~y0
 
         # Compute n_nonevent and n_event for special, missing and others.
-        special_target_info = target_info(y_special)
+        special_target_info = target_info_samples(y_special, sw_special)
         self._n_nonevent_special = special_target_info[0]
         self._n_event_special = special_target_info[1]
 
-        missing_target_info = target_info(y_missing)
+        missing_target_info = target_info_samples(y_missing, sw_missing)
         self._n_nonevent_missing = missing_target_info[0]
         self._n_event_missing = missing_target_info[1]
 
         if len(y_others):
-            others_target_info = target_info(y_others)
+            others_target_info = target_info_samples(y_others, sw_others)
             self._n_nonevent_cat_others = others_target_info[0]
             self._n_event_cat_others = others_target_info[1]
 
@@ -970,11 +989,11 @@ class OptimalBinning(BaseOptimalBinning):
             splits_prebinning = np.round(splits_prebinning, self.split_digits)
 
         splits_prebinning, n_nonevent, n_event = self._compute_prebins(
-            splits_prebinning, x, y0, y1)
+            splits_prebinning, x, y0, y1, sw_clean)
 
         return splits_prebinning, n_nonevent, n_event
 
-    def _compute_prebins(self, splits_prebinning, x, y0, y1):
+    def _compute_prebins(self, splits_prebinning, x, y0, y1, sw):
         n_splits = len(splits_prebinning)
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
@@ -991,8 +1010,8 @@ class OptimalBinning(BaseOptimalBinning):
 
         for i in range(n_bins):
             mask = (indices == i)
-            n_nonevent[i] = np.count_nonzero(y0 & mask)
-            n_event[i] = np.count_nonzero(y1 & mask)
+            n_nonevent[i] = np.sum(sw[y0 & mask])
+            n_event[i] = np.sum(sw[y1 & mask])
 
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
@@ -1023,11 +1042,11 @@ class OptimalBinning(BaseOptimalBinning):
             splits = splits_prebinning[~mask_splits]
 
             if self.verbose:
-                logging.info("Pre-binning: number prebins removed: {}"
-                             .format(np.count_nonzero(mask_remove)))
+                self._logger.info("Pre-binning: number prebins removed: {}"
+                                  .format(np.count_nonzero(mask_remove)))
 
             [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
-                splits, x, y0, y1)
+                splits, x, y0, y1, sw)
 
         return splits_prebinning, n_nonevent, n_event
 

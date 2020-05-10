@@ -1,12 +1,16 @@
-from .binning.binning import OptimalBinning
-from .binning.continuous_binning import ContinuousOptimalBinning
-from .binning.multiclass_binning import MulticlassOptimalBinning
-from .binning.binning_process import BinningProcess
-from .binning.mdlp import MDLP
+from .binning import BinningProcess
+from .binning import ContinuousOptimalBinning
+from .binning import MDLP
+from .binning import MulticlassOptimalBinning
+from .binning import OptimalBinning
+from .binning.uncertainty import SBOptimalBinning
+from .scorecard import Scorecard
 
 
-__all__ = ['OptimalBinning',
+__all__ = ['BinningProcess',
            'ContinuousOptimalBinning',
+           'MDLP',
            'MulticlassOptimalBinning',
-           'BinningProcess',
-           'MDLP']
+           'OptimalBinning',
+           'SBOptimalBinning',
+           'Scorecard']

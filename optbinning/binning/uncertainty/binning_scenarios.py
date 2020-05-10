@@ -6,7 +6,6 @@ optimal binning.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-import logging
 import numbers
 import time
 
@@ -330,7 +329,8 @@ class SBOptimalBinning(OptimalBinning):
         self._time_postprocessing = None
 
         # logger
-        self._logger = Logger()
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
@@ -423,14 +423,14 @@ class SBOptimalBinning(OptimalBinning):
         self._n_scenarios = len(X)
 
         if self.verbose:
-            logging.info("Optimal binning started.")
-            logging.info("Options: check parameters.")
+            self._logger.info("Optimal binning started.")
+            self._logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
 
         # Pre-processing
         if self.verbose:
-            logging.info("Pre-processing started.")
+            self._logger.info("Pre-processing started.")
 
         time_preprocessing = time.perf_counter()
 
@@ -438,8 +438,8 @@ class SBOptimalBinning(OptimalBinning):
         self._n_samples = sum(self._n_samples_scenario)
 
         if self.verbose:
-            logging.info("Pre-processing: number of samples: {}"
-                         .format(self._n_samples))
+            self._logger.info("Pre-processing: number of samples: {}"
+                              .format(self._n_samples))
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          w] = split_data_scenarios(X, Y, weights, self.special_codes,
@@ -452,21 +452,21 @@ class SBOptimalBinning(OptimalBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            logging.info("Pre-processing: number of clean samples: {}"
-                         .format(n_clean))
+            self._logger.info("Pre-processing: number of clean samples: {}"
+                              .format(n_clean))
 
-            logging.info("Pre-processing: number of missing samples: {}"
-                         .format(n_missing))
+            self._logger.info("Pre-processing: number of missing samples: {}"
+                              .format(n_missing))
 
-            logging.info("Pre-processing: number of special samples: {}"
-                         .format(n_special))
+            self._logger.info("Pre-processing: number of special samples: {}"
+                              .format(n_special))
 
-            logging.info("Pre-processing terminated. Time: {:.4f}s"
-                         .format(self._time_preprocessing))
+            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+                              .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
-            logging.info("Pre-binning started.")
+            self._logger.info("Pre-binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -488,21 +488,21 @@ class SBOptimalBinning(OptimalBinning):
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            logging.info("Pre-binning: number of prebins: {}"
-                         .format(self._n_prebins))
-            logging.info("Pre-binning: number of refinements: {}"
-                         .format(self._n_refinements))
+            self._logger.info("Pre-binning: number of prebins: {}"
+                              .format(self._n_prebins))
+            self._logger.info("Pre-binning: number of refinements: {}"
+                              .format(self._n_refinements))
 
-            logging.info("Pre-binning terminated. Time: {:.4f}s"
-                         .format(self._time_prebinning))
+            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+                              .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event, weights)
 
         # Post-processing
         if self.verbose:
-            logging.info("Post-processing started.")
-            logging.info("Post-processing: compute binning information.")
+            self._logger.info("Post-processing started.")
+            self._logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -533,18 +533,18 @@ class SBOptimalBinning(OptimalBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            logging.info("Post-processing terminated. Time: {:.4f}s"
-                         .format(self._time_postprocessing))
+            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+                              .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logging.info("Optimal binning terminated. Status: {}. "
-                         "Time: {:.4f}s".format(
-                            self._status, self._time_total))
+            self._logger.info("Optimal binning terminated. Status: {}. "
+                              "Time: {:.4f}s"
+                              .format(self._status, self._time_total))
 
         # Completed successfully
-        self._logger.close()
+        self._class_logger.close()
         self._is_fitted = True
 
         return self
@@ -646,8 +646,8 @@ class SBOptimalBinning(OptimalBinning):
             splits = splits_prebinning[~mask_splits]
 
             if self.verbose:
-                logging.info("Pre-binning: number prebins removed: {}"
-                             .format(np.count_nonzero(mask_remove)))
+                self._logger.info("Pre-binning: number prebins removed: {}"
+                                  .format(np.count_nonzero(mask_remove)))
 
             [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
                 splits, x, y)
@@ -663,10 +663,10 @@ class SBOptimalBinning(OptimalBinning):
             self._solution = np.zeros(len(splits)).astype(np.bool)
 
             if self.verbose:
-                logging.warning("Optimizer: no bins after pre-binning.")
-                logging.warning("Optimizer: solver not run.")
+                self._logger.warning("Optimizer: no bins after pre-binning.")
+                self._logger.warning("Optimizer: solver not run.")
 
-                logging.info("Optimizer terminated. Time: 0s")
+                self._logger.info("Optimizer terminated. Time: 0s")
             return
 
         if self.min_bin_size is not None:
@@ -692,14 +692,14 @@ class SBOptimalBinning(OptimalBinning):
             weights = np.ones(self._n_scenarios, np.int)
 
         if self.verbose:
-            logging.info("Optimizer: build model...")
+            self._logger.info("Optimizer: build model...")
 
         optimizer.build_model_scenarios(n_nonevent, n_event, weights)
 
         status, solution = optimizer.solve()
 
         if self.verbose:
-            logging.info("Optimizer: solve...")
+            self._logger.info("Optimizer: solve...")
 
         self._solution = solution
 
@@ -711,8 +711,8 @@ class SBOptimalBinning(OptimalBinning):
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
-            logging.info("Optimizer terminated. Time: {:.4f}s"
-                         .format(self._time_solver))
+            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+                              .format(self._time_solver))
 
     def binning_table_scenario(self, scenario_id):
         """Return the instantiated binning table corresponding to

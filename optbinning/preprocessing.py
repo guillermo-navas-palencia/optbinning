@@ -10,8 +10,11 @@ import numbers
 import numpy as np
 import pandas as pd
 
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
+from sklearn.utils import compute_class_weight
+from sklearn.utils.validation import _check_sample_weight
 
 from .outlier import ModifiedZScoreDetector
 from .outlier import RangeDetector
@@ -40,7 +43,8 @@ def categorical_cutoff(x, y, cutoff=0.01):
 
 def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
                user_splits=None, check_input=True, outlier_detector=None,
-               outlier_params=None, fix_lb=None, fix_ub=None):
+               outlier_params=None, fix_lb=None, fix_ub=None,
+               class_weight=None, sample_weight=None):
     """Split data into clean, missing and special values data.
 
     Parameters
@@ -85,6 +89,10 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     fix_ub : float or None (default=None)
         Upper bound or maximum admissible value.
+
+    class_weight : None
+
+    sample_weight : None
 
     Returns
     -------
@@ -150,6 +158,14 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     x = np.asarray(x)
     y = np.asarray(y)
 
+    sample_weight = _check_sample_weight(sample_weight, x, dtype=x.dtype)
+
+    if class_weight is not None:
+        classes = np.unique(y)
+        le = LabelEncoder()
+        class_weight_ = compute_class_weight(class_weight, classes, y)
+        sample_weight *= class_weight_[le.fit_transform(y)]
+
     if isinstance(x.dtype, object) or isinstance(y.dtype, object):
         missing_mask = pd.isnull(x) | pd.isnull(y)
     else:
@@ -164,6 +180,9 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         y_missing = y[missing_mask]
         x_special = []
         y_special = []
+        sw_clean = sample_weight[clean_mask]
+        sw_missing = sample_weight[missing_mask]
+        sw_special = []
     else:
         special_mask = pd.Series(x).isin(special_codes).values
 
@@ -175,6 +194,9 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         y_missing = y[missing_mask]
         x_special = x[special_mask]
         y_special = y[special_mask]
+        sw_clean = sample_weight[clean_mask]
+        sw_missing = sample_weight[missing_mask]
+        sw_special = sample_weight[special_mask]
 
     if dtype == "numerical":
         if outlier_detector is not None:
@@ -189,6 +211,7 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
             mask_outlier = detector.fit(x_clean).get_support()
             x_clean = x_clean[~mask_outlier]
             y_clean = y_clean[~mask_outlier]
+            sw_clean = sw_clean[~mask_outlier]
 
         if fix_lb is not None or fix_ub is not None:
             if fix_lb is not None:
@@ -200,6 +223,7 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
             x_clean = x_clean[mask]
             y_clean = y_clean[mask]
+            sw_clean = sw_clean[mask]
 
     if dtype == "categorical" and user_splits is None:
         if cat_cutoff is not None:
@@ -207,19 +231,23 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
                 x_clean, y_clean, cat_cutoff)
 
             y_others = y_clean[mask_others]
+            sw_others = sw_clean[mask_others]
             x_clean = x_clean[~mask_others]
             y_clean = y_clean[~mask_others]
+            sw_clean = sw_clean[~mask_others]
         else:
             y_others = []
             others = []
+            sw_others = []
 
         categories, x_clean = categorical_transform(x_clean, y_clean)
 
         return (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-                y_others, categories, others)
+                y_others, categories, others, sw_clean, sw_missing, sw_special,
+                sw_others)
     else:
         return (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-                [], [], [])
+                [], [], [], sw_clean, sw_missing, sw_special, [])
 
 
 def split_data_scenarios(X, Y, weights, special_codes, check_input):
@@ -238,7 +266,7 @@ def split_data_scenarios(X, Y, weights, special_codes, check_input):
         x = X[s]
         y = Y[s]
 
-        x_c, y_c, x_m, y_m, x_s, y_s, _, _, _ = split_data(
+        x_c, y_c, x_m, y_m, x_s, y_s, _, _, _, _, _, _, _ = split_data(
             "numerical", x, y, special_codes=special_codes,
             check_input=check_input)
 

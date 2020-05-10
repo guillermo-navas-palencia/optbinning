@@ -55,6 +55,8 @@ COLORS_RGB = [
 
 
 def bin_str_format(bins, show_digits):
+    # Auto
+    show_digits = 2 if show_digits is None else show_digits
     return ["[{0:.{2}f}, {1:.{2}f})".format(bins[i], bins[i+1], show_digits)
             for i in range(len(bins)-1)]
 
@@ -98,6 +100,19 @@ def target_info(y, cl=0):
         y0 = (y == cl)
         n_nonevent = np.count_nonzero(y0)
         n_event = np.count_nonzero(~y0)
+
+        return n_nonevent, n_event
+
+
+def target_info_samples(y, sw, cl=0):
+    if not len(y):
+        return 0, 0
+    elif not len(sw):
+        return target_info(y, cl)
+    else:
+        y0 = (y == cl)
+        n_nonevent = np.sum(sw[y0])
+        n_event = np.sum(sw[~y0])
 
         return n_nonevent, n_event
 
@@ -565,7 +580,10 @@ class BinningTable:
         n_nev = self.n_nonevent[:n_metric]
         n_ev = self.n_event[:n_metric]
 
-        chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        if len(n_nev) >= 2:
+            chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        else:
+            cramer_v = 0
 
         t_statistics = []
         p_values = []
@@ -908,7 +926,10 @@ class MulticlassBinningTable:
         n_metric = n_bins - 2
 
         n_ev = self.n_event[:n_metric, :]
-        chi2, cramer_v = chi2_cramer_v_multi(n_ev)
+        if len(n_ev) >= 2:
+            chi2, cramer_v = chi2_cramer_v_multi(n_ev)
+        else:
+            cramer_v = 0
 
         t_statistics = []
         p_values = []
@@ -1083,6 +1104,10 @@ class ContinuousBinningTable:
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
 
+        woe = self._mean - t_mean
+        iv = np.absolute(woe) * p_records
+        t_iv = iv.sum()
+
         if self.dtype == "numerical":
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
@@ -1100,7 +1125,9 @@ class ContinuousBinningTable:
             "Mean": self._mean,
             "Min": self.min_target,
             "Max": self.max_target,
-            "Zeros count": self.n_zeros
+            "Zeros count": self.n_zeros,
+            "WoE": woe,
+            "IV": iv,
             })
 
         if add_totals:
@@ -1108,7 +1135,7 @@ class ContinuousBinningTable:
             t_max = np.max(self.max_target)
             t_n_zeros = self.n_zeros.sum()
             totals = ["", t_n_records, 1, t_sum, t_mean, t_min, t_max,
-                      t_n_zeros]
+                      t_n_zeros, "", t_iv]
             df.loc["Totals"] = totals
 
         self._is_built = True

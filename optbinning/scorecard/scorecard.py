@@ -194,7 +194,13 @@ class Scorecard(BaseEstimator):
         parameter is not used.
 
     intercept_based : bool (default=False)
-        Build a intercept based scorecard.
+        Build a intercept-based scorecard. A intercept-based scorecard modifies
+        the original scorecard by setting the smallest point for each variable
+        to zero and updating the intercept accordingly.
+
+    reverse_scorecard: bool (default=False)
+        Whether to change the sense of the relationship between predictions and
+        scorecard points to ascending/descending.
 
     rounding : bool (default=False)
         Whether to round scorecard points. If ``scaling_method="min_max"`` a
@@ -215,9 +221,6 @@ class Scorecard(BaseEstimator):
 
     intercept_ : float
         The intercept if ``intercept_based=True``.
-
-    Notes
-    -----
     """
     def __init__(self, target, binning_process, estimator, scaling_method=None,
                  scaling_method_params=None, intercept_based=False,

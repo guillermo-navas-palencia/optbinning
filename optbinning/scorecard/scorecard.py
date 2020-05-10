@@ -19,6 +19,7 @@ from sklearn.utils.multiclass import type_of_target
 from ..binning.binning_process import BinningProcess
 from ..logging import Logger
 from .rounding import RoundingMIP
+from .scorecard_information import print_scorecard_information
 
 
 def _check_parameters(target, binning_process, estimator, scaling_method,
@@ -297,6 +298,20 @@ class Scorecard(BaseEstimator):
             raise ValueError("print_level must be an integer >= 0; got {}."
                              .format(print_level))
 
+        n_numerical = list(
+            self.binning_process_._variable_dtypes.values()).count("numerical")
+        n_categorical = self.binning_process_._n_variables - n_numerical
+        n_selected = np.count_nonzero(self.binning_process_._support)
+
+        dict_user_options = self.get_params(deep=False)
+
+        print_scorecard_information(
+            print_level, self.binning_process_._n_samples,
+            self.binning_process_._n_variables, self._target_dtype,
+            n_numerical, n_categorical, n_selected, self._time_total,
+            self._time_binning_process, self._time_estimator,
+            self._time_build_scorecard, self._time_rounding, dict_user_options)
+
     def predict(self, df):
         """Predict using the fitted underlying estimator and the reduced
         dataset.
@@ -510,6 +525,7 @@ class Scorecard(BaseEstimator):
                     df_scorecard)
                 df_scorecard["Points"] = scaled_points
 
+        time_rounding = time.perf_counter()
         if self.rounding:
             points = df_scorecard["Points"]
             if self.scaling_method == "pdo_odds":
@@ -519,8 +535,6 @@ class Scorecard(BaseEstimator):
                 round_mip.build_model(df_scorecard)
                 status, round_points = round_mip.solve()
 
-                print(status)
-
                 if status not in ("OPTIMAL", "FEASIBLE"):
                     if self.verbose:
                         self._logger.warning("MIP rounding failed, method "
@@ -529,6 +543,7 @@ class Scorecard(BaseEstimator):
                     round_points = np.rint(points)
 
             df_scorecard["Points"] = round_points
+        self._time_rounding = time.perf_counter() - time_rounding
 
         self._df_scorecard = df_scorecard
 

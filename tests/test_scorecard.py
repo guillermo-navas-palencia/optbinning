@@ -415,6 +415,12 @@ def test_information():
     with raises(ValueError):
         scorecard.information(print_level=-1)
 
+    with open("tests/test_scorecard_information.txt", "w") as f:
+        with redirect_stdout(f):
+            scorecard.information(print_level=0)
+            scorecard.information(print_level=1)
+            scorecard.information(print_level=2)
+
 
 def test_verbose():
     data = load_breast_cancer()

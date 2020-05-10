@@ -31,15 +31,7 @@ def _check_parameters(target, binning_process, estimator, scaling_method,
     if not isinstance(binning_process, BinningProcess):
         raise TypeError("binning_process must be a BinningProcess instance.")
 
-    if not isinstance(estimator, object):
-        raise TypeError("estimator must be an object with methods fit and "
-                        "predict.")
-
-    if not hasattr(estimator, "fit"):
-        raise TypeError("estimator must be an object with methods fit and "
-                        "predict.")
-
-    if not hasattr(estimator, "predict"):
+    if not (hasattr(estimator, "fit") and hasattr(estimator, "predict")):
         raise TypeError("estimator must be an object with methods fit and "
                         "predict.")
 

@@ -55,7 +55,7 @@ install_requires = [
     'ortools>=7.2',
     'pandas',
     'scipy',
-    'scikit-learn>=0.20.0',
+    'scikit-learn>=0.22.0',
     'pytest',
     'coverage'
 ]

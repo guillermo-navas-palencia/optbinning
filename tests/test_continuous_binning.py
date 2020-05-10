@@ -120,6 +120,7 @@ def test_numerical_default():
                                  rel=1e-6)
 
     optb.binning_table.build()
+    optb.binning_table.plot(savefig="test_continuous_binning.png")
 
 
 def test_numerical_user_splits_fixed():

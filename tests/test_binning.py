@@ -173,6 +173,8 @@ def test_numerical_default():
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
 
+    optb.binning_table.plot(metric="woe", savefig="test_binning.png")
+
 
 def test_numerical_default_solvers():
     optb_mip_cbc = OptimalBinning(solver="mip", mip_solver="cbc")

@@ -165,7 +165,7 @@ def _compute_intercept_based(df_scorecard):
 
 
 class Scorecard(BaseEstimator):
-    """Scorecard development.
+    """Scorecard development given a binary or continuous target dtype.
 
     Parameters
     ----------
@@ -303,7 +303,8 @@ class Scorecard(BaseEstimator):
                              .format(print_level))
 
     def predict(self, df):
-        """
+        """Predict using the fitted underlying estimator and the reduced
+        dataset.
 
         Parameters
         ----------
@@ -312,6 +313,8 @@ class Scorecard(BaseEstimator):
 
         Returns
         -------
+        y: array of shape (n_samples)
+            The predicted target values.
         """
         self._check_is_fitted()
 
@@ -320,7 +323,8 @@ class Scorecard(BaseEstimator):
         return self.estimator_.predict(df_t)
 
     def predict_proba(self, df):
-        """
+        """Predict class probabilities using the fitted underlying estimator
+        and the reduced dataset.
 
         Parameters
         ----------
@@ -329,6 +333,8 @@ class Scorecard(BaseEstimator):
 
         Returns
         -------
+        p: array of shape (n_samples, n_classes)
+            The class probabilities of the input samples.
         """
         self._check_is_fitted()
 
@@ -337,7 +343,7 @@ class Scorecard(BaseEstimator):
         return self.estimator_.predict_proba(df_t)
 
     def score(self, df):
-        """
+        """Score of the dataset.
 
         Parameters
         ----------
@@ -346,6 +352,8 @@ class Scorecard(BaseEstimator):
 
         Returns
         -------
+        score: array of shape (n_samples)
+            The score of the input samples.
         """
         self._check_is_fitted()
 
@@ -367,11 +375,16 @@ class Scorecard(BaseEstimator):
 
         Parameters
         ----------
-        style : str (default="summary")
+        style : str, optional (default="summary")
+            Scorecard's style. Supported styles are "summary" and "detailed".
+            Summary only includes columns variable, bin description and points.
+            Detailed contained additional columns with bin information and
+            estimator coefficients.
 
         Returns
         -------
         table : pandas.DataFrame
+            The scorecard table.
         """
         self._check_is_fitted()
 

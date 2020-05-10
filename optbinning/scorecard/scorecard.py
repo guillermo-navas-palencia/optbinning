@@ -522,7 +522,9 @@ class Scorecard(BaseEstimator):
                 print(status)
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
-                    # Add self._logger message
+                    if self.verbose:
+                        self._logger.warning("MIP rounding failed, method "
+                                             "nearest integer used instead.")
                     # Back-up method
                     round_points = np.rint(points)
 

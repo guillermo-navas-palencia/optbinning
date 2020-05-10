@@ -16,13 +16,13 @@ from optbinning import BinningProcess
 from optbinning import Scorecard
 from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
+from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 
 
 def test_params():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -138,7 +138,6 @@ def test_scaling_params():
 
 def test_input():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     target = data.target
@@ -156,7 +155,6 @@ def test_input():
 
 def test_default():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -180,7 +178,6 @@ def test_default():
 
 def test_default_continuous():
     data = load_boston()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -201,7 +198,6 @@ def test_default_continuous():
 
 def test_scaling_method_pdo_odd():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -226,7 +222,6 @@ def test_scaling_method_pdo_odd():
 
 def test_scaling_method_min_max():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -250,7 +245,6 @@ def test_scaling_method_min_max():
 
 def test_intercept_based():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -275,7 +269,6 @@ def test_intercept_based():
 
 def test_reverse_scorecard():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -300,7 +293,6 @@ def test_reverse_scorecard():
 
 def test_rounding():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -323,21 +315,89 @@ def test_rounding():
     assert sc_max == approx(851, rel=1e-6)
 
 
-def test_predict():
-    pass
+def test_rounding_pdo_odds():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+    odds = 1 / data.target.mean()
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scaling_method_params = {"pdo": 20, "odds": odds, "scorecard_points": 600}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="pdo_odds",
+                          scaling_method_params=scaling_method_params,
+                          rounding=True).fit(df)
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(-612, rel=1e-6)
+    assert sc_max == approx(1880, rel=1e-6)
 
 
-def test_score():
-    pass
+def test_estimator_not_coef():
+    from sklearn.ensemble import RandomForestClassifier
+
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = RandomForestClassifier()
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator)
+
+    with raises(RuntimeError):
+        scorecard.fit(df)
+
+
+def test_predict_score():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+    scaling_method_params = {"min": 300.12, "max": 850.66}
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, scaling_method="min_max",
+                          scaling_method_params=scaling_method_params)
+
+    with raises(NotFittedError):
+        pred = scorecard.predict(df)
+
+    with raises(NotFittedError):
+        pred_proba = scorecard.predict_proba(df)
+
+    with raises(NotFittedError):
+        score = scorecard.score(df)
+
+    scorecard.fit(df)
+    pred = scorecard.predict(df)
+    pred_proba = scorecard.predict_proba(df)
+    score = scorecard.score(df)
+
+    assert pred[:5] == approx([0, 0, 0, 0, 0])
+
+    assert pred_proba[:5, 1] == approx(
+        [1.15260206e-06, 9.79035720e-06, 7.52481206e-08, 1.12438599e-03,
+         9.83145644e-06], rel=1e-6)
+
+    assert score[:5] == approx([652.16590046, 638.52659074, 669.56413105,
+                                608.27744027, 638.49988325], rel=1e-6)
 
 
 def test_information():
-    pass
-
-
-def test_verbose():
     data = load_breast_cancer()
-
     variable_names = data.feature_names
     df = pd.DataFrame(data.data, columns=variable_names)
     df["target"] = data.target
@@ -346,6 +406,26 @@ def test_verbose():
     estimator = LogisticRegression()
     scorecard = Scorecard(target="target", binning_process=binning_process,
                           estimator=estimator)
+
+    with raises(NotFittedError):
+        scorecard.information()
+
+    scorecard.fit(df)
+
+    with raises(ValueError):
+        scorecard.information(print_level=-1)
+
+
+def test_verbose():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator, verbose=True)
 
     with open("tests/test_scorecard_verbose.txt", "w") as f:
         with redirect_stdout(f):

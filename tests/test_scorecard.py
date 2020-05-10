@@ -137,4 +137,61 @@ def test_scaling_params():
 
 
 def test_default():
+    data = load_breast_cancer()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator).fit(df)
+
+    with raises(ValueError):
+        sct = scorecard.table(style="new")
+
+    sct = scorecard.table(style="summary")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(-43.65762593147646, rel=1e-6)
+    assert sc_max == approx(42.69694657427327, rel=1e-6)
+
+
+def test_default_continuous():
+    data = load_boston()
+
+    variable_names = data.feature_names
+    df = pd.DataFrame(data.data, columns=variable_names)
+    df["target"] = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LinearRegression()
+
+    scorecard = Scorecard(target="target", binning_process=binning_process,
+                          estimator=estimator).fit(df)
+
+    sct = scorecard.table(style="detailed")
+    sc_min, sc_max = sct.groupby("Variable").agg(
+        {'Points': [np.min, np.max]}).sum()
+
+    assert sc_min == approx(-15.813545796848476, rel=1e-6)
+    assert sc_max == approx(85.08156623609487, rel=1e-6)
+
+
+def test_scaling_method_pdo_odd():
+    pass
+
+
+def test_scaling_method_min_max():
+    pass
+
+
+def test_intercept_based():
+    pass
+
+
+def test_reverse_scorecard():
     pass

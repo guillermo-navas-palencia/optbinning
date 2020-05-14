@@ -1,23 +1,27 @@
 """
-Modules with plots for visualizing model performance.
+Module with plots for visualizing model performance.
 """
+
+# Gabriel S. Gonçalves <gabrielgoncalvesbr@gmail.com>
+# Copyright (C) 2020
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from sklearn.metrics import roc_curve, roc_auc_score
 
 
-def plot_auroc(
+def plot_auc_roc(
     df,
     target_col,
     proba_col,
-    title='ROC curve',
-    xlabel='False positive rate',
-    ylabel='True positive rate',
-    roc_color='blue',
-    reference_color='black',
+    title="ROC curve",
+    xlabel="False positive rate",
+    ylabel="True positive rate",
+    roc_color="blue",
+    reference_color="black",
     savefig=False,
-    figname='auroc.png',
+    figname=None,
 ):
     """Plot AUROC for dataframe with probabilities and binary target.
 
@@ -32,31 +36,32 @@ def plot_auroc(
     proba_col : str
         Column with the calculated probabilites.
 
-    title : str (default='ROC curve')
+    title : str (default="ROC curve")
         Title for plot.
 
-    xlabel : str (default='False positive rate')
+    xlabel : str (default="False positive rate")
         Label for the x-axis.
 
-    ylabel : str (default='True positive rate')
+    ylabel : str (default="True positive rate")
         Label for the y-axis.
 
-    roc_color : str (default='blue')
+    roc_color : str (default="blue")
         Color for the roc line.
 
-    reference_color : str (default='red')
-        Color for reference line.
+    reference_color : str (default="red")
+        Color for the reference line.
 
     savefig : bool (default=False)
         To save figure.
 
-    figname : str (default='auroc.fig')
+    figname : str (default=None)
         Name for figure file.
 
     Returns
     -------
     auroc : float
-        Calculate AUROC score.
+        Compute Area Under the Receiver Operating Characteristic Curve
+        (ROC AUC) from prediction scores.
     """
     # Define the arrays for plotting
     fpr, tpr, threshold = roc_curve(df[target_col], df[proba_col])
@@ -64,9 +69,9 @@ def plot_auroc(
     # Define the plot settings
     plt.plot(fpr, tpr, color=roc_color)
     plt.plot(fpr, fpr, linestyle="--", color=reference_color)
-    plt.title(title, fontdict={'fontsize': 16})
-    plt.xlabel(xlabel, fontdict={'fontsize': 16})
-    plt.ylabel(ylabel, fontdict={'fontsize': 16})
+    plt.title(title, fontdict={"fontsize": 16})
+    plt.xlabel(xlabel, fontdict={"fontsize": 16})
+    plt.ylabel(ylabel, fontdict={"fontsize": 16})
 
     if savefig:
         plt.savefig(figname, dpi=300)
@@ -80,13 +85,13 @@ def plot_gini(
     df,
     target_col,
     proba_col,
-    title='Gini',
-    xlabel='Cumulative % Population',
-    ylabel='Cumulative % Bad',
-    gini_color='blue',
-    reference_color='black',
+    title="Gini",
+    xlabel="Cumulative % Population",
+    ylabel="Cumulative % Bad",
+    gini_color="blue",
+    reference_color="black",
     savefig=False,
-    figname='gini.png',
+    figname=None,
 ):
     """Plot Gini for dataframe with probabilities and binary target.
 
@@ -102,25 +107,25 @@ def plot_gini(
     proba_col : str
         Column with the calculated probabilites.
 
-    title : str (default='Gini'):
+    title : str (default="Gini"):
         Title for plot.
 
-    xlabel : str (default='Cumulative % Population')
+    xlabel : str (default="Cumulative % Population")
         Label for the x-axis.
 
-    ylabel : str (default='Cumulative % Bad')
+    ylabel : str (default="Cumulative % Bad")
         Label for the y-axis.
 
-    roc_color : str (default='blue')
+    roc_color : str (default="blue")
         Color for the Gini line.
 
-    reference_color : str (default='red')
+    reference_color : str (default="red")
         Color for the reference line.
 
     savefig : bool (default=False)
         To save figure.
 
-    figname : str (default='gini.fig')
+    figname : str (default=None)
         Name for figure file.
 
     Returns
@@ -159,9 +164,9 @@ def plot_gini(
         linestyle="--",
         color=reference_color,
     )
-    plt.title(title, fontdict={'fontsize': 16})
-    plt.xlabel(xlabel, fontdict={'fontsize': 16})
-    plt.ylabel(ylabel, fontdict={'fontsize': 16})
+    plt.title(title, fontdict={"fontsize": 16})
+    plt.xlabel(xlabel, fontdict={"fontsize": 16})
+    plt.ylabel(ylabel, fontdict={"fontsize": 16})
 
     if savefig:
         plt.savefig(figname, dpi=300)
@@ -182,7 +187,7 @@ def plot_ks(
     good_color="blue",
     bad_color="red",
     savefig=False,
-    figname="ks.png",
+    figname=None,
 ):
     """Create Kolmogorov-Smirnov plot for probabilities and binary target.
 
@@ -197,25 +202,25 @@ def plot_ks(
     proba_col : str
         Column with the calculated probabilites.
 
-    title : str (default='Kolmogorov-Smirnov'):
+    title : str (default="Kolmogorov-Smirnov"):
         Title for plot.
 
-    xlabel : str (default='Estimated Probability for target Good')
+    xlabel : str (default="Estimated Probability for target Good")
         Label for the x-axis.
 
-    ylabel : str (default='Cumulative %')
+    ylabel : str (default="Cumulative %")
         Label for the y-axis.
 
-    good_color : str (default='blue')
+    good_color : str (default="blue")
         Color for the event lineplot.
 
-    bad_color : str (default='red')
+    bad_color : str (default="red")
         Color for the non-event lineplot.
 
     savefig : bool (default=False)
         To save figure.
 
-    figname : str (default='ks.fig')
+    figname : str (default=None)
         Name for figure file.
 
     Returns
@@ -249,10 +254,10 @@ def plot_ks(
         df[proba_col], df["cumulative_perc_good"], color=good_color,
     )
     plt.xlabel(
-        'Estimated Probability for Good target', fontdict={'fontsize': 16}
+        "Estimated Probability for Good target", fontdict={"fontsize": 16}
     )
-    plt.ylabel("Cumulative %", fontdict={'fontsize': 16})
-    plt.title("Kolmogorov-Smirnov", fontdict={'fontsize': 16})
+    plt.ylabel("Cumulative %", fontdict={"fontsize": 16})
+    plt.title("Kolmogorov-Smirnov", fontdict={"fontsize": 16})
 
     ks_score = max(df["cumulative_perc_bad"] - df["cumulative_perc_good"])
     ks_max_idx = np.argmax(
@@ -264,8 +269,8 @@ def plot_ks(
         df[proba_col].iloc[ks_max_idx],
         ymin=df["cumulative_perc_good"].iloc[ks_max_idx],
         ymax=df["cumulative_perc_bad"].iloc[ks_max_idx],
-        color='black',
-        linestyles='--',
+        color="black",
+        linestyles="--",
     )
 
     # Set KS value inside plot
@@ -278,9 +283,9 @@ def plot_ks(
             )
             * 0.5
         ),
-        f'KS = {round(ks_score * 100, 2)}%',
+        f"KS = {round(ks_score * 100, 2)}%",
         fontsize=12,
-        rotation_mode='anchor',
+        rotation_mode="anchor",
     )
 
     if savefig:

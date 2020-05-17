@@ -53,7 +53,7 @@ OptBinning requires
 * numpy
 * ortools (>=7.2)
 * pandas
-* scikit-learn (>=0.20.0)
+* scikit-learn (>=0.22.0)
 * scipy
 
 Getting started
@@ -237,7 +237,7 @@ Benchmarks
 
 The following table shows how OptBinning compares to `scorecardpy <https://github.com/ShichenXie/scorecardpy>`_ 0.1.9.1.1 on a selection of variables from the public dataset, Home Credit Default Risk - Kaggle’s competition `Link <https://www.kaggle.com/c/home-credit-default-risk/data>`_. This dataset contains 307511 samples.The experiments were run on Intel(R) Core(TM) i5-3317 CPU at 1.70GHz, using a single core, running Linux. For scorecardpy, we use default settings only increasing the maximum number of bins ``bin_num_limit=20``. For OptBinning, we use default settings (``max_n_prebins=20``) only changing the maximum allowed p-value between consecutive bins, ``max_pvalue=0.05``.
 
-To compare softwares we use the shifted geometric mean, typically used in mathematical optimization benchmarks: http://plato.asu.edu/bench.html. Using the shifted (by 1 second) geometric mean we found that **OptBinning** is **17x** faster than scorecardpy, with an average IV increase of **12%**. Besides the speed and IV gains, OptBinning includes many more constraints and monotonicity options.
+To compare softwares we use the shifted geometric mean, typically used in mathematical optimization benchmarks: http://plato.asu.edu/bench.html. Using the shifted (by 1 second) geometric mean we found that **OptBinning** is **17x** faster than scorecardpy, with an average IV increment of **12%**. Besides the speed and IV gains, OptBinning includes many more constraints and monotonicity options.
 
 +----------------------------+------------------+----------------+-----------------+---------------+
 | Variable                   | scorecardpy_time | scorecardpy_IV | optbinning_time | optbinning_IV |

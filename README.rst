@@ -280,6 +280,26 @@ To compare softwares we use the shifted geometric mean, typically used in mathem
 (C): categorical variable.
 (*): max p-value between consecutive bins > 0.05.
 
+The binning of variables with monotonicity trend peak or valley can benefit from the option ``monotonicity_trend="auto_heuristic"`` at the expense of finding a suboptimal solution for some cases. The following table compares the options ``monotonicity_trend="auto"`` and ``monotonicity_trend="auto_heuristic"``,
+
++----------------------------+----------------+----------------+----------------+----------------+
+| Variable                   |      auto_time |        auto_IV | heuristic_time |   heuristic_IV |
++============================+================+================+================+================+
+| AMT_INCOME_TOTAL           |      0.363 s   |    0.011705    |      0.322 s   |    0.011705    |
++----------------------------+----------------+----------------+----------------+----------------+
+| AMT_CREDIT                 |      0.634 s   |   0.059311     |      0.469 s   |    0.058643    |
++----------------------------+----------------+----------------+----------------+----------------+
+| AMT_ANNUITY                |      0.648 s   |   0.031179     |      0.505 s   |    0.031179    |
++----------------------------+----------------+----------------+----------------+----------------+
+| AMT_GOODS_PRICE            |      0.401 s   |   0.092032     |      0.299 s   |    0.092032    |
++----------------------------+----------------+----------------+----------------+----------------+
+| REGION_POPULATION_RELATIVE |      0.392 s   |   0.035567     |      0.244 s   |    0.035567    |
++----------------------------+----------------+----------------+----------------+----------------+
+| **TOTAL**                  | **2.438 s**    | **0.229794**   | **1.839 s**    | **0.229126**   |
++----------------------------+----------------+----------------+----------------+----------------+
+
+We observe that CPU time is reduced by 25% losing less than 1% in IV.
+
 
 Contributing
 ============

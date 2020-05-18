@@ -26,70 +26,57 @@ def _check_arrays(y, y_pred):
 
 def _check_parameters(title, xlabel, ylabel, savefig, fname):
     if title is not None and not isinstance(title, str):
-        raise TypeError(
-            "title must be a string or None; got {}.".format(title)
-        )
+        raise TypeError("title must be a string or None; got {}."
+                        .format(title))
 
     if xlabel is not None and not isinstance(xlabel, str):
-        raise TypeError(
-            "xlabel must be a string or None; got {}.".format(xlabel)
-        )
+        raise TypeError("xlabel must be a string or None; got {}."
+                        .format(xlabel))
 
     if ylabel is not None and not isinstance(ylabel, str):
-        raise TypeError(
-            "ylabel must be a string or None; got {}.".format(ylabel)
-        )
+        raise TypeError("ylabel must be a string or None; got {}."
+                        .format(ylabel))
 
     if not isinstance(savefig, bool):
         raise TypeError("savefig must be a boolean; got {}.".format(savefig))
 
     if fname is not None and not isinstance(fname, str):
-        raise TypeError(
-            "fname must be a string or None; got {}.".format(fname)
-        )
+        raise TypeError("fname must be a string or None; got {}."
+                        .format(fname))
 
     if savefig is True and fname is None:
-        raise TypeError("fname must be provided if savefig is True.")
+        raise ValueError("fname must be provided if savefig is True.")
 
 
-def plot_auc_roc(
-    y,
-    y_pred,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    savefig=False,
-    fname=None,
-    **kwargs
-):
-    """Plot AUC ROC curve for arrays with predicted probabilities and labels.
+def plot_auc_roc(y, y_pred, title=None, xlabel=None, ylabel=None,
+                 savefig=False, fname=None, **kwargs):
+    """Plot Area Under the Receiver Operating Characteristic Curve (AUC ROC).
 
     Parameters
     ----------
-    y : numpy.array or pandas.Series
+    y : array-like, shape = (n_samples,)
         Array with the target labels.
 
-    y_pred : numpy.array or pandas.Series
+    y_pred : array-like, shape = (n_samples,)
         Array with predicted probabilities.
 
-    title : str (default=None)
-        Title for plot.
+    title : str or None, optional (default=None)
+        Title for the plot.
 
-    xlabel : str (default=None)
+    xlabel : str or None, optional (default=None)
         Label for the x-axis.
 
-    ylabel : str (default=None)
+    ylabel : str or None, optional (default=None)
         Label for the y-axis.
 
     savefig : bool (default=False)
-        To save figure.
+        Whether to save the figure.
 
-    fname : str (default=None)
-        Name for figure file.
+    fname : str or None, optional (default=None)
+        Name for the figure file.
 
     **kwargs : keyword arguments
         Keyword arguments for matplotlib.pyplot.savefig().
-
     """
     y, y_pred = _check_arrays(y, y_pred)
 
@@ -117,46 +104,38 @@ def plot_auc_roc(
     # Save figure if requested. Pass kwargs.
     if savefig:
         plt.savefig(fname=fname, **kwargs)
+        plt.close()
 
 
-def plot_cap(
-    y,
-    y_pred,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    savefig=False,
-    fname=None,
-    **kwargs
-):
-    """Plot Cumulative Accuracy Profile (CAP) for given arrays.
+def plot_cap(y, y_pred, title=None, xlabel=None, ylabel=None,
+             savefig=False, fname=None, **kwargs):
+    """Plot Cumulative Accuracy Profile (CAP).
 
     Parameters
     ----------
-    y : numpy.array or pandas.Series
+    y : array-like, shape = (n_samples,)
         Array with the target labels.
 
-    y_pred : numpy.array or pandas.Series
+    y_pred : array-like, shape = (n_samples,)
         Array with predicted probabilities.
 
-    title : str (default=None)
-        Title for plot.
+    title : str or None, optional (default=None)
+        Title for the plot.
 
-    xlabel : str (default=None)
+    xlabel : str or None, optional (default=None)
         Label for the x-axis.
 
-    ylabel : str (default=None)
+    ylabel : str or None, optional (default=None)
         Label for the y-axis.
 
     savefig : bool (default=False)
-        To save figure.
+        Whether to save the figure.
 
-    fname : str (default=None)
-        Name for figure file.
+    fname : str or None, optional (default=None)
+        Name for the figure file.
 
     **kwargs : keyword arguments
         Keyword arguments for matplotlib.pyplot.savefig().
-
     """
     y, y_pred = _check_arrays(y, y_pred)
 
@@ -183,19 +162,10 @@ def plot_cap(
         ylabel = "Fraction of event population"
 
     plt.plot([0, 1], [0, 1], color='k', linestyle='--', label="Random Model")
-    plt.plot(
-        [0, n_event / n_samples, 1],
-        [0, 1, 1],
-        color='grey',
-        linestyle='--',
-        label="Perfect Model",
-    )
-    plt.plot(
-        p_population,
-        p_event,
-        color="g",
-        label="Model (Gini: {:.5f})".format(gini),
-    )
+    plt.plot([0, n_event / n_samples, 1], [0, 1, 1], color='grey',
+             linestyle='--', label="Perfect Model")
+    plt.plot(p_population, p_event, color="g",
+             label="Model (Gini: {:.5f})".format(gini))
 
     plt.title(title, fontdict={'fontsize': 14})
     plt.xlabel(xlabel, fontdict={'fontsize': 12})
@@ -205,46 +175,38 @@ def plot_cap(
     # Save figure if requested. Pass kwargs.
     if savefig:
         plt.savefig(fname=fname, **kwargs)
+        plt.close()
 
 
-def plot_ks(
-    y,
-    y_pred,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    savefig=False,
-    fname=None,
-    **kwargs
-):
-    """Plot Kolmogorov-Smirnov for given arrays.
+def plot_ks(y, y_pred, title=None, xlabel=None, ylabel=None,
+            savefig=False, fname=None, **kwargs):
+    """Plot Kolmogorov-Smirnov (KS).
 
     Parameters
     ----------
-    y : numpy.array or pandas.Series
+    y : array-like, shape = (n_samples,)
         Array with the target labels.
 
-    y_pred : numpy.array or pandas.Series
+    y_pred : array-like, shape = (n_samples,)
         Array with predicted probabilities.
 
-    title : str (default=None)
-        Title for plot.
+    title : str or None, optional (default=None)
+        Title for the plot.
 
-    xlabel : str (default=None)
+    xlabel : str or None, optional (default=None)
         Label for the x-axis.
 
-    ylabel : str (default=None)
+    ylabel : str or None, optional (default=None)
         Label for the y-axis.
 
     savefig : bool (default=False)
-        To save figure.
+        Whether to save the figure.
 
-    fname : str (default=None)
-        Name for figure file.
+    fname : str or None, optional (default=None)
+        Name for the figure file.
 
     **kwargs : keyword arguments
         Keyword arguments for matplotlib.pyplot.savefig().
-
     """
     y, y_pred = _check_arrays(y, y_pred)
 
@@ -283,13 +245,9 @@ def plot_ks(
 
     plt.plot(pp, p_event, color="r", label="Cumulative events")
     plt.plot(pp, p_nonevent, color="b", label="Cumulative non-events")
-    plt.vlines(
-        pp[ks_max_idx],
-        ymin=p_event[ks_max_idx],
-        ymax=p_nonevent[ks_max_idx],
-        color="k",
-        linestyles="--",
-    )
+
+    plt.vlines(pp[ks_max_idx], ymin=p_event[ks_max_idx],
+               ymax=p_nonevent[ks_max_idx], color="k", linestyles="--")
 
     # Set KS value inside plot
     pos_x = pp[ks_max_idx] + 0.02
@@ -302,3 +260,4 @@ def plot_ks(
     # Save figure if requested. Pass kwargs.
     if savefig:
         plt.savefig(fname=fname, **kwargs)
+        plt.close()

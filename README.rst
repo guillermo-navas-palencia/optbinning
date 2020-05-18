@@ -298,7 +298,7 @@ The binning of variables with monotonicity trend peak or valley can benefit from
 | **TOTAL**                  | **2.438 s**    | **0.229794**   | **1.839 s**    | **0.229126**   |
 +----------------------------+----------------+----------------+----------------+----------------+
 
-We observe that CPU time is reduced by 25% losing less than 1% in IV. The differences in CPU time are more noticeable as the
+Observe that CPU time is reduced by 25% losing less than 1% in IV. The differences in CPU time are more noticeable as the
 number of bins increases, see http://gnpalencia.org/optbinning/tutorials/tutorial_binary_large_scale.html.
 
 

@@ -28,6 +28,8 @@ not previously addressed.
 
 **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 
+**Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
+
 Installation
 ============
 

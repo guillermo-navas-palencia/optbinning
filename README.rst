@@ -24,16 +24,17 @@ not previously addressed.
 .. image:: doc/source/_images/binning_binary.png
    :target: doc/source/_images/binning_binary.png
 
-**Documentation**: http://gnpalencia.org/optbinning/
-
 **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 
 **Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
 
+
+.. contents:: **Table of Contents**
+
 Installation
 ============
 
-To install the current release of OptBinning:
+To install the current release of OptBinning from PyPI:
 
 .. code-block:: text
 
@@ -61,7 +62,7 @@ OptBinning requires
 Getting started
 ===============
 
-If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
+Please visit the OptBinning documentation (**current** release) http://gnpalencia.org/optbinning/. If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
 Example
 -------
@@ -307,6 +308,15 @@ number of bins increases, see http://gnpalencia.org/optbinning/tutorials/tutoria
 Contributing
 ============
 Found a bug? Want to contribute with a new feature, improve documentation, or add examples? We encourage you to create pull requests and/or open GitHub issues. Thanks! :octocat: :tada: :+1:
+
+
+Who uses OptBinning?
+====================
+We would like to list companies using OptBinning. Please send a PR with your company name and @githubhandle if you may.
+
+Currently **officially** using OptBinning:
+
+1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_]
 
 
 Citation

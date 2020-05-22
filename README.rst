@@ -21,12 +21,11 @@ OptBinning
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
 not previously addressed.
 
+* **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
+* **Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
+
 .. image:: doc/source/_images/binning_binary.png
    :target: doc/source/_images/binning_binary.png
-
-**Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
-
-**Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
 
 
 .. contents:: **Table of Contents**

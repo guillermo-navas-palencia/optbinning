@@ -281,7 +281,8 @@ and the number of selected variables after the binning process.
    >>> scorecard.information(print_level=2)
 
 .. code-block:: text
-
+   
+   optbinning (Version 0.6.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

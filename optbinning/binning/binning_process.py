@@ -227,6 +227,8 @@ class BinningProcess(BaseEstimator):
     selection_criteria : dict or None (default=None)
         Variable selection criteria. See notes.
 
+        .. versionadded:: 0.6.0
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.

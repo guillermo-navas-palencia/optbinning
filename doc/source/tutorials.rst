@@ -28,6 +28,16 @@ Binning process tutorials
    tutorials/tutorial_binning_process_telco_churn
 
 
+Scorecard tutorials
+-------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/tutorial_scorecard_binary_target
+   tutorials/tutorial_scorecard_continuous_target
+
+
 Optimal binning under uncertainty
 ---------------------------------
 

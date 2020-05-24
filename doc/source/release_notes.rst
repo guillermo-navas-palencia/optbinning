@@ -1,6 +1,25 @@
 Release Notes
 =============
 
+
+Version 0.6.0 (2020-05-24)
+--------------------------
+
+New features:
+
+   - Scorecard development supporting binary and continuous target.
+   - Plotting functions: ``plot_auc_roc``, ``plot_cap`` and ``plot_ks``.
+   - Optimal binning classes introduce ``sample_weight`` parameter in methods ``fit`` and ``fit_transform``.
+   - Optimal binning classes introduce two options for parameter ``metric`` in methods ``fit_transform`` and ``transform``: ``metric="bins"`` and ``metric="indices"``.
+
+
+Tutorials:
+
+   - Tutorial: optimal binning with binary target - large scale.
+   - Tutorial: Scorecard with binary target.
+   - Tutorial: Scorecard with continuous target.
+
+
 Version 0.5.0 (2020-04-13)
 --------------------------
 

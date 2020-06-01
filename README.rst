@@ -414,7 +414,7 @@ To compare softwares we use the shifted geometric mean, typically used in mathem
 (C): categorical variable.
 (*): max p-value between consecutive bins > 0.05.
 
-The binning of variables with monotonicity trend peak or valley can benefit from the option ``monotonicity_trend="auto_heuristic"`` at the expense of finding a suboptimal solution for some cases. The following table compares the options ``monotonicity_trend="auto"`` and ``monotonicity_trend="auto_heuristic"``,
+The binning of variables with monotonicity trend peak or valley can benefit from the option ``monotonic_trend="auto_heuristic"`` at the expense of finding a suboptimal solution for some cases. The following table compares the options ``monotonic_trend="auto"`` and ``monotonic_trend="auto_heuristic"``,
 
 +----------------------------+----------------+----------------+----------------+----------------+
 | Variable                   |      auto_time |        auto_IV | heuristic_time |   heuristic_IV |

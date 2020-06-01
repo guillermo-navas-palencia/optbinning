@@ -268,6 +268,11 @@ class ContinuousOptimalBinning(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.7.0
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -288,7 +293,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, cat_cutoff=None, user_splits=None,
                  user_splits_fixed=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False, **kwargs):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -321,7 +326,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
-        self.kwargs = kwargs
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._categories = None

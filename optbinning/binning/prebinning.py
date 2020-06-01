@@ -37,14 +37,15 @@ class PreBinning:
 
     Notes
     -----
+    Keyword arguments are those available in the following classes:
 
-    * method="uniform":
+        * ``method="uniform"``: `sklearn.preprocessing.KBinsDiscretizer.
 
-    * method="quantile":
+        * ``method="quantile"``: `sklearn.preprocessing.KBinsDiscretizer.
 
-    * method="cart":
+        * ``method="cart"``: sklearn.tree.DecistionTreeClassifier.
 
-    * method="mdlp":
+        * ``method="mdlp"``: optbinning.binning.mdlp.MDLP.
 
     """
     def __init__(self, problem_type, method, n_bins, min_bin_size,

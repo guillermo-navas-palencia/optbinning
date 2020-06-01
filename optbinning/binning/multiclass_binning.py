@@ -285,7 +285,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **kwargs):
 
         self.name = name
         self.dtype = "numerical"
@@ -316,6 +316,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.kwargs = kwargs
 
         # auxiliary
         self._n_event = None

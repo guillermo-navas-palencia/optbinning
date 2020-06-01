@@ -288,7 +288,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, cat_cutoff=None, user_splits=None,
                  user_splits_fixed=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -321,6 +321,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.kwargs = kwargs
 
         # auxiliary
         self._categories = None

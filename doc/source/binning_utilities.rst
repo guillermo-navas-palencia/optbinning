@@ -1,6 +1,16 @@
 Utilities
 =========
 
+
+Pre-binning
+-----------
+
+.. autoclass:: optbinning.binning.prebinning.PreBinning
+   :members:
+   :inherited-members:
+   :show-inheritance:
+
+
 Transformations
 ---------------
 

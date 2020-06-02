@@ -267,6 +267,11 @@ class MulticlassOptimalBinning(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.7.0
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -285,7 +290,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = "numerical"
@@ -316,6 +321,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._n_event = None

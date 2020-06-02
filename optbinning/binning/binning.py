@@ -47,9 +47,10 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
         raise ValueError('Invalid value for dtype. Allowed string '
                          'values are "categorical" and "numerical".')
 
-    if prebinning_method not in ("cart", "quantile", "uniform"):
+    if prebinning_method not in ("cart", "mdlp", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
-                         'values are "cart", "quantile" and "uniform".')
+                         'values are "cart", "mdlp", "quantile" '
+                         'and "uniform".')
 
     if solver not in ("cp", "ls", "mip"):
         raise ValueError('Invalid value for solver. Allowed string '
@@ -377,6 +378,11 @@ class OptimalBinning(BaseOptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.7.0
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -403,7 +409,7 @@ class OptimalBinning(BaseOptimalBinning):
                  outlier_detector=None, outlier_params=None, class_weight=None,
                  cat_cutoff=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -443,6 +449,7 @@ class OptimalBinning(BaseOptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._categories = None
@@ -821,7 +828,8 @@ class OptimalBinning(BaseOptimalBinning):
                                 n_bins=self.max_n_prebins,
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
-                                class_weight=class_weight
+                                class_weight=class_weight,
+                                **self.prebinning_kwargs
                                 ).fit(x, y, sample_weight)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,

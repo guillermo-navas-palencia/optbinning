@@ -65,7 +65,7 @@ def bin_categorical(splits_categorical, categories, cat_others, user_splits):
     splits = np.ceil(splits_categorical).astype(np.int)
     n_categories = len(categories)
 
-    if user_splits:
+    if user_splits is not None:
         indices = np.digitize(np.arange(n_categories), splits, right=True)
         n_bins = len(splits)
     else:

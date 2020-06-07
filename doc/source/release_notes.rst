@@ -2,6 +2,22 @@ Release Notes
 =============
 
 
+Version 0.6.1 (2020-06-07)
+--------------------------
+
+New features:
+
+   - Options ``add_special`` and ``add_missing`` in all binning table plots.
+   - Prebinning methods' parameters are accessible via ``**prebinning_kwargs``.
+   - Add support MDLP algorithm for binary target.
+
+Bugfixes:
+
+   - Fix bug in solution when the status is not feasible or optimal for LocalSolver, ``solver="ls"``.
+   - Fix several bugs for categorical variables with ``user_splits`` and ``user_splits_fixed``.
+   - Fix bug in binning process when passing ``user_splits`` and ``user_splits_fixed`` via parameter ``binning_fit_params``.
+
+
 Version 0.6.0 (2020-05-24)
 --------------------------
 

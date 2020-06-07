@@ -90,9 +90,12 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     fix_ub : float or None (default=None)
         Upper bound or maximum admissible value.
 
-    class_weight : None
+    class_weight : dict, "balanced" or None, optional (default=None)
+        Weights associated with classes in the form ``{class_label: weight}``.
+        If None, all classes are supposed to have weight one.
 
-    sample_weight : None
+    sample_weight : array-like of shape (n_samples,) (default=None)
+        Array of weights that are assigned to individual samples.
 
     Returns
     -------
@@ -122,6 +125,18 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     others : array, shape (n_other_categories)
         List of other categories.
+
+    sw_clean : array-like
+        Clean data sample weigth.
+
+    sw_missing : array-like
+        Missing data sample weight.
+
+    sw_special : array-like
+        Special data sample weight.
+
+    sw_others : array-like
+        Others data sample weight.
     """
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore"):

@@ -474,7 +474,15 @@ class SBOptimalBinning(OptimalBinning):
                 self.user_splits, ensure_2d=False, dtype=None,
                 force_all_finite=True)
 
-            user_splits = np.unique(self.user_splits)
+            if len(set(user_splits)) != len(user_splits):
+                raise ValueError("User splits are not unique.")
+
+            sorted_idx = np.argsort(user_splits)
+            user_splits = user_splits[sorted_idx]
+
+            if self.user_splits_fixed is not None:
+                self.user_splits_fixed = np.asarray(
+                    self.user_splits_fixed)[sorted_idx]
 
             splits, n_nonevent, n_event = self._prebinning_refinement(
                 user_splits, x_clean, y_clean, y_missing, y_special)

@@ -381,7 +381,7 @@ class OptimalBinning(BaseOptimalBinning):
     **prebinning_kwargs : keyword arguments
         The pre-binning keywrord arguments.
 
-        .. versionadded:: 0.7.0
+        .. versionadded:: 0.6.1
 
     Notes
     -----

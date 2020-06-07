@@ -328,8 +328,6 @@ class MulticlassOptimalBinning(OptimalBinning):
         self._n_event_missing = None
         self._n_event_special = None
         self._problem_type = "classification"
-        self._user_splits = user_splits
-        self._user_splits_fixed = user_splits_fixed
 
         # info
         self._binning_table = None
@@ -722,7 +720,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                             self.max_n_bins, min_bin_size,
                                             max_bin_size, self.max_pvalue,
                                             self.max_pvalue_policy,
-                                            self._user_splits_fixed,
+                                            self.user_splits_fixed,
                                             self.time_limit)
         else:
             optimizer = MulticlassBinningMIP(monotonic, self.min_n_bins,
@@ -730,7 +728,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                              max_bin_size, self.max_pvalue,
                                              self.max_pvalue_policy,
                                              self.mip_solver,
-                                             self._user_splits_fixed,
+                                             self.user_splits_fixed,
                                              self.time_limit)
         if self.verbose:
             self._logger.info("Optimizer: build model...")
@@ -785,8 +783,8 @@ class MulticlassOptimalBinning(OptimalBinning):
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
             if self.user_splits_fixed is not None:
-                user_splits_fixed = np.asarray(self._user_splits_fixed)
-                user_splits = np.asarray(self._user_splits)
+                user_splits_fixed = np.asarray(self.user_splits_fixed)
+                user_splits = np.asarray(self.user_splits)
                 fixed_remove = user_splits_fixed & mask_splits
 
                 if any(fixed_remove):
@@ -796,8 +794,8 @@ class MulticlassOptimalBinning(OptimalBinning):
                                      .format(user_splits[fixed_remove]))
 
                 # Update boolean array of fixed user splits.
-                self._user_splits_fixed = user_splits_fixed[~mask_splits]
-                self._user_splits = user_splits[~mask_splits]
+                self.user_splits_fixed = user_splits_fixed[~mask_splits]
+                self.user_splits = user_splits[~mask_splits]
 
             splits = splits_prebinning[~mask_splits]
 

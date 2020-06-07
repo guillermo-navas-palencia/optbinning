@@ -157,6 +157,14 @@ def test_numerical_user_splits_fixed():
     assert optb.status == "INFEASIBLE"
 
 
+def test_numerical_user_splits_non_unique():
+    user_splits = [4, 7, 7, 10, 16, 20, 23]
+    optb = ContinuousOptimalBinning(user_splits=user_splits)
+
+    with raises(ValueError):
+        optb.fit(x, y)
+
+
 def test_categorical_user_splits():
     np.random.seed(0)
     n = 100000

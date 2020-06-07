@@ -179,6 +179,14 @@ def test_numerical_user_splits_fixed():
     assert 2.7 in optb.splits
 
 
+def test_numerical_user_splits_non_unique():
+    user_splits = [2.1, 2.2, 2.2, 2.6, 2.9]
+    optb = MulticlassOptimalBinning(user_splits=user_splits)
+
+    with raises(ValueError):
+        optb.fit(x, y)
+
+
 def test_numerical_default_transform():
     optb = MulticlassOptimalBinning()
     with raises(NotFittedError):

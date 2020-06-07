@@ -207,6 +207,14 @@ def test_numerical_user_splits():
     assert optb.binning_table.iv == 4.819661314733627
 
 
+def test_numerical_user_splits_non_unique():
+    user_splits = [11, 12, 13, 14, 15, 15]
+    optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05)
+
+    with raises(ValueError):
+        optb.fit(x, y)
+
+
 def test_numerical_user_splits_fixed():
     user_splits = [11, 12, 13, 14, 15, 16, 17]
 

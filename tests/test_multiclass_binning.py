@@ -121,6 +121,10 @@ def test_numerical_default():
     assert optb.binning_table.js == approx(0.10989515, rel=1e-6)
     assert optb.binning_table.quality_score == approx(0.05279822, rel=1e-6)
     optb.binning_table.plot(savefig="test_multiclass_binning.png")
+    optb.binning_table.plot(add_special=False,
+                            savefig="test_multiclass_binning_no_special.png")
+    optb.binning_table.plot(add_missing=False,
+                            savefig="test_multiclass_binning_no_missing.png")
 
 
 def test_numerical_default_solvers():
@@ -177,6 +181,14 @@ def test_numerical_user_splits_fixed():
 
     assert optb.status == "OPTIMAL"
     assert 2.7 in optb.splits
+
+
+def test_numerical_user_splits_non_unique():
+    user_splits = [2.1, 2.2, 2.2, 2.6, 2.9]
+    optb = MulticlassOptimalBinning(user_splits=user_splits)
+
+    with raises(ValueError):
+        optb.fit(x, y)
 
 
 def test_numerical_default_transform():

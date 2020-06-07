@@ -189,6 +189,16 @@ def test_user_splits():
     assert sboptb.splits == approx([12, 14, 15], rel=1e-6)
 
 
+def test_user_splits_non_unique():
+    user_splits = [11, 12, 13, 13, 15, 16, 17]
+
+    sboptb = SBOptimalBinning(monotonic_trend="descending",
+                              user_splits=user_splits)
+
+    with raises(ValueError):
+        sboptb.fit(x_s, y_s)
+
+
 def test_user_splits_fixed():
     user_splits = [11, 12, 13, 14, 14.7, 15.5, 17]
     user_splits_fixed = [False, False, False, False, False, True, False]

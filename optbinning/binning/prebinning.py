@@ -71,6 +71,9 @@ class PreBinning:
         y : array-like, shape = (n_samples)
             Target vector relative to x.
 
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+
         Returns
         -------
         self : object

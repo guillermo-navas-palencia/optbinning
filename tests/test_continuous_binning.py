@@ -121,6 +121,10 @@ def test_numerical_default():
 
     optb.binning_table.build()
     optb.binning_table.plot(savefig="test_continuous_binning.png")
+    optb.binning_table.plot(add_special=False,
+                            savefig="test_continuous_binning_no_special.png")
+    optb.binning_table.plot(add_missing=False,
+                            savefig="test_continuous_binning_no_missing.png")
 
 
 def test_numerical_user_splits_fixed():
@@ -155,6 +159,14 @@ def test_numerical_user_splits_fixed():
     optb.fit(x, y)
 
     assert optb.status == "INFEASIBLE"
+
+
+def test_numerical_user_splits_non_unique():
+    user_splits = [4, 7, 7, 10, 16, 20, 23]
+    optb = ContinuousOptimalBinning(user_splits=user_splits)
+
+    with raises(ValueError):
+        optb.fit(x, y)
 
 
 def test_categorical_user_splits():

@@ -507,11 +507,11 @@ class BinningTable:
         pos_special = 0
         pos_missing = 0
 
-        if add_special is True:
+        if add_special:
             pos_special = n_metric
-            if add_missing is True:
+            if add_missing:
                 pos_missing = n_metric + 1
-        elif add_missing is True:
+        elif add_missing:
             pos_missing = n_metric
 
         # Add points for others (optional), special and missing bin
@@ -526,7 +526,7 @@ class BinningTable:
             ax2.plot(pos_others, metric_values[pos_others], marker="o",
                      color="black")
 
-        if add_special is True:
+        if add_special:
             p1[pos_special].set_hatch("/")
             p2[pos_special].set_hatch("/")
             handle_special = mpatches.Patch(hatch="/", alpha=0.1)
@@ -535,7 +535,7 @@ class BinningTable:
             ax2.plot(pos_special, metric_values[pos_special], marker="o",
                      color="black")
 
-        if add_missing is True:
+        if add_missing:
             p1[pos_missing].set_hatch("\\")
             p2[pos_missing].set_hatch("\\")
             handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
@@ -544,10 +544,10 @@ class BinningTable:
             ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
                      color="black")
 
-        if add_special is True and add_missing is True:
+        if add_special and add_missing:
             handles.extend([handle_special, handle_missing])
             labels.extend([label_special, label_missing])
-        elif add_special is True:
+        elif add_special:
             handles.extend([handle_special])
             labels.extend([label_special])
         elif add_missing:
@@ -1253,11 +1253,11 @@ class ContinuousBinningTable:
         pos_special = 0
         pos_missing = 0
 
-        if add_special is True:
+        if add_special:
             pos_special = n_metric
-            if add_missing is True:
+            if add_missing:
                 pos_missing = n_metric + 1
-        elif add_missing is True:
+        elif add_missing:
             pos_missing = n_metric
 
         # Add points for others (optional), special and missing bin
@@ -1271,7 +1271,7 @@ class ContinuousBinningTable:
             ax2.plot(pos_others, metric_values[pos_others], marker="o",
                      color="black")
 
-        if add_special is True:
+        if add_special:
             p1[pos_special].set_hatch("/")
             handle_special = mpatches.Patch(hatch="/", alpha=0.1)
             label_special = "Bin special"
@@ -1279,7 +1279,7 @@ class ContinuousBinningTable:
             ax2.plot(pos_special, metric_values[pos_special], marker="o",
                      color="black")
 
-        if add_missing is True:
+        if add_missing:
             p1[pos_missing].set_hatch("\\")
             handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
             label_missing = "Bin missing"
@@ -1287,10 +1287,10 @@ class ContinuousBinningTable:
             ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
                      color="black")
 
-        if add_special is True and add_missing is True:
+        if add_special and add_missing:
             handles.extend([handle_special, handle_missing])
             labels.extend([label_special, label_missing])
-        elif add_special is True:
+        elif add_special:
             handles.extend([handle_special])
             labels.extend([label_special])
         elif add_missing:

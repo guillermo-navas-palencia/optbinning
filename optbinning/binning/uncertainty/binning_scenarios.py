@@ -222,8 +222,7 @@ class SBOptimalBinning(OptimalBinning):
 
     max_pvalue : float or None, optional (default=0.05)
         The maximum p-value among bins. The Z-test is used to detect bins
-        not satisfying the p-value constraint. Option supported by solvers
-        "cp" and "mip".
+        not satisfying the p-value constraint.
 
     max_pvalue_policy : str, optional (default="consecutive")
         The method to determine bins not satisfying the p-value constraint.

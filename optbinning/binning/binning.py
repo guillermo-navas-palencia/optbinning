@@ -740,11 +740,20 @@ class OptimalBinning(BaseOptimalBinning):
                         self.user_splits, ensure_2d=False, dtype=None,
                         force_all_finite=True)
 
-                    user_splits = np.unique(self.user_splits)
+                    if len(set(user_splits)) != len(user_splits):
+                        raise ValueError("User splits are not unique.")
+
+                    sorted_idx = np.argsort(user_splits)
+                    user_splits = user_splits[sorted_idx]
                 else:
                     [categories, user_splits, x_clean, y_clean, y_others,
-                     cat_others] = preprocessing_user_splits_categorical(
-                        self.user_splits, x_clean, y_clean)
+                     cat_others, sw_clean, sw_others, sorted_idx,
+                     ] = preprocessing_user_splits_categorical(
+                        self.user_splits, x_clean, y_clean, sw_clean)
+
+                if self.user_splits_fixed is not None:
+                    self.user_splits_fixed = np.asarray(
+                        self.user_splits_fixed)[sorted_idx]
 
                 splits, n_nonevent, n_event = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, y_special,
@@ -897,19 +906,18 @@ class OptimalBinning(BaseOptimalBinning):
                         self._logger.info("Optimizer: trend change position "
                                           "{}.".format(trend_change))
 
-                if self.verbose:
-                    if monotonic is None:
-                        self._logger.info(
-                            "Optimizer: monotonic trend not set.")
-                    else:
-                        self._logger.info("Optimizer: monotonic trend set to "
-                                          "{}.".format(monotonic))
         else:
-            monotonic = "ascending"
+            monotonic = self.monotonic_trend
+            if monotonic is not None:
+                monotonic = "ascending"
 
-            if self.verbose:
+        if self.verbose:
+            if monotonic is None:
+                self._logger.info(
+                    "Optimizer: monotonic trend not set.")
+            else:
                 self._logger.info("Optimizer: monotonic trend set to "
-                                  "ascending for categorical dtype.")
+                                  "{}.".format(monotonic))
 
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,

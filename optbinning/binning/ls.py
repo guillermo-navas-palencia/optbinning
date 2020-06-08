@@ -224,6 +224,7 @@ class BinningLS:
                                  for i in range(self._n)]).astype(np.bool)
         else:
             solution = np.zeros(self._n).astype(np.bool)
+            solution[-1] = True
 
         return status_name, solution
 

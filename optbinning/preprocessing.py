@@ -90,9 +90,12 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     fix_ub : float or None (default=None)
         Upper bound or maximum admissible value.
 
-    class_weight : None
+    class_weight : dict, "balanced" or None, optional (default=None)
+        Weights associated with classes in the form ``{class_label: weight}``.
+        If None, all classes are supposed to have weight one.
 
-    sample_weight : None
+    sample_weight : array-like of shape (n_samples,) (default=None)
+        Array of weights that are assigned to individual samples.
 
     Returns
     -------
@@ -122,6 +125,18 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     others : array, shape (n_other_categories)
         List of other categories.
+
+    sw_clean : array-like
+        Clean data sample weigth.
+
+    sw_missing : array-like
+        Missing data sample weight.
+
+    sw_special : array-like
+        Special data sample weight.
+
+    sw_others : array-like
+        Others data sample weight.
     """
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore"):
@@ -283,7 +298,8 @@ def split_data_scenarios(X, Y, weights, special_codes, check_input):
     return x_clean, y_clean, x_missing, y_missing, x_special, y_special, w
 
 
-def preprocessing_user_splits_categorical(user_splits, x, y):
+def preprocessing_user_splits_categorical(user_splits, x, y,
+                                          sample_weight=None):
     categories = pd.Series(x).unique()
 
     n_user_splits = len(user_splits)
@@ -310,6 +326,12 @@ def preprocessing_user_splits_categorical(user_splits, x, y):
     x_clean = x[~mask_others]
     y_clean = y[~mask_others]
 
+    sw_clean = []
+    sw_others = []
+    if sample_weight is not None:
+        sw_clean = sample_weight[~mask_others]
+        sw_others = sample_weight[mask_others]
+
     # Group by user_splits and transform from categorical to nominal
     x_clean_nominal = np.zeros(x_clean.shape)
 
@@ -320,13 +342,12 @@ def preprocessing_user_splits_categorical(user_splits, x, y):
 
     splits_nominal = np.array(range(n_user_splits))
     sorted_idx = np.argsort(event_rate)
-    sorted_splits = user_splits[sorted_idx]
-
-    sorted_splits = np.array([np.array(split) for split in sorted_splits])
+    sorted_splits = np.array([np.array(split)
+                              for split in user_splits[sorted_idx]])
 
     for i in range(n_user_splits):
-        mask = x_p.isin(user_splits[i])
-        x_clean_nominal[mask] = sorted_idx[i]
+        mask = x_p.isin(sorted_splits[i])
+        x_clean_nominal[mask] = i
 
     return (sorted_splits, splits_nominal, x_clean_nominal, y_clean, y_others,
-            cat_others)
+            cat_others, sw_clean, sw_others, sorted_idx)

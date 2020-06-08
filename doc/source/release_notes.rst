@@ -1,6 +1,41 @@
 Release Notes
 =============
 
+
+Version 0.6.1 (2020-06-07)
+--------------------------
+
+New features:
+
+   - Options ``add_special`` and ``add_missing`` in all binning table plots.
+   - Prebinning methods' parameters are accessible via ``**prebinning_kwargs``.
+   - Add support MDLP algorithm for binary target.
+
+Bugfixes:
+
+   - Fix bug in solution when the status is not feasible or optimal for LocalSolver, ``solver="ls"``.
+   - Fix several bugs for categorical variables with ``user_splits`` and ``user_splits_fixed``.
+   - Fix bug in binning process when passing ``user_splits`` and ``user_splits_fixed`` via parameter ``binning_fit_params``.
+
+
+Version 0.6.0 (2020-05-24)
+--------------------------
+
+New features:
+
+   - Scorecard development supporting binary and continuous target.
+   - Plotting functions: ``plot_auc_roc``, ``plot_cap`` and ``plot_ks``.
+   - Optimal binning classes introduce ``sample_weight`` parameter in methods ``fit`` and ``fit_transform``.
+   - Optimal binning classes introduce two options for parameter ``metric`` in methods ``fit_transform`` and ``transform``: ``metric="bins"`` and ``metric="indices"``.
+
+
+Tutorials:
+
+   - Tutorial: optimal binning with binary target - large scale.
+   - Tutorial: Scorecard with binary target.
+   - Tutorial: Scorecard with continuous target.
+
+
 Version 0.5.0 (2020-04-13)
 --------------------------
 

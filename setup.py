@@ -56,6 +56,10 @@ install_requires = [
     'pandas',
     'scipy',
     'scikit-learn>=0.22.0',
+]
+
+# test requirements
+tests_require = [
     'pytest',
     'coverage'
 ]
@@ -63,7 +67,7 @@ install_requires = [
 
 setup(
     name="optbinning",
-    version="0.5.0",
+    version="0.6.1",
     description="OptBinning: The Python Optimal Binning library",
     long_description=long_description,
     author="Guillermo Navas-Palencia",
@@ -73,10 +77,10 @@ setup(
     include_package_data=True,
     license="Apache Licence 2.0",
     url="https://github.com/guillermo-navas-palencia/optbinning",
-    tests_require=['pytest'],
     cmdclass={'clean': CleanCommand, 'test': PyTest},
     python_requires='>=3.6',
     install_requires=install_requires,
+    tests_require=tests_require,
     classifiers=[
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Software Development :: Libraries',

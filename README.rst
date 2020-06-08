@@ -21,17 +21,19 @@ OptBinning
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
 not previously addressed.
 
+* **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
+* **Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
+
 .. image:: doc/source/_images/binning_binary.png
    :target: doc/source/_images/binning_binary.png
 
-**Documentation**: http://gnpalencia.org/optbinning/
 
-**Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
+.. contents:: **Table of Contents**
 
 Installation
 ============
 
-To install the current release of OptBinning:
+To install the current release of OptBinning from PyPI:
 
 .. code-block:: text
 
@@ -59,10 +61,10 @@ OptBinning requires
 Getting started
 ===============
 
-If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
+Please visit the OptBinning documentation (**current** release) http://gnpalencia.org/optbinning/. If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
-Example
--------
+Example: Optimal binning with binary target
+-------------------------------------------
 
 Let's load a well-known dataset from the UCI repository and choose a variable to discretize and the binary target.
 
@@ -173,7 +175,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.5.0)
+   optbinning (Version 0.6.1)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -232,6 +234,138 @@ Print overview information about the options settings, problem statistics, and t
        Post-processing                     0.00 sec   (  0.12%)
 
 
+Example: Scorecard with continuous target
+-----------------------------------------
+
+Let's load the California housing dataset.
+
+.. code-block:: python
+
+   import pandas as pd
+
+   from sklearn.datasets import fetch_california_housing
+   from sklearn.linear_model import HuberRegressor
+
+   from optbinning import BinningProcess
+   from optbinning import Scorecard
+
+   data = fetch_california_housing()
+
+   target = "target"
+   variable_names = data.feature_names
+   df = pd.DataFrame(data.data, columns=variable_names)
+   df[target] = data.target
+
+
+Instantiate a binning process, an estimator, and a scorecard with scaling
+method and reverse mode.
+
+.. code-block:: python
+
+   binning_process = BinningProcess(variable_names)
+
+   estimator = HuberRegressor(max_iter=200)
+
+   scorecard = Scorecard(binning_process=binning_process, target=target,
+                         estimator=estimator, scaling_method="min_max",
+                         scaling_method_params={"min": 0, "max": 100},
+                         reverse_scorecard=True)
+
+   scorecard.fit(df)
+
+Print overview information about the options settings, problems statistics,
+and the number of selected variables after the binning process.
+  
+.. code-block:: python
+
+   >>> scorecard.information(print_level=2)
+
+.. code-block:: text
+   
+   optbinning (Version 0.6.1)
+   Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
+
+     Begin options
+       target                            target   * U
+       binning_process                      yes   * U
+       estimator                            yes   * U
+       scaling_method                   min_max   * U
+       scaling_method_params                yes   * U
+       intercept_based                    False   * d
+       reverse_scorecard                   True   * U
+       rounding                           False   * d
+       verbose                            False   * d
+     End options
+
+     Statistics
+       Number of records                  20640
+       Number of variables                    8
+       Target type                   continuous
+
+       Number of numerical                    8
+       Number of categorical                  0
+       Number of selected                     8
+
+     Timing
+       Total time                          2.31 sec
+       Binning process                     1.83 sec   ( 79.00%)
+       Estimator                           0.41 sec   ( 17.52%)
+       Build scorecard                     0.08 sec   (  3.40%)
+         rounding                          0.00 sec   (  0.00%)
+
+.. code-block:: python
+
+   >>> scorecard.table(style="summary")
+
+Two scorecard styles are available: ``style="summary"`` shows the variable name, and their corresponding bins and assigned points; ``style="detailed"`` adds information from the corresponding binning table.
+
+.. code-block:: text
+
+        Variable                 Bin     Points
+   0      MedInc        [-inf, 1.90)   9.869224
+   1      MedInc        [1.90, 2.16)  10.896940
+   2      MedInc        [2.16, 2.37)  11.482997
+   3      MedInc        [2.37, 2.66)  12.607805
+   4      MedInc        [2.66, 2.88)  13.609078
+   ..        ...                 ...        ...
+   2   Longitude  [-118.33, -118.26)  10.470401
+   3   Longitude  [-118.26, -118.16)   9.092391
+   4   Longitude      [-118.16, inf)  10.223936
+   5   Longitude             Special   1.376862
+   6   Longitude             Missing   1.376862
+
+   [94 rows x 3 columns]
+
+
+.. code-block:: python
+
+   >>> scorecard.table(style="detailed")
+
+.. code-block:: text
+
+        Variable  Bin id                 Bin  Count  Count (%)  ...  Zeros count       WoE        IV  Coefficient     Points
+   0      MedInc       0        [-inf, 1.90)   2039   0.098789  ...            0 -0.969609  0.095786     0.990122   9.869224
+   1      MedInc       1        [1.90, 2.16)   1109   0.053731  ...            0 -0.836618  0.044952     0.990122  10.896940
+   2      MedInc       2        [2.16, 2.37)   1049   0.050824  ...            0 -0.760779  0.038666     0.990122  11.482997
+   3      MedInc       3        [2.37, 2.66)   1551   0.075145  ...            0 -0.615224  0.046231     0.990122  12.607805
+   4      MedInc       4        [2.66, 2.88)   1075   0.052083  ...            0 -0.485655  0.025295     0.990122  13.609078
+   ..        ...     ...                 ...    ...        ...  ...          ...       ...       ...          ...        ...
+   2   Longitude       2  [-118.33, -118.26)   1120   0.054264  ...            0 -0.011006  0.000597     0.566265  10.470401
+   3   Longitude       3  [-118.26, -118.16)   1127   0.054603  ...            0 -0.322802  0.017626     0.566265   9.092391
+   4   Longitude       4      [-118.16, inf)   6530   0.316376  ...            0 -0.066773  0.021125     0.566265  10.223936
+   5   Longitude       5             Special      0   0.000000  ...            0 -2.068558  0.000000     0.566265   1.376862
+   6   Longitude       6             Missing      0   0.000000  ...            0 -2.068558  0.000000     0.566265   1.376862
+
+   [94 rows x 14 columns]
+
+Compute score and predicted target using the fitted estimator.
+
+.. code-block:: python
+
+   score = scorecard.score(df)
+   y_pred = scorecard.predict(df)
+
+
 Benchmarks
 ==========
 
@@ -280,7 +414,7 @@ To compare softwares we use the shifted geometric mean, typically used in mathem
 (C): categorical variable.
 (*): max p-value between consecutive bins > 0.05.
 
-The binning of variables with monotonicity trend peak or valley can benefit from the option ``monotonicity_trend="auto_heuristic"`` at the expense of finding a suboptimal solution for some cases. The following table compares the options ``monotonicity_trend="auto"`` and ``monotonicity_trend="auto_heuristic"``,
+The binning of variables with monotonicity trend peak or valley can benefit from the option ``monotonic_trend="auto_heuristic"`` at the expense of finding a suboptimal solution for some cases. The following table compares the options ``monotonic_trend="auto"`` and ``monotonic_trend="auto_heuristic"``,
 
 +----------------------------+----------------+----------------+----------------+----------------+
 | Variable                   |      auto_time |        auto_IV | heuristic_time |   heuristic_IV |
@@ -305,6 +439,15 @@ number of bins increases, see http://gnpalencia.org/optbinning/tutorials/tutoria
 Contributing
 ============
 Found a bug? Want to contribute with a new feature, improve documentation, or add examples? We encourage you to create pull requests and/or open GitHub issues. Thanks! :octocat: :tada: :+1:
+
+
+Who uses OptBinning?
+====================
+We would like to list companies using OptBinning. Please send a PR with your company name and @githubhandle if you may.
+
+Currently **officially** using OptBinning:
+
+1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_ & `@GabrielSGoncalves <https://github/GabrielSGoncalves>`_]
 
 
 Citation

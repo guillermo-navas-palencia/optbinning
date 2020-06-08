@@ -267,6 +267,11 @@ class MulticlassOptimalBinning(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.6.1
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -285,7 +290,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = "numerical"
@@ -316,14 +321,13 @@ class MulticlassOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._n_event = None
         self._n_event_missing = None
         self._n_event_special = None
         self._problem_type = "classification"
-        self._user_splits = user_splits
-        self._user_splits_fixed = user_splits_fixed
 
         # info
         self._binning_table = None
@@ -537,7 +541,15 @@ class MulticlassOptimalBinning(OptimalBinning):
             user_splits = check_array(self.user_splits, ensure_2d=False,
                                       dtype=None, force_all_finite=True)
 
-            user_splits = np.unique(self.user_splits)
+            if len(set(user_splits)) != len(user_splits):
+                raise ValueError("User splits are not unique.")
+
+            sorted_idx = np.argsort(user_splits)
+            user_splits = user_splits[sorted_idx]
+
+            if self.user_splits_fixed is not None:
+                self.user_splits_fixed = np.asarray(
+                    self.user_splits_fixed)[sorted_idx]
 
             splits, n_nonevent, n_event = self._prebinning_refinement(
                 user_splits, x_clean, y_clean, y_missing, y_special, None)
@@ -716,7 +728,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                             self.max_n_bins, min_bin_size,
                                             max_bin_size, self.max_pvalue,
                                             self.max_pvalue_policy,
-                                            self._user_splits_fixed,
+                                            self.user_splits_fixed,
                                             self.time_limit)
         else:
             optimizer = MulticlassBinningMIP(monotonic, self.min_n_bins,
@@ -724,7 +736,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                                              max_bin_size, self.max_pvalue,
                                              self.max_pvalue_policy,
                                              self.mip_solver,
-                                             self._user_splits_fixed,
+                                             self.user_splits_fixed,
                                              self.time_limit)
         if self.verbose:
             self._logger.info("Optimizer: build model...")
@@ -779,8 +791,8 @@ class MulticlassOptimalBinning(OptimalBinning):
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
             if self.user_splits_fixed is not None:
-                user_splits_fixed = np.asarray(self._user_splits_fixed)
-                user_splits = np.asarray(self._user_splits)
+                user_splits_fixed = np.asarray(self.user_splits_fixed)
+                user_splits = np.asarray(self.user_splits)
                 fixed_remove = user_splits_fixed & mask_splits
 
                 if any(fixed_remove):
@@ -790,8 +802,8 @@ class MulticlassOptimalBinning(OptimalBinning):
                                      .format(user_splits[fixed_remove]))
 
                 # Update boolean array of fixed user splits.
-                self._user_splits_fixed = user_splits_fixed[~mask_splits]
-                self._user_splits = user_splits[~mask_splits]
+                self.user_splits_fixed = user_splits_fixed[~mask_splits]
+                self.user_splits = user_splits[~mask_splits]
 
             splits = splits_prebinning[~mask_splits]
 

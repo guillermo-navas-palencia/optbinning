@@ -47,9 +47,10 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
         raise ValueError('Invalid value for dtype. Allowed string '
                          'values are "categorical" and "numerical".')
 
-    if prebinning_method not in ("cart", "quantile", "uniform"):
+    if prebinning_method not in ("cart", "mdlp", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
-                         'values are "cart", "quantile" and "uniform".')
+                         'values are "cart", "mdlp", "quantile" '
+                         'and "uniform".')
 
     if solver not in ("cp", "ls", "mip"):
         raise ValueError('Invalid value for solver. Allowed string '
@@ -377,6 +378,11 @@ class OptimalBinning(BaseOptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.6.1
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -403,7 +409,7 @@ class OptimalBinning(BaseOptimalBinning):
                  outlier_detector=None, outlier_params=None, class_weight=None,
                  cat_cutoff=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -443,6 +449,7 @@ class OptimalBinning(BaseOptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._categories = None
@@ -456,8 +463,6 @@ class OptimalBinning(BaseOptimalBinning):
         self._n_nonevent_cat_others = None
         self._n_event_cat_others = None
         self._problem_type = "classification"
-        self._user_splits = user_splits
-        self._user_splits_fixed = user_splits_fixed
 
         # info
         self._binning_table = None
@@ -735,11 +740,20 @@ class OptimalBinning(BaseOptimalBinning):
                         self.user_splits, ensure_2d=False, dtype=None,
                         force_all_finite=True)
 
-                    user_splits = np.unique(self.user_splits)
+                    if len(set(user_splits)) != len(user_splits):
+                        raise ValueError("User splits are not unique.")
+
+                    sorted_idx = np.argsort(user_splits)
+                    user_splits = user_splits[sorted_idx]
                 else:
                     [categories, user_splits, x_clean, y_clean, y_others,
-                     cat_others] = preprocessing_user_splits_categorical(
-                        self.user_splits, x_clean, y_clean)
+                     cat_others, sw_clean, sw_others, sorted_idx,
+                     ] = preprocessing_user_splits_categorical(
+                        self.user_splits, x_clean, y_clean, sw_clean)
+
+                if self.user_splits_fixed is not None:
+                    self.user_splits_fixed = np.asarray(
+                        self.user_splits_fixed)[sorted_idx]
 
                 splits, n_nonevent, n_event = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, y_special,
@@ -821,7 +835,8 @@ class OptimalBinning(BaseOptimalBinning):
                                 n_bins=self.max_n_prebins,
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
-                                class_weight=class_weight
+                                class_weight=class_weight,
+                                **self.prebinning_kwargs
                                 ).fit(x, y, sample_weight)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
@@ -891,19 +906,18 @@ class OptimalBinning(BaseOptimalBinning):
                         self._logger.info("Optimizer: trend change position "
                                           "{}.".format(trend_change))
 
-                if self.verbose:
-                    if monotonic is None:
-                        self._logger.info(
-                            "Optimizer: monotonic trend not set.")
-                    else:
-                        self._logger.info("Optimizer: monotonic trend set to "
-                                          "{}.".format(monotonic))
         else:
-            monotonic = "ascending"
+            monotonic = self.monotonic_trend
+            if monotonic is not None:
+                monotonic = "ascending"
 
-            if self.verbose:
+        if self.verbose:
+            if monotonic is None:
+                self._logger.info(
+                    "Optimizer: monotonic trend not set.")
+            else:
                 self._logger.info("Optimizer: monotonic trend set to "
-                                  "ascending for categorical dtype.")
+                                  "{}.".format(monotonic))
 
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
@@ -913,7 +927,7 @@ class OptimalBinning(BaseOptimalBinning):
                                   self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy, self.gamma,
-                                  self._user_splits_fixed, self.time_limit)
+                                  self.user_splits_fixed, self.time_limit)
         elif self.solver == "mip":
             optimizer = BinningMIP(monotonic, self.min_n_bins, self.max_n_bins,
                                    min_bin_size, max_bin_size,
@@ -922,7 +936,7 @@ class OptimalBinning(BaseOptimalBinning):
                                    self.max_bin_n_nonevent,
                                    self.min_event_rate_diff, self.max_pvalue,
                                    self.max_pvalue_policy, self.gamma,
-                                   self._user_splits_fixed, self.mip_solver,
+                                   self.user_splits_fixed, self.mip_solver,
                                    self.time_limit)
         elif self.solver == "ls":
             optimizer = BinningLS(monotonic, self.min_n_bins, self.max_n_bins,
@@ -932,7 +946,7 @@ class OptimalBinning(BaseOptimalBinning):
                                   self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy,
-                                  self._user_splits_fixed, self.time_limit)
+                                  self.user_splits_fixed, self.time_limit)
 
         if self.verbose:
             self._logger.info("Optimizer: build model...")
@@ -1025,8 +1039,8 @@ class OptimalBinning(BaseOptimalBinning):
                     [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
             if self.user_splits_fixed is not None:
-                user_splits_fixed = np.asarray(self._user_splits_fixed)
-                user_splits = np.asarray(self._user_splits)
+                user_splits_fixed = np.asarray(self.user_splits_fixed)
+                user_splits = np.asarray(self.user_splits)
                 fixed_remove = user_splits_fixed & mask_splits
 
                 if any(fixed_remove):
@@ -1036,8 +1050,8 @@ class OptimalBinning(BaseOptimalBinning):
                                      .format(user_splits[fixed_remove]))
 
                 # Update boolean array of fixed user splits.
-                self._user_splits_fixed = user_splits_fixed[~mask_splits]
-                self._user_splits = user_splits[~mask_splits]
+                self.user_splits_fixed = user_splits_fixed[~mask_splits]
+                self.user_splits = user_splits[~mask_splits]
 
             splits = splits_prebinning[~mask_splits]
 

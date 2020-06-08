@@ -174,6 +174,10 @@ def test_numerical_default():
         optb.binning_table.plot(metric="new_metric")
 
     optb.binning_table.plot(metric="woe", savefig="test_binning.png")
+    optb.binning_table.plot(metric="woe", add_special=False,
+                            savefig="test_binning_no_special.png")
+    optb.binning_table.plot(metric="woe", add_missing=False,
+                            savefig="test_binning_no_missing.png")
 
 
 def test_numerical_default_solvers():
@@ -205,6 +209,14 @@ def test_numerical_user_splits():
     optb.fit(x, y)
     optb.binning_table.build()
     assert optb.binning_table.iv == 4.819661314733627
+
+
+def test_numerical_user_splits_non_unique():
+    user_splits = [11, 12, 13, 14, 15, 15]
+    optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05)
+
+    with raises(ValueError):
+        optb.fit(x, y)
 
 
 def test_numerical_user_splits_fixed():
@@ -404,6 +416,15 @@ def test_numerical_regularization():
 
     assert len(optb_mip.splits) < 6
     assert len(optb_cp.splits) < 6
+
+
+def test_numerical_prebinning_kwargs():
+    optb_kwargs = OptimalBinning(solver="mip", prebinning_method="mdlp",
+                                 **{"max_candidates": 64})
+
+    optb_kwargs.fit(x, y)
+    optb_kwargs.binning_table.build()
+    assert optb_kwargs.binning_table.iv == approx(4.37337682, rel=1e-6)
 
 
 def test_numerical_default_transform():

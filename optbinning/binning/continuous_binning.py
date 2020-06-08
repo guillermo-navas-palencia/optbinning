@@ -268,6 +268,11 @@ class ContinuousOptimalBinning(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
 
+    **prebinning_kwargs : keyword arguments
+        The pre-binning keywrord arguments.
+
+        .. versionadded:: 0.6.1
+
     Notes
     -----
     The parameter values ``max_n_prebins`` and ``min_prebin_size`` control
@@ -288,7 +293,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, cat_cutoff=None, user_splits=None,
                  user_splits_fixed=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False):
+                 time_limit=100, verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -321,6 +326,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.time_limit = time_limit
 
         self.verbose = verbose
+        self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
         self._categories = None
@@ -577,11 +583,20 @@ class ContinuousOptimalBinning(OptimalBinning):
                         self.user_splits, ensure_2d=False, dtype=None,
                         force_all_finite=True)
 
-                    user_splits = np.unique(self.user_splits)
+                    if len(set(user_splits)) != len(user_splits):
+                        raise ValueError("User splits are not unique.")
+
+                    sorted_idx = np.argsort(user_splits)
+                    user_splits = user_splits[sorted_idx]
                 else:
                     [categories, user_splits, x_clean, y_clean, y_others,
-                     cat_others] = preprocessing_user_splits_categorical(
-                        self.user_splits, x_clean, y_clean)
+                     cat_others, _, _, sorted_idx
+                     ] = preprocessing_user_splits_categorical(
+                        self.user_splits, x_clean, y_clean, None)
+
+                if self.user_splits_fixed is not None:
+                    self.user_splits_fixed = np.asarray(
+                        self.user_splits_fixed)[sorted_idx]
 
                 [splits, n_records, sums, stds, min_t, max_t,
                  n_zeros] = self._prebinning_refinement(
@@ -714,19 +729,18 @@ class ContinuousOptimalBinning(OptimalBinning):
                     trend_change = peak_valley_trend_change_heuristic(
                         mean, monotonic)
 
-                if self.verbose:
-                    if monotonic is None:
-                        self._logger.info(
-                            "Optimizer: monotonic trend not set.")
-                    else:
-                        self._logger.info("Optimizer: monotonic trend set to "
-                                          "{}.".format(monotonic))
         else:
-            monotonic = "ascending"
+            monotonic = self.monotonic_trend
+            if monotonic is not None:
+                monotonic = "ascending"
 
-            if self.verbose:
+        if self.verbose:
+            if monotonic is None:
+                self._logger.info(
+                    "Optimizer: monotonic trend not set.")
+            else:
                 self._logger.info("Optimizer: monotonic trend set to "
-                                  "ascending for categorical dtype.")
+                                  "{}.".format(monotonic))
 
         optimizer = ContinuousBinningCP(monotonic, self.min_n_bins,
                                         self.max_n_bins, min_bin_size,

@@ -149,7 +149,7 @@ class BSketch:
             BSketch instance.
         """
         if not self._mergeable(bsketch):
-            raise Exception()
+            raise Exception("")
 
         if bsketch._sketch_e.n == 0 and bsketch._sketch_ne.n == 0:
             return
@@ -250,4 +250,65 @@ class BSketch:
         -------
         n : int
         """
+        return self.n_event + self.n_nonevent
+
+
+class BCatSketch:
+    def __init__(self, special_codes=None):
+        self.special_codes = special_codes
+
+        self._count_missing_e = 0
+        self._count_missing_ne = 0
+        self._count_special_e = 0
+        self._count_special_ne = 0
+
+        self._d_categories = {}
+
+    def add(self, x, y, check_input=False):
+        pass
+
+    def bins(self):
+        pass
+
+    def merge(self, bcatsketch):
+        # Merge categories
+        for k, v in bcatsketch._d_categories:
+            if k in self._d_categories:
+                self._d_categories[k][0] += v[0]
+                self._d_categories[k][1] += v[1]
+            else:
+                self._d_categories[k] = v
+
+        # Merge missing and special counts
+        self._count_missing_e += bcatsketch._count_missing_e
+        self._count_missing_ne += bcatsketch._count_missing_ne
+        self._count_special_e += bcatsketch._count_special_e
+        self._count_special_ne += bcatsketch._count_special_ne
+
+    def _copy(self, bcatsketch):
+        self._d_categories = bcatsketch._d_categories
+        self._count_missing_e = bcatsketch._count_missing_e
+        self._count_missing_ne = bcatsketch._count_missing_ne
+        self._count_special_e = bcatsketch._count_special_e
+        self._count_special_ne = bcatsketch._count_special_ne        
+
+    def _mergeable(self, other):
+        special_eq = True
+        if self.special_codes is not None and other.special_codes is not None:
+            special_eq = set(self.special_codes) == set(other.special_codes)
+
+        return special_eq
+
+    @property
+    def n_event(self):
+        count = np.sum([v[1] for k, v in self._d_categories.items()])
+        return count + self._count_missing_e + self._count_special_e
+
+    @property
+    def n_nonevent(self):
+        count = np.sum([v[0] for k, v in self._d_categories.items()])
+        return count + self._count_missing_ne + self._count_special_ne
+
+    @property
+    def n(self):
         return self.n_event + self.n_nonevent

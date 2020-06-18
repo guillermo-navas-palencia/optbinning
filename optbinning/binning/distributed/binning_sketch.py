@@ -19,21 +19,24 @@ from ...binning.binning_statistics import BinningTable
 from ...binning.binning_statistics import target_info
 from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
+from ...logging import Logger
 
-from .bsketch import BSketch
+from .bsketch import BSketch, BCatSketch
 
 
 class OptimalBinningSketch(BaseEstimator):
-    def __init__(self, name="", sketch="gk", eps=1e-4, K=25, solver="cp",
-                 max_n_prebins=20, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
-                 max_bin_n_nonevent=None, min_bin_n_event=None,
-                 max_bin_n_event=None, monotonic_trend="auto",
-                 min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", gamma=0, special_codes=None,
-                 mip_solver="bop", time_limit=100, verbose=False):
+    def __init__(self, name="", dtype="numerical", sketch="gk", eps=1e-4, K=25,
+                 solver="cp", max_n_prebins=20, min_n_bins=None,
+                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
+                 min_bin_n_nonevent=None, max_bin_n_nonevent=None,
+                 min_bin_n_event=None, max_bin_n_event=None,
+                 monotonic_trend="auto", min_event_rate_diff=0,
+                 max_pvalue=None, max_pvalue_policy="consecutive", gamma=0,
+                 special_codes=None, mip_solver="bop", time_limit=100,
+                 verbose=False):
 
         self.name = name
+        self.dtype = dtype
         self.sketch = sketch
         self.eps = eps
         self.K = K
@@ -63,18 +66,34 @@ class OptimalBinningSketch(BaseEstimator):
 
         self.verbose = verbose
 
-        # Data storage
-        self.bsketch = BSketch(sketch, eps, K, special_codes)
+        # data storage
+        self._bsketch = None
+
+        # logger
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
+
+        self._is_fitted = False
+
+        # Check parameters
+        _check_parameters(**self.get_params())
 
     def add(self, x, y, check_input=False):
+        if self._bsketch is None:
+            if self.dtype == "numerical":
+                self._bsketch = BSketch(self.sketch, self.eps, self.K,
+                                        self.special_codes)
+            else:
+                self._bsketch = BCatSketch(self.special_codes)
+
         # Add new data stream
-        self.bsketch.add(x, y, check_input)
+        self._bsketch.add(x, y, check_input)
 
     def merge(self, optbdigest):
         if not self.mergeable(optbdigest):
-            raise Exception()
+            raise Exception("")
 
-        self.bsketch.merge(optbdigest.bsketch)
+        self._bsketch.merge(optbdigest.bsketch)
 
     def mergeable(self, optbdigest):
         return self.get_params() == optbdigest.get_params()
@@ -98,7 +117,7 @@ class OptimalBinningSketch(BaseEstimator):
             self._n_event_special, None, None, [])
 
         self._binning_table = BinningTable(
-            self.name, "numerical", self._splits_optimal, self._n_nonevent,
+            self.name, self.dtype, self._splits_optimal, self._n_nonevent,
             self._n_event, None, None, []) 
 
         self._is_fitted = True
@@ -106,16 +125,16 @@ class OptimalBinningSketch(BaseEstimator):
         return self
 
     def _prebinning_data(self):
-        self._n_nonevent_missing = self.bsketch._count_missing_ne
-        self._n_nonevent_special = self.bsketch._count_special_ne
-        self._n_event_missing = self.bsketch._count_missing_e
-        self._n_event_special = self.bsketch._count_special_e
+        self._n_nonevent_missing = self._bsketch._count_missing_ne
+        self._n_nonevent_special = self._bsketch._count_special_ne
+        self._n_event_missing = self._bsketch._count_missing_e
+        self._n_event_special = self._bsketch._count_special_e
 
-        self._t_n_nonevent = self.bsketch.n_nonevent
-        self._t_n_event = self.bsketch.n_event
+        self._t_n_nonevent = self._bsketch.n_nonevent
+        self._t_n_event = self._bsketch.n_event
 
         percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
-        sketch_all = self.bsketch.merge_sketches()
+        sketch_all = self._bsketch.merge_sketches()
 
         if self.sketch == "gk":
             splits = np.array([sketch_all.quantile(p)
@@ -131,7 +150,7 @@ class OptimalBinningSketch(BaseEstimator):
         return splits, n_nonevent, n_event
     
     def _compute_prebins(self, splits):
-        n_event, n_nonevent = self.bsketch.bins(splits)
+        n_event, n_nonevent = self._bsketch.bins(splits)
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
         if np.any(mask_remove):
@@ -151,12 +170,12 @@ class OptimalBinningSketch(BaseEstimator):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = np.int(np.ceil(self.min_bin_size * self.bsketch.n))
+            min_bin_size = np.int(np.ceil(self.min_bin_size * self._bsketch.n))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = np.int(np.ceil(self.max_bin_size * self.bsketch.n))
+            max_bin_size = np.int(np.ceil(self.max_bin_size * self._bsketch.n))
         else:
             max_bin_size = self.max_bin_size
 

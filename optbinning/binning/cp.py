@@ -154,7 +154,7 @@ class BinningCP:
 
                 model.Add(pmin <= total_records * (1 - x[i, i]) + bin_size)
                 model.Add(pmax >= bin_size)
-                model.Add(pmin <= pmax)
+            model.Add(pmin <= pmax)
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
@@ -390,12 +390,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(n - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.Add(x[i, i] == 0)
-                for j in range(n - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(n - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(n - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
+                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_descending(self, model, n, D, x, M):
         min_event_rate_diff = int(M * self.min_event_rate_diff)
@@ -410,12 +411,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(n - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.Add(x[i, i] == 0)
-                for j in range(n - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(n - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(n - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
+                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_concave(self, model, n, D, x, M):
         for i in range(2, n):
@@ -494,12 +496,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(tc - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.Add(x[i, i] == 0)
-                for j in range(tc - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(tc - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
+                            model.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -512,12 +515,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(tc, n - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.Add(x[i, i] == 0)
-                for j in range(tc, n - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc, n - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(tc, n - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
+                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, D, x, tc, M):
         min_event_rate_diff = int(M * self.min_event_rate_diff)
@@ -532,12 +536,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(tc - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.Add(x[i, i] == 0)
-                for j in range(tc - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(tc - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
+                            model.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -550,12 +555,13 @@ class BinningCP:
                     min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
 
         # Preprocessing
-        for i in range(tc, n - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.Add(x[i, i] == 0)
-                for j in range(tc, n - i - 1):
-                    if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                        model.Add(x[i+j, i+j] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc, n - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.Add(x[i, i] == 0)
+                    for j in range(tc, n - i - 1):
+                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
+                            model.Add(x[i+j, i+j] == 0)
 
     def add_max_pvalue_constraint(self, model, x, pvalue_violation_indices):
         for ind1, ind2 in pvalue_violation_indices:

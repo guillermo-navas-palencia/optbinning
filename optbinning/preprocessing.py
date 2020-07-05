@@ -181,10 +181,10 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         class_weight_ = compute_class_weight(class_weight, classes, y)
         sample_weight *= class_weight_[le.fit_transform(y)]
 
-    if isinstance(x.dtype, object) or isinstance(y.dtype, object):
-        missing_mask = pd.isnull(x) | pd.isnull(y)
+    if np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number):
+        missing_mask = np.isnan(x) | np.isnan(y)
     else:
-        missing_mask = np.isinan(x) | np.isnan(y)
+        missing_mask = pd.isnull(x) | pd.isnull(y)
 
     if special_codes is None:
         clean_mask = ~missing_mask

@@ -352,6 +352,19 @@ class OptimalBinningSketch(BaseEstimator):
 
         self.verbose = verbose
 
+        # auxiliary
+        self._categories = None
+        self._cat_others = None
+        self._n_event = None
+        self._n_nonevent = None
+        self._n_nonevent_missing = None
+        self._n_event_missing = None
+        self._n_nonevent_special = None
+        self._n_event_special = None
+        self._n_event_special = None
+        self._n_nonevent_cat_others = None
+        self._n_event_cat_others = None
+
         # data storage
         self._bsketch = None
 
@@ -370,7 +383,7 @@ class OptimalBinningSketch(BaseEstimator):
                 self._bsketch = BSketch(self.sketch, self.eps, self.K,
                                         self.special_codes)
             else:
-                self._bsketch = BCatSketch(self.special_codes)
+                self._bsketch = BCatSketch(self.cat_cutoff, self.special_codes)
 
         # Add new data stream
         self._bsketch.add(x, y, check_input)
@@ -428,6 +441,7 @@ class OptimalBinningSketch(BaseEstimator):
         return self
 
     def transform(self):
+        """"""
         pass
 
     def _prebinning_data(self):
@@ -440,8 +454,8 @@ class OptimalBinningSketch(BaseEstimator):
         self._t_n_event = self._bsketch.n_event
 
         if self.dtype == "numerical":
-            percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
             sketch_all = self._bsketch.merge_sketches()
+            percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
 
             if self.sketch == "gk":
                 splits = np.array([sketch_all.quantile(p)
@@ -450,11 +464,23 @@ class OptimalBinningSketch(BaseEstimator):
                 splits = np.array([sketch_all.percentile(p * 100)
                                    for p in percentiles[1:-1]])
 
-            self._splits_prebinning = splits
-
             splits, n_nonevent, n_event = self._compute_prebins(splits)
         else:
-            pass
+            [splits, categories, n_nonevent, n_event, cat_others,
+             n_nonevent_others, n_event_others] = self._bsketch.bins()
+
+            self._categories = categories
+            self._cat_others = cat_others
+            self._n_nonevent_cat_others = n_nonevent_others
+            self._n_event_cat_others = n_event_others
+
+            [splits, categories, n_nonevent,
+             n_event] = self._compute_categorical_prebins(splits, categories,
+                                                          n_nonevent, n_event)
+
+            print(splits, categories, n_nonevent, n_event)
+
+        self._splits_prebinning = splits
 
         return splits, n_nonevent, n_event
 
@@ -470,6 +496,37 @@ class OptimalBinningSketch(BaseEstimator):
             splits, n_nonevent, n_event = self._compute_prebins(splits)
 
         return splits, n_nonevent, n_event
+
+    def _compute_categorical_prebins(self, splits, categories, n_nonevent,
+                                     n_event):
+        
+        mask_remove = (n_nonevent == 0) | (n_event == 0)
+
+        if np.any(mask_remove):
+            mask_splits = np.concatenate(
+                [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+
+            splits = splits[~mask_splits]
+
+            splits_int = np.ceil(splits).astype(np.int)
+            indices = np.digitize(np.arange(len(categories)), splits_int,
+                                  right=False)
+            n_bins = len(splits) + 1
+
+            new_nonevent = np.empty(n_bins, dtype=np.int)
+            new_event = np.empty(n_bins, dtype=np.int)
+            new_categories = []
+            for i in range(n_bins):
+                mask = (indices == i)
+                new_categories.append(categories[mask])
+                new_nonevent[i] = n_nonevent[mask].sum()
+                new_event[i] = n_event[mask].sum()
+
+            [splits, categories, n_nonevent,
+             n_event] = self._compute_categorical_prebins(
+                splits, new_categories, new_nonevent, new_event)
+
+        return splits, categories, n_nonevent, n_event
 
     def _fit_optimizer(self, splits, n_nonevent, n_event):
         if self.verbose:
@@ -581,10 +638,8 @@ class OptimalBinningSketch(BaseEstimator):
         self._optimizer = optimizer
         self._status = status
 
-        if self.dtype == "categorical" and self.user_splits is not None:
-            self._splits_optimal = splits[solution]
-        else:
-            self._splits_optimal = splits[solution[:-1]]
+        self._splits_optimal = splits[solution[:-1]]
+        print(splits, solution)
 
         self._time_solver = time.perf_counter() - time_init
 
@@ -626,7 +681,7 @@ class OptimalBinningSketch(BaseEstimator):
             return self._splits_optimal
         else:
             return bin_categorical(self._splits_optimal, self._categories,
-                                   self._cat_others, self.user_splits)
+                                   self._cat_others, None)
 
     @property
     def status(self):

@@ -269,12 +269,23 @@ class BCatSketch:
 
     Parameters
     ----------
+    cat_cutoff : float or None, optional (default=None)
+        Generate bin others with categories in which the fraction of
+        occurrences is below the  ``cat_cutoff`` value.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
     """
-    def __init__(self, special_codes=None):
+    def __init__(self, cat_cutoff=None, special_codes=None):
+        self.cat_cutoff = cat_cutoff
         self.special_codes = special_codes
+
+        if cat_cutoff is not None:
+            if (not isinstance(cat_cutoff, numbers.Number) or
+                    not 0. < cat_cutoff <= 1.0):
+                raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
+                                 .format(cat_cutoff))
 
         if special_codes is not None:
             if not isinstance(special_codes, (np.ndarray, list)):
@@ -332,11 +343,39 @@ class BCatSketch:
             self._count_special_ne += np.count_nonzero(ys == 0)
 
     def bins(self):
-        pass
+        cat_others = []
+
+        dd = {k: v + [v[0] + v[1], v[1] / (v[0] + v[1])]
+              for k, v in self._d_categories.items()}
+
+        if self.cat_cutoff is not None:
+            bin_e_others = 0
+            bin_ne_others = 0
+            for k, v in dd.items():
+                if v[2] / self.n < self.cat_cutoff:
+                    bin_ne_others += v[0]
+                    bin_e_others += v[1]
+                    cat_others.append(k)
+
+            dd = {k: v for k, v in sorted(dd.items(), key=lambda v: v[1][3])
+                  if k not in cat_others}
+        else:
+            bin_e_others = []
+            bin_ne_others = []
+            dd = {k: v for k, v in sorted(dd.items(), key=lambda v: v[1][3])}
+
+        categories = np.array(list(dd.keys()))
+        bin_ne = np.array([v[0] for v in dd.values()], dtype=np.int64)
+        bin_e = np.array([v[1] for v in dd.values()], dtype=np.int64)
+
+        splits = np.array([0.5 + i for i in range(len(categories) - 1)])
+
+        return (splits, categories, bin_e, bin_ne, cat_others, bin_e_others,
+                bin_ne_others)
 
     def merge(self, bcatsketch):
         # Merge categories
-        for k, v in bcatsketch._d_categories:
+        for k, v in bcatsketch._d_categories.items():
             if k in self._d_categories:
                 self._d_categories[k][0] += v[0]
                 self._d_categories[k][1] += v[1]

@@ -244,9 +244,10 @@ class OptimalBinning(BaseOptimalBinning):
 
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
-        decision tree, "quantile" to generate prebins with approximately same
-        frequency and "uniform" to generate prebins with equal width. Method
-        "cart" uses `sklearn.tree.DecistionTreeClassifier
+        decision tree, "mdlp" for Minimum Description Length Principle (MDLP),
+        "quantile" to generate prebins with approximately same frequency and
+        "uniform" to generate prebins with equal width. Method "cart" uses
+        `sklearn.tree.DecistionTreeClassifier
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
         DecisionTreeClassifier.html>`_.
 

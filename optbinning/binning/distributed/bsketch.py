@@ -9,21 +9,32 @@ import numbers
 
 import numpy as np
 
-from tdigest import TDigest
-
 from ...preprocessing import split_data
 from .gk import GK
+
+try:
+    from tdigest import TDigest
+    TDIGEST_AVAILABLE = True
+except ImportError:
+    TDIGEST_AVAILABLE = False
 
 
 def _check_parameters(sketch, eps, K, special_codes):
     if sketch not in ("gk", "t-digest"):
-        raise ValueError("")
+        raise ValueError('Invalid value for sketch. Allowed string '
+                         'values are "gk" and "t-digest".')
+
+    if sketch == "t-digest" and not TDIGEST_AVAILABLE:
+        raise ImportError('Cannot import tdigest. Install tdigest via '
+                          'pip install tdigest or choose "gk".')
 
     if not isinstance(eps, numbers.Number) and not 0 <= eps <= 1:
-        raise ValueError("")
+        raise ValueError("eps must be a value in [0, 1]; got {}."
+                         .format(eps))
 
     if not isinstance(K, numbers.Integral) or K <= 0:
-        raise ValueError("")
+        raise ValueError("K must be a positive integer; got {}."
+                         .format(K))
 
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
@@ -31,13 +42,13 @@ def _check_parameters(sketch, eps, K, special_codes):
 
 
 class BSketch:
-    """BSketch: binning sketch for binary target.
+    """BSketch: binning sketch for numerical values and binary target.
 
     Parameters
     ----------
     sketch : string (default="gk")
         Sketch algorithm. Supported algorithms are "gk" (Greenwald-Khanna's)
-        and "t-digest" (Ted Dunning) algorithm. Algorithm "t-digest" relies on 
+        and "t-digest" (Ted Dunning) algorithm. Algorithm "t-digest" relies on
         `tdigest <https://github.com/CamDavidsonPilon/tdigest>`_.
 
     eps : float (default=0.01)
@@ -71,8 +82,7 @@ class BSketch:
             self._sketch_ne = TDigest(eps, K)
 
     def add(self, x, y, check_input=False):
-        """
-        Add arrays to the sketch.
+        """Add arrays to the sketch.
 
         Parameters
         ----------
@@ -149,7 +159,7 @@ class BSketch:
             BSketch instance.
         """
         if not self._mergeable(bsketch):
-            raise Exception("")
+            raise Exception("bsketch does not share signature.")
 
         if bsketch._sketch_e.n == 0 and bsketch._sketch_ne.n == 0:
             return
@@ -254,8 +264,22 @@ class BSketch:
 
 
 class BCatSketch:
+    """BCatSKetch: binning sketch for categorical/nominal data and binary
+    target.
+
+    Parameters
+    ----------
+    special_codes : array-like or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+    """
     def __init__(self, special_codes=None):
         self.special_codes = special_codes
+
+        if special_codes is not None:
+            if not isinstance(special_codes, (np.ndarray, list)):
+                raise TypeError(
+                    "special_codes must be a list or numpy.ndarray.")
 
         self._count_missing_e = 0
         self._count_missing_ne = 0
@@ -265,7 +289,47 @@ class BCatSketch:
         self._d_categories = {}
 
     def add(self, x, y, check_input=False):
-        pass
+        """
+        Add arrays to the sketch.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Target vector relative to x.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+        """
+        xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _ = split_data(
+            dtype=None, x=x, y=y, special_codes=self.special_codes,
+            check_input=check_input)
+
+        # Add values to sketch
+        for i, c in enumerate(xc):
+            if c in self._d_categories:
+                if yc[i] == 0:
+                    self._d_categories[c][0] += 1
+                else:
+                    self._d_categories[c][1] += 1
+            else:
+                if yc[i] == 0:
+                    self._d_categories[c] = [1, 0]
+                else:
+                    self._d_categories[c] = [0, 1]
+
+        # Keep track of missing and special counts
+        n_missing = len(ym)
+        if n_missing:
+            self._count_missing_e += np.count_nonzero(ym == 1)
+            self._count_missing_ne += np.count_nonzero(ym == 0)
+
+        n_special = len(ys)
+        if n_special:
+            self._count_special_e += np.count_nonzero(ys == 1)
+            self._count_special_ne += np.count_nonzero(ys == 0)
 
     def bins(self):
         pass
@@ -290,7 +354,7 @@ class BCatSketch:
         self._count_missing_e = bcatsketch._count_missing_e
         self._count_missing_ne = bcatsketch._count_missing_ne
         self._count_special_e = bcatsketch._count_special_e
-        self._count_special_ne = bcatsketch._count_special_ne        
+        self._count_special_ne = bcatsketch._count_special_ne
 
     def _mergeable(self, other):
         special_eq = True
@@ -301,14 +365,32 @@ class BCatSketch:
 
     @property
     def n_event(self):
+        """Event count.
+
+        Returns
+        -------
+        n_event : int
+        """
         count = np.sum([v[1] for k, v in self._d_categories.items()])
         return count + self._count_missing_e + self._count_special_e
 
     @property
     def n_nonevent(self):
+        """Non-event count.
+
+        Returns
+        -------
+        n_nonevent : int
+        """
         count = np.sum([v[0] for k, v in self._d_categories.items()])
         return count + self._count_missing_ne + self._count_special_ne
 
     @property
     def n(self):
+        """Records count.
+
+        Returns
+        -------
+        n : int
+        """
         return self.n_event + self.n_nonevent

@@ -49,7 +49,7 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     Parameters
     ----------
-    dtype : str, optional (default="numerical")
+    dtype : str, optional
         The variable data type. Supported data types are "numerical" for
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables.

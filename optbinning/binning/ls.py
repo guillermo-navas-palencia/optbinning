@@ -46,12 +46,12 @@ class BinningLS:
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event, trend_change):
+    def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
         D, V, NE, E, pvalue_violation_indices = model_data(
-            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy, M,
-            True)
+            divergence, n_nonevent, n_event, self.max_pvalue,
+            self.max_pvalue_policy, M, True)
 
         n = len(n_nonevent)
 

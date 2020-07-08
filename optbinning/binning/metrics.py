@@ -9,6 +9,17 @@ import numpy as np
 
 from scipy import special
 from scipy import stats
+from sklearn.utils import check_array
+from sklearn.utils import check_consistent_length
+
+
+def _check_x_y(x, y):
+    x = check_array(x, ensure_2d=False, force_all_finite=True)
+    y = check_array(y, ensure_2d=False, force_all_finite=True)
+
+    check_consistent_length(x, y)
+
+    return x, y
 
 
 def entropy(x):
@@ -43,11 +54,7 @@ def gini(event, nonevent):
     -------
     gini : float
     """
-    event = np.asarray(event)
-    nonevent = np.asarray(nonevent)
-
-    if event.shape != nonevent.shape:
-        raise ValueError("event and nonevent must have same shape.")
+    event, nonevent = _check_x_y(event, nonevent)
 
     mask = (event + nonevent) > 0
     event = event[mask]
@@ -89,11 +96,7 @@ def kullback_leibler(x, y, return_sum=False):
     -------
     kullback_leibler : float or numpy.ndarray
     """
-    x = np.asarray(x)
-    y = np.asarray(y)
-
-    if x.shape != y.shape:
-        raise ValueError("x and y must have same shape.")
+    x, y = _check_x_y(x, y)
 
     if return_sum:
         return special.xlogy(x, x / y).sum()
@@ -119,16 +122,14 @@ def jeffrey(x, y, return_sum=False):
     -------
     jeffrey : float or numpy.ndarray
     """
-    x = np.asarray(x)
-    y = np.asarray(y)
+    x, y = _check_x_y(x, y)
 
-    if x.shape != y.shape:
-        raise ValueError("x and y must have same shape.")
+    j = special.xlogy(x - y, x / y)
 
     if return_sum:
-        return special.xlogy(x - y, x / y).sum()
+        return j.sum()
     else:
-        return special.xlogy(x - y, x / y)
+        return j
 
 
 def jensen_shannon(x, y, return_sum=False):
@@ -149,11 +150,7 @@ def jensen_shannon(x, y, return_sum=False):
     -------
     jensen_shannon : float or numpy.ndarray
     """
-    x = np.asarray(x)
-    y = np.asarray(y)
-
-    if x.shape != y.shape:
-        raise ValueError("x and y must have same shape.")
+    x, y = _check_x_y(x, y)
 
     m = 0.5 * (x + y)
     return 0.5 * (kullback_leibler(x, m, return_sum) +
@@ -197,6 +194,63 @@ def jensen_shannon_multivariate(X, weights=None):
     js -= np.dot(weights, [entropy(X[:, i]) for i in range(n)])
 
     return js
+
+
+def hellinger(x, y, return_sum=False):
+    """Calculate the Hellinger discrimination between two distributions.
+
+    Parameters
+    ----------
+    x : array-like
+        Discrete probability distribution.
+
+    y : array-like
+        Discrete probability distribution.
+
+    return_sum : bool
+        Return sum of jensen shannon values.
+
+    Returns
+    -------
+    hellinger : float or numpy.ndarray
+    """
+    x, y = _check_x_y(x, y)
+
+    h = 0.5 * (np.sqrt(x) - np.sqrt(y)) ** 2
+
+    if return_sum:
+        return h.sum()
+    else:
+        return h
+
+
+def triangular(x, y, return_sum=False):
+    """Calculate the LeCam or triangular discrimination between two
+    distributions.
+
+    Parameters
+    ----------
+    x : array-like
+        Discrete probability distribution.
+
+    y : array-like
+        Discrete probability distribution.
+
+    return_sum : bool
+        Return sum of jensen shannon values.
+
+    Returns
+    -------
+    triangular : float or numpy.ndarray
+    """
+    x, y = _check_x_y(x, y)
+
+    t = (x - y) ** 2 / (x + y)
+
+    if return_sum:
+        return t.sum()
+    else:
+        return t
 
 
 def frequentist_pvalue(obs, pvalue_method):

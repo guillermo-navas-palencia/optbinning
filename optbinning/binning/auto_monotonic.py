@@ -9,8 +9,6 @@ import numpy as np
 
 from scipy.spatial import ConvexHull
 
-from .metrics import jeffrey
-
 
 def n_peaks_valleys(x):
     """Find number of peaks and valleys in an array of values.
@@ -132,11 +130,6 @@ def auto_monotonic_data(n_nonevent, n_event):
     else:
         p_convex_hull = 0
 
-    # Pre-binning IV
-    p_nev = n_nonevent / n_nonevent.sum()
-    p_ev = n_event / n_event.sum()
-    iv_prebins = jeffrey(p_nev, p_ev, return_sum=True)
-
     dict_data = {
         "n_prebins": n_prebins,
         "n_trend_changes": n_trend_changes,
@@ -153,8 +146,7 @@ def auto_monotonic_data(n_nonevent, n_event):
         "p_records_max_left": p_records_max_left,
         "p_records_max_right": p_records_max_right,
         "p_area": p_area,
-        "p_convex_hull": p_convex_hull,
-        "iv_prebins": iv_prebins
+        "p_convex_hull": p_convex_hull
     }
 
     return dict_data

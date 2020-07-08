@@ -30,15 +30,15 @@ from .prebinning import PreBinning
 from .transformations import transform_binary_target
 
 
-def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
-                      min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
-                      max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
-                      min_bin_n_event, max_bin_n_event, monotonic_trend,
-                      min_event_rate_diff, max_pvalue, max_pvalue_policy,
-                      gamma, outlier_detector, outlier_params, class_weight,
-                      cat_cutoff, user_splits, user_splits_fixed,
-                      special_codes, split_digits, mip_solver, time_limit,
-                      verbose):
+def _check_parameters(name, dtype, prebinning_method, solver, divergence,
+                      max_n_prebins, min_prebin_size, min_n_bins, max_n_bins,
+                      min_bin_size, max_bin_size, min_bin_n_nonevent,
+                      max_bin_n_nonevent, min_bin_n_event, max_bin_n_event,
+                      monotonic_trend, min_event_rate_diff, max_pvalue,
+                      max_pvalue_policy, gamma, outlier_detector,
+                      outlier_params, class_weight, cat_cutoff, user_splits,
+                      user_splits_fixed, special_codes, split_digits,
+                      mip_solver, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -55,6 +55,10 @@ def _check_parameters(name, dtype, prebinning_method, solver, max_n_prebins,
     if solver not in ("cp", "ls", "mip"):
         raise ValueError('Invalid value for solver. Allowed string '
                          'values are "cp", "ls" and "mip".')
+
+    if divergence not in ("iv", "js", "hellinger", "triangular"):
+        raise ValueError('Invalid value for divergence. Allowed string '
+                         'values are "iv", "js", "helliger" and "triangular".')
 
     if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:
         raise ValueError("max_prebins must be an integer greater than 1; "
@@ -257,6 +261,12 @@ class OptimalBinning(BaseOptimalBinning):
         a constrained programming solver or "ls" to choose `LocalSolver
         <https://www.localsolver.com/>`_.
 
+    divergence : str, optional (default="iv")
+        The divergence measure in the objective function to be maximized.
+        Supported divergences are "iv" (Information Value or Jeffrey's
+        divergence), "js" (Jensen-Shannon), "hellinger" (Hellinger divergence)
+        and "triangular" (triangular discrimination).
+
     max_n_prebins : int (default=20)
         The maximum number of bins after pre-binning (prebins).
 
@@ -400,9 +410,9 @@ class OptimalBinning(BaseOptimalBinning):
     support the max-pvalue constraint.
     """
     def __init__(self, name="", dtype="numerical", prebinning_method="cart",
-                 solver="cp", max_n_prebins=20, min_prebin_size=0.05,
-                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, min_bin_n_nonevent=None,
+                 solver="cp", divergence="iv", max_n_prebins=20,
+                 min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
+                 min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
                  max_bin_n_nonevent=None, min_bin_n_event=None,
                  max_bin_n_event=None, monotonic_trend="auto",
                  min_event_rate_diff=0, max_pvalue=None,
@@ -416,6 +426,7 @@ class OptimalBinning(BaseOptimalBinning):
         self.dtype = dtype
         self.prebinning_method = prebinning_method
         self.solver = solver
+        self.divergence = divergence
 
         self.max_n_prebins = max_n_prebins
         self.min_prebin_size = min_prebin_size
@@ -453,6 +464,7 @@ class OptimalBinning(BaseOptimalBinning):
         self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
+        self._flag_min_n_event_nonevent = False
         self._categories = None
         self._cat_others = None
         self._n_event = None
@@ -862,6 +874,7 @@ class OptimalBinning(BaseOptimalBinning):
                 self._logger.info("Optimizer terminated. Time: 0s")
             return
 
+        # Min/max number of bins
         if self.min_bin_size is not None:
             min_bin_size = np.int(np.ceil(self.min_bin_size * self._n_samples))
         else:
@@ -871,6 +884,22 @@ class OptimalBinning(BaseOptimalBinning):
             max_bin_size = np.int(np.ceil(self.max_bin_size * self._n_samples))
         else:
             max_bin_size = self.max_bin_size
+
+        # Min number of event and nonevent per bin
+        if (self.divergence in ("hellinger", "triangular") and
+                self._flag_min_n_event_nonevent):
+            if self.min_bin_n_nonevent is None:
+                min_bin_n_nonevent = 1
+            else:
+                min_bin_n_nonevent = max(self.min_bin_n_nonevent, 1)
+
+            if self.min_bin_n_event is None:
+                min_bin_n_event = 1
+            else:
+                min_bin_n_event = max(self.min_bin_n_event, 1)
+        else:
+            min_bin_n_nonevent = self.min_bin_n_nonevent
+            min_bin_n_event = self.min_bin_n_event
 
         # Monotonic trend
         trend_change = None
@@ -923,18 +952,16 @@ class OptimalBinning(BaseOptimalBinning):
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,
-                                  self.min_bin_n_event, self.max_bin_n_event,
-                                  self.min_bin_n_nonevent,
-                                  self.max_bin_n_nonevent,
+                                  min_bin_n_event, self.max_bin_n_event,
+                                  min_bin_n_nonevent, self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy, self.gamma,
                                   self.user_splits_fixed, self.time_limit)
         elif self.solver == "mip":
             optimizer = BinningMIP(monotonic, self.min_n_bins, self.max_n_bins,
                                    min_bin_size, max_bin_size,
-                                   self.min_bin_n_event, self.max_bin_n_event,
-                                   self.min_bin_n_nonevent,
-                                   self.max_bin_n_nonevent,
+                                   min_bin_n_event, self.max_bin_n_event,
+                                   min_bin_n_nonevent, self.max_bin_n_nonevent,
                                    self.min_event_rate_diff, self.max_pvalue,
                                    self.max_pvalue_policy, self.gamma,
                                    self.user_splits_fixed, self.mip_solver,
@@ -942,9 +969,8 @@ class OptimalBinning(BaseOptimalBinning):
         elif self.solver == "ls":
             optimizer = BinningLS(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,
-                                  self.min_bin_n_event, self.max_bin_n_event,
-                                  self.min_bin_n_nonevent,
-                                  self.max_bin_n_nonevent,
+                                  min_bin_n_event, self.max_bin_n_event,
+                                  min_bin_n_nonevent, self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy,
                                   self.user_splits_fixed, self.time_limit)
@@ -952,7 +978,8 @@ class OptimalBinning(BaseOptimalBinning):
         if self.verbose:
             self._logger.info("Optimizer: build model...")
 
-        optimizer.build_model(n_nonevent, n_event, trend_change)
+        optimizer.build_model(self.divergence, n_nonevent, n_event,
+                              trend_change)
 
         if self.verbose:
             self._logger.info("Optimizer: solve...")
@@ -1031,37 +1058,42 @@ class OptimalBinning(BaseOptimalBinning):
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
         if np.any(mask_remove):
-            self._n_refinements += 1
-
-            if self.dtype == "categorical" and self.user_splits is not None:
-                mask_splits = mask_remove
+            if self.divergence in ("hellinger", "triangular"):
+                self._flag_min_n_event_nonevent = True
             else:
-                mask_splits = np.concatenate(
-                    [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+                self._n_refinements += 1
 
-            if self.user_splits_fixed is not None:
-                user_splits_fixed = np.asarray(self.user_splits_fixed)
-                user_splits = np.asarray(self.user_splits)
-                fixed_remove = user_splits_fixed & mask_splits
+                if (self.dtype == "categorical" and
+                        self.user_splits is not None):
+                    mask_splits = mask_remove
+                else:
+                    mask_splits = np.concatenate([
+                        mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
-                if any(fixed_remove):
-                    raise ValueError("Fixed user_splits {} are removed "
-                                     "because produce pure prebins. Provide "
-                                     "different splits to be fixed."
-                                     .format(user_splits[fixed_remove]))
+                if self.user_splits_fixed is not None:
+                    user_splits_fixed = np.asarray(self.user_splits_fixed)
+                    user_splits = np.asarray(self.user_splits)
+                    fixed_remove = user_splits_fixed & mask_splits
 
-                # Update boolean array of fixed user splits.
-                self.user_splits_fixed = user_splits_fixed[~mask_splits]
-                self.user_splits = user_splits[~mask_splits]
+                    if any(fixed_remove):
+                        raise ValueError(
+                            "Fixed user_splits {} are removed "
+                            "because produce pure prebins. Provide "
+                            "different splits to be fixed."
+                            .format(user_splits[fixed_remove]))
 
-            splits = splits_prebinning[~mask_splits]
+                    # Update boolean array of fixed user splits.
+                    self.user_splits_fixed = user_splits_fixed[~mask_splits]
+                    self.user_splits = user_splits[~mask_splits]
 
-            if self.verbose:
-                self._logger.info("Pre-binning: number prebins removed: {}"
-                                  .format(np.count_nonzero(mask_remove)))
+                splits = splits_prebinning[~mask_splits]
 
-            [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
-                splits, x, y0, y1, sw)
+                if self.verbose:
+                    self._logger.info("Pre-binning: number prebins removed: {}"
+                                      .format(np.count_nonzero(mask_remove)))
+
+                [splits_prebinning, n_nonevent,
+                 n_event] = self._compute_prebins(splits, x, y0, y1, sw)
 
         return splits_prebinning, n_nonevent, n_event
 

@@ -45,10 +45,10 @@ class BinningMIP:
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event, trend_change=None):
+    def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
-        D, V, pvalue_violation_indices = model_data(n_nonevent, n_event,
-                                                    self.max_pvalue,
+        D, V, pvalue_violation_indices = model_data(divergence, n_nonevent,
+                                                    n_event, self.max_pvalue,
                                                     self.max_pvalue_policy)
         n = len(n_nonevent)
         n_records = n_nonevent + n_event

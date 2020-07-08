@@ -11,6 +11,7 @@ optimal_binning_default_options = {
     "dtype": "numerical",
     "prebinning_method": "cart",
     "solver": "cp",
+    "divergence": "iv",
     "max_n_prebins": 20,
     "min_prebin_size": 0.05,
     "min_n_bins": None,

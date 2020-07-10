@@ -9,7 +9,11 @@ Model data for optimal binning formulations.
 import numpy as np
 
 from scipy import stats
-from scipy import special
+
+from .metrics import jeffrey
+from .metrics import jensen_shannon
+from .metrics import hellinger
+from .metrics import triangular
 
 
 def test_proportions(e1, ne1, e2, ne2, zscore):
@@ -89,7 +93,7 @@ def find_pvalue_violation_indices_continuous(n, U, S, R, max_pvalue,
     return pvalue_violation_indices
 
 
-def model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
+def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
                scale=None, return_nonevent_event=False):
     n = len(n_nonevent)
 
@@ -109,7 +113,15 @@ def model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
         p = s_event / t_n_event
         q = s_nonevent / t_n_nonevent
-        iv = special.xlogy(p - q, p / q)
+
+        if divergence == "iv":
+            iv = jeffrey(p, q)
+        elif divergence == "js":
+            iv = jensen_shannon(p, q)
+        elif divergence == "hellinger":
+            iv = hellinger(p, q)
+        elif divergence == "triangular":
+            iv = triangular(p, q)
 
         if scale is not None:
             rate *= scale
@@ -163,7 +175,7 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
             p = s_event / t_n_event
             q = s_nonevent / t_n_nonevent
-            iv = special.xlogy(p - q, p / q)
+            iv = jeffrey(p, q)
 
             if scale is not None:
                 rate *= scale

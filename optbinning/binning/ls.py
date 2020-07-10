@@ -46,12 +46,12 @@ class BinningLS:
         self._n = None
         self._x = None
 
-    def build_model(self, n_nonevent, n_event, trend_change):
+    def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
         D, V, NE, E, pvalue_violation_indices = model_data(
-            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy, M,
-            True)
+            divergence, n_nonevent, n_event, self.max_pvalue,
+            self.max_pvalue_policy, M, True)
 
         n = len(n_nonevent)
 
@@ -237,9 +237,10 @@ class BinningLS:
                     x[j] * model.at(DD, j, z[j]) +
                     min_event_rate_diff * (x[i] + x[j] - 1))
 
-        for i in range(n - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(n - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.constraint(x[i] == 0)
 
     def add_constraint_monotonic_descending(self, model, n, DD, D, x, z, M):
         min_event_rate_diff = int(M * self.min_event_rate_diff)
@@ -250,9 +251,10 @@ class BinningLS:
                     min_event_rate_diff * (x[i] + x[j] - 1) <=
                     x[j] * model.at(DD, j, z[j]) + M * (1 - x[j]))
 
-        for i in range(n - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(n - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.constraint(x[i] == 0)
 
     def add_constraint_monotonic_concave(self, model, n, DD, D, x, z, M):
         for i in range(2, n):
@@ -311,9 +313,10 @@ class BinningLS:
                     x[j] * model.at(DD, j, z[j]) +
                     min_event_rate_diff * (x[i] + x[j] - 1))
 
-        for i in range(tc - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.constraint(x[i] == 0)
 
         for i in range(tc, n):
             for j in range(tc, i):
@@ -322,9 +325,10 @@ class BinningLS:
                     min_event_rate_diff * (x[i] + x[j] - 1) <=
                     x[j] * model.at(DD, j, z[j]) + M * (1 - x[j]))
 
-        for i in range(tc, n - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc, n - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.constraint(x[i] == 0)
 
     def add_constraint_monotonic_valley_heuristic(
             self, model, n, DD, D, x, z, tc, M):
@@ -337,9 +341,10 @@ class BinningLS:
                     min_event_rate_diff * (x[i] + x[j] - 1) <=
                     x[j] * model.at(DD, j, z[j]) + M * (1 - x[j]))
 
-        for i in range(tc - 1):
-            if D[i+1][i] - D[i+1][i+1] < 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc - 1):
+                if D[i+1][i] - D[i+1][i+1] < 0:
+                    model.constraint(x[i] == 0)
 
         for i in range(tc, n):
             for j in range(tc, i):
@@ -348,6 +353,7 @@ class BinningLS:
                     x[j] * model.at(DD, j, z[j]) +
                     min_event_rate_diff * (x[i] + x[j] - 1))
 
-        for i in range(tc, n - 1):
-            if D[i+1][i] - D[i+1][i+1] > 0:
-                model.constraint(x[i] == 0)
+        if self.min_event_rate_diff == 0:
+            for i in range(tc, n - 1):
+                if D[i+1][i] - D[i+1][i+1] > 0:
+                    model.constraint(x[i] == 0)

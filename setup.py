@@ -53,6 +53,7 @@ install_requires = [
     'matplotlib',
     'numpy',
     'ortools>=7.2',
+    'pympler',
     'pandas',
     'scipy',
     'scikit-learn>=0.22.0',

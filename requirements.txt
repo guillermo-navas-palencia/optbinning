@@ -2,6 +2,7 @@ matplotlib
 numpy
 ortools>=7.2
 pandas
+pympler
 scipy
 scikit-learn>=0.22.0
 pytest

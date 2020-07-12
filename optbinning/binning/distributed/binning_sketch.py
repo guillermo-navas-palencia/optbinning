@@ -11,6 +11,7 @@ import time
 import numpy as np
 import pandas as pd
 
+from pympler import asizeof
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 
@@ -34,8 +35,8 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
                       max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
                       min_bin_n_event, max_bin_n_event, monotonic_trend,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
-                      gamma, cat_cutoff, special_codes, split_digits,
-                      mip_solver, time_limit, verbose):
+                      gamma, cat_cutoff, cat_heuristic, special_codes,
+                      split_digits, mip_solver, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -172,6 +173,10 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
             raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
                              .format(cat_cutoff))
 
+    if not isinstance(cat_heuristic, bool):
+        raise TypeError("cat_heuristic must be a boolean; got {}."
+                        .format(cat_heuristic))
+
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list)):
             raise TypeError("special_codes must be a list or numpy.ndarray.")
@@ -209,10 +214,15 @@ class OptimalBinningSketch(BaseEstimator):
         and nominal variables.
 
     sketch : str, optional (default="gk")
+        Sketch algorithm. Supported algorithms are "gk" (Greenwald-Khanna's)
+        and "t-digest" (Ted Dunning) algorithm. Algorithm "t-digest" relies on
+        `tdigest <https://github.com/CamDavidsonPilon/tdigest>`_.
 
     eps : float, optional (default=1e-4)
+        Relative error epsilon.
 
     K : int, optional (default=25)
+        Parameter excess growth K to compute compress threshold in t-digest.
 
     solver : str, optional (default="cp")
         The optimizer to solve the optimal binning problem. Supported solvers
@@ -299,6 +309,13 @@ class OptimalBinningSketch(BaseEstimator):
         occurrences is below the  ``cat_cutoff`` value. This option is
         available when ``dtype`` is "categorical".
 
+    cat_heuristic: bool (default=False):
+        Whether to exclude categories to guarantee max_n_prebins. If True,
+        this option will be triggered when the number of categories >=
+        max_n_prebins. This option is recommended if the number of categories,
+        in the long run, can increase considerably, and recurrent calls to
+        method ``solve`` are required.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
@@ -330,8 +347,8 @@ class OptimalBinningSketch(BaseEstimator):
                  max_bin_n_event=None, monotonic_trend="auto",
                  min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", gamma=0, cat_cutoff=None,
-                 special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False):
+                 cat_heuristic=False, special_codes=None, split_digits=None,
+                 mip_solver="bop", time_limit=100, verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -359,6 +376,7 @@ class OptimalBinningSketch(BaseEstimator):
         self.max_pvalue_policy = max_pvalue_policy
         self.gamma = gamma
         self.cat_cutoff = cat_cutoff
+        self.cat_heuristic = cat_heuristic
 
         self.special_codes = special_codes
         self.split_digits = split_digits
@@ -369,8 +387,9 @@ class OptimalBinningSketch(BaseEstimator):
         self.verbose = verbose
 
         # auxiliary
+        self._flag_min_n_event_nonevent = False
         self._categories = None
-        self._cat_others = None
+        self._cat_others = []
         self._n_event = None
         self._n_nonevent = None
         self._n_nonevent_missing = None
@@ -463,12 +482,16 @@ class OptimalBinningSketch(BaseEstimator):
 
         binning_type = self.__class__.__name__.lower()
 
+        # Optimizer
         if self._optimizer is not None:
             solver = self._optimizer.solver_
             time_solver = self._time_solver
         else:
             solver = None
             time_solver = 0
+
+        # Sketch memory usage
+        memory_usage = asizeof.asizeof(self._bsketch) * 1e-6
 
         dict_user_options = self.get_params()
 
@@ -479,7 +502,7 @@ class OptimalBinningSketch(BaseEstimator):
                                   self._n_prebins, self._n_refinements,
                                   self._bsketch.n, self._n_add,
                                   self._time_streaming_add, self._n_solve,
-                                  self._time_streaming_solve,
+                                  self._time_streaming_solve, memory_usage,
                                   dict_user_options)
 
     def merge(self, optbsketch):
@@ -505,6 +528,7 @@ class OptimalBinningSketch(BaseEstimator):
         return self.get_params() == optbsketch.get_params()
 
     def plot_progress(self):
+        """Plot divergence measure progress."""
         self._check_is_fitted()
 
         df = pd.DataFrame.from_dict(self._solve_stats).T
@@ -626,11 +650,14 @@ class OptimalBinningSketch(BaseEstimator):
 
             if self.sketch == "gk":
                 percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
+
+                splits = np.array([sketch_all.quantile(p)
+                                   for p in percentiles[1:-1]])
             elif self.sketch == "t-digest":
                 percentiles = np.linspace(0, 100, self.max_n_prebins + 1)
 
-            splits = np.array([sketch_all.quantile(p)
-                               for p in percentiles[1:-1]])
+                splits = np.array([sketch_all.percentile(p)
+                                   for p in percentiles[1:-1]])
 
             splits, n_nonevent, n_event = self._compute_prebins(splits)
         else:
@@ -657,47 +684,36 @@ class OptimalBinningSketch(BaseEstimator):
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
         if np.any(mask_remove):
-            self._n_refinements += 1
+            if self.divergence in ("hellinger", "triangular"):
+                self._flag_min_n_event_nonevent = True
+            else:
+                self._n_refinements += 1
 
-            mask_splits = np.concatenate(
-                [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+                mask_splits = np.concatenate(
+                    [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
-            splits = splits[~mask_splits]
-            splits, n_nonevent, n_event = self._compute_prebins(splits)
+                splits = splits[~mask_splits]
+                splits, n_nonevent, n_event = self._compute_prebins(splits)
 
         return splits, n_nonevent, n_event
 
     def _compute_cat_prebins(self, splits, categories, n_nonevent, n_event):
         self._n_refinements = 0
-
-        if len(categories) > self.max_n_prebins:
-            # 1-D clustering
-            event_rate = n_event / (n_event + n_nonevent)
-            gap = event_rate[1:] - event_rate[:-1]
-            idx = np.argsort(gap)[::-1]
-            splits_gap = np.sort(idx[:self.max_n_prebins - 1])
-
-            indices = np.digitize(np.arange(len(event_rate)), splits_gap,
-                                  right=True)
-            n_bins = len(splits_gap) + 1
-
-            new_nonevent = np.empty(n_bins, dtype=np.int)
-            new_event = np.empty(n_bins, dtype=np.int)
-            new_categories = []
-            for i in range(n_bins):
-                mask = (indices == i)
-                new_categories.append(categories[mask])
-                new_nonevent[i] = n_nonevent[mask].sum()
-                new_event[i] = n_event[mask].sum()
-
-            [splits, categories, n_nonevent,
-             n_event] = self._compute_cat_prebins(
-                splits_gap, new_categories, new_nonevent, new_event)
-
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
+        if self.cat_heuristic and len(categories) > self.max_n_prebins:
+            n_records = n_nonevent + n_event
+            mask_size = n_records < self._bsketch.n / self.max_n_prebins
+            mask_remove |= mask_size
+
         if np.any(mask_remove):
-            self._n_refinements += 1
+            if self.divergence in ("hellinger", "triangular"):
+                self._flag_min_n_event_nonevent = True
+
+                if self.cat_heuristic:
+                    mask_remove = mask_size
+            else:
+                self._n_refinements += 1
 
             mask_splits = np.concatenate(
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
@@ -717,6 +733,8 @@ class OptimalBinningSketch(BaseEstimator):
                 new_categories.append(categories[mask])
                 new_nonevent[i] = n_nonevent[mask].sum()
                 new_event[i] = n_event[mask].sum()
+
+            new_categories = np.array(new_categories)
 
             [splits, categories, n_nonevent,
              n_event] = self._compute_cat_prebins(
@@ -742,6 +760,7 @@ class OptimalBinningSketch(BaseEstimator):
                 self._logger.info("Optimizer terminated. Time: 0s")
             return
 
+        # Min/max number of bins
         if self.min_bin_size is not None:
             min_bin_size = np.int(np.ceil(self.min_bin_size * self._bsketch.n))
         else:
@@ -751,6 +770,22 @@ class OptimalBinningSketch(BaseEstimator):
             max_bin_size = np.int(np.ceil(self.max_bin_size * self._bsketch.n))
         else:
             max_bin_size = self.max_bin_size
+
+        # Min number of event and nonevent per bin
+        if (self.divergence in ("hellinger", "triangular") and
+                self._flag_min_n_event_nonevent):
+            if self.min_bin_n_nonevent is None:
+                min_bin_n_nonevent = 1
+            else:
+                min_bin_n_nonevent = max(self.min_bin_n_nonevent, 1)
+
+            if self.min_bin_n_event is None:
+                min_bin_n_event = 1
+            else:
+                min_bin_n_event = max(self.min_bin_n_event, 1)
+        else:
+            min_bin_n_nonevent = self.min_bin_n_nonevent
+            min_bin_n_event = self.min_bin_n_event
 
         # Monotonic trend
         trend_change = None
@@ -803,18 +838,16 @@ class OptimalBinningSketch(BaseEstimator):
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,
-                                  self.min_bin_n_event, self.max_bin_n_event,
-                                  self.min_bin_n_nonevent,
-                                  self.max_bin_n_nonevent,
+                                  min_bin_n_event, self.max_bin_n_event,
+                                  min_bin_n_nonevent, self.max_bin_n_nonevent,
                                   self.min_event_rate_diff, self.max_pvalue,
                                   self.max_pvalue_policy, self.gamma,
                                   None, self.time_limit)
         elif self.solver == "mip":
             optimizer = BinningMIP(monotonic, self.min_n_bins, self.max_n_bins,
                                    min_bin_size, max_bin_size,
-                                   self.min_bin_n_event, self.max_bin_n_event,
-                                   self.min_bin_n_nonevent,
-                                   self.max_bin_n_nonevent,
+                                   min_bin_n_event, self.max_bin_n_event,
+                                   min_bin_n_nonevent, self.max_bin_n_nonevent,
                                    self.min_event_rate_diff, self.max_pvalue,
                                    self.max_pvalue_policy, self.gamma,
                                    None, self.mip_solver, self.time_limit)

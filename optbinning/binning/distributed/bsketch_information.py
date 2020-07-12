@@ -36,6 +36,7 @@ optimal_binning_sketch_options = {
     "max_pvalue_policy": "consecutive",
     "gamma": 0,
     "cat_cutoff": None,
+    "cat_heuristic": False,
     "special_codes": None,
     "split_digits": None,
     "mip_solver": "bop",
@@ -82,16 +83,18 @@ def print_timing(solver_type, solver, time_total, time_prebinning, time_solver,
     print(time_stats)
 
 
-def print_streaming_timing(n_records, n_add, time_add, n_solve, time_solve):
+def print_streaming_timing(memory_usage, n_records, n_add, time_add, n_solve,
+                           time_solve):
     r_add = time_add / n_add
     r_solve = time_solve / n_solve
 
     records_stats = (
-        "  Streaming operations\n"
+        "  Streaming statistics\n"
+        "    Sketch memory usage   {:>18.5f} MB\n"
         "    Processed records     {:>18}\n"
         "    Add operations        {:>18}\n"
         "    Solve operations      {:>18}\n"
-        ).format(n_records, n_add, n_solve)
+        ).format(memory_usage, n_records, n_add, n_solve)
 
     time_stats = (
         "  Streaming timing\n"
@@ -107,7 +110,8 @@ def print_binning_information(binning_type, print_level, name, status,
                               solver_type, solver, time_total, time_prebinning,
                               time_solver, time_postprocessing, n_prebins,
                               n_refinements, n_records, n_add, time_add,
-                              n_solve, time_solve, dict_user_options):
+                              n_solve, time_solve, memory_usage,
+                              dict_user_options):
 
     print_header()
 
@@ -131,4 +135,5 @@ def print_binning_information(binning_type, print_level, name, status,
             print_timing(solver_type, solver, time_total, time_prebinning,
                          time_solver, time_postprocessing)
 
-        print_streaming_timing(n_records, n_add, time_add, n_solve, time_solve)
+        print_streaming_timing(memory_usage, n_records, n_add, time_add,
+                               n_solve, time_solve)

@@ -9,6 +9,7 @@ import numbers
 import time
 
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
@@ -20,18 +21,21 @@ from ...binning.binning_statistics import bin_info
 from ...binning.binning_statistics import BinningTable
 from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
+from ...binning.transformations import transform_binary_target
 from ...logging import Logger
+from .bsketch_information import print_binning_information
+from .plots import plot_progress_divergence
 
 from .bsketch import BSketch, BCatSketch
 
 
-def _check_parameters(name, dtype, sketch, eps, K, solver, max_n_prebins,
-                      min_n_bins, max_n_bins, min_bin_size, max_bin_size,
-                      min_bin_n_nonevent, max_bin_n_nonevent, min_bin_n_event,
-                      max_bin_n_event, monotonic_trend, min_event_rate_diff,
-                      max_pvalue, max_pvalue_policy, gamma, cat_cutoff,
-                      special_codes, split_digits, mip_solver, time_limit,
-                      verbose):
+def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
+                      max_n_prebins, min_n_bins, max_n_bins, min_bin_size,
+                      max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
+                      min_bin_n_event, max_bin_n_event, monotonic_trend,
+                      min_event_rate_diff, max_pvalue, max_pvalue_policy,
+                      gamma, cat_cutoff, special_codes, split_digits,
+                      mip_solver, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -55,6 +59,10 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, max_n_prebins,
     if solver not in ("cp", "mip"):
         raise ValueError('Invalid value for solver. Allowed string '
                          'values are "cp" and "mip".')
+
+    if divergence not in ("iv", "js", "hellinger", "triangular"):
+        raise ValueError('Invalid value for divergence. Allowed string '
+                         'values are "iv", "js", "helliger" and "triangular".')
 
     if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:
         raise ValueError("max_prebins must be an integer greater than 1; "
@@ -212,6 +220,12 @@ class OptimalBinningSketch(BaseEstimator):
         a constrained programming solver or "ls" to choose `LocalSolver
         <https://www.localsolver.com/>`_.
 
+    divergence : str, optional (default="iv")
+        The divergence measure in the objective function to be maximized.
+        Supported divergences are "iv" (Information Value or Jeffrey's
+        divergence), "js" (Jensen-Shannon), "hellinger" (Hellinger divergence)
+        and "triangular" (triangular discrimination).
+
     max_n_prebins : int (default=20)
         The maximum number of bins after pre-binning (prebins).
 
@@ -309,14 +323,15 @@ class OptimalBinningSketch(BaseEstimator):
     -----
     """
     def __init__(self, name="", dtype="numerical", sketch="gk", eps=1e-4, K=25,
-                 solver="cp", max_n_prebins=20, min_n_bins=None,
-                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
-                 min_bin_n_nonevent=None, max_bin_n_nonevent=None,
-                 min_bin_n_event=None, max_bin_n_event=None,
-                 monotonic_trend="auto", min_event_rate_diff=0,
-                 max_pvalue=None, max_pvalue_policy="consecutive", gamma=0,
-                 cat_cutoff=None, special_codes=None, split_digits=None,
-                 mip_solver="bop", time_limit=100, verbose=False):
+                 solver="cp", divergence="iv", max_n_prebins=20,
+                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
+                 max_bin_size=None, min_bin_n_nonevent=None,
+                 max_bin_n_nonevent=None, min_bin_n_event=None,
+                 max_bin_n_event=None, monotonic_trend="auto",
+                 min_event_rate_diff=0, max_pvalue=None,
+                 max_pvalue_policy="consecutive", gamma=0, cat_cutoff=None,
+                 special_codes=None, split_digits=None, mip_solver="bop",
+                 time_limit=100, verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -326,6 +341,7 @@ class OptimalBinningSketch(BaseEstimator):
         self.K = K
 
         self.solver = solver
+        self.divergence = divergence
 
         self.max_n_prebins = max_n_prebins
         self.min_n_bins = min_n_bins
@@ -368,6 +384,25 @@ class OptimalBinningSketch(BaseEstimator):
         # data storage
         self._bsketch = None
 
+        # info
+        self._binning_table = None
+        self._n_refinements = 0
+        self._n_prebins = None
+
+        # streaming stats
+        self._n_add = 0
+        self._n_solve = 0
+        self._solve_stats = {}
+
+        # timming
+        self._time_streaming_add = 0
+        self._time_streaming_solve = 0
+
+        self._time_total = None
+        self._time_prebinning = None
+        self._time_solver = None
+        self._time_postprocessing = None
+
         # logger
         self._class_logger = Logger(__name__)
         self._logger = self._class_logger.logger
@@ -378,6 +413,24 @@ class OptimalBinningSketch(BaseEstimator):
         _check_parameters(**self.get_params())
 
     def add(self, x, y, check_input=False):
+        """Add new data x, y to the binning sketch.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+        """
         if self._bsketch is None:
             if self.dtype == "numerical":
                 self._bsketch = BSketch(self.sketch, self.eps, self.K,
@@ -386,10 +439,48 @@ class OptimalBinningSketch(BaseEstimator):
                 self._bsketch = BCatSketch(self.cat_cutoff, self.special_codes)
 
         # Add new data stream
+        time_add = time.perf_counter()
+
         self._bsketch.add(x, y, check_input)
+        self._n_add += 1
+
+        self._time_streaming_add += time.perf_counter() - time_add
 
     def information(self, print_level=1):
-        pass
+        """Print overview information about the options settings, problem
+        statistics, and the solution of the computation.
+
+        Parameters
+        ----------
+        print_level : int (default=1)
+            Level of details.
+        """
+        self._check_is_fitted()
+
+        if not isinstance(print_level, numbers.Integral) or print_level < 0:
+            raise ValueError("print_level must be an integer >= 0; got {}."
+                             .format(print_level))
+
+        binning_type = self.__class__.__name__.lower()
+
+        if self._optimizer is not None:
+            solver = self._optimizer.solver_
+            time_solver = self._time_solver
+        else:
+            solver = None
+            time_solver = 0
+
+        dict_user_options = self.get_params()
+
+        print_binning_information(binning_type, print_level, self.name,
+                                  self._status, self.solver, solver,
+                                  self._time_total, self._time_prebinning,
+                                  time_solver, self._time_postprocessing,
+                                  self._n_prebins, self._n_refinements,
+                                  self._bsketch.n, self._n_add,
+                                  self._time_streaming_add, self._n_solve,
+                                  self._time_streaming_solve,
+                                  dict_user_options)
 
     def merge(self, optbsketch):
         """Merge current instance with another OptimalBinningSketch instance.
@@ -413,36 +504,113 @@ class OptimalBinningSketch(BaseEstimator):
         """
         return self.get_params() == optbsketch.get_params()
 
-    def solve(self):
-        """Solve optimal binning using added data."""
-        splits, n_nonevent, n_event = self._prebinning_data()
+    def plot_progress(self):
+        self._check_is_fitted()
 
+        df = pd.DataFrame.from_dict(self._solve_stats).T
+        plot_progress_divergence(df, self.divergence)
+
+    def solve(self):
+        """Solve optimal binning using added data.
+
+        Returns
+        -------
+        self : object
+            Current fitted optimal binning.
+        """
+        time_init = time.perf_counter()
+
+        # Pre-binning
+        time_prebinning = time.perf_counter()
+
+        splits, n_nonevent, n_event = self._prebinning_data()
         self._n_prebins = len(splits) + 1
+
+        self._time_prebinning = time.perf_counter() - time_prebinning
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event)
 
         # Post-processing
+        time_postprocessing = time.perf_counter()
+
         if not len(splits):
             n_nonevent = self._t_n_nonevent
-            n_event = self._t_n_nonevent
+            n_event = self._t_n_event
 
         self._n_nonevent, self._n_event = bin_info(
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,
             self._n_event_missing, self._n_nonevent_special,
-            self._n_event_special, None, None, [])
+            self._n_event_special, self._n_nonevent_cat_others,
+            self._n_event_cat_others, self._cat_others)
 
         self._binning_table = BinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, None, None, [])
+            self._n_event, self._categories, self._cat_others, None)
+
+        self._time_postprocessing = time.perf_counter() - time_postprocessing
+
+        self._time_total = time.perf_counter() - time_init
+        self._time_streaming_solve += self._time_total
+        self._n_solve += 1
 
         self._is_fitted = True
+        self._update_streaming_stats()
 
         return self
 
-    def transform(self):
-        """"""
-        pass
+    def transform(self, x, metric="woe", metric_special=0,
+                  metric_missing=0, show_digits=2, check_input=False):
+        """Transform given data to Weight of Evidence (WoE) or event rate using
+        bins from the current fitted optimal binning.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        x_new : numpy array, shape = (n_samples,)
+            Transformed array.
+
+        Notes
+        -----
+        Transformation of data including categories not present during training
+        return zero WoE or event rate.
+        """
+        self._check_is_fitted()
+
+        return transform_binary_target(self._splits_optimal, self.dtype, x,
+                                       self._n_nonevent, self._n_event,
+                                       self.special_codes, self._categories,
+                                       self._cat_others, metric,
+                                       metric_special, metric_missing,
+                                       None, show_digits, check_input)
 
     def _prebinning_data(self):
         self._n_nonevent_missing = self._bsketch._count_missing_ne
@@ -455,14 +623,14 @@ class OptimalBinningSketch(BaseEstimator):
 
         if self.dtype == "numerical":
             sketch_all = self._bsketch.merge_sketches()
-            percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
 
             if self.sketch == "gk":
-                splits = np.array([sketch_all.quantile(p)
-                                   for p in percentiles[1:-1]])
+                percentiles = np.linspace(0, 1, self.max_n_prebins + 1)
             elif self.sketch == "t-digest":
-                splits = np.array([sketch_all.percentile(p * 100)
-                                   for p in percentiles[1:-1]])
+                percentiles = np.linspace(0, 100, self.max_n_prebins + 1)
+
+            splits = np.array([sketch_all.quantile(p)
+                               for p in percentiles[1:-1]])
 
             splits, n_nonevent, n_event = self._compute_prebins(splits)
         else:
@@ -475,20 +643,22 @@ class OptimalBinningSketch(BaseEstimator):
             self._n_event_cat_others = n_event_others
 
             [splits, categories, n_nonevent,
-             n_event] = self._compute_categorical_prebins(splits, categories,
-                                                          n_nonevent, n_event)
-
-            print(splits, categories, n_nonevent, n_event)
+             n_event] = self._compute_cat_prebins(splits, categories,
+                                                  n_nonevent, n_event)
 
         self._splits_prebinning = splits
 
         return splits, n_nonevent, n_event
 
     def _compute_prebins(self, splits):
+        self._n_refinements = 0
+
         n_event, n_nonevent = self._bsketch.bins(splits)
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
         if np.any(mask_remove):
+            self._n_refinements += 1
+
             mask_splits = np.concatenate(
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
@@ -497,12 +667,38 @@ class OptimalBinningSketch(BaseEstimator):
 
         return splits, n_nonevent, n_event
 
-    def _compute_categorical_prebins(self, splits, categories, n_nonevent,
-                                     n_event):
-        
+    def _compute_cat_prebins(self, splits, categories, n_nonevent, n_event):
+        self._n_refinements = 0
+
+        if len(categories) > self.max_n_prebins:
+            # 1-D clustering
+            event_rate = n_event / (n_event + n_nonevent)
+            gap = event_rate[1:] - event_rate[:-1]
+            idx = np.argsort(gap)[::-1]
+            splits_gap = np.sort(idx[:self.max_n_prebins - 1])
+
+            indices = np.digitize(np.arange(len(event_rate)), splits_gap,
+                                  right=True)
+            n_bins = len(splits_gap) + 1
+
+            new_nonevent = np.empty(n_bins, dtype=np.int)
+            new_event = np.empty(n_bins, dtype=np.int)
+            new_categories = []
+            for i in range(n_bins):
+                mask = (indices == i)
+                new_categories.append(categories[mask])
+                new_nonevent[i] = n_nonevent[mask].sum()
+                new_event[i] = n_event[mask].sum()
+
+            [splits, categories, n_nonevent,
+             n_event] = self._compute_cat_prebins(
+                splits_gap, new_categories, new_nonevent, new_event)
+
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
         if np.any(mask_remove):
+            self._n_refinements += 1
+
             mask_splits = np.concatenate(
                 [mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
 
@@ -523,7 +719,7 @@ class OptimalBinningSketch(BaseEstimator):
                 new_event[i] = n_event[mask].sum()
 
             [splits, categories, n_nonevent,
-             n_event] = self._compute_categorical_prebins(
+             n_event] = self._compute_cat_prebins(
                 splits, new_categories, new_nonevent, new_event)
 
         return splits, categories, n_nonevent, n_event
@@ -626,7 +822,8 @@ class OptimalBinningSketch(BaseEstimator):
         if self.verbose:
             self._logger.info("Optimizer: build model...")
 
-        optimizer.build_model(n_nonevent, n_event, trend_change)
+        optimizer.build_model(self.divergence, n_nonevent, n_event,
+                              trend_change)
 
         if self.verbose:
             self._logger.info("Optimizer: solve...")
@@ -639,13 +836,30 @@ class OptimalBinningSketch(BaseEstimator):
         self._status = status
 
         self._splits_optimal = splits[solution[:-1]]
-        print(splits, solution)
 
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
             self._logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
+
+    def _update_streaming_stats(self):
+        self._binning_table.build()
+
+        if self.divergence == "iv":
+            dv = self._binning_table.iv
+        elif self.divergence == "js":
+            dv = self._binning_table.js
+        elif self.divergence == "hellinger":
+            dv = self._binning_table.hellinger
+        elif self.divergence == "triangular":
+            dv = self._binning_table.triangular
+
+        self._solve_stats[self._n_solve] = {
+            "n_add": self._n_add,
+            "n_records": self._bsketch.n,
+            "divergence".format(self.divergence): dv
+        }
 
     def _check_is_fitted(self):
         if not self._is_fitted:

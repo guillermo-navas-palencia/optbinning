@@ -357,6 +357,8 @@ class BCatSketch:
                     bin_e_others += v[1]
                     cat_others.append(k)
 
+            cat_others = np.array(cat_others, dtype=object)
+
             dd = {k: v for k, v in sorted(dd.items(), key=lambda v: v[1][3])
                   if k not in cat_others}
         else:
@@ -364,14 +366,14 @@ class BCatSketch:
             bin_ne_others = []
             dd = {k: v for k, v in sorted(dd.items(), key=lambda v: v[1][3])}
 
-        categories = np.array(list(dd.keys()))
+        categories = np.array(list(dd.keys()), dtype=object)
         bin_ne = np.array([v[0] for v in dd.values()], dtype=np.int64)
         bin_e = np.array([v[1] for v in dd.values()], dtype=np.int64)
 
         splits = np.array([0.5 + i for i in range(len(categories) - 1)])
 
-        return (splits, categories, bin_e, bin_ne, cat_others, bin_e_others,
-                bin_ne_others)
+        return (splits, categories, bin_ne, bin_e, cat_others, bin_ne_others,
+                bin_e_others)
 
     def merge(self, bcatsketch):
         # Merge categories

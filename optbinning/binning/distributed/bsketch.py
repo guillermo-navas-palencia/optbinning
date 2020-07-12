@@ -46,7 +46,7 @@ class BSketch:
 
     Parameters
     ----------
-    sketch : string (default="gk")
+    sketch : str, optional (default="gk")
         Sketch algorithm. Supported algorithms are "gk" (Greenwald-Khanna's)
         and "t-digest" (Ted Dunning) algorithm. Algorithm "t-digest" relies on
         `tdigest <https://github.com/CamDavidsonPilon/tdigest>`_.

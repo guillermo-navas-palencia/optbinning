@@ -291,8 +291,7 @@ class OptimalBinningSketch(BaseEstimator):
 
     max_pvalue : float or None, optional (default=0.05)
         The maximum p-value among bins. The Z-test is used to detect bins
-        not satisfying the p-value constraint. Option supported by solvers
-        "cp" and "mip".
+        not satisfying the p-value constraint.
 
     max_pvalue_policy : str, optional (default="consecutive")
         The method to determine bins not satisfying the p-value constraint.
@@ -301,8 +300,7 @@ class OptimalBinningSketch(BaseEstimator):
 
     gamma : float, optional (default=0)
         Regularization strength to reduce the number of dominating bins. Larger
-        values specify stronger regularization. Option supported by solvers
-        "cp" and "mip".
+        values specify stronger regularization.
 
     cat_cutoff : float or None, optional (default=None)
         Generate bin others with categories in which the fraction of
@@ -310,7 +308,7 @@ class OptimalBinningSketch(BaseEstimator):
         available when ``dtype`` is "categorical".
 
     cat_heuristic: bool (default=False):
-        Whether to exclude categories to guarantee max_n_prebins. If True,
+        Whether to merge categories to guarantee max_n_prebins. If True,
         this option will be triggered when the number of categories >=
         max_n_prebins. This option is recommended if the number of categories,
         in the long run, can increase considerably, and recurrent calls to
@@ -465,6 +463,9 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._time_streaming_add += time.perf_counter() - time_add
 
+        if self.verbose:
+            self._logger.info("Sketch: added new data.")
+
     def information(self, print_level=1):
         """Print overview information about the options settings, problem
         statistics, and the solution of the computation.
@@ -518,6 +519,8 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._bsketch.merge(optbsketch._bsketch)
 
+        self._logger.info("Sketch: current sketch was merged.")
+
     def mergeable(self, optbsketch):
         """Check whether two OptimalBinningSketch instances can be merged.
 
@@ -545,6 +548,9 @@ class OptimalBinningSketch(BaseEstimator):
         time_init = time.perf_counter()
 
         # Pre-binning
+        if self.verbose:
+            self._logger.info("Pre-binning started.")
+
         time_prebinning = time.perf_counter()
 
         splits, n_nonevent, n_event = self._prebinning_data()
@@ -552,10 +558,23 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
+        if self.verbose:
+            self._logger.info("Pre-binning: number of prebins: {}"
+                              .format(self._n_prebins))
+            self._logger.info("Pre-binning: number of refinements: {}"
+                              .format(self._n_refinements))
+
+            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+                              .format(self._time_prebinning))
+
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event)
 
         # Post-processing
+        if self.verbose:
+            self._logger.info("Post-processing started.")
+            self._logger.info("Post-processing: compute binning information.")
+
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
@@ -574,10 +593,20 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
+        if self.verbose:
+            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+                              .format(self._time_postprocessing))
+
         self._time_total = time.perf_counter() - time_init
         self._time_streaming_solve += self._time_total
         self._n_solve += 1
 
+        if self.verbose:
+            self._logger.info("Optimal binning terminated. Status: {}. "
+                              "Time: {:.4f}s"
+                              .format(self._status, self._time_total))
+
+        # Completed successfully
         self._is_fitted = True
         self._update_streaming_stats()
 

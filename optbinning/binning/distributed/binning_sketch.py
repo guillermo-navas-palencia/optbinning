@@ -336,6 +336,14 @@ class OptimalBinningSketch(BaseEstimator):
 
     Notes
     -----
+    The parameter ``sketch`` is neglected when ``dtype=categorical``. The
+    sketch parameter ``K`` is only applicable when ``sketch=t-digest``.
+
+    Both quantile sketch algorithms produce good results, being the t-digest
+    the most accurate. Note, however, the t-digest algorithm implementation is
+    significantly slower than the GK implementation, thus, GK is the
+    recommended algorithm when handling partitions. **Besides, GK is
+    deterministic, therefore returning reproducible results.**
     """
     def __init__(self, name="", dtype="numerical", sketch="gk", eps=1e-4, K=25,
                  solver="cp", divergence="iv", max_n_prebins=20,
@@ -523,6 +531,11 @@ class OptimalBinningSketch(BaseEstimator):
 
     def mergeable(self, optbsketch):
         """Check whether two OptimalBinningSketch instances can be merged.
+
+        Parameters
+        ----------
+        optbsketch : object
+            OptimalBinningSketch instance.
 
         Returns
         -------

@@ -135,7 +135,7 @@ class BSketch:
 
         Returns
         -------
-        bins : tuples of arrays of size n_splits + 1.
+        bins : tuple of arrays of size n_splits + 1.
         """
         n_bins = len(splits) + 1
         bins_e = np.zeros(n_bins).astype(np.int64)
@@ -264,7 +264,7 @@ class BSketch:
 
 
 class BCatSketch:
-    """BCatSKetch: binning sketch for categorical/nominal data and binary
+    """BCatSketch: binning sketch for categorical/nominal data and binary
     target.
 
     Parameters
@@ -343,6 +343,13 @@ class BCatSketch:
             self._count_special_ne += np.count_nonzero(ys == 0)
 
     def bins(self):
+        """Event and non-events counts for each bin given the current
+        categories.
+
+        Returns
+        -------
+        bins : tuple of arrays.
+        """
         cat_others = []
 
         dd = {k: v + [v[0] + v[1], v[1] / (v[0] + v[1])]
@@ -376,6 +383,14 @@ class BCatSketch:
                 bin_e_others)
 
     def merge(self, bcatsketch):
+        """Merge current instance with another BCatSketch instance.
+
+        Parameters
+        ----------
+        bcatsketch : object
+            BCatSketch instance.
+        """
+
         # Merge categories
         for k, v in bcatsketch._d_categories.items():
             if k in self._d_categories:

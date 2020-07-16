@@ -49,7 +49,7 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
         raise ValueError('Invalid value for sketch. Allowed string '
                          'values are "gk" and "t-digest".')
 
-    if not isinstance(eps, numbers.Number) and not 0 <= eps <= 1:
+    if not isinstance(eps, numbers.Number) or not 0 <= eps <= 1:
         raise ValueError("eps must be a value in [0, 1]; got {}."
                          .format(eps))
 

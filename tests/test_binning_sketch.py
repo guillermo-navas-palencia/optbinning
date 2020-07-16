@@ -118,3 +118,92 @@ def test_params():
 
     with raises(TypeError):
         OptimalBinningSketch(verbose=1)
+
+
+def test_numerical_default():
+    optb = OptimalBinningSketch(sketch="gk", eps=1e-4)
+    optb.add(x, y)
+    optb.solve()
+
+    assert optb.status == "OPTIMAL"
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+    optb.binning_table.analysis()
+    assert optb.binning_table.gini == approx(0.87541620, rel=1e-2)
+    assert optb.binning_table.js == approx(0.39378376, rel=1e-2)
+    assert optb.binning_table.quality_score == approx(0.0, rel=1e-2)
+
+
+def test_categorical_default_user_splits():
+    x = np.array([
+        'Working', 'State servant', 'Working', 'Working', 'Working',
+        'State servant', 'Commercial associate', 'State servant',
+        'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
+        'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Working', 'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Working', 'Pensioner', 'Working',
+        'Commercial associate', 'Working', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'State servant', 'Commercial associate', 'Working',
+        'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Commercial associate',
+        'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'Working', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner'], dtype=object)
+
+    y = np.array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+
+    optb = OptimalBinningSketch(dtype="categorical", solver="mip",
+                                cat_cutoff=0.1, verbose=True)
+    optb.add(x, y)
+    optb.solve()
+
+    assert optb.status == "OPTIMAL"
+
+
+def test_information():
+    optb = OptimalBinningSketch(solver="cp")
+
+    with raises(NotFittedError):
+        optb.information()
+
+    optb.add(x, y)
+    optb.solve()
+
+    with raises(ValueError):
+        optb.information(print_level=-1)
+
+    optb.information(print_level=0)
+    optb.information(print_level=1)
+    optb.information(print_level=2)
+
+    optb = OptimalBinningSketch(solver="mip")
+    optb.add(x, y)
+    optb.solve()
+    optb.information(print_level=2)
+
+
+def test_verbose():
+    optb = OptimalBinningSketch(verbose=True)
+    optb.add(x, y)
+    optb.solve()
+
+    assert optb.status == "OPTIMAL"

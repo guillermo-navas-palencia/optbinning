@@ -527,7 +527,8 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._bsketch.merge(optbsketch._bsketch)
 
-        self._logger.info("Sketch: current sketch was merged.")
+        if self.verbose:
+            self._logger.info("Sketch: current sketch was merged.")
 
     def mergeable(self, optbsketch):
         """Check whether two OptimalBinningSketch instances can be merged.

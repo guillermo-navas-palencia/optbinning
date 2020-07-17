@@ -22,10 +22,12 @@ from .metrics import chi2_cramer_v_multi
 from .metrics import frequentist_pvalue
 from .metrics import hhi
 from .metrics import gini
+from .metrics import hellinger
 from .metrics import jeffrey
 from .metrics import jensen_shannon
 from .metrics import jensen_shannon_multivariate
 from .metrics import multiclass_binning_quality_score
+from .metrics import triangular
 
 
 COLORS_RGB = [
@@ -384,6 +386,8 @@ class BinningTable:
 
         self._iv = t_iv
         self._js = t_js
+        self._hellinger = hellinger(p_ev, p_nev, return_sum=True)
+        self._triangular = triangular(p_ev, p_nev, return_sum=True)
 
         # Compute HHI
         self._hhi = hhi(p_records)
@@ -675,14 +679,17 @@ class BinningTable:
             "    Gini index          {:>15.8f}\n"
             "    IV (Jeffrey)        {:>15.8f}\n"
             "    JS (Jensen-Shannon) {:>15.8f}\n"
+            "    Hellinger           {:>15.8f}\n"
+            "    Triangular          {:>15.8f}\n"
             "    HHI                 {:>15.8f}\n"
             "    HHI (normalized)    {:>15.8f}\n"
             "    Cramer's V          {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._gini, self._iv, self._js, self._hhi, self._hhi_norm,
-                     cramer_v, self._quality_score, df_tests_string)
+            ).format(self._gini, self._iv, self._js, self._hellinger,
+                     self._triangular, self._hhi, self._hhi_norm, cramer_v,
+                     self._quality_score, df_tests_string)
 
         if print_output:
             print(report)
@@ -732,6 +739,30 @@ class BinningTable:
         _check_is_built(self)
 
         return self._js
+
+    @property
+    def hellinger(self):
+        """The Hellinger divergence.
+
+        Returns
+        -------
+        hellinger : float
+        """
+        _check_is_built(self)
+
+        return self._hellinger
+
+    @property
+    def triangular(self):
+        """The triangular divergence.
+
+        Returns
+        -------
+        triangular : float
+        """
+        _check_is_built(self)
+
+        return self._triangular
 
     @property
     def quality_score(self):

@@ -24,8 +24,11 @@ not previously addressed.
 * **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 * **Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
 
-.. image:: doc/source/_images/binning_binary.png
-   :target: doc/source/_images/binning_binary.png
+.. list-table:: 
+
+    * - .. figure:: doc/source/_images/binning_binary.png
+
+      - .. figure:: doc/source/_images/binning_data_stream.gif
 
 
 .. contents:: **Table of Contents**
@@ -52,7 +55,7 @@ Dependencies
 OptBinning requires
 
 * matplotlib
-* numpy
+* numpy (>=1.16.1)
 * ortools (>=7.2)
 * pandas
 * scikit-learn (>=0.22.0)

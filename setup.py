@@ -51,8 +51,9 @@ class PyTest(TestCommand):
 # install requirements
 install_requires = [
     'matplotlib',
-    'numpy',
+    'numpy>=1.16.1',
     'ortools>=7.2',
+    'pympler',
     'pandas',
     'scipy',
     'scikit-learn>=0.22.0',

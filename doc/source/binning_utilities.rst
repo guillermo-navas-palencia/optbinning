@@ -97,3 +97,7 @@ and bounded by :math:`JSD(P||Q) \in [0, \log(2)]`. We note that these measures c
 .. autofunction:: optbinning.binning.metrics.jensen_shannon
 
 .. autofunction:: optbinning.binning.metrics.jensen_shannon_multivariate
+
+.. autofunction:: optbinning.binning.metrics.hellinger
+
+.. autofunction:: optbinning.binning.metrics.triangular

@@ -41,6 +41,10 @@ def test_params():
         optb.fit(x, y)
 
     with raises(ValueError):
+        optb = OptimalBinning(divergence="new_divergence")
+        optb.fit(x, y)
+
+    with raises(ValueError):
         optb = OptimalBinning(max_n_prebins=-2)
         optb.fit(x, y)
 

@@ -136,6 +136,22 @@ def test_numerical_default():
     assert optb.binning_table.quality_score == approx(0.0, rel=1e-2)
 
 
+def test_numerical_default_tdigest():
+    optb = OptimalBinningSketch(sketch="t-digest", eps=1e-4)
+    optb.add(x, y)
+    optb.solve()
+
+    assert optb.status == "OPTIMAL"
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+    optb.binning_table.analysis()
+    assert optb.binning_table.gini == approx(0.87541620, rel=1e-2)
+    assert optb.binning_table.js == approx(0.39378376, rel=1e-2)
+    assert optb.binning_table.quality_score == approx(0.0, rel=1e-2)
+
+
 def test_categorical_default_user_splits():
     x = np.array([
         'Working', 'State servant', 'Working', 'Working', 'Working',

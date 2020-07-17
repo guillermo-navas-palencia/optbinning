@@ -125,8 +125,11 @@ def auto_monotonic_data(n_nonevent, n_event):
     rectangular_area = (max_event_rate - min_event_rate) * n_prebins
 
     if n_prebins > 2:
-        hull = ConvexHull(points)
-        p_convex_hull = hull.volume / rectangular_area
+        try:
+            hull = ConvexHull(points)
+            p_convex_hull = hull.volume / rectangular_area
+        except:
+            p_convex_hull = 0
     else:
         p_convex_hull = 0
 
@@ -195,8 +198,11 @@ def auto_monotonic_data_continuous(n_records, sums):
     rectangular_area = (max_event_rate - min_event_rate) * n_prebins
 
     if n_prebins > 2:
-        hull = ConvexHull(points)
-        p_convex_hull = hull.volume / rectangular_area
+        try:
+            hull = ConvexHull(points)
+            p_convex_hull = hull.volume / rectangular_area
+        except:
+            p_convex_hull = 0
     else:
         p_convex_hull = 0
 

@@ -136,6 +136,30 @@ def test_numerical_default():
     assert optb.binning_table.quality_score == approx(0.0, rel=1e-2)
 
 
+def test_numerical_default_merge():
+    optb1 = OptimalBinningSketch(sketch="gk", eps=1e-4)
+    optb2 = OptimalBinningSketch(sketch="gk", eps=1e-4)
+
+    x1, x2 = x[:200], x[200:]
+    y1, y2 = y[:200], y[200:]
+
+    optb1.add(x1, y1)
+    optb2.add(x2, y2)
+    optb1.merge(optb2)
+
+    optb1.solve()
+
+    assert optb1.status == "OPTIMAL"
+
+    optb1.binning_table.build()
+    assert optb1.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+    optb1.binning_table.analysis()
+    assert optb1.binning_table.gini == approx(0.87541620, rel=1e-2)
+    assert optb1.binning_table.js == approx(0.39378376, rel=1e-2)
+    assert optb1.binning_table.quality_score == approx(0.0, rel=1e-2)
+
+
 def test_numerical_default_tdigest():
     optb = OptimalBinningSketch(sketch="t-digest", eps=1e-4)
     optb.add(x, y)
@@ -150,6 +174,30 @@ def test_numerical_default_tdigest():
     assert optb.binning_table.gini == approx(0.87541620, rel=1e-2)
     assert optb.binning_table.js == approx(0.39378376, rel=1e-2)
     assert optb.binning_table.quality_score == approx(0.0, rel=1e-2)
+
+
+def test_numerical_default_tdigest_merge():
+    optb1 = OptimalBinningSketch(sketch="t-digest", eps=1e-4)
+    optb2 = OptimalBinningSketch(sketch="t-digest", eps=1e-4)
+
+    x1, x2 = x[:200], x[200:]
+    y1, y2 = y[:200], y[200:]
+
+    optb1.add(x1, y1)
+    optb2.add(x2, y2)
+    optb1.merge(optb2)
+
+    optb1.solve()
+
+    assert optb1.status == "OPTIMAL"
+
+    optb1.binning_table.build()
+    assert optb1.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+    optb1.binning_table.analysis()
+    assert optb1.binning_table.gini == approx(0.87541620, rel=1e-2)
+    assert optb1.binning_table.js == approx(0.39378376, rel=1e-2)
+    assert optb1.binning_table.quality_score == approx(0.0, rel=1e-2)
 
 
 def test_categorical_default_user_splits():

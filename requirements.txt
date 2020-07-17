@@ -1,5 +1,5 @@
 matplotlib
-numpy
+numpy>=1.16.1
 ortools>=7.2
 pandas
 pympler

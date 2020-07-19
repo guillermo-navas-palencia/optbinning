@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+Version 0.7.0 (2020-07-19)
+--------------------------
+
+New features:
+
+   - Batch and streaming optimal binning.
+   - New parameter ``divergence`` to select the divergence measure to maximize.
+
+Tutorials:
+
+   - Tutorial: optimal binning sketch with binary target
+   - Tutorial: optimal binning sketch with binary target using PySpark
+
+Bugfixes:
+
+   - Catch error from Qhull library used by scipy.spatial.ConvexHull.
+
 
 Version 0.6.1 (2020-06-07)
 --------------------------

@@ -219,7 +219,8 @@ class OptimalBinningSketch(BaseEstimator):
         `tdigest <https://github.com/CamDavidsonPilon/tdigest>`_.
 
     eps : float, optional (default=1e-4)
-        Relative error epsilon.
+        Relative error epsilon. For ``sketch="gk"`` this is the absolute
+        precision, whereas for ``sketch="t-digest"`` is the relative precision.
 
     K : int, optional (default=25)
         Parameter excess growth K to compute compress threshold in t-digest.

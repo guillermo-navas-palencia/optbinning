@@ -38,6 +38,16 @@ Scorecard tutorials
    tutorials/tutorial_scorecard_continuous_target
 
 
+Optimal binning for batch and streaming data processing
+-------------------------------------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/tutorial_sketch_binary
+   tutorials/tutorial_sketch_binary_pyspark
+
+
 Optimal binning under uncertainty
 ---------------------------------
 

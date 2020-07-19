@@ -66,6 +66,16 @@ Getting started
 
 Please visit the OptBinning documentation (**current** release) http://gnpalencia.org/optbinning/. If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
+Tutorials
+---------
+
+* `Optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-tutorials>`_
+* `Binning process tutorials <http://gnpalencia.org/optbinning/tutorials.html#binning-process-tutorials>`_
+* `Scorecard tutorials <http://gnpalencia.org/optbinning/tutorials.html#scorecard-tutorials>`_
+* `Batch and stream optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-for-batch-and-streaming-data-processing>`_
+* `Optimal binning under uncertainty <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-under-uncertainty>`_
+
+
 Example: Optimal binning with binary target
 -------------------------------------------
 
@@ -178,7 +188,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.6.1)
+   optbinning (Version 0.7.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -186,6 +196,7 @@ Print overview information about the options settings, problem statistics, and t
        dtype                          numerical   * d
        prebinning_method                   cart   * d
        solver                                cp   * d
+       divergence                            iv   * d
        max_n_prebins                         20   * d
        min_prebin_size                     0.05   * d
        min_n_bins                            no   * d
@@ -285,7 +296,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
    
-   optbinning (Version 0.6.1)
+   optbinning (Version 0.7.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

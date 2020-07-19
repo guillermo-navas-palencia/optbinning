@@ -267,6 +267,8 @@ class OptimalBinning(BaseOptimalBinning):
         divergence), "js" (Jensen-Shannon), "hellinger" (Hellinger divergence)
         and "triangular" (triangular discrimination).
 
+        .. versionadded:: 0.7.0
+
     max_n_prebins : int (default=20)
         The maximum number of bins after pre-binning (prebins).
 

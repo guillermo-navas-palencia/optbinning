@@ -360,3 +360,56 @@ def auto_monotonic(n_nonevent, n_event, auto_mode):
 def auto_monotonic_continuous(n_records, sums, auto_mode):
     dict_data = auto_monotonic_data_continuous(n_records, sums)
     return _auto_monotonic_decision(dict_data, auto_mode)
+
+
+def _is_convex(x):
+    n = len(x)
+
+    convex = True
+    for i in range(1, n - 1):
+        if x[i+1] - 2 * x[i] + x[i-1] >= 0:
+            continue
+        else:
+            convex = False
+            break
+
+    return convex
+
+
+def _is_concave(x):
+    n = len(x)
+
+    concave = True
+    for i in range(1, n - 1):
+        if -x[i+1] + 2 * x[i] - x[i-1] >= 0:
+            continue
+        else:
+            concave = False
+            break
+
+    return concave
+
+
+def type_of_monotonic_trend(x):
+    if len(x) == 1:
+        return "undefined"
+
+    diff_sign = np.sign(x[1:] - x[:-1])
+    peak_valley = np.count_nonzero(diff_sign[1:] != diff_sign[:-1])
+
+    if peak_valley >= 1:
+        if diff_sign[0] == 1:
+            if _is_concave(x):
+                return "peak (concave)"
+            else:
+                return "peak"
+        else:
+            if _is_convex(x):
+                return "valley (convex)"
+            else:
+                return "valley"
+    else:
+        if np.all((x[1:] - x[:-1]) >= 0):
+            return "ascending"
+        else:
+            return "descending"

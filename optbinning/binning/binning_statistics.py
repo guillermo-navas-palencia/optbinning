@@ -15,6 +15,7 @@ import pandas as pd
 
 from sklearn.exceptions import NotFittedError
 
+from .auto_monotonic import type_of_monotonic_trend
 from .metrics import bayesian_probability
 from .metrics import binning_quality_score
 from .metrics import chi2_cramer_v
@@ -669,6 +670,9 @@ class BinningTable:
         else:
             df_tests_string = tab+"None"
 
+        # Monotonic trend
+        type_mono = type_of_monotonic_trend(self._event_rate[:-2])
+
         report = (
             "---------------------------------------------\n"
             "OptimalBinning: Binary Binning Table Analysis\n"
@@ -686,10 +690,12 @@ class BinningTable:
             "    Cramer's V          {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
             "\n"
+            "  Monotonic trend       {:>15}\n"
+            "\n"
             "  Significance tests\n\n{}\n"
             ).format(self._gini, self._iv, self._js, self._hellinger,
                      self._triangular, self._hhi, self._hhi_norm, cramer_v,
-                     self._quality_score, df_tests_string)
+                     self._quality_score, type_mono, df_tests_string)
 
         if print_output:
             print(report)
@@ -1070,6 +1076,14 @@ class MulticlassBinningTable:
         else:
             df_tests_string = tab+"None"
 
+        # Monotonic trend
+        mono_string = "    Class {:>2}            {:>15}\n"
+        monotonic_string = ""
+
+        for i in range(len(self.classes)):
+            type_mono = type_of_monotonic_trend(self._event_rate[:-2, i])
+            monotonic_string += mono_string.format(i, type_mono)
+
         report = (
             "-------------------------------------------------\n"
             "OptimalBinning: Multiclass Binning Table Analysis\n"
@@ -1083,9 +1097,11 @@ class MulticlassBinningTable:
             "    Cramer's V          {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
             "\n"
+            "  Monotonic trend\n\n{}"
+            "\n"
             "  Significance tests\n\n{}\n"
             ).format(self._js, self._hhi, self._hhi_norm, cramer_v,
-                     self._quality_score, df_tests_string)
+                     self._quality_score, monotonic_string, df_tests_string)
 
         if print_output:
             print(report)

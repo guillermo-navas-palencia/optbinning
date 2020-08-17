@@ -362,6 +362,30 @@ def auto_monotonic_continuous(n_records, sums, auto_mode):
     return _auto_monotonic_decision(dict_data, auto_mode)
 
 
+def _is_peak(x):
+    t = np.argmax(x)
+
+    t_asc = np.all(x[1:t+1] - x[:t] >= 0)
+    t_desc = np.all(x[t+1:] - x[t:-1] <= 0)
+
+    if t_asc and t_desc:
+        return True
+
+    return False
+
+
+def _is_valley(x):
+    t = np.argmin(x)
+
+    t_desc = np.all(x[1:t+1] - x[:t] <= 0)
+    t_asc = np.all(x[t+1:] - x[t:-1] >= 0)
+
+    if t_asc and t_desc:
+        return True
+
+    return False
+
+
 def _is_convex(x):
     n = len(x)
 
@@ -394,20 +418,19 @@ def type_of_monotonic_trend(x):
     if len(x) == 1:
         return "undefined"
 
-    diff_sign = np.sign(x[1:] - x[:-1])
-    peak_valley = np.count_nonzero(diff_sign[1:] != diff_sign[:-1])
-
-    if peak_valley >= 1:
-        if diff_sign[0] == 1:
+    if n_peaks_valleys(x) >= 1:
+        if _is_peak(x):
             if _is_concave(x):
                 return "peak (concave)"
             else:
                 return "peak"
-        else:
+        elif _is_valley(x):
             if _is_convex(x):
                 return "valley (convex)"
             else:
                 return "valley"
+        else:
+            return "no monotonic"
     else:
         if np.all((x[1:] - x[:-1]) >= 0):
             return "ascending"

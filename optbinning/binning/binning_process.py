@@ -8,6 +8,8 @@ Binning process.
 import numbers
 import time
 
+from multiprocessing import cpu_count
+from multiprocessing import Pool
 from warnings import warn
 
 import numpy as np
@@ -43,6 +45,95 @@ _METRICS = {
         "metrics": []
     }
 }
+
+
+def _effective_n_jobs(n_jobs):
+    # Joblib check
+    if n_jobs is None:
+        n_jobs = 1
+    elif n_jobs < 0:
+        n_jobs = max(cpu_count() + 1 + n_jobs, 1)
+
+    return n_jobs
+
+
+def _fit_variable(x, y, name, target_dtype, categorical_variables,
+                  binning_fit_params, max_n_prebins, min_prebin_size,
+                  min_n_bins, max_n_bins, min_bin_size, max_pvalue,
+                  max_pvalue_policy, special_codes, split_digits):
+    params = {}
+    dtype = _check_variable_dtype(x)
+
+    if categorical_variables is not None:
+        if name in categorical_variables:
+            dtype = "categorical"
+
+    if binning_fit_params is not None:
+        params = binning_fit_params.get(name, {})
+
+    if target_dtype == "binary":
+        optb = OptimalBinning(
+            name=name, dtype=dtype, max_n_prebins=max_n_prebins,
+            min_prebin_size=min_prebin_size,
+            min_n_bins=min_n_bins, max_n_bins=max_n_bins,
+            min_bin_size=min_bin_size, max_pvalue=max_pvalue,
+            max_pvalue_policy=max_pvalue_policy,
+            special_codes=special_codes,
+            split_digits=split_digits)
+    elif target_dtype == "continuous":
+        optb = ContinuousOptimalBinning(
+            name=name, dtype=dtype, max_n_prebins=max_n_prebins,
+            min_prebin_size=min_prebin_size,
+            min_n_bins=min_n_bins, max_n_bins=max_n_bins,
+            min_bin_size=min_bin_size, max_pvalue=max_pvalue,
+            max_pvalue_policy=max_pvalue_policy,
+            special_codes=special_codes,
+            split_digits=split_digits)
+    else:
+        if dtype == "categorical":
+            raise ValueError("MulticlassOptimalBinning does not support "
+                             "categorical variables.")
+        optb = MulticlassOptimalBinning(
+            name=name, max_n_prebins=max_n_prebins,
+            min_prebin_size=min_prebin_size,
+            min_n_bins=min_n_bins, max_n_bins=max_n_bins,
+            min_bin_size=min_bin_size, max_pvalue=max_pvalue,
+            max_pvalue_policy=max_pvalue_policy,
+            special_codes=special_codes,
+            split_digits=split_digits)
+
+    optb.set_params(**params)
+    optb.fit(x, y)
+
+    return dtype, optb
+
+
+def _fit_block(X, y, names, target_dtype, categorical_variables,
+               binning_fit_params, max_n_prebins, min_prebin_size,
+               min_n_bins, max_n_bins, min_bin_size, max_pvalue,
+               max_pvalue_policy, special_codes, split_digits):
+
+    variable_dtypes = {}
+    binned_variables = {}
+
+    for i, name in enumerate(names):
+        if isinstance(X, np.ndarray):
+            dtype, optb = _fit_variable(
+                X[:, i], y, name, target_dtype, categorical_variables,
+                binning_fit_params, max_n_prebins, min_prebin_size, min_n_bins,
+                max_n_bins, min_bin_size, max_pvalue, max_pvalue_policy,
+                special_codes, split_digits)
+        else:
+            dtype, optb = _fit_variable(
+                X[name], y, name, target_dtype, categorical_variables,
+                binning_fit_params, max_n_prebins, min_prebin_size, min_n_bins,
+                max_n_bins, min_bin_size, max_pvalue, max_pvalue_policy,
+                special_codes, split_digits)
+
+        variable_dtypes[name] = dtype
+        binned_variables[name] = optb
+
+    return variable_dtypes, binned_variables
 
 
 def _check_selection_criteria(selection_criteria, target_dtype):
@@ -90,7 +181,8 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       min_n_bins, max_n_bins, min_bin_size, max_bin_size,
                       max_pvalue, max_pvalue_policy, selection_criteria,
                       categorical_variables, special_codes, split_digits,
-                      binning_fit_params, binning_transform_params, verbose):
+                      binning_fit_params, binning_transform_params, n_jobs,
+                      verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -177,6 +269,11 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
         if not isinstance(binning_transform_params, dict):
             raise TypeError("binning_transform_params must be a dict.")
 
+    if n_jobs is not None:
+        if not isinstance(n_jobs, numbers.Integral):
+            raise ValueError("n_jobs must be an integer or None; got {}."
+                             .format(n_jobs))
+
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
@@ -251,6 +348,12 @@ class BinningProcess(BaseEstimator):
         Dictionary with optimal binning transform options for specific
         variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
 
+    n_jobs : int or None, optinal (default=None)
+        Number of cores to run in parallel while binning variables.
+        ``None`` means 1 core. ``-1`` means using all processors.
+
+        .. versionadded:: 0.7.1
+
     verbose : bool (default=False)
         Enable verbose output.
 
@@ -286,7 +389,7 @@ class BinningProcess(BaseEstimator):
                  max_pvalue_policy="consecutive", selection_criteria=None,
                  categorical_variables=None, special_codes=None,
                  split_digits=None, binning_fit_params=None,
-                 binning_transform_params=None, verbose=False):
+                 binning_transform_params=None, n_jobs=None, verbose=False):
 
         self.variable_names = variable_names
 
@@ -307,6 +410,7 @@ class BinningProcess(BaseEstimator):
         self.special_codes = special_codes
         self.split_digits = split_digits
         self.categorical_variables = categorical_variables
+        self.n_jobs = n_jobs
         self.verbose = verbose
 
         # auxiliary
@@ -669,19 +773,72 @@ class BinningProcess(BaseEstimator):
             self._logger.info("Dataset: number of variables: {}."
                               .format(self._n_variables))
 
-        for i, name in enumerate(self.variable_names):
-            if isinstance(X, np.ndarray):
-                self._fit_variable(X[:, i], y, name)
-            else:
-                self._fit_variable(X[name], y, name)
+        # Number of jobs
+        n_jobs = _effective_n_jobs(self.n_jobs)
 
-        self._time_total = time.perf_counter() - time_init
+        if n_jobs == 1:
+            for i, name in enumerate(self.variable_names):
+                if isinstance(X, np.ndarray):
+                    dtype, optb = _fit_variable(
+                        X[:, i], y, name, self._target_dtype,
+                        self.categorical_variables, self.binning_fit_params,
+                        self.max_n_prebins, self.min_prebin_size,
+                        self.min_n_bins, self.max_n_bins, self.min_bin_size,
+                        self.max_pvalue, self.max_pvalue_policy,
+                        self.special_codes, self.split_digits)
+                else:
+                    dtype, optb = _fit_variable(
+                        X[name], y, name, self._target_dtype,
+                        self.categorical_variables, self.binning_fit_params,
+                        self.max_n_prebins, self.min_prebin_size,
+                        self.min_n_bins, self.max_n_bins, self.min_bin_size,
+                        self.max_pvalue, self.max_pvalue_policy,
+                        self.special_codes, self.split_digits)
+
+                self._variable_dtypes[name] = dtype
+                self._binned_variables[name] = optb
+        else:
+            pool = Pool(processes=n_jobs)
+
+            ids = np.arange(len(self.variable_names))
+            id_blocks = np.array_split(ids, n_jobs)
+            names = np.asarray(self.variable_names)
+
+            if isinstance(X, np.ndarray):
+                blocks = [pool.apply_async(
+                    _fit_block, args=(
+                        X[:, id_block], y, names[id_block],
+                        self._target_dtype, self.categorical_variables,
+                        self.binning_fit_params, self.max_n_prebins,
+                        self.min_prebin_size, self.min_n_bins,
+                        self.max_n_bins, self.min_bin_size,
+                        self.max_pvalue, self.max_pvalue_policy,
+                        self.special_codes, self.split_digits))
+                         for id_block in id_blocks]
+            else:
+                blocks = [pool.apply_async(
+                    _fit_block, args=(
+                        X[names[id_block]], y, names[id_block],
+                        self._target_dtype, self.categorical_variables,
+                        self.binning_fit_params, self.max_n_prebins,
+                        self.min_prebin_size, self.min_n_bins,
+                        self.max_n_bins, self.min_bin_size,
+                        self.max_pvalue, self.max_pvalue_policy,
+                        self.special_codes, self.split_digits))
+                         for id_block in id_blocks]
+
+            for b in blocks:
+                vt, bv = b.get()
+                self._variable_dtypes.update(vt)
+                self._binned_variables.update(bv)
 
         if self.verbose:
             self._logger.info("Binning process variable selection...")
 
         # Compute binning statistics and decide whether a variable is selected
         self._binning_selection_criteria()
+
+        self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
             self._logger.info("Binning process terminated. Time: {:.4f}s"
@@ -692,58 +849,6 @@ class BinningProcess(BaseEstimator):
         self._is_fitted = True
 
         return self
-
-    def _fit_variable(self, x, y, name):
-        params = {}
-        dtype = _check_variable_dtype(x)
-
-        if self.verbose:
-            self._logger.info("Binning variable: {}".format(name))
-
-        if self.categorical_variables is not None:
-            if name in self.categorical_variables:
-                dtype = "categorical"
-
-        self._variable_dtypes[name] = dtype
-
-        if self.binning_fit_params is not None:
-            params = self.binning_fit_params.get(name, {})
-
-        if self._target_dtype == "binary":
-            optb = OptimalBinning(
-                name=name, dtype=dtype, max_n_prebins=self.max_n_prebins,
-                min_prebin_size=self.min_prebin_size,
-                min_n_bins=self.min_n_bins, max_n_bins=self.max_n_bins,
-                min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
-                max_pvalue_policy=self.max_pvalue_policy,
-                special_codes=self.special_codes,
-                split_digits=self.split_digits)
-        elif self._target_dtype == "continuous":
-            optb = ContinuousOptimalBinning(
-                name=name, dtype=dtype, max_n_prebins=self.max_n_prebins,
-                min_prebin_size=self.min_prebin_size,
-                min_n_bins=self.min_n_bins, max_n_bins=self.max_n_bins,
-                min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
-                max_pvalue_policy=self.max_pvalue_policy,
-                special_codes=self.special_codes,
-                split_digits=self.split_digits)
-        else:
-            if dtype == "categorical":
-                raise ValueError("MulticlassOptimalBinning does not support "
-                                 "categorical variables.")
-            optb = MulticlassOptimalBinning(
-                name=name, max_n_prebins=self.max_n_prebins,
-                min_prebin_size=self.min_prebin_size,
-                min_n_bins=self.min_n_bins, max_n_bins=self.max_n_bins,
-                min_bin_size=self.min_bin_size, max_pvalue=self.max_pvalue,
-                max_pvalue_policy=self.max_pvalue_policy,
-                special_codes=self.special_codes,
-                split_digits=self.split_digits)
-
-        optb.set_params(**params)
-        optb.fit(x, y)
-
-        self._binned_variables[name] = optb
 
     def _transform(self, X, metric, metric_special, metric_missing,
                    show_digits, check_input):

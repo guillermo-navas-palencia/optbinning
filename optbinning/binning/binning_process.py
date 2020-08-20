@@ -348,7 +348,7 @@ class BinningProcess(BaseEstimator):
         Dictionary with optimal binning transform options for specific
         variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
 
-    n_jobs : int or None, optinal (default=None)
+    n_jobs : int or None, optional (default=None)
         Number of cores to run in parallel while binning variables.
         ``None`` means 1 core. ``-1`` means using all processors.
 
@@ -376,7 +376,7 @@ class BinningProcess(BaseEstimator):
         }
 
     where several metrics can be combined. For example, above dictionary
-    indicates that top 25% variables with "metric_1" in [0, 1] and "metric:2"
+    indicates that top 25% variables with "metric_1" in [0, 1] and "metric_2"
     greater or equal than 0.02 are selected. Supported key values are:
 
     * keys ``min`` and ``max`` support numerical values.
@@ -475,17 +475,23 @@ class BinningProcess(BaseEstimator):
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default
-            transformation metric for each target type is applied.
+            transformation metric for each target type is applied. For binary
+            target options are: "woe" (default), "event_rate", "indices" and
+            "bins". For continuous target options are: "mean" (default),
+            "indices" and "bins". For multiclass target options are:
+            "mean_woe" (default), "weighted_mean_woe", "indices" and "bins".
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
-            event rate, and any numerical value.
+            event rate for a binary target, and any numerical value for other
+            targets.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
-            event rate and any numerical value.
+            event rate for a binary target, and any numerical value for other
+            targets.
 
         show_digits : int, optional (default=2)
             The number of significant digits of the bin column. Applies when
@@ -515,17 +521,23 @@ class BinningProcess(BaseEstimator):
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default
-            transformation metric for each target type is applied.
+            transformation metric for each target type is applied. For binary
+            target options are: "woe" (default), "event_rate", "indices" and
+            "bins". For continuous target options are: "mean" (default),
+            "indices" and "bins". For multiclass target options are:
+            "mean_woe" (default), "weighted_mean_woe", "indices" and "bins".
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
-            event rate, and any numerical value.
+            event rate for a binary target, and any numerical value for other
+            targets.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
             Supported metrics are "empirical" to use the empirical WoE or
-            event rate and any numerical value.
+            event rate for a binary target, and any numerical value for other
+            targets.
 
         show_digits : int, optional (default=2)
             The number of significant digits of the bin column. Applies when
@@ -775,6 +787,10 @@ class BinningProcess(BaseEstimator):
 
         # Number of jobs
         n_jobs = _effective_n_jobs(self.n_jobs)
+
+        if self.verbose:
+            self._logger.info("Options: number of jobs (cores): {}."
+                              .format(n_jobs))
 
         if n_jobs == 1:
             for i, name in enumerate(self.variable_names):

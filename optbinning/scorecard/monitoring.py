@@ -17,119 +17,231 @@ http://shichen.name/scorecard/reference/perf_psi.html
 import numpy as np
 import pandas as pd
 
+from scipy import stats
+from sklearn.exceptions import NotFittedError
+from sklearn.utils.multiclass import type_of_target
+
 from ..binning.binning_statistics import bin_str_format
 from ..binning.metrics import jeffrey
+from ..binning.metrics import frequentist_pvalue
 from ..binning.prebinning import PreBinning
 
 
-class BinningMonitoring:
-    def __init__(self):
-        pass
+def _check_parameters(method, n_bins, min_bin_size, show_digits, verbose):
+    pass
 
 
 class ScorecardMonitoring:
     def __init__(self, method="uniform", n_bins=20, min_bin_size=0.05,
-                 show_digits=2):
-        
+                 show_digits=2, verbose=False):
+
         self.method = method
         self.n_bins = n_bins
         self.min_bin_size = min_bin_size
         self.show_digits = show_digits
+        self.verbose = verbose
 
         # auxiliary data
         self._splits = None
-        self._n_records_a = None
-        self._n_records_e = None
-        self._t_n_records_a = None
-        self._t_n_records_e = None
+        self._df_psi = None
+        self._df_tests = None
+        self._target_dtype = None
+
+        self._is_fitted = False
 
     def fit(self, score_actual, y_actual, score_expected, y_expected):
-        # Fit computes all required information => no self._ are needed.
 
-        prebinning = PreBinning(problem_type="classification",
+        _check_parameters(self.method, self.n_bins, self.min_bin_size,
+                          self.show_digits, self.verbose)
+
+        target_dtype = type_of_target(y_actual)
+        target_dtype_e = type_of_target(y_expected)
+
+        if target_dtype not in ("binary", "continuous"):
+            raise ValueError("")
+
+        if target_dtype != target_dtype_e:
+            raise ValueError("")
+
+        self._target_dtype = target_dtype
+
+        if target_dtype == "binary":
+            problem_type = "classification"
+        else:
+            problem_type = "regression"
+
+        prebinning = PreBinning(problem_type=problem_type,
                                 method=self.method,
                                 n_bins=self.n_bins,
                                 min_bin_size=self.min_bin_size
                                 ).fit(score_actual, y_actual)
 
         splits = prebinning.splits
+        self._splits = splits
 
         n_splits = len(splits)
         n_bins = n_splits + 1
 
         indices_a = np.digitize(score_actual, splits, right=True)
         indices_e = np.digitize(score_expected, splits, right=True)
-        
-        n_nonevent_a = np.empty(n_bins).astype(np.int64)
-        n_event_a = np.empty(n_bins).astype(np.int64)
-        n_nonevent_e = np.empty(n_bins).astype(np.int64)
-        n_event_e = np.empty(n_bins).astype(np.int64)
 
-        y0_a = (y_actual == 0)
-        y1_a = ~ y0_a
+        if target_dtype == "binary":
+            n_nonevent_a = np.empty(n_bins).astype(np.int64)
+            n_event_a = np.empty(n_bins).astype(np.int64)
+            n_nonevent_e = np.empty(n_bins).astype(np.int64)
+            n_event_e = np.empty(n_bins).astype(np.int64)
 
-        y0_e = (y_expected == 0)
-        y1_e = ~ y0_e
+            y0_a = (y_actual == 0)
+            y1_a = ~ y0_a
 
-        for i in range(n_bins):
-            mask_a = (indices_a == i)
-            n_nonevent_a[i] = np.count_nonzero(y0_a & mask_a)
-            n_event_a[i] = np.count_nonzero(y1_a & mask_a)
+            y0_e = (y_expected == 0)
+            y1_e = ~ y0_e
 
-            mask_e = (indices_e == i)
-            n_nonevent_e[i] = np.count_nonzero(y0_e & mask_e)
-            n_event_e[i] = np.count_nonzero(y1_e & mask_e)
+            for i in range(n_bins):
+                mask_a = (indices_a == i)
+                n_nonevent_a[i] = np.count_nonzero(y0_a & mask_a)
+                n_event_a[i] = np.count_nonzero(y1_a & mask_a)
 
-        self._splits = splits
+                mask_e = (indices_e == i)
+                n_nonevent_e[i] = np.count_nonzero(y0_e & mask_e)
+                n_event_e[i] = np.count_nonzero(y1_e & mask_e)
 
-        self._n_records_a = n_nonevent_a + n_event_a
-        self._n_records_e = n_nonevent_e + n_event_e
-        self._t_n_records_a = self._n_records_a.sum()
-        self._t_n_records_e = self._n_records_e.sum()
+            n_records_a = n_nonevent_a + n_event_a
+            n_records_e = n_nonevent_e + n_event_e
 
-        self._n_nonevent_a = n_nonevent_a
-        self._n_event_a = n_event_a
-        self._n_nonevent_e = n_nonevent_e
-        self._n_event_e = n_event_e
+        else:
+            n_records_a = np.empty(n_bins).astype(np.int64)
+            n_records_e = np.empty(n_bins).astype(np.int64)
+            mean_a = np.empty(n_bins)
+            mean_e = np.empty(n_bins)
+            std_a = np.empty(n_bins)
+            std_e = np.empty(n_bins)
 
-    def statistics(self):
-        # Chi-squared test and KS over binned data.
+            for i in range(n_bins):
+                mask_a = (indices_a == i)
+                n_records_a[i] = np.count_nonzero(mask_a)
+                mean_a[i] = y_actual[mask_a].mean()
+                std_a[i] = y_actual[mask_a].std()
 
-        # Information PSI: total
+                mask_e = (indices_e == i)
+                n_records_e[i] = np.count_nonzero(mask_e)
+                mean_e[i] = y_expected[mask_e].mean()
+                std_e[i] = y_expected[mask_e].std()
 
-        event_rate_a = self._n_event_a / n_records_a
-        event_rate_e = self._n_event_e / n_records_e
-        t_event_rate_a = self._n_event_a.sum() / self._t_n_records_a
-        t_event_rate_e = self._n_event_e.sum() / self._t_n_records_e
+        # Population Stability Information (PSI)
 
-    def psi(self):
-        p_records_a = self._n_records_a / self._t_n_records_a
-        p_records_e = self._n_records_e / self._t_n_records_e
+        t_n_records_a = n_records_a.sum()
+        t_n_records_e = n_records_e.sum()
+        p_records_a = n_records_a / t_n_records_a
+        p_records_e = n_records_e / t_n_records_e
 
         psi = jeffrey(p_records_a, p_records_e, return_sum=False)
         t_psi = psi.sum()
-        self._t_psi = t_psi
 
-        bins = np.concatenate([[-np.inf], self._splits, [np.inf]])
+        bins = np.concatenate([[-np.inf], splits, [np.inf]])
         bin_str = bin_str_format(bins, self.show_digits)
 
-        df = pd.DataFrame({
+        df_psi = pd.DataFrame({
             "Bin": bin_str,
-            "Count A": self._n_records_a,
-            "Count E": self._n_records_e,
+            "Count A": n_records_a,
+            "Count E": n_records_e,
             "Count (%) A": p_records_a,
             "Count (%) E": p_records_e,
             "PSI": psi
             })
 
-        totals = ["", self._t_n_records_a, self._t_n_records_e, 1, 1, t_psi]
-        df.loc["Totals"] = totals
+        totals = ["", t_n_records_a, t_n_records_e, 1, 1, t_psi]
+        df_psi.loc["Totals"] = totals
 
-        return df
+        self._df_psi = df_psi
+
+        # Significance tests
+        t_statistics = []
+        p_values = []
+
+        if target_dtype == "binary":
+            event_rate_a = n_event_a / n_records_a
+            event_rate_e = n_event_e / n_records_e
+
+            for i in range(n_bins):
+                obs = np.array([
+                    [n_nonevent_a[i], n_nonevent_e[i]],
+                    [n_event_a[i], n_event_e[i]]])
+
+                t, p = frequentist_pvalue(obs, "chi2")
+
+                t_statistics.append(t)
+                p_values.append(p)
+
+            df_tests = pd.DataFrame({
+                "Bin": bin_str,
+                "Count A": n_records_a,
+                "Count E": n_records_e,
+                "Event rate A": event_rate_a,
+                "Event rate E": event_rate_e,
+                "statistic": t_statistics,
+                "p-value": p_values
+                })
+        else:
+            for i in range(n_bins):
+                t, p = stats.ttest_ind_from_stats(
+                    mean_a[i], std_a[i], n_records_a[i],
+                    mean_e[i], std_e[i], n_records_e[i], False)
+
+                t_statistics.append(t)
+                p_values.append(p)
+
+            df_tests = pd.DataFrame({
+                "Bin": bin_str,
+                "Count A": n_records_a,
+                "Count E": n_records_e,
+                "Mean A": mean_a,
+                "Mean E": mean_e,
+                "Std A": std_a,
+                "Std E": std_e,
+                "statistic": t_statistics,
+                "p-value": p_values
+                })
+
+        self._df_tests = df_tests
+
+        self._is_fitted = True
+
+    def statistics(self):
+        # PSI
+        # KS over binned data.
+        # PAI
+        # p-value
+        self._check_is_fitted()
+
+        pass
+
+    def psi(self):
+        self._check_is_fitted()
+
+        return self._df_psi
+
+    def tests(self):
+        self._check_is_fitted()
+
+        return self._df_tests
 
     def plot_psi(self):
+        self._check_is_fitted()
+
+        # Plot depending on target dtype.
+        # n_records two bars. => self._df_psi
+        # event rate (binary), mean (continuous)
         pass
+
+    def _check_is_fitted(self):
+        if not self._is_fitted:
+            raise NotFittedError("This {} instance is not fitted yet. Call "
+                                 "'fit' with appropriate arguments."
+                                 .format(self.__class__.__name__))
 
     @property
     def splits(self):
+        self._check_is_fitted()
+
         self._splits

@@ -1,8 +1,7 @@
 """
-Population Stability Index (PSI)
+Scorecard monitoring (System stability report)
 
 References:
-https://www.mdpi.com/2227-9091/7/2/53
 https://mwburke.github.io/data%20science/2018/04/29/population-stability-index.html
 https://www.lexjansen.com/wuss/2017/47_Final_Paper_PDF.pdf
 https://www.listendata.com/2015/05/population-stability-index.html
@@ -13,6 +12,7 @@ http://shichen.name/scorecard/reference/perf_psi.html
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import numbers
 
 import numpy as np
 import pandas as pd
@@ -25,14 +25,84 @@ from ..binning.binning_statistics import bin_str_format
 from ..binning.metrics import jeffrey
 from ..binning.metrics import frequentist_pvalue
 from ..binning.prebinning import PreBinning
+from ..logging import Logger
 
 
-def _check_parameters(method, n_bins, min_bin_size, show_digits, verbose):
+class VariableMonitoring:
+    def __init__(self, scorecard, show_digits):
+        self.scorecard = scorecard
+        self.show_digits = show_digits
+
+        # logger
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
+
+        self._is_fitted = False
+
+    def fit(self, df_actual, df_expected, metric_special=0, metric_missing=0):
+        # checks
+
+        if not self.scorecard._is_fitted:
+            self.scorecard.fit(df_actual, metric_special, metric_missing,
+                               self.show_digits)
+
+        # transformed df_actual
+        bins_actual = self.scorecard.binning_process.transform(
+            df_actual, "bins", metric_special, metric_missing,
+            self.show_digits)
+
+        bins_expected = self.scorecard.binning_process.transform(
+            df_expected, "bins", metric_special, metric_missing,
+            self.show_digits)
+
+    def report(self):
+        """Characteristic analysis report."""
+        pass
+
+
+def print_psi_report(df_psi):
+
+    t_psi = df_psi.PSI.values[-1]
+    psi = df_psi.PSI.values[:-1]
+    indices = np.digitize(psi, [0.1, 0.25], right=True)
+
+    psi_bins = np.empty(3).astype(np.int64)
+    for i in range(2):
+        mask = (indices == i)
+        psi_bins[i] = len(psi[mask])
+
+    p_psi_bins = psi_bins / sum(psi_bins)
+
+    if t_psi < 0.1:
+        psi_veredict = "No significant change"
+    elif t_psi < 0.25:
+        psi_veredict = "Requires investigation"
+    else:
+        psi_veredict = "Significance change"
+
+    psi_stats = (
+        "Population Stability Index (PSI)\n"
+        "----------------------------------------------\n"
+        ""
+        "\n"
+        "PSI total:     {:>7.4f} ({})\n"
+        "\n"
+        "   PSI bin\n"
+        "[0.00, 0.10)        {:>2} ({:>7.2%})\n"
+        "[0.10, 0.25)        {:>2} ({:>7.2%})\n"
+        "[0.25, Inf+)        {:>2} ({:>7.2%})\n"
+        ).format(t_psi, psi_veredict, psi_bins[0], p_psi_bins[0], psi_bins[1],
+                 p_psi_bins[1], psi_bins[2], p_psi_bins[2])
+
+    print(psi_stats)
+
+
+def print_tests_report(df_tests):
     pass
 
 
 class ScorecardMonitoring:
-    def __init__(self, method="uniform", n_bins=20, min_bin_size=0.05,
+    def __init__(self, method="cart", n_bins=20, min_bin_size=0.05,
                  show_digits=2, verbose=False):
 
         self.method = method
@@ -47,21 +117,67 @@ class ScorecardMonitoring:
         self._df_tests = None
         self._target_dtype = None
 
+        # logger
+        self._class_logger = Logger(__name__)
+        self._logger = self._class_logger.logger
+
         self._is_fitted = False
 
     def fit(self, score_actual, y_actual, score_expected, y_expected):
+        """Fit monitoring with actual and expected data.
 
-        _check_parameters(self.method, self.n_bins, self.min_bin_size,
-                          self.show_digits, self.verbose)
+        Parameters
+        ----------
+        score_actual : array-like, shape = (n_samples_actual,)
+            Score of the training or actual input samples.
+
+        y_actual : array-like, shape = (n_samples_actual,)
+            Target of the training or actual input samples.
+
+        score_expected : array-like, shape = (n_samples_expected,)
+            Score of the test or expected input samples.
+
+        y_expected : array-like, shape = (n_samples_expected,)
+            Target of the training or actual input samples.
+        """
+
+        # Check parameters
+        if self.method not in ("uniform", "quantile", "cart"):
+            raise ValueError('Invalid value for prebinning_method. Allowed '
+                             'string values are "cart", "quantile" and '
+                             '"uniform".')
+
+        if self.n_bins is not None:
+            if (not isinstance(self.n_bins, numbers.Integral) or
+                    self.n_bins <= 0):
+                raise ValueError("n_bins must be a positive integer; got {}."
+                                 .format(self.n_bins))
+
+        if self.min_bin_size is not None:
+            if (not isinstance(self.min_bin_size, numbers.Number) or
+                    not 0. < self.min_bin_size <= 0.5):
+                raise ValueError("min_bin_size must be in (0, 0.5]; got {}."
+                                 .format(self.min_bin_size))
+
+        if (not isinstance(self.show_digits, numbers.Integral) or
+                not 0 <= self.show_digits <= 8):
+            raise ValueError("show_digits must be an integer in [0, 8]; "
+                             "got {}.".format(self.show_digits))
+
+        if not isinstance(self.verbose, bool):
+            raise TypeError("verbose must be a boolean; got {}."
+                            .format(self.verbose))
 
         target_dtype = type_of_target(y_actual)
         target_dtype_e = type_of_target(y_expected)
 
         if target_dtype not in ("binary", "continuous"):
-            raise ValueError("")
+            raise ValueError("Target type {} is not supported."
+                             .format(target_dtype))
 
         if target_dtype != target_dtype_e:
-            raise ValueError("")
+            raise ValueError("Target types must coincide; {} != {}."
+                             .format(target_dtype, target_dtype_e))
 
         self._target_dtype = target_dtype
 
@@ -207,14 +323,11 @@ class ScorecardMonitoring:
 
         self._is_fitted = True
 
-    def statistics(self):
-        # PSI
-        # KS over binned data.
-        # PAI
-        # p-value
+    def report(self):
+        """System stability report."""
         self._check_is_fitted()
 
-        pass
+        print_psi_report(self._df_psi)
 
     def psi(self):
         self._check_is_fitted()

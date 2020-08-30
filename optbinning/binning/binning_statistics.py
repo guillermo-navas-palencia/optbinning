@@ -15,6 +15,7 @@ import pandas as pd
 
 from sklearn.exceptions import NotFittedError
 
+from ..formatting import dataframe_to_string
 from .auto_monotonic import type_of_monotonic_trend
 from .metrics import bayesian_probability
 from .metrics import binning_quality_score
@@ -390,6 +391,9 @@ class BinningTable:
         self._hellinger = hellinger(p_ev, p_nev, return_sum=True)
         self._triangular = triangular(p_ev, p_nev, return_sum=True)
 
+        # Compute KS
+        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+
         # Compute HHI
         self._hhi = hhi(p_records)
         self._hhi_norm = hhi(p_records, normalized=True)
@@ -663,12 +667,11 @@ class BinningTable:
         if pvalue_test == "fisher":
             df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
 
-        tab = "    "
+        tab = 4
         if len(df_tests):
-            df_tests_string = tab + df_tests.to_string(index=False).replace(
-                "\n", "\n"+tab)
+            df_tests_string = dataframe_to_string(df_tests, tab)
         else:
-            df_tests_string = tab+"None"
+            df_tests_string = " " * tab + "None"
 
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._event_rate[:-2])
@@ -685,6 +688,7 @@ class BinningTable:
             "    JS (Jensen-Shannon) {:>15.8f}\n"
             "    Hellinger           {:>15.8f}\n"
             "    Triangular          {:>15.8f}\n"
+            "    KS                  {:>15.8f}\n"
             "    HHI                 {:>15.8f}\n"
             "    HHI (normalized)    {:>15.8f}\n"
             "    Cramer's V          {:>15.8f}\n"
@@ -694,8 +698,8 @@ class BinningTable:
             "\n"
             "  Significance tests\n\n{}\n"
             ).format(self._gini, self._iv, self._js, self._hellinger,
-                     self._triangular, self._hhi, self._hhi_norm, cramer_v,
-                     self._quality_score, type_mono, df_tests_string)
+                     self._triangular, self._ks, self._hhi, self._hhi_norm,
+                     cramer_v, self._quality_score, type_mono, df_tests_string)
 
         if print_output:
             print(report)
@@ -1069,12 +1073,11 @@ class MulticlassBinningTable:
                 "p-value": p_values
             })
 
-        tab = "    "
+        tab = 4
         if len(df_tests):
-            df_tests_string = tab + df_tests.to_string(index=False).replace(
-                "\n", "\n"+tab)
+            df_tests_string = dataframe_to_string(df_tests, 4)
         else:
-            df_tests_string = tab+"None"
+            df_tests_string = " " * tab + "None"
 
         # Monotonic trend
         mono_string = "    Class {:>2}            {:>15}\n"

@@ -6,6 +6,7 @@ Scorecard development.
 # Copyright (C) 2020
 
 import numbers
+import pickle
 import time
 
 import numpy as np
@@ -411,6 +412,40 @@ class Scorecard(BaseEstimator):
             columns = main_columns + rest_columns
 
         return self._df_scorecard[columns]
+
+    @classmethod
+    def load(cls, path):
+        """Load scorecard from pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+
+        Example
+        -------
+        >>> from optbinning import Scorecard
+        >>> scorecard = Scorecard.load("my_scorecard.pkl")
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    def save(self, path):
+        """Save scorecard to pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
 
     def _fit(self, df, metric_special, metric_missing, show_digits,
              check_input):

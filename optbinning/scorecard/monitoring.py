@@ -1,12 +1,5 @@
 """
 Scorecard monitoring (System stability report)
-
-References:
-https://mwburke.github.io/data%20science/2018/04/29/population-stability-index.html
-https://www.lexjansen.com/wuss/2017/47_Final_Paper_PDF.pdf
-https://www.listendata.com/2015/05/population-stability-index.html
-http://ucanalytics.com/blogs/population-stability-index-psi-banking-case-study/
-http://shichen.name/scorecard/reference/perf_psi.html
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
@@ -29,6 +22,7 @@ from ..formatting import dataframe_to_string
 from ..logging import Logger
 from .metrics import gini
 from .metrics import imbalanced_classification_metrics
+from .metrics import regression_metrics
 from .scorecard import Scorecard
 
 
@@ -258,22 +252,26 @@ class ScorecardMonitoring(BaseEstimator):
         self._check_is_fitted()
 
     def psi_table(self):
+        """"""
         self._check_is_fitted()
 
         return self._df_psi
 
     def tests_table(self):
+        """"""
         self._check_is_fitted()
 
         return self._df_tests
 
-    def psi_plot(self):
-        self._check_is_fitted()
+    def psi_plot(self, savefig=None):
+        """Plot Population Stability Index (PSI).
 
-        # Plot depending on target dtype.
-        # n_records two bars. => self._df_psi
-        # event rate (binary), mean (continuous)
-        pass
+        Parameters
+        ----------
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+        """
+        self._check_is_fitted()
 
     def _fit_system(self, df_actual, y_actual, df_expected, y_expected):
 
@@ -477,8 +475,23 @@ class ScorecardMonitoring(BaseEstimator):
 
         self._df_target_analysis = df_target
 
-    def _system_target_continuous(self):
-        self._df_target_analysis = None
+    def _system_target_continuous(self, y_actual, y_expected):
+
+        mean_a = y_actual.mean()
+        mean_e = y_expected.mean()
+        std_a = y_actual.std()
+        std_e = y_expected.std()
+
+        p25_a, median_a, p75_a = np.percentile(y_actual, [25, 50, 75])
+        p25_e, median_e, p75_e = np.percentile(y_expected, [25, 50, 75])
+
+        df_target = pd.DataFrame({
+            "Metric": ["Mean", "Std", "p25", "Median", "p75"],
+            "Actual": [mean_a, std_a, p25_a, median_a, p75_a],
+            "Expected": [mean_e, std_e, p25_e, median_e, p75_e]
+            })
+
+        self._df_target_analysis = df_target
 
     def _system_performance_binary(self, df_actual, df_expected):
         # Metrics derived from confusion matrix
@@ -517,7 +530,28 @@ class ScorecardMonitoring(BaseEstimator):
         self._df_performance = df_performance
 
     def _system_performance_continuous(self, df_actual, df_expected):
-        self._df_performance = None
+        y_true_a = df_actual[self.target]
+        y_pred_a = self.scorecard.predict(df_actual)
+        d_metrics_a = regression_metrics(y_true_a, y_pred_a)
+
+        y_true_e = df_expected[self.target]
+        y_pred_e = self.scorecard.predict(df_expected)
+        d_metrics_e = regression_metrics(y_true_e, y_pred_e)
+
+        metric_names = list(d_metrics_a.keys())
+        metrics_a = list(d_metrics_a.values())
+        metrics_e = list(d_metrics_e.values())
+
+        diff = np.array(metrics_a) - np.array(metrics_e)
+
+        df_performance = pd.DataFrame({
+            "Metric": metric_names,
+            "Actual": metrics_a,
+            "Expected": metrics_e,
+            "Diff A - E": diff,
+            })
+
+        self._df_performance = df_performance
 
     def _fit_variables(self, df_actual, df_expected):
         pass

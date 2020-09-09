@@ -13,6 +13,7 @@ from sklearn.metrics import explained_variance_score
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import median_absolute_error
+from sklearn.metrics import r2_score
 from sklearn.metrics import roc_curve
 
 
@@ -83,6 +84,27 @@ def imbalanced_classification_metrics(y_true, y_pred):
     return d_metrics
 
 
+def mean_absolute_percentage_error(y_true, y_pred):
+    pass
+
+
+def median_absolute_percentage_error(y_true, y_pred):
+    pass
+
+
+def mean_percentage_error(y_true, y_pred):
+    pass
+
+
+def symmetric_mean_absolute_percentage_error(y_true, y_pred):
+    pass
+
+
+def symmetric_median_absolute_percentage_error(y_true, y_pred):
+    # https://support.numxl.com/hc/es/articles/115001223503-MdAPE-Error-porcentual-absoluto-medio
+    pass
+
+
 def regression_metrics(y_true, y_pred):
     """Compute regression metrics.
 
@@ -112,11 +134,35 @@ def regression_metrics(y_true, y_pred):
     # Median absolute error
     median_ae = median_absolute_error(y_true, y_pred)
 
+    # R^2 score
+    r2 = r2_score(y_true, y_pred)
+
+    # Mean absolute percentage error
+    mape = mean_absolute_percentage_error(y_true, y_pred)
+
+    # Mean percentage error
+    mpe = mean_percentage_error(y_true, y_pred)
+
+    # Symmetric mean absolute percentage error
+    smape = symmetric_mean_absolute_percentage_error(y_true, y_pred)
+
+    # Median absolute percentage error
+    mdape = median_absolute_percentage_error(y_true, y_pred)
+
+    # Symmetric meadian absolute percentage error
+    smdape = symmetric_median_absolute_percentage_error(y_true, y_pred)
+
     d_metrics = {
-        "Explained variance": variance,
         "Mean absolute error": mae,
         "Mean squared error": mse,
-        "Median absolute error": median_ae
+        "Median absolute error": median_ae,
+        "Explained variance": variance,
+        "R^2": r2,
+        "MPE": mpe,
+        "MAPE": mape,
+        "SMAPE": smape,
+        "MdAPE": mdape,
+        "SMdAPE": smdape
     }
 
     return d_metrics

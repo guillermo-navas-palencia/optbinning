@@ -1075,7 +1075,7 @@ class MulticlassBinningTable:
 
         tab = 4
         if len(df_tests):
-            df_tests_string = dataframe_to_string(df_tests, 4)
+            df_tests_string = dataframe_to_string(df_tests, tab)
         else:
             df_tests_string = " " * tab + "None"
 

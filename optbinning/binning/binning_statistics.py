@@ -775,6 +775,18 @@ class BinningTable:
         return self._triangular
 
     @property
+    def ks(self):
+        """The Kolmogorov-Smirnov statistic.
+
+        Returns
+        -------
+        ks : float
+        """
+        _check_is_built(self)
+
+        return self._ks
+
+    @property
     def quality_score(self):
         """The quality score (QS).
 

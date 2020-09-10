@@ -85,24 +85,95 @@ def imbalanced_classification_metrics(y_true, y_pred):
 
 
 def mean_absolute_percentage_error(y_true, y_pred):
-    pass
+    """Compute the mean absolute percentage error (MAPE).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred : array-like, shape (n_samples,)
+        Estimated target values.
+
+    Returns
+    -------
+    mape : float
+    """
+    return np.abs((y_true - y_pred) / y_true).mean()
 
 
 def median_absolute_percentage_error(y_true, y_pred):
-    pass
+    """Compute the median absolute percentage error (MdAPE).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred : array-like, shape (n_samples,)
+        Estimated target values.
+
+    Returns
+    -------
+    mdape : float
+    """
+    return np.median(np.abs((y_true - y_pred) / y_true))
 
 
 def mean_percentage_error(y_true, y_pred):
-    pass
+    """Compute the mean percentage error (MPE).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred : array-like, shape (n_samples,)
+        Estimated target values.
+
+    Returns
+    -------
+    mpe : float
+    """
+    return ((y_true - y_pred) / y_true).mean()
 
 
 def symmetric_mean_absolute_percentage_error(y_true, y_pred):
-    pass
+    """Compute the symmetric mean absolute percentage error (SMAPE).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred : array-like, shape (n_samples,)
+        Estimated target values.
+
+    Returns
+    -------
+    smape : float
+    """
+    e = np.abs(y_true - y_pred)
+    return (e / (np.abs(y_true) + np.abs(y_pred))).mean()
 
 
 def symmetric_median_absolute_percentage_error(y_true, y_pred):
-    # https://support.numxl.com/hc/es/articles/115001223503-MdAPE-Error-porcentual-absoluto-medio
-    pass
+    """Compute the symmetric median absolute percentage error (SMdAPE).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred : array-like, shape (n_samples,)
+        Estimated target values.
+
+    Returns
+    -------
+    smdape : float
+    """
+    e = np.abs(y_true - y_pred)
+    return np.median(e / (np.abs(y_true) + np.abs(y_pred)))
 
 
 def regression_metrics(y_true, y_pred):

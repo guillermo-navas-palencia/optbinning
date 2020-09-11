@@ -23,6 +23,7 @@ from ..logging import Logger
 from .metrics import gini
 from .metrics import imbalanced_classification_metrics
 from .metrics import regression_metrics
+from .monitoring_information import print_monitoring_information
 from .scorecard import Scorecard
 
 
@@ -203,6 +204,9 @@ class ScorecardMonitoring(BaseEstimator):
         # Check parameters
         _check_parameters(**self.get_params(deep=False))
 
+        # Check if scorecard is fitted
+        self.scorecard._check_is_fitted()
+
         y_actual = df_actual[self.target]
         y_expected = df_expected[self.target]
 
@@ -218,6 +222,11 @@ class ScorecardMonitoring(BaseEstimator):
                              .format(target_dtype, target_dtype_e))
 
         self._target_dtype = target_dtype
+
+        # Check variable names
+        if list(df_actual.columns) != list(df_expected.columns):
+            raise ValueError("Dataframes df_actual and df_expected must "
+                             "have the same columns.")
 
         self._fit_system(df_actual, y_actual, df_expected, y_expected)
 
@@ -240,6 +249,8 @@ class ScorecardMonitoring(BaseEstimator):
             raise ValueError("print_level must be an integer >= 0; got {}."
                              .format(print_level))
 
+        print_monitoring_information()
+
     def system_stability_report(self):
         """System stability report."""
         self._check_is_fitted()
@@ -256,6 +267,34 @@ class ScorecardMonitoring(BaseEstimator):
         self._check_is_fitted()
 
         return self._df_psi
+
+    def psi_variable_table(self, name=None, style="summary"):
+        self._check_is_fitted()
+
+        if style not in ("summary", "detailed"):
+            raise ValueError('Invalid value for style. Allowed string '
+                             'values are "summary" and "detailed".')
+
+        if name is not None:
+            variables = self.scorecard.binning_process_.get_support(names=True)
+
+            if name not in variables:
+                raise ValueError("name {} does not match a binned variable."
+                                 .format(name))
+
+            dv = self._df_psi_variable[self._df_psi_variable.Variable == name]
+
+            if style == "summary":
+                return dv.groupby(["Variable"])["PSI"].sum()
+            else:
+                return dv
+
+        if style == "summary":
+            return pd.DataFrame(
+                self._df_psi_variable.groupby(['Variable'])['PSI'].sum()
+                ).reset_index()
+        elif style == "detailed":
+            return self._df_psi_variable
 
     def tests_table(self):
         """"""
@@ -554,7 +593,50 @@ class ScorecardMonitoring(BaseEstimator):
         self._df_performance = df_performance
 
     def _fit_variables(self, df_actual, df_expected):
-        pass
+        variables = self.scorecard.binning_process_.get_support(names=True)
+
+        sc_table = self.scorecard.table()
+
+        l_df_psi = []
+
+        for name in variables:
+            optb = self.scorecard.binning_process_.get_binned_variable(name)
+            ta = optb.transform(df_actual[name], metric="indices")
+            te = optb.transform(df_expected[name], metric="indices")
+
+            print(name, np.unique(ta), np.unique(te))
+
+            n_bins = te.max() + 1
+
+            n_records_a = np.empty(n_bins).astype(np.int64)
+            n_records_e = np.empty(n_bins).astype(np.int64)
+
+            for i in range(n_bins):
+                n_records_a[i] = np.count_nonzero(ta == i)
+                n_records_e[i] = np.count_nonzero(te == i)
+
+            t_n_records_a = n_records_a.sum()
+            t_n_records_e = n_records_e.sum()
+            p_records_a = n_records_a / t_n_records_a
+            p_records_e = n_records_e / t_n_records_e
+
+            psi = jeffrey(p_records_a, p_records_e, return_sum=False)
+            bins = sc_table[sc_table.Variable == name]["Bin"].values[:n_bins]
+
+            df_psi = pd.DataFrame({
+                "Variable": [name] * n_bins,
+                "Bin": bins,
+                "Count A": n_records_a,
+                "Count E": n_records_e,
+                "Count A (%)": p_records_a,
+                "Count E (%)": p_records_e,
+                "PSI": psi
+                })
+
+            l_df_psi.append(df_psi)
+
+        self._df_psi_variable = pd.concat(l_df_psi)
+        self._df_psi_variable.reset_index()
 
     def _check_is_fitted(self):
         if not self._is_fitted:

@@ -6,6 +6,7 @@ Scorecard monitoring (System stability report)
 # Copyright (C) 2020
 
 import numbers
+import time
 
 import numpy as np
 import pandas as pd
@@ -161,6 +162,37 @@ def print_system_report(df_psi, df_tests, df_target_analysis, df_performance):
 
 
 class ScorecardMonitoring(BaseEstimator):
+    """Scorecard monitoring.
+
+    Parameters
+    ----------
+    target : str
+        Target column.
+
+    scorecard : object
+        A ``Scorecard`` fitted instance.
+
+    psi_method : str, optional (default="cart")
+        The binning method to compute the Population Stability Index (PSI).
+        Supported methods are "cart" for a CART
+        decision tree, "quantile" to generate prebins with approximately same
+        frequency and "uniform" to generate prebins with equal width. Method
+        "cart" uses `sklearn.tree.DecistionTreeClassifier
+        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
+        DecisionTreeClassifier.html>`_.
+
+    psi_n_bins : int (default=20)
+        The maximum number of bins to compute PSI.
+
+    psi_min_bin_size : float (default=0.05)
+        The fraction of mininum number of records for PSI bin.
+
+    show_digits : int, optional (default=2)
+        The number of significant digits of the bin column.
+
+    verbose : bool (default=False)
+        Enable verbose output.
+    """
     def __init__(self, target, scorecard, psi_method="cart", psi_n_bins=20,
                  psi_min_bin_size=0.05, show_digits=2, verbose=False):
 
@@ -180,6 +212,11 @@ class ScorecardMonitoring(BaseEstimator):
         self._df_tests = None
         self._target_dtype = None
 
+        # time
+        self._time_total = None
+        self._time_system = None
+        self._time_characteristic = None
+
         # logger
         self._class_logger = Logger(__name__)
         self._logger = self._class_logger.logger
@@ -188,9 +225,7 @@ class ScorecardMonitoring(BaseEstimator):
         self._is_fitted = False
 
     def fit(self, df_actual, df_expected):
-        """Fit monitoring with actual and expected data. If expected is not
-        None then actual and expected are compared, otherwise only actual
-        data statistics will be shown.
+        """Fit monitoring with actual and expected data.
 
         Parameters
         ----------
@@ -199,7 +234,17 @@ class ScorecardMonitoring(BaseEstimator):
 
         df_expected : pandas.DataFrame
             Trainning data used for fitting the scorecard.
+
+        Returns
+        -------
+        self : object
+            Fitted monitoring.
         """
+        time_init = time.perf_counter()
+
+        if self.verbose:
+            self._logger.info("Monitoring started.")
+            self._logger.info("Options: check parameters.")
 
         # Check parameters
         _check_parameters(**self.get_params(deep=False))
@@ -228,11 +273,41 @@ class ScorecardMonitoring(BaseEstimator):
             raise ValueError("Dataframes df_actual and df_expected must "
                              "have the same columns.")
 
+        # Statistics at system level
+        if self.verbose:
+            self._logger.info("System stability analysis started.")
+
+        time_system = time.perf_counter()
         self._fit_system(df_actual, y_actual, df_expected, y_expected)
+        self._time_system = time.perf_counter() - time_system
 
+        if self.verbose:
+            self._logger.info("System stability analysis terminated. Time: "
+                              "{:.4f}s".format(self._time_system))
+
+        # Statistics at variable level
+        if self.verbose:
+            self._logger.info("Characteristic analysis started.")
+
+        time_characteristic = time.perf_counter()
         self._fit_variables(df_actual, df_expected)
+        self._time_characteristic = time.perf_counter() - time_characteristic
 
+        if self.verbose:
+            self._logger.info("Characteristic analysis terminated. Time: "
+                              "{:.4f}s".format(self._time_characteristic))
+
+        self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Monitoring terminated. Time: {:.4f}s"
+                              .format(self._time_total))
+
+        # Completed successfully
+        self._class_logger.close()
         self._is_fitted = True
+
+        return self
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -252,23 +327,44 @@ class ScorecardMonitoring(BaseEstimator):
         print_monitoring_information()
 
     def system_stability_report(self):
-        """System stability report."""
+        """Print overview information and statistics about system stability.
+        It includes qualitative suggestions regarding the necessity of
+        scorecard updates.
+        """
         self._check_is_fitted()
 
         print_system_report(self._df_psi, self._df_tests,
                             self._df_target_analysis, self._df_performance)
 
-    def characteristic_analysis_report(self):
-        """Characteristic analysis report."""
-        self._check_is_fitted()
-
     def psi_table(self):
-        """"""
+        """System Population Stability Index (PSI) table.
+
+        Returns
+        -------
+        psi_table : pandas.DataFrame
+        """
         self._check_is_fitted()
 
         return self._df_psi
 
     def psi_variable_table(self, name=None, style="summary"):
+        """Population Stability Index (PSI) at variable level.
+
+        Parameters
+        ----------
+        name : str or None (default=None)
+            The variable name. If name is None, a table with all variables
+            is returned.
+
+        style : str, optional (default="summary")
+            Supported styles are "summary" and "detailed". Summary only
+            includes the total PSI for each variable. Detailed includes the
+            PSI for each variable at bin level.
+
+        Returns
+        -------
+        psi_table : pandas.DataFrame
+        """
         self._check_is_fitted()
 
         if style not in ("summary", "detailed"):
@@ -280,6 +376,7 @@ class ScorecardMonitoring(BaseEstimator):
 
             if name not in variables:
                 raise ValueError("name {} does not match a binned variable."
+                                 "included in the provided scorecard."
                                  .format(name))
 
             dv = self._df_psi_variable[self._df_psi_variable.Variable == name]
@@ -297,7 +394,14 @@ class ScorecardMonitoring(BaseEstimator):
             return self._df_psi_variable
 
     def tests_table(self):
-        """"""
+        """Compute statistical tests to determine if event rate (Chi-square
+        test - binary target) or mean (Student's t-test - continuous target)
+        are significantly different. Null hypothesis (actual == expected).
+
+        Returns
+        -------
+        tests_table : pandas.DataFrame
+        """
         self._check_is_fitted()
 
         return self._df_tests
@@ -313,7 +417,6 @@ class ScorecardMonitoring(BaseEstimator):
         self._check_is_fitted()
 
     def _fit_system(self, df_actual, y_actual, df_expected, y_expected):
-
         if self._target_dtype == "binary":
             problem_type = "classification"
         else:
@@ -604,8 +707,6 @@ class ScorecardMonitoring(BaseEstimator):
             ta = optb.transform(df_actual[name], metric="indices")
             te = optb.transform(df_expected[name], metric="indices")
 
-            print(name, np.unique(ta), np.unique(te))
-
             n_bins = te.max() + 1
 
             n_records_a = np.empty(n_bins).astype(np.int64)
@@ -646,6 +747,12 @@ class ScorecardMonitoring(BaseEstimator):
 
     @property
     def psi_splits(self):
+        """List of splits points used to compute system PSI.
+
+        Returns
+        -------
+        splits : numpy.ndarray
+        """
         self._check_is_fitted()
 
         self._splits

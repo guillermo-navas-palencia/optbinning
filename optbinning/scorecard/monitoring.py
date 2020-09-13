@@ -8,6 +8,8 @@ Scorecard monitoring (System stability report)
 import numbers
 import time
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
@@ -211,6 +213,10 @@ class ScorecardMonitoring(BaseEstimator):
         self._df_psi = None
         self._df_tests = None
         self._target_dtype = None
+        self._n_records_a = None
+        self._n_records_e = None
+        self._metric_a = None
+        self._metric_e = None
 
         # time
         self._time_total = None
@@ -327,8 +333,8 @@ class ScorecardMonitoring(BaseEstimator):
         n_vars = np.count_nonzero(self.scorecard.binning_process_._support)
         dict_user_options = self.get_params(deep=False)
 
-        print_monitoring_information(print_level, self._n_records_a,
-                                     self._n_records_e, n_vars,
+        print_monitoring_information(print_level, self._n_records_a.sum(),
+                                     self._n_records_e.sum(), n_vars,
                                      self._target_dtype, self._time_total,
                                      self._time_system,
                                      self._time_variable,
@@ -424,6 +430,56 @@ class ScorecardMonitoring(BaseEstimator):
         """
         self._check_is_fitted()
 
+        fig, ax1 = plt.subplots()
+
+        n_bins = len(self._n_records_a)
+        indices = np.arange(n_bins)
+        width = np.min(np.diff(indices))/3
+
+        p_records_a = self._n_records_a / self._n_records_a.sum() * 100.0
+        p_records_e = self._n_records_e / self._n_records_e.sum() * 100.0
+
+        p1 = ax1.bar(indices-width, p_records_a, width, color='tab:red',
+                     label="Records Actual", alpha=0.75)
+        p2 = ax1.bar(indices, p_records_e, width, color='tab:blue',
+                     label="Records Expected", alpha=0.75)
+
+        handles = [p1[0], p2[0]]
+        labels = ['Actual', 'Expected']
+
+        ax1.set_xlabel("Bin ID", fontsize=12)
+        ax1.set_ylabel("Population distribution", fontsize=13)
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+        ax2 = ax1.twinx()
+
+        if self._target_dtype == "binary":
+            metric_label = "Event rate"
+        elif self._target_dtype == "continuous":
+            metric_label = "Mean"
+
+        ax2.plot(indices, self._metric_a, linestyle="solid", marker="o",
+                 color='tab:red')
+        ax2.plot(indices, self._metric_e,  linestyle="solid", marker="o",
+                 color='tab:blue')
+
+        ax2.set_ylabel(metric_label, fontsize=13)
+        ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
+
+        ax2.set_xlim(-width * 2, n_bins - width * 2)
+
+        plt.legend(handles, labels, loc="upper center",
+                   bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
+
     def _fit_system(self, df_actual, y_actual, df_expected, y_expected):
         if self._target_dtype == "binary":
             problem_type = "classification"
@@ -469,7 +525,6 @@ class ScorecardMonitoring(BaseEstimator):
 
             n_records_a = n_nonevent_a + n_event_a
             n_records_e = n_nonevent_e + n_event_e
-
         else:
             n_records_a = np.empty(n_bins).astype(np.int64)
             n_records_e = np.empty(n_bins).astype(np.int64)
@@ -518,8 +573,8 @@ class ScorecardMonitoring(BaseEstimator):
         else:
             self._system_performance_continuous(df_actual, df_expected)
 
-        self._n_records_a = n_records_a.sum()
-        self._n_records_e = n_records_e.sum()
+        self._n_records_a = n_records_a
+        self._n_records_e = n_records_e
 
     def _system_psi(self, bin_str, n_records_a, n_records_e):
         t_n_records_a = n_records_a.sum()
@@ -553,6 +608,9 @@ class ScorecardMonitoring(BaseEstimator):
         event_rate_a = n_event_a / n_records_a
         event_rate_e = n_event_e / n_records_e
 
+        self._metric_a = event_rate_a
+        self._metric_e = event_rate_e
+
         for i in range(n_bins):
             obs = np.array([
                 [n_nonevent_a[i], n_nonevent_e[i]],
@@ -577,6 +635,10 @@ class ScorecardMonitoring(BaseEstimator):
 
     def _system_tests_continuous(self, bin_str, n_records_a, mean_a, std_a,
                                  n_records_e, mean_e, std_e):
+
+        self._metric_a = mean_a
+        self._metric_e = mean_e
+
         t_statistics = []
         p_values = []
 

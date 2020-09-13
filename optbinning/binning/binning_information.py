@@ -161,7 +161,7 @@ def print_name_status(name, status):
 def print_main_info(name, status, time_total):
     print_name_status(name, status)
 
-    print("  Time    : {:<7.4f} sec\n".format(round(time_total, 4)))
+    print("  Time    : {:<7.4f} sec\n".format(time_total))
 
 
 def print_binning_information(binning_type, print_level, name, status,

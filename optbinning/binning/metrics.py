@@ -253,6 +253,21 @@ def triangular(x, y, return_sum=False):
         return t
 
 
+def test_proportions(e1, ne1, e2, ne2):
+    n1 = e1 + ne1
+    n2 = e2 + ne2
+    p1 = e1 / n1
+    p2 = e2 / n2
+    p = (e1 + e2) / (n1 + n2)
+
+    z = (p1 - p2) / np.sqrt(p * (1 - p) * (1 / n1 + 1 / n2))
+
+    statistic = abs(z)
+    pvalue = stats.norm.sf(statistic)
+
+    return statistic, 2 * pvalue
+
+
 def frequentist_pvalue(obs, pvalue_method):
     if pvalue_method == "chi2":
         t, p, _, _ = stats.chi2_contingency(obs, correction=False)

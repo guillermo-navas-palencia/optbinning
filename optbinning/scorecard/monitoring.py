@@ -215,7 +215,7 @@ class ScorecardMonitoring(BaseEstimator):
         # time
         self._time_total = None
         self._time_system = None
-        self._time_characteristic = None
+        self._time_variables = None
 
         # logger
         self._class_logger = Logger(__name__)
@@ -287,15 +287,15 @@ class ScorecardMonitoring(BaseEstimator):
 
         # Statistics at variable level
         if self.verbose:
-            self._logger.info("Characteristic analysis started.")
+            self._logger.info("Variable analysis started.")
 
-        time_characteristic = time.perf_counter()
+        time_variable = time.perf_counter()
         self._fit_variables(df_actual, df_expected)
-        self._time_characteristic = time.perf_counter() - time_characteristic
+        self._time_variable = time.perf_counter() - time_variable
 
         if self.verbose:
-            self._logger.info("Characteristic analysis terminated. Time: "
-                              "{:.4f}s".format(self._time_characteristic))
+            self._logger.info("Variable analysis terminated. Time: "
+                              "{:.4f}s".format(self._time_variable))
 
         self._time_total = time.perf_counter() - time_init
 
@@ -324,7 +324,15 @@ class ScorecardMonitoring(BaseEstimator):
             raise ValueError("print_level must be an integer >= 0; got {}."
                              .format(print_level))
 
-        print_monitoring_information()
+        n_vars = np.count_nonzero(self.scorecard.binning_process_._support)
+        dict_user_options = self.get_params(deep=False)
+
+        print_monitoring_information(print_level, self._n_records_a,
+                                     self._n_records_e, n_vars,
+                                     self._target_dtype, self._time_total,
+                                     self._time_system,
+                                     self._time_variable,
+                                     dict_user_options)
 
     def system_stability_report(self):
         """Print overview information and statistics about system stability.
@@ -509,6 +517,9 @@ class ScorecardMonitoring(BaseEstimator):
             self._system_performance_binary(df_actual, df_expected)
         else:
             self._system_performance_continuous(df_actual, df_expected)
+
+        self._n_records_a = n_records_a.sum()
+        self._n_records_e = n_records_e.sum()
 
     def _system_psi(self, bin_str, n_records_a, n_records_e):
         t_n_records_a = n_records_a.sum()
@@ -697,7 +708,6 @@ class ScorecardMonitoring(BaseEstimator):
 
     def _fit_variables(self, df_actual, df_expected):
         variables = self.scorecard.binning_process_.get_support(names=True)
-
         sc_table = self.scorecard.table()
 
         l_df_psi = []

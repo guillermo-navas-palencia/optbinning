@@ -329,6 +329,7 @@ class BinningTable:
         self._js = None
         self._gini = None
         self._quality_score = None
+        self._ks = None
 
         self._is_built = False
         self._is_analyzed = False
@@ -598,8 +599,6 @@ class BinningTable:
             consecutive bins to compute the probability of the event rate of
             bin A being greater than the event rate of bin B.
 
-        Parameters
-        ----------
         print_output : bool (default=True)
             Whether to print analysis information.
 
@@ -1217,6 +1216,9 @@ class ContinuousBinningTable:
         self.user_splits = user_splits
 
         self._mean = None
+        self._iv = None
+        self._hhi = None
+        self._hhi_norm = None
 
         self._is_built = False
 
@@ -1249,9 +1251,16 @@ class ContinuousBinningTable:
         if self.n_records[-1] > 0:
             self._mean[-1] = 0
 
+        # Compute divergence measure (continuous adaptation)
         woe = self._mean - t_mean
         iv = np.absolute(woe) * p_records
         t_iv = iv.sum()
+
+        self._iv = t_iv
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)
 
         if self.dtype == "numerical":
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
@@ -1410,3 +1419,62 @@ class ContinuousBinningTable:
                                 .format(savefig))
             plt.savefig(savefig)
             plt.close()
+
+    def analysis(self, print_output=True):
+        r"""Binning table analysis.
+
+        Statistical analysis of the binning table, computing the Information
+        Value (IV) and Herfindahl-Hirschman Index (HHI).
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
+
+        Notes
+        -----
+        The IV for a continuous target is computed as follows:
+
+        .. math::
+
+            IV = \sum_{i=1}^n |U_i - \mu| \frac{r_i}{r_T},
+
+        where :math:`U_i` is the target mean value for each bin, :math:`\mu` is
+        the total target mean, :math:`r_i` is the number of records for each
+        bin, and :math:`r_T` is the total number of records.
+        """
+        _check_is_built(self)
+
+        # Monotonic trend
+        type_mono = type_of_monotonic_trend(self._mean[:-2])
+
+        report = (
+            "-------------------------------------------------\n"
+            "OptimalBinning: Continuous Binning Table Analysis\n"
+            "-------------------------------------------------\n"
+            "\n"
+            "  General metrics"
+            "\n\n"
+            "    IV                  {:>15.8f}\n"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "\n"
+            "  Monotonic trend       {:>15}\n"
+            ).format(self._iv, self._hhi, self._hhi_norm, type_mono)
+
+        if print_output:
+            print(report)
+
+    @property
+    def iv(self):
+        """The Information Value (IV).
+
+        The IV ranges from 0 to Infinity.
+
+        Returns
+        -------
+        iv : float
+        """
+        _check_is_built(self)
+
+        return self._iv

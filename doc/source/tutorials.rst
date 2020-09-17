@@ -36,6 +36,7 @@ Scorecard tutorials
 
    tutorials/tutorial_scorecard_binary_target
    tutorials/tutorial_scorecard_continuous_target
+   tutorials/tutorial_scorecard_monitoring
 
 
 Optimal binning for batch and streaming data processing

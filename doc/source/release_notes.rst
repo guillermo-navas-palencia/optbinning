@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+Version 0.8.0 (2020-09-18)
+--------------------------
+
+New features:
+
+   - Scorecard monitoring supporting binning and continuous target.
+   - OptimalBinning computes the Kolmogorov-Smirnov statistic.
+   - Optimal binning classes show optimal monotonic trend information in the binning table analysis method.
+   - ContinuousBinningTable adds method ``analysis``.
+   - Scorecard incorporates methods ``load`` and ``save`` to serialize and deserialize a scorecard using pickle module.
+   - BinningProcess class supports multiprocessing via parameter ``n_jobs``.
+
+Tutorials:
+
+   - Tutorial: Scorecard monitoring
+
+
 Version 0.7.0 (2020-07-19)
 --------------------------
 

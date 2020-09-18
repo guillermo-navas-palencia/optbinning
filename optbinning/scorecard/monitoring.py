@@ -236,7 +236,7 @@ class ScorecardMonitoring(BaseEstimator):
         Parameters
         ----------
         df_actual : pandas.DataFrame
-            Score of the training or actual input samples.
+            New/actual/test data input samples.
 
         df_expected : pandas.DataFrame
             Trainning data used for fitting the scorecard.
@@ -265,8 +265,12 @@ class ScorecardMonitoring(BaseEstimator):
         target_dtype_e = type_of_target(y_expected)
 
         if target_dtype not in ("binary", "continuous"):
-            raise ValueError("Target type {} is not supported."
+            raise ValueError("Target type (actual) {} is not supported."
                              .format(target_dtype))
+
+        if target_dtype_e not in ("binary", "continuous"):
+            raise ValueError("Target type (expected) {} is not supported."
+                             .format(target_dtype_e))
 
         if target_dtype != target_dtype_e:
             raise ValueError("Target types must coincide; {} != {}."
@@ -389,7 +393,7 @@ class ScorecardMonitoring(BaseEstimator):
             variables = self.scorecard.binning_process_.get_support(names=True)
 
             if name not in variables:
-                raise ValueError("name {} does not match a binned variable."
+                raise ValueError("name {} does not match a binned variable "
                                  "included in the provided scorecard."
                                  .format(name))
 
@@ -573,6 +577,7 @@ class ScorecardMonitoring(BaseEstimator):
         else:
             self._system_performance_continuous(df_actual, df_expected)
 
+        self._splits = splits
         self._n_records_a = n_records_a
         self._n_records_e = n_records_e
 
@@ -827,4 +832,4 @@ class ScorecardMonitoring(BaseEstimator):
         """
         self._check_is_fitted()
 
-        self._splits
+        return self._splits

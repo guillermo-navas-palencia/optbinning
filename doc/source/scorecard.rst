@@ -7,6 +7,15 @@ Scorecard
    :show-inheritance:
 
 
+Monitoring
+----------
+
+.. autoclass:: optbinning.scorecard.ScorecardMonitoring
+   :members:
+   :inherited-members:
+   :show-inheritance:
+
+
 Plot functions
 --------------
 

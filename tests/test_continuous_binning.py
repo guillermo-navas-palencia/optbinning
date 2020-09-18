@@ -120,6 +120,7 @@ def test_numerical_default():
                                  rel=1e-6)
 
     optb.binning_table.build()
+    optb.binning_table.analysis()
     optb.binning_table.plot(savefig="test_continuous_binning.png")
     optb.binning_table.plot(add_special=False,
                             savefig="test_continuous_binning_no_special.png")

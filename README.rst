@@ -165,20 +165,25 @@ The ``analysis`` method performs a statistical analysis of the binning table, co
        Gini index               0.87541620
        IV (Jeffrey)             5.04392547
        JS (Jensen-Shannon)      0.39378376
+       Hellinger                0.47248971
+       Triangular               1.25592041
+       KS                       0.72862164
        HHI                      0.15727342
        HHI (normalized)         0.05193260
        Cramer's V               0.80066760
        Quality score            0.00000000
 
+     Monotonic trend            descending
+
      Significance tests
 
-        Bin A  Bin B  t-statistic       p-value  P[A > B]      P[B > A]
-            0      1     0.252432  6.153679e-01  0.684380  3.156202e-01
-            1      2     2.432829  1.188183e-01  0.948125  5.187465e-02
-            2      3     2.345804  1.256207e-01  0.937874  6.212635e-02
-            3      4     2.669235  1.023052e-01  0.955269  4.473083e-02
-            4      5    29.910964  4.523477e-08  1.000000  9.814594e-12
-            5      6    19.324617  1.102754e-05  0.999999  1.216668e-06
+       Bin A  Bin B  t-statistic       p-value  P[A > B]      P[B > A]
+           0      1     0.252432  6.153679e-01  0.684380  3.156202e-01
+           1      2     2.432829  1.188183e-01  0.948125  5.187465e-02
+           2      3     2.345804  1.256207e-01  0.937874  6.212635e-02
+           3      4     2.669235  1.023052e-01  0.955269  4.473083e-02
+           4      5    29.910964  4.523477e-08  1.000000  9.814594e-12
+           5      6    19.324617  1.102754e-05  0.999999  1.216668e-06
 
 Print overview information about the options settings, problem statistics, and the solution of the computation. 
 
@@ -188,7 +193,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.7.0)
+   optbinning (Version 0.8.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -239,13 +244,13 @@ Print overview information about the options settings, problem statistics, and t
        Best objective bound             5043922
 
      Timing
-       Total time                          0.06 sec
-       Pre-processing                      0.00 sec   (  0.80%)
-       Pre-binning                         0.00 sec   (  6.30%)
-       Solver                              0.06 sec   ( 91.45%)
-         model generation                  0.05 sec   ( 89.12%)
-         optimizer                         0.01 sec   ( 10.88%)
-       Post-processing                     0.00 sec   (  0.12%)
+       Total time                          0.04 sec
+       Pre-processing                      0.00 sec   (  0.33%)
+       Pre-binning                         0.00 sec   (  5.54%)
+       Solver                              0.04 sec   ( 93.03%)
+         model generation                  0.03 sec   ( 85.61%)
+         optimizer                         0.01 sec   ( 14.39%)
+       Post-processing                     0.00 sec   (  0.30%)
 
 
 Example: Scorecard with continuous target
@@ -296,7 +301,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
    
-   optbinning (Version 0.7.0)
+   optbinning (Version 0.8.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

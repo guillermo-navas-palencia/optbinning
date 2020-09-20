@@ -776,8 +776,7 @@ class OptimalBinning(BaseOptimalBinning):
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, y_others,
-                self.class_weight, sample_weight, sw_clean, sw_missing,
-                sw_special, sw_others)
+                self.class_weight, sw_clean, sw_missing, sw_special, sw_others)
 
         self._n_prebins = len(n_nonevent)
 
@@ -841,8 +840,8 @@ class OptimalBinning(BaseOptimalBinning):
         return self
 
     def _fit_prebinning(self, x, y, y_missing, y_special, y_others,
-                        class_weight=None, sample_weight=None, sw_clean=None,
-                        sw_missing=None, sw_special=None, sw_others=None):
+                        class_weight=None, sw_clean=None, sw_missing=None,
+                        sw_special=None, sw_others=None):
 
         min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
 
@@ -852,7 +851,7 @@ class OptimalBinning(BaseOptimalBinning):
                                 problem_type=self._problem_type,
                                 class_weight=class_weight,
                                 **self.prebinning_kwargs
-                                ).fit(x, y, sample_weight)
+                                ).fit(x, y, sw_clean)
 
         return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
                                            y_special, y_others, sw_clean,

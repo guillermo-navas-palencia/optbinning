@@ -333,6 +333,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._cat_others = None
         self._n_records = None
         self._sums = None
+        self._stds = None
         self._min_target = None
         self._max_target = None
         self._n_zeros = None
@@ -340,8 +341,11 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._n_records_missing = None
         self._n_records_special = None
         self._sum_cat_others = None
-        self._sum_missing = None
         self._sum_special = None
+        self._sum_missing = None
+        self._std_cat_others = None
+        self._std_special = None
+        self._std_missing = None
         self._min_target_missing = None
         self._min_target_special = None
         self._min_target_others = None
@@ -598,12 +602,12 @@ class ContinuousOptimalBinning(OptimalBinning):
                     self.user_splits_fixed = np.asarray(
                         self.user_splits_fixed)[sorted_idx]
 
-                [splits, n_records, sums, stds, min_t, max_t,
+                [splits, n_records, sums, ssums, stds, min_t, max_t,
                  n_zeros] = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, y_special,
                     y_others)
         else:
-            [splits, n_records, sums, stds, min_t, max_t,
+            [splits, n_records, sums, ssums, stds, min_t, max_t,
              n_zeros] = self._fit_prebinning(
                 x_clean, y_clean, y_missing, y_special, y_others)
 
@@ -622,7 +626,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                               .format(self._time_prebinning))
 
         # Optimization
-        self._fit_optimizer(splits, n_records, sums, stds)
+        self._fit_optimizer(splits, n_records, sums, ssums, stds)
 
         # Post-processing
         if self.verbose:
@@ -635,21 +639,24 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_records = n_records.sum()
             sums = sums.sum()
 
-        [self._n_records, self._sums, self._min_target, self._max_target,
-         self._n_zeros] = continuous_bin_info(
-            self._solution, n_records, sums, min_t, max_t, n_zeros,
-            self._n_records_missing, self._sum_missing,
-            self._min_target_missing, self._max_target_missing,
-            self._n_zeros_missing,  self._n_records_special, self._sum_special,
+        [self._n_records, self._sums, self._stds, self._min_target,
+         self._max_target, self._n_zeros] = continuous_bin_info(
+            self._solution, n_records, sums, ssums, stds, min_t, max_t,
+            n_zeros, self._n_records_missing, self._sum_missing,
+            self._std_missing, self._min_target_missing,
+            self._max_target_missing, self._n_zeros_missing,
+            self._n_records_special, self._sum_special, self._std_special,
             self._min_target_special, self._max_target_special,
             self._n_zeros_special, self._n_records_cat_others,
-            self._sum_cat_others, self._min_target_others,
-            self._max_target_others, self._n_zeros_others, self._cat_others)
+            self._sum_cat_others, self._std_cat_others,
+            self._min_target_others, self._max_target_others,
+            self._n_zeros_others, self._cat_others)
 
         self._binning_table = ContinuousBinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_records,
-            self._sums, self._min_target, self._max_target, self._n_zeros,
-            self._categories, self._cat_others, self.user_splits)
+            self._sums, self._stds, self._min_target, self._max_target,
+            self._n_zeros, self._categories, self._cat_others,
+            self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
@@ -670,7 +677,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         return self
 
-    def _fit_optimizer(self, splits, n_records, sums, stds):
+    def _fit_optimizer(self, splits, n_records, sums, ssums, stds):
         if self.verbose:
             self._logger.info("Optimizer started.")
 
@@ -753,7 +760,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         if self.verbose:
             self._logger.info("Optimizer: build model...")
 
-        optimizer.build_model(n_records, sums, stds, trend_change)
+        optimizer.build_model(n_records, sums, ssums, trend_change)
 
         if self.verbose:
             self._logger.info("Optimizer: solve...")
@@ -800,6 +807,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._sum_special = np.sum(y_special)
         self._n_zeros_special = np.count_nonzero(y_special == 0)
         if len(y_special):
+            self._std_special = np.std(y_special)
             self._min_target_special = np.min(y_special)
             self._max_target_special = np.max(y_special)
 
@@ -807,18 +815,21 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._sum_missing = np.sum(y_missing)
         self._n_zeros_missing = np.count_nonzero(y_missing == 0)
         if len(y_missing):
+            self._std_missing = np.std(y_missing)
             self._min_target_missing = np.min(y_missing)
             self._max_target_missing = np.max(y_missing)
 
         if len(y_others):
             self._n_records_cat_others = len(y_others)
             self._sum_cat_others = np.sum(y_others)
+            self._std_cat_others = np.std(y_others)
             self._min_target_others = np.min(y_others)
             self._max_target_others = np.max(y_others)
             self._n_zeros_others = np.count_nonzero(y_others == 0)
 
         n_records = np.empty(n_bins).astype(np.int64)
         sums = np.empty(n_bins)
+        ssums = np.empty(n_bins)
         stds = np.empty(n_bins)
         n_zeros = np.empty(n_bins).astype(np.int64)
         min_t = np.full(n_bins, -np.inf)
@@ -830,13 +841,15 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_records[i] = np.count_nonzero(mask)
             ymask = y[mask]
             sums[i] = np.sum(ymask)
+            ssums[i] = np.sum(ymask ** 2)
             stds[i] = np.std(ymask)
             n_zeros[i] = np.count_nonzero(ymask == 0)
             if len(ymask):
                 min_t[i] = np.min(ymask)
                 max_t[i] = np.max(ymask)
 
-        return splits_prebinning, n_records, sums, stds, min_t, max_t, n_zeros
+        return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
+                n_zeros)
 
     @property
     def binning_table(self):

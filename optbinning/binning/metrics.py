@@ -348,3 +348,14 @@ def multiclass_binning_quality_score(js, n_classes, p_values, hhi_norm):
     js_norm = js / np.log(n_classes)
 
     return binning_quality_score(js_norm, p_values, hhi_norm)
+
+
+def continuous_binning_quality_score(p_values, hhi_norm):
+    # Score 1: statistical significance (pairwise p-values)
+    p_values = np.asarray(p_values)
+    score_1 = np.prod(1 - p_values)
+
+    # Score 2: homogeneity
+    score_2 = 1. - hhi_norm
+
+    return score_1 * score_2

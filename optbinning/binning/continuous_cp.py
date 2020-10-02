@@ -36,11 +36,11 @@ class ContinuousBinningCP(BinningCP):
         self._n = None
         self._x = None
 
-    def build_model(self, n_records, sums, stds, trend_change):
+    def build_model(self, n_records, sums, ssums, trend_change):
         # Parameters
         M = int(1e6)
         U, V, pvalue_violation_indices = continuous_model_data(
-            n_records, sums, stds, self.max_pvalue, self.max_pvalue_policy, M)
+            n_records, sums, ssums, self.max_pvalue, self.max_pvalue_policy, M)
 
         n = len(n_records)
 

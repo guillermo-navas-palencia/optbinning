@@ -13,6 +13,7 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
+from scipy import stats
 from sklearn.exceptions import NotFittedError
 
 from ..formatting import dataframe_to_string
@@ -21,6 +22,7 @@ from .metrics import bayesian_probability
 from .metrics import binning_quality_score
 from .metrics import chi2_cramer_v
 from .metrics import chi2_cramer_v_multi
+from .metrics import continuous_binning_quality_score
 from .metrics import frequentist_pvalue
 from .metrics import hhi
 from .metrics import gini
@@ -176,22 +178,28 @@ def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
     return np.array(n_ev).astype(np.int)
 
 
-def continuous_bin_info(solution, n_records, sums, min_target, max_target,
-                        n_zeros, n_records_missing, sum_missing,
-                        min_target_missing, max_target_missing,
+def nstd(s, ss, records):
+    return np.sqrt(ss / records - (s / records) ** 2)
+
+
+def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
+                        max_target, n_zeros, n_records_missing, sum_missing,
+                        std_missing,  min_target_missing, max_target_missing,
                         n_zeros_missing, n_records_special, sum_special,
-                        min_target_special, max_target_special,
+                        std_special, min_target_special, max_target_special,
                         n_zeros_special, n_records_cat_others, sum_cat_others,
-                        min_target_others, max_target_others, n_zeros_others,
-                        cat_others):
+                        std_cat_others, min_target_others, max_target_others,
+                        n_zeros_others, cat_others):
     r = []
     s = []
+    st = []
     z = []
     min_t = []
     max_t = []
     min_t
     accum_r = 0
     accum_s = 0
+    accum_ss = 0
     accum_z = 0
     accum_min_t = np.inf
     accum_max_t = -np.inf
@@ -199,17 +207,22 @@ def continuous_bin_info(solution, n_records, sums, min_target, max_target,
         if selected:
             r.append(n_records[i] + accum_r)
             s.append(sums[i] + accum_s)
+            st.append(nstd(sums[i] + accum_s, ssums[i] + accum_ss,
+                           n_records[i] + accum_r))
             z.append(n_zeros[i] + accum_z)
             min_t.append(min(accum_min_t, min_target[i]))
             max_t.append(max(accum_max_t, max_target[i]))
+
             accum_r = 0
             accum_s = 0
+            accum_ss = 0
             accum_z = 0
             accum_min_t = np.inf
             accum_max_t = -np.inf
         else:
             accum_r += n_records[i]
             accum_s += sums[i]
+            accum_ss += ssums[i]
             accum_z += n_zeros[i]
             accum_min_t = min(accum_min_t, min_target[i])
             accum_max_t = max(accum_max_t, max_target[i])
@@ -217,6 +230,7 @@ def continuous_bin_info(solution, n_records, sums, min_target, max_target,
     if not len(solution):
         r.append(n_records)
         s.append(sums)
+        st.append(stds)
         z.append(n_zeros)
         min_t.append(min_target)
         max_t.append(max_target)
@@ -224,25 +238,28 @@ def continuous_bin_info(solution, n_records, sums, min_target, max_target,
     if len(cat_others):
         r.append(n_records_cat_others)
         s.append(sum_cat_others)
+        st.append(std_cat_others)
         z.append(n_zeros_others)
         min_t.append(min_target_others)
         max_t.append(max_target_others)
 
     r.append(n_records_special)
     s.append(sum_special)
+    st.append(std_special)
     z.append(n_zeros_special)
     min_t.append(min_target_special)
     max_t.append(max_target_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
+    st.append(std_missing)
     z.append(n_zeros_missing)
     min_t.append(min_target_missing)
     max_t.append(max_target_special)
 
     return (np.array(r).astype(np.int64), np.array(s).astype(np.float),
-            np.array(min_t).astype(np.float), np.array(max_t).astype(np.float),
-            np.array(z).astype(np.int64))
+            np.array(st).astype(np.float), np.array(min_t).astype(np.float),
+            np.array(max_t).astype(np.float), np.array(z).astype(np.int64))
 
 
 def _check_build_parameters(show_digits, add_totals):
@@ -650,10 +667,6 @@ class BinningTable:
             t_statistics.append(t_statistic)
             p_values.append(p_value)
 
-        # Quality score
-        self._quality_score = binning_quality_score(self._iv, p_values,
-                                                    self._hhi_norm)
-
         df_tests = pd.DataFrame({
                 "Bin A": np.arange(n_metric-1),
                 "Bin B": np.arange(n_metric-1) + 1,
@@ -671,6 +684,10 @@ class BinningTable:
             df_tests_string = dataframe_to_string(df_tests, tab)
         else:
             df_tests_string = " " * tab + "None"
+
+        # Quality score
+        self._quality_score = binning_quality_score(self._iv, p_values,
+                                                    self._hhi_norm)
 
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._event_rate[:-2])
@@ -1073,10 +1090,6 @@ class MulticlassBinningTable:
             t_statistics.append(t_statistic)
             p_values.append(p_value)
 
-        # Quality score
-        self._quality_score = multiclass_binning_quality_score(
-            self._js, len(self.classes), p_values, self._hhi_norm)
-
         df_tests = pd.DataFrame({
                 "Bin A": np.arange(n_metric-1),
                 "Bin B": np.arange(n_metric-1) + 1,
@@ -1089,6 +1102,10 @@ class MulticlassBinningTable:
             df_tests_string = dataframe_to_string(df_tests, tab)
         else:
             df_tests_string = " " * tab + "None"
+
+        # Quality score
+        self._quality_score = multiclass_binning_quality_score(
+            self._js, len(self.classes), p_values, self._hhi_norm)
 
         # Monotonic trend
         mono_string = "    Class {:>2}            {:>15}\n"
@@ -1175,6 +1192,9 @@ class ContinuousBinningTable:
     sums : numpy.ndarray
         Target sums.
 
+    stds : numpy.ndarray
+        Target stds.
+
     min_target : numpy.ndarray
         Target mininum values.
 
@@ -1199,7 +1219,7 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_records, sums, min_target,
+    def __init__(self, name, dtype, splits, n_records, sums, stds, min_target,
                  max_target, n_zeros, categories=None, cat_others=None,
                  user_splits=None):
 
@@ -1208,6 +1228,7 @@ class ContinuousBinningTable:
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
+        self.stds = stds
         self.min_target = min_target
         self.max_target = max_target
         self.n_zeros = n_zeros
@@ -1276,6 +1297,7 @@ class ContinuousBinningTable:
             "Count": self.n_records,
             "Count (%)": p_records,
             "Sum": self.sums,
+            "Std": self.stds,
             "Mean": self._mean,
             "Min": self.min_target,
             "Max": self.max_target,
@@ -1288,7 +1310,7 @@ class ContinuousBinningTable:
             t_min = np.min(self.min_target)
             t_max = np.max(self.max_target)
             t_n_zeros = self.n_zeros.sum()
-            totals = ["", t_n_records, 1, t_sum, t_mean, t_min, t_max,
+            totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
                       t_n_zeros, "", t_iv]
             df.loc["Totals"] = totals
 
@@ -1445,6 +1467,48 @@ class ContinuousBinningTable:
         """
         _check_is_built(self)
 
+        # Significance tests
+        n_bins = len(self.n_records)
+        n_metric = n_bins - 2
+
+        if len(self.cat_others):
+            n_metric -= 1
+
+        n_records = self.n_records[:n_metric]
+        mean = self._mean[:n_metric]
+        std = self.stds[:n_metric]
+
+        t_statistics = []
+        p_values = []
+
+        for i in range(n_metric-1):
+            u, u2 = mean[i], mean[i+1]
+            s, s2 = std[i], std[i+1]
+            r, r2 = n_records[i], n_records[i+1]
+
+            t_statistic, p_value = stats.ttest_ind_from_stats(
+                u, s, r, u2, s2, r2, False)
+
+            t_statistics.append(t_statistic)
+            p_values.append(p_value)
+
+        df_tests = pd.DataFrame({
+                "Bin A": np.arange(n_metric-1),
+                "Bin B": np.arange(n_metric-1) + 1,
+                "t-statistic": t_statistics,
+                "p-value": p_values
+            })
+
+        tab = 4
+        if len(df_tests):
+            df_tests_string = dataframe_to_string(df_tests, tab)
+        else:
+            df_tests_string = " " * tab + "None"
+
+        # Quality score
+        self._quality_score = continuous_binning_quality_score(
+            p_values, self._hhi_norm)
+
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._mean[:-2])
 
@@ -1458,9 +1522,13 @@ class ContinuousBinningTable:
             "    IV                  {:>15.8f}\n"
             "    HHI                 {:>15.8f}\n"
             "    HHI (normalized)    {:>15.8f}\n"
+            "    Quality score       {:>15.8f}\n"
             "\n"
             "  Monotonic trend       {:>15}\n"
-            ).format(self._iv, self._hhi, self._hhi_norm, type_mono)
+            "\n"
+            "  Significance tests\n\n{}\n"
+            ).format(self._iv, self._hhi, self._hhi_norm, self._quality_score,
+                     type_mono, df_tests_string)
 
         if print_output:
             print(report)
@@ -1478,3 +1546,18 @@ class ContinuousBinningTable:
         _check_is_built(self)
 
         return self._iv
+
+    @property
+    def quality_score(self):
+        """The quality score (QS).
+
+        The QS is a rating of the quality and discriminatory power of a
+        variable. The QS ranges from 0 to 1.
+
+        Returns
+        -------
+        quality_score : float
+        """
+        _check_is_analyzed(self)
+
+        return self._quality_score

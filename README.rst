@@ -467,7 +467,7 @@ We would like to list companies using OptBinning. Please send a PR with your com
 Currently **officially** using OptBinning:
 
 1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_ & `@GabrielSGoncalves <https://github.com/GabrielSGoncalves>`_]
-2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`]
+2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`_]
 
 Citation
 ========

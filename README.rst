@@ -24,7 +24,7 @@ not previously addressed.
 * **Paper**: Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
 * **Blog**: Optimal binning for streaming data. http://gnpalencia.org/blog/2020/binning_data_streams/
 
-.. list-table:: 
+.. list-table::
 
     * - .. figure:: doc/source/_images/binning_binary.png
 
@@ -185,7 +185,7 @@ The ``analysis`` method performs a statistical analysis of the binning table, co
            4      5    29.910964  4.523477e-08  1.000000  9.814594e-12
            5      6    19.324617  1.102754e-05  0.999999  1.216668e-06
 
-Print overview information about the options settings, problem statistics, and the solution of the computation. 
+Print overview information about the options settings, problem statistics, and the solution of the computation.
 
 .. code-block:: python
 
@@ -228,8 +228,8 @@ Print overview information about the options settings, problem statistics, and t
        verbose                            False   * d
      End options
 
-     Name    : mean radius                     
-     Status  : OPTIMAL                         
+     Name    : mean radius
+     Status  : OPTIMAL
 
      Pre-binning statistics
        Number of pre-bins                     9
@@ -294,13 +294,13 @@ method and reverse mode.
 
 Print overview information about the options settings, problems statistics,
 and the number of selected variables after the binning process.
-  
+
 .. code-block:: python
 
    >>> scorecard.information(print_level=2)
 
 .. code-block:: text
-   
+
    optbinning (Version 0.8.0)
    Copyright (c) 2019-2020 Guillermo Navas-Palencia, Apache License 2.0
 
@@ -467,7 +467,7 @@ We would like to list companies using OptBinning. Please send a PR with your com
 Currently **officially** using OptBinning:
 
 1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_ & `@GabrielSGoncalves <https://github.com/GabrielSGoncalves>`_]
-
+2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`]
 
 Citation
 ========

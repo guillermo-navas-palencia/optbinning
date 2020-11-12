@@ -138,7 +138,7 @@ class OptimalPWBinning(BasePWBinning):
 
         self._binning_table = PWBinningTable(
             self.name, self._optb.splits, self._c, n_nonevent, n_event,
-            d_metrics)
+            x_clean.min(), x_clean.max(), d_metrics)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

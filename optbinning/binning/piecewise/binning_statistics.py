@@ -9,7 +9,6 @@ import numbers
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 
@@ -17,15 +16,19 @@ from sklearn.exceptions import NotFittedError
 
 from ...binning.binning_statistics import bin_str_format
 from ...formatting import dataframe_to_string
+from .transformations import transform_binary_target
 
 
 class PWBinningTable:
-    def __init__(self, name, splits, coef, n_nonevent, n_event, d_metrics):
+    def __init__(self, name, splits, coef, n_nonevent, n_event, min_x, max_x,
+                 d_metrics):
         self.name = name
         self.splits = splits
         self.coef = coef
         self.n_nonevent = n_nonevent
         self.n_event = n_event
+        self.min_x = min_x
+        self.max_x = max_x
         self.d_metrics = d_metrics
 
         self._n_records = None
@@ -48,10 +51,10 @@ class PWBinningTable:
         n_nonevent = self.n_nonevent
         n_event = self.n_event
 
+        self._t_n_nonevent = n_nonevent.sum()
+        self._t_n_event = n_event.sum()
         n_records = n_event + n_nonevent
-        t_n_nonevent = n_nonevent.sum()
-        t_n_event = n_event.sum()
-        t_n_records = t_n_nonevent + t_n_event
+        t_n_records = self._t_n_nonevent + self._t_n_event
         p_records = n_records / t_n_records
 
         # Keep data for plotting
@@ -97,15 +100,84 @@ class PWBinningTable:
                 df["ER c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
 
         if add_totals:
-            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event]
+            totals = ["", t_n_records, 1, self._t_n_nonevent, self._t_n_event]
             totals += ["-"] * n_coefs
             df.loc["Totals"] = totals
 
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             savefig=None):
-        pass
+             n_samples=10000, savefig=None):
+
+        if metric not in ("event_rate", "woe"):
+            raise ValueError('Invalid value for metric. Allowed string '
+                             'values are "event_rate" and "woe".')
+
+        if not isinstance(add_special, bool):
+            raise TypeError("add_special must be a boolean; got {}."
+                            .format(add_special))
+
+        if not isinstance(add_missing, bool):
+            raise TypeError("add_missing must be a boolean; got {}."
+                            .format(add_missing))
+
+        _n_nonevent = self.n_nonevent[:-2]
+        _n_event = self.n_event[:-2]
+
+        n_splits = len(self.splits)
+
+        y_pos = np.empty(n_splits + 2)
+        y_pos[0] = self.min_x
+        y_pos[1:-1] = self.splits
+        y_pos[-1] = self.max_x
+
+        width = y_pos[1:] - y_pos[:-1]
+        y_pos = y_pos[:-1]
+
+        fig, ax1 = plt.subplots()
+
+        p2 = ax1.bar(y_pos, _n_event, width, color="tab:red", align="edge")
+        p1 = ax1.bar(y_pos, _n_nonevent, width, color="tab:blue",
+                     bottom=_n_event, align="edge")
+
+        handles = [p1[0], p2[0]]
+        labels = ['Non-event', 'Event']
+
+        ax1.set_xlabel("x", fontsize=12)
+        ax1.set_ylabel("Bin count", fontsize=13)
+
+        ax2 = ax1.twinx()
+
+        x_samples = np.linspace(self.min_x, self.max_x, n_samples)
+
+        metric_values = transform_binary_target(
+            self.splits, x_samples, self.coef, 0, 1, self._t_n_nonevent,
+            self._t_n_event, 0, 0, 0, 0, [], metric, 0, 0)
+
+        if metric == "woe":
+            metric_label = "WoE"
+        elif metric == "event_rate":
+            metric_label = "Event rate"
+
+        for split in self.splits:
+            ax2.axvline(x=split, color="darkgrey", linestyle="--")
+
+        ax2.plot(x_samples, metric_values, linestyle="solid", color="black")
+
+        ax2.set_ylabel(metric_label, fontsize=13)
+
+        plt.title(self.name, fontsize=14)
+        plt.legend(handles, labels, loc="upper center",
+                   bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
 
     def analysis(self, print_output=True):
         report = ""

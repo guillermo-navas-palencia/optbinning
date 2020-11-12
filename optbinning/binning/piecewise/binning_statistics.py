@@ -70,7 +70,9 @@ class PWBinningTable:
             "Event": n_event
             })
 
-        for i in range(self.coef.shape[1]):
+        n_coefs = self.coef.shape[1]
+
+        for i in range(n_coefs):
             if i == 0:
                 n_nonevent_special = n_nonevent[-2]
                 n_event_special = n_event[-2]
@@ -93,6 +95,11 @@ class PWBinningTable:
                 df["ER c{}".format(i)] = list(self.coef[:, i]) + c_s_m
             else:
                 df["ER c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
+
+        if add_totals:
+            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event]
+            totals += ["-"] * n_coefs
+            df.loc["Totals"] = totals
 
         return df
 

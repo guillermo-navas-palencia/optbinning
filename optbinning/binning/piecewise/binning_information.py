@@ -3,7 +3,7 @@ Optimal piecewise binning information.
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
-# Copyright (C) 2019
+# Copyright (C) 2020
 
 from ...binning.binning_information import print_header
 from ...binning.binning_information import print_optional_parameters
@@ -15,6 +15,7 @@ optimal_pw_binning_options = {
     "name": "",
     "estimator": None,
     "degree": 1,
+    "continuity": True,
     "prebinning_method": "cart",
     "max_n_prebins": 20,
     "min_prebin_size": 0.05,
@@ -58,7 +59,7 @@ def print_solver_statistics(solver_type, solver):
         "    Type                          {:>10}\n"
         "    Number of variables           {:>10}\n"
         "    Number of constraints         {:>10}\n"
-        "    Iterations                    {:>10}\n"
+        "    Simplex iterations            {:>10}\n"
         "    Objective value               {:>10.4f}\n"
         ).format(solver_type, n_variables, n_constraints, iterations,
                  objective)

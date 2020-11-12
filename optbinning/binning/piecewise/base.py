@@ -5,7 +5,6 @@ Optimal piecewise continuous binning algorithm.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-import logging
 import numbers
 import time
 
@@ -22,18 +21,33 @@ from .binning_information import print_binning_information
 from .lp import PWPBinningLP
 
 
-def _check_parameters(name, estimator, degree, prebinning_method,
+def _check_parameters(name, estimator, degree, continuity, prebinning_method,
                       max_n_prebins, min_prebin_size, min_n_bins, max_n_bins,
                       min_bin_size, max_bin_size, monotonic_trend,
                       n_subsamples, max_pvalue, max_pvalue_policy,
                       outlier_detector, outlier_params, user_splits,
                       special_codes, split_digits, solver, time_limit,
                       random_state, verbose):
-    pass
+
+    if not isinstance(name, str):
+        raise TypeError("name must be a string.")
+
+    if estimator is not None:
+        # TODO: check if methods .fit / .predict are available
+        # Pass if binary or continuous. Binary require predict_proba.
+        pass
+
+    if not isinstance(degree, numbers.Integral) or degree < 0:
+        raise ValueError("degree must be an integer >= 0; got {}."
+                         .format(degree))
+
+    if not isinstance(continuity, bool):
+        raise TypeError("continuity must be a boolean; got {}."
+                        .format(continuity))
 
 
 class BasePWBinning(BaseEstimator):
-    def __init__(self, name="", estimator=None, degree=1,
+    def __init__(self, name="", estimator=None, degree=1, continuity=True,
                  prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
@@ -46,6 +60,7 @@ class BasePWBinning(BaseEstimator):
         self.name = name
         self.estimator = estimator
         self.degree = degree
+        self.continuity = continuity
         self.prebinning_method = prebinning_method
 
         self.max_n_prebins = max_n_prebins
@@ -218,8 +233,9 @@ class BasePWBinning(BaseEstimator):
         # LP problem
         time_solver = time.perf_counter()
 
-        optimizer = PWPBinningLP(self.degree, self.monotonic_trend, lb, ub,
-                                 self.solver, self.time_limit)
+        optimizer = PWPBinningLP(self.degree, self.monotonic_trend,
+                                 self.continuity, lb, ub, self.solver,
+                                 self.time_limit)
 
         optimizer.build_model(splits, x_subsamples, x_indices, pred_subsamples)
         self._status, self._c = optimizer.solve()

@@ -11,12 +11,14 @@ from ortools.linear_solver import pywraplp
 
 
 class PWPBinningLP:
-    def __init__(self, degree, monotonic_trend, lb, ub, lp_solver, time_limit):
+    def __init__(self, degree, monotonic_trend, continuity, lb, ub, solver,
+                 time_limit):
         self.degree = degree
         self.monotonic_trend = monotonic_trend
+        self.continuity = continuity
         self.lb = lb
         self.ub = ub
-        self.lp_solver = lp_solver
+        self.solver = solver
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -33,10 +35,10 @@ class PWPBinningLP:
         order = int(self.degree) + 1
 
         # Initialize solver
-        if self.lp_solver == "glop":
+        if self.solver == "glop":
             solver = pywraplp.Solver(
                 'PWPBinningLP', pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
-        elif self.lp_solver == "clp":
+        elif self.solver == "clp":
             solver = pywraplp.Solver(
                 'PWPBinningLP', pywraplp.Solver.CLP_LINEAR_PROGRAMMING)
 
@@ -79,9 +81,10 @@ class PWPBinningLP:
                     solver.Add(poly <= self.ub)
 
         # Constraint: continuity
-        for i in range(n_splits):
-            solver.Add(self.polyeval_unroll(c, splits[i], i, order) ==
-                       self.polyeval_unroll(c, splits[i], i + 1, order))
+        if self.continuity:
+            for i in range(n_splits):
+                solver.Add(self.polyeval_unroll(c, splits[i], i, order) ==
+                           self.polyeval_unroll(c, splits[i], i + 1, order))
 
         # Constraints: monotonicity
         if order == 1:
@@ -93,11 +96,15 @@ class PWPBinningLP:
                 for i in range(n_bins - 1):
                     solver.Add(c[i, order - 1] >= c[i + 1, order - 1])
 
-            elif self.monotonicity == "concave":
-                pass
+            elif self.monotonic_trend == "concave":
+                for i in range(1, n_bins - 1):
+                    solver.Add(-c[i + 1, order - 1] + 2 * c[i, order - 1] -
+                               c[i - 1, order - 1] >= 0)
 
-            elif self.monotonicity == "convex":
-                pass
+            elif self.monotonic_trend == "convex":
+                for i in range(1, n_bins - 1):
+                    solver.Add(c[i + 1, order - 1] - 2 * c[i, order - 1] +
+                               c[i - 1, order - 1] >= 0)
 
         elif order == 2:
             if self.monotonic_trend == "ascending":

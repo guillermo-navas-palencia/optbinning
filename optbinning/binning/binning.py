@@ -815,10 +815,17 @@ class OptimalBinning(BaseOptimalBinning):
             self._n_event_special, self._n_nonevent_cat_others,
             self._n_event_cat_others, cat_others)
 
+        if self.dtype == "numerical":
+            min_x = x_clean.min()
+            max_x = x_clean.max()
+        else:
+            min_x = None
+            max_x = None
+
         self._binning_table = BinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, self._categories, self._cat_others,
-            self.user_splits)
+            self._n_event, min_x, max_x, self._categories,
+            self._cat_others, self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

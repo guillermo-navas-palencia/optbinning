@@ -141,6 +141,15 @@ You can use the method ``plot`` to visualize the histogram and WoE or event rate
 .. image:: doc/source/_images/binning_readme_example_woe.png
    :target: doc/source/_images/binning_readme_example_woe.png
 
+Optionally, you can show the binning plot with the actual bin widths.
+
+.. code-block:: python
+
+   >>> optb.binning_table.plot(metric="woe", style="actual", add_special=False, add_missing=False)
+
+.. image:: doc/source/_images/binning_readme_example_split_woe.png
+   :target: doc/source/_images/binning_readme_example_split_woe.png
+
 Now that we have checked the binned data, we can transform our original data into WoE or event rate values.
 
 .. code-block:: python

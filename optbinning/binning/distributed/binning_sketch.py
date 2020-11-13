@@ -604,7 +604,8 @@ class OptimalBinningSketch(BaseEstimator):
 
         self._binning_table = BinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, self._categories, self._cat_others, None)
+            self._n_event, None, None, self._categories, self._cat_others,
+            None)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

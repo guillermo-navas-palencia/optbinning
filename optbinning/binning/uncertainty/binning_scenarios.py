@@ -529,13 +529,13 @@ class SBOptimalBinning(OptimalBinning):
 
             binning_table = BinningTable(
                 self.name, self.dtype, self._splits_optimal, s_n_nonevent,
-                s_n_event, None, None, self.user_splits)
+                s_n_event, None, None, None, None, self.user_splits)
 
             self._binning_tables.append(binning_table)
 
         self._binning_table = BinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, None, None, self.user_splits)
+            self._n_event, None, None, None, None, self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

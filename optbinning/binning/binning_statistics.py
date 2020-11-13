@@ -496,6 +496,10 @@ class BinningTable:
             elif self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')
 
+            elif self.min_x is None or self.max_x is None:
+                raise ValueError('If style="actual", min_x and max_x must be '
+                                 'provided.')
+
         if metric == "woe":
             metric_values = self._woe
             metric_label = "WoE"

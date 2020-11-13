@@ -464,7 +464,7 @@ class BinningTable:
 
         style: str, optional (default="bin")
             Plot style. style="bin" shows the standard binning plot. If
-            style="split", show the plot with the actual scale, i.e, actual
+            style="actual", show the plot with the actual scale, i.e, actual
             bin widths.
 
         savefig : str or None (default=None)
@@ -484,17 +484,17 @@ class BinningTable:
             raise TypeError("add_missing must be a boolean; got {}."
                             .format(add_missing))
 
-        if style not in ("bin", "split"):
+        if style not in ("bin", "actual"):
             raise ValueError('Invalid value for style. Allowed string '
-                             'values are "bin" and "split".')
+                             'values are "bin" and "actual".')
 
-        if style == "split":
+        if style == "actual":
             if add_special or add_missing:
-                raise ValueError('If style="split", add_special and '
+                raise ValueError('If style="actual", add_special and '
                                  'add_missing must be set to False.')
 
             elif self.dtype == "categorical":
-                raise ValueError('If style="split", dtype must be numerical.')
+                raise ValueError('If style="actual", dtype must be numerical.')
 
         if metric == "woe":
             metric_values = self._woe
@@ -591,7 +591,7 @@ class BinningTable:
             ax2.set_ylabel(metric_label, fontsize=13)
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
-        elif style == "split":
+        elif style == "actual":
             _n_nonevent = self.n_nonevent[:-2]
             _n_event = self.n_event[:-2]
 

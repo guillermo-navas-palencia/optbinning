@@ -145,6 +145,7 @@ class PWBinningTable:
 
         ax1.set_xlabel("x", fontsize=12)
         ax1.set_ylabel("Bin count", fontsize=13)
+        ax1.tick_params(axis='x', labelrotation=45)
 
         ax2 = ax1.twinx()
 
@@ -165,6 +166,7 @@ class PWBinningTable:
         ax2.plot(x_samples, metric_values, linestyle="solid", color="black")
 
         ax2.set_ylabel(metric_label, fontsize=13)
+
 
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",

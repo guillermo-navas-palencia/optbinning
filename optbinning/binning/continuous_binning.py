@@ -91,7 +91,7 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
             raise ValueError('Invalid value for monotonic trend. Allowed '
                              'string values are "auto", "auto_heuristic", '
                              '"auto_asc_desc", "ascending", "descending", '
-                             '"concave", "convex", "peak" "valley", '
+                             '"concave", "convex", "peak", "valley", '
                              '"peak_heuristic" and "valley_heuristic".')
 
     if (not isinstance(min_mean_diff, numbers.Number) or min_mean_diff < 0):

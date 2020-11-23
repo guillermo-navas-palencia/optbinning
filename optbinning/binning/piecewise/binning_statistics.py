@@ -17,6 +17,7 @@ from sklearn.exceptions import NotFittedError
 from ...binning.binning_statistics import bin_str_format
 from ...formatting import dataframe_to_string
 from .transformations import transform_binary_target
+from .transformations import transform_continuous_target
 
 
 class PWBinningTable:
@@ -30,8 +31,6 @@ class PWBinningTable:
         self.min_x = min_x
         self.max_x = max_x
         self.d_metrics = d_metrics
-
-        self._n_records = None
 
     def build(self, show_digits=2, add_totals=True):
         """Build the binning table.
@@ -58,8 +57,6 @@ class PWBinningTable:
         p_records = n_records / t_n_records
 
         # Keep data for plotting
-        self._n_records = n_records
-
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
 
@@ -167,7 +164,6 @@ class PWBinningTable:
 
         ax2.set_ylabel(metric_label, fontsize=13)
 
-
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
@@ -190,23 +186,83 @@ class PWBinningTable:
 
 
 class PWContinuousBinningTable:
-    def __init__(self, name, splits, coef, n_records, sums, min_target,
-                 max_target, n_zeros):
+    def __init__(self, name, splits, coef, n_records, sums, stds, min_target,
+                 max_target, n_zeros, lb, ub, min_x, max_x, d_metrics):
 
         self.name = name
         self.splits = splits
         self.coef = coef
         self.n_records = n_records
         self.sums = sums
+        self.stds = stds
         self.min_target = min_target
         self.max_target = max_target
         self.n_zeros = n_zeros
 
+        self.lb = lb
+        self.ub = ub
+        self.min_x = min_x
+        self.max_x = max_x
+        self.d_metrics = d_metrics
+
     def build(self, show_digits=2, add_totals=True):
         pass
 
-    def plot(self, add_special=True, add_missing=True, savefig=None):
-        pass
+    def plot(self, add_special=True, add_missing=True, n_samples=10000,
+             savefig=None):
+
+        _n_records = self.n_records[:-2]
+
+        n_splits = len(self.splits)
+
+        y_pos = np.empty(n_splits + 2)
+        y_pos[0] = self.min_x
+        y_pos[1:-1] = self.splits
+        y_pos[-1] = self.max_x
+
+        width = y_pos[1:] - y_pos[:-1]
+        y_pos = y_pos[:-1]
+
+        fig, ax1 = plt.subplots()
+
+        p1 = ax1.bar(y_pos, _n_records, width, color="tab:blue", align="edge")
+
+        handles = [p1[0]]
+        labels = ['Count']
+
+        ax1.set_xlabel("x", fontsize=12)
+        ax1.set_ylabel("Bin count", fontsize=13)
+        ax1.tick_params(axis='x', labelrotation=45)
+
+        ax2 = ax1.twinx()
+
+        x_samples = np.linspace(self.min_x, self.max_x, n_samples)
+
+        metric_values = transform_continuous_target(
+            self.splits, x_samples, self.coef, self.lb, self.ub, 0, 0, 0, 0,
+            [], 0, 0)
+
+        metric_label = "Mean"
+
+        for split in self.splits:
+            ax2.axvline(x=split, color="darkgrey", linestyle="--")
+
+        ax2.plot(x_samples, metric_values, linestyle="solid", color="black")
+
+        ax2.set_ylabel(metric_label, fontsize=13)
+
+        plt.title(self.name, fontsize=14)
+        plt.legend(handles, labels, loc="upper center",
+                   bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
 
     def analysis(self, print_output=True):
         pass

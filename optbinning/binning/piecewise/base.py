@@ -10,6 +10,7 @@ import time
 
 import numpy as np
 
+from ropwr import RobustPWRegression
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import train_test_split
@@ -18,16 +19,17 @@ from ...binning.continuous_binning import ContinuousOptimalBinning
 from ...logging import Logger
 from ...preprocessing import split_data
 from .binning_information import print_binning_information
-from .lp import PWPBinningLP
+from .binning_information import retrieve_status
 
 
-def _check_parameters(name, estimator, degree, continuity, prebinning_method,
-                      max_n_prebins, min_prebin_size, min_n_bins, max_n_bins,
-                      min_bin_size, max_bin_size, monotonic_trend,
-                      n_subsamples, max_pvalue, max_pvalue_policy,
-                      outlier_detector, outlier_params, user_splits,
-                      user_splits_fixed, special_codes, split_digits, solver,
-                      time_limit, random_state, verbose, problem_type):
+def _check_parameters(name, estimator, objective, degree, continuous,
+                      prebinning_method, max_n_prebins, min_prebin_size,
+                      min_n_bins, max_n_bins, min_bin_size, max_bin_size,
+                      monotonic_trend, n_subsamples, max_pvalue,
+                      max_pvalue_policy, outlier_detector, outlier_params,
+                      user_splits, user_splits_fixed, special_codes,
+                      split_digits, solver, h_epsilon, quantile, random_state,
+                      verbose, problem_type):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -45,13 +47,16 @@ def _check_parameters(name, estimator, degree, continuity, prebinning_method,
                 raise TypeError("estimator must be an object with methods fit "
                                 "and predict.")
 
-    if not isinstance(degree, numbers.Integral) or degree < 0:
-        raise ValueError("degree must be an integer >= 0; got {}."
-                         .format(degree))
+    if objective not in ("l1", "l2", "huber", "quantile"):
+        raise ValueError('Invalid value for objective. Allowed string '
+                         'values are "l1", "l2", "huber" and "quantile".')
 
-    if not isinstance(continuity, bool):
-        raise TypeError("continuity must be a boolean; got {}."
-                        .format(continuity))
+    if not isinstance(degree, numbers.Integral) or not 0 <= degree <= 5:
+        raise ValueError("degree must be an integer in [0, 5].")
+
+    if not isinstance(continuous, bool):
+        raise TypeError("continuous must be a boolean; got {}."
+                        .format(verbose))
 
     if prebinning_method not in ("cart", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
@@ -105,6 +110,11 @@ def _check_parameters(name, estimator, degree, continuity, prebinning_method,
             raise ValueError("Monotonic trend convex and convex are only "
                              "allowed if degree <= 1.")
 
+    if n_subsamples is not None:
+        if not isinstance(n_subsamples, numbers.Integral) or n_subsamples <= 0:
+            raise ValueError("n_subsamples must be a positive integer; got {}."
+                             .format(n_subsamples))
+
     if max_pvalue is not None:
         if (not isinstance(max_pvalue, numbers.Number) or
                 not 0. < max_pvalue <= 1.0):
@@ -154,9 +164,17 @@ def _check_parameters(name, estimator, degree, continuity, prebinning_method,
             raise ValueError("split_digist must be an integer in [0, 8]; "
                              "got {}.".format(split_digits))
 
-    if not isinstance(time_limit, numbers.Number) or time_limit < 0:
-        raise ValueError("time_limit must be a positive value in seconds; "
-                         "got {}.".format(time_limit))
+    if solver not in ("auto", "ecos", "osqp", "direct"):
+        raise ValueError('Invalid value for solver. Allowed string '
+                         'values are "auto", "ecos", "osqp" and "direct".')
+
+    if not isinstance(h_epsilon, numbers.Number) or h_epsilon < 1.0:
+        raise ValueError("h_epsilon must a number >= 1.0; got {}."
+                         .format(h_epsilon))
+
+    if not isinstance(quantile, numbers.Number) or not 0.0 < quantile < 1.0:
+        raise ValueError("quantile must be a value in (0, 1); got {}."
+                         .format(quantile))
 
     if random_state is not None:
         if not isinstance(random_state, (int, np.random.RandomState)):
@@ -168,20 +186,22 @@ def _check_parameters(name, estimator, degree, continuity, prebinning_method,
 
 
 class BasePWBinning(BaseEstimator):
-    def __init__(self, name="", estimator=None, degree=1, continuity=True,
-                 prebinning_method="cart", max_n_prebins=20,
+    def __init__(self, name="", estimator=None, objective="l2", degree=1,
+                 continuous=True, prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
-                 n_subsamples=10000, max_pvalue=None,
+                 n_subsamples=None, max_pvalue=None,
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, solver="clp",
-                 time_limit=100, random_state=None, verbose=False):
+                 special_codes=None, split_digits=None, solver="auto",
+                 h_epsilon=1.35, quantile=0.5, random_state=None,
+                 verbose=False):
 
         self.name = name
         self.estimator = estimator
+        self.objective = objective
         self.degree = degree
-        self.continuity = continuity
+        self.continuous = continuous
         self.prebinning_method = prebinning_method
 
         self.max_n_prebins = max_n_prebins
@@ -206,7 +226,8 @@ class BasePWBinning(BaseEstimator):
         self.split_digits = split_digits
 
         self.solver = solver
-        self.time_limit = time_limit
+        self.h_epsilon = h_epsilon
+        self.quantile = quantile
         self.random_state = random_state
         self.verbose = verbose
 
@@ -234,7 +255,7 @@ class BasePWBinning(BaseEstimator):
 
         self._is_fitted = False
 
-    def fit(self, x, y, check_input=False):
+    def fit(self, x, y, lb=None, ub=None, check_input=False):
         """Fit the optimal piecewise binning according to the given training
         data.
 
@@ -254,7 +275,7 @@ class BasePWBinning(BaseEstimator):
         self : object
             Fitted optimal piecewise binning.
         """
-        return self._fit(x, y, check_input)
+        return self._fit(x, y, lb, ub, check_input)
 
     def information(self, print_level=1):
         """Print overview information about the options settings, problem
@@ -272,7 +293,7 @@ class BasePWBinning(BaseEstimator):
                              .format(print_level))
 
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver = self._optimizer
             time_solver = self._time_solver
         else:
             solver = None
@@ -337,31 +358,22 @@ class BasePWBinning(BaseEstimator):
         n_bins = n_splits + 1
         self._n_bins = n_bins
 
-        indices = np.digitize(x, splits, right=False)
-        n_subsamples = min(len(x), self.n_subsamples)
-
-        if len(x) == n_subsamples:
+        if self.n_subsamples is None or self.n_subsamples > len(x):
             x_subsamples = x
             pred_subsamples = prediction
-            y_subsamples = y
-            indices_subsamples = indices
 
             if self.verbose:
                 self._logger.info("Pre-binning: no need for subsamples.")
         else:
-            [_, x_subsamples, _, pred_subsamples, _, y_subsamples, _,
-             indices_subsamples] = train_test_split(
-                x, prediction, y, indices, test_size=n_subsamples,
+            indices = np.digitize(x, splits, right=False)
+            [_, x_subsamples, _, pred_subsamples,
+            _, _, _, _] = train_test_split(
+                x, prediction, y, indices, test_size=self.n_subsamples,
                 random_state=self.random_state)
 
             if self.verbose:
                 self._logger.info("Pre-binning: number of subsamples: {}."
-                                  .format(n_subsamples))
-
-        x_indices = []
-        for i in range(n_bins):
-            mask = (indices_subsamples == i)
-            x_indices.append(np.arange(n_subsamples)[mask])
+                                  .format(self.n_subsamples))
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
@@ -375,21 +387,16 @@ class BasePWBinning(BaseEstimator):
 
         time_solver = time.perf_counter()
 
-        optimizer = PWPBinningLP(self.degree, self.monotonic_trend,
-                                 self.continuity, lb, ub, self.solver,
-                                 self.time_limit)
+        optimizer = RobustPWRegression(
+            self.objective, self.degree, self.continuous, self.monotonic_trend,
+            self.solver, self.h_epsilon, self.quantile, self.verbose)
 
-        if self.verbose:
-            self._logger.info("Optimizer: build model...")
+        optimizer.fit(x_subsamples, pred_subsamples, splits, lb, ub)
 
-        optimizer.build_model(splits, x_subsamples, x_indices, pred_subsamples)
-
-        if self.verbose:
-            self._logger.info("Optimizer: solve...")
-
-        self._status, self._c = optimizer.solve()
+        self._c = optimizer.coef_
 
         self._optimizer = optimizer
+        self._status = retrieve_status(optimizer.status)
         self._splits_optimal = splits
 
         self._time_solver = time.perf_counter() - time_solver

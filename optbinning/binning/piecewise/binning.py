@@ -22,40 +22,38 @@ from .transformations import transform_binary_target
 
 
 class OptimalPWBinning(BasePWBinning):
-    def __init__(self, name="", estimator=None, degree=1, continuity=True,
-                 prebinning_method="cart", max_n_prebins=20,
+    def __init__(self, name="", estimator=None, objective="l2", degree=1,
+                 continuous=True, prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
-                 n_subsamples=10000, max_pvalue=None,
+                 n_subsamples=None, max_pvalue=None,
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, solver="clp",
-                 time_limit=100, random_state=None, verbose=False):
+                 special_codes=None, split_digits=None, solver="auto",
+                 h_epsilon=1.35, quantile=0.5, random_state=None,
+                 verbose=False):
 
-        super().__init__(name, estimator, degree, continuity,
+        super().__init__(name, estimator, objective, degree, continuous,
                          prebinning_method, max_n_prebins, min_prebin_size,
                          min_n_bins, max_n_bins, min_bin_size, max_bin_size,
                          monotonic_trend, n_subsamples, max_pvalue,
                          max_pvalue_policy, outlier_detector, outlier_params,
                          user_splits, user_splits_fixed, special_codes,
-                         split_digits, solver, time_limit, random_state,
-                         verbose)
+                         split_digits, solver, h_epsilon, quantile,
+                         random_state, verbose)
 
         self._problem_type = "classification"
 
     def fit_transform(self, x, y, metric="woe", metric_special=0,
-                      metric_missing=0, check_input=False):
+                      metric_missing=0, lb=None, ub=None, check_input=False):
 
-        return self.fit(x, y, check_input).transform(
-            x, metric, metric_special, metric_missing, check_input)
+        return self.fit(x, y, lb, ub, check_input).transform(
+            x, metric, metric_special, metric_missing, lb, ub, check_input)
 
     def transform(self, x, metric="woe", metric_special=0, metric_missing=0,
-                  check_input=False):
+                  lb=None, ub=None, check_input=False):
 
         self._check_is_fitted()
-
-        lb = 1e-8
-        ub = 1.0 - lb
 
         return transform_binary_target(self._optb.splits, x, self._c, lb, ub,
                                        self._t_n_nonevent, self._t_n_event,
@@ -67,7 +65,7 @@ class OptimalPWBinning(BasePWBinning):
                                        metric_special, metric_missing,
                                        check_input)
 
-    def _fit(self, x, y, check_input):
+    def _fit(self, x, y, lb, ub, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -141,7 +139,7 @@ class OptimalPWBinning(BasePWBinning):
 
         # Fit optimal binning algorithm for continuous target. Use optimal
         # split points to compute optimal piecewise functions
-        self._fit_binning(x_clean, y_clean, event_rate, 0, 1)
+        self._fit_binning(x_clean, y_clean, event_rate, lb, ub)
 
         # Post-processing
         if self.verbose:

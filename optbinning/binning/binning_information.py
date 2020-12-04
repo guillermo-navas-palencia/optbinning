@@ -35,7 +35,12 @@ def print_optional_parameters(dict_default_options, dict_user_options):
     str_options = "  Begin options\n"
     for key, value in dict_default_options.items():
         user_value = dict_user_options[key]
-        user_flag = "d" if value == user_value else "U"
+
+        if (isinstance(user_value, (list, np.ndarray, dict)) or
+                value != user_value):
+            user_flag = "U"
+        else:
+            user_flag = "d"
 
         if user_value is None:
             user_value = "no"

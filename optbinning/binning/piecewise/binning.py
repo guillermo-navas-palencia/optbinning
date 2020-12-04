@@ -10,18 +10,21 @@ import time
 import numpy as np
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import brier_score_loss
 
 from ...binning.binning_statistics import target_info
-from ...scorecard.metrics import gini
 from .base import _check_parameters
 from .base import BasePWBinning
 from .binning_statistics import PWBinningTable
+from .metrics import binary_metrics
 from .transformations import transform_binary_target
 
 
 class OptimalPWBinning(BasePWBinning):
+    """Optimal Piecewise binning.
+
+    Parameters
+    ----------
+    """
     def __init__(self, name="", estimator=None, objective="l2", degree=1,
                  continuous=True, prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
@@ -30,8 +33,8 @@ class OptimalPWBinning(BasePWBinning):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, solver="auto",
-                 h_epsilon=1.35, quantile=0.5, random_state=None,
-                 verbose=False):
+                 h_epsilon=1.35, quantile=0.5, regularization=None, reg_l1=1.0,
+                 reg_l2=1.0, random_state=None, verbose=False):
 
         super().__init__(name, estimator, objective, degree, continuous,
                          prebinning_method, max_n_prebins, min_prebin_size,
@@ -40,19 +43,38 @@ class OptimalPWBinning(BasePWBinning):
                          max_pvalue_policy, outlier_detector, outlier_params,
                          user_splits, user_splits_fixed, special_codes,
                          split_digits, solver, h_epsilon, quantile,
-                         random_state, verbose)
+                         regularization, reg_l1, reg_l2, random_state, verbose)
 
         self._problem_type = "classification"
 
+        self._n_nonevent_special = None
+        self._n_nonevent_missing = None
+        self._n_event_special = None
+        self._n_event_missing = None
+        self._t_n_nonevent = None
+        self._t_n_event = None
+
     def fit_transform(self, x, y, metric="woe", metric_special=0,
                       metric_missing=0, lb=None, ub=None, check_input=False):
+        """
+        Parameters
+        ----------
 
+        Returns
+        -------
+        """
         return self.fit(x, y, lb, ub, check_input).transform(
             x, metric, metric_special, metric_missing, lb, ub, check_input)
 
     def transform(self, x, metric="woe", metric_special=0, metric_missing=0,
                   lb=None, ub=None, check_input=False):
+        """
+        Parameters
+        ----------
 
+        Returns
+        -------
+        """
         self._check_is_fitted()
 
         return transform_binary_target(self._optb.splits, x, self._c, lb, ub,
@@ -181,18 +203,13 @@ class OptimalPWBinning(BasePWBinning):
         if self.verbose:
             self._logger.info("Post-processing: compute performance metrics.")
 
-        d_metrics = {}
-
-        y_pred_proba = transform_binary_target(
-            self._optb.splits, x, self._c, 0, 1, self._t_n_nonevent,
+        d_metrics = binary_metrics(
+            x_clean, y_clean, self._optb.splits, self._c, self._t_n_nonevent,
             self._t_n_event, self._n_nonevent_special, self._n_event_special,
             self._n_nonevent_missing, self._n_event_missing,
-            self.special_codes, "event_rate", "empirical", "empirical")
+            self.special_codes)
 
-        d_metrics["Gini Index"] = gini(y, y_pred_proba)
-        d_metrics["Avg precision"] = average_precision_score(y, y_pred_proba)
-        d_metrics["Brier score"] = brier_score_loss(y, y_pred_proba)
-
+        # Binning table
         self._binning_table = PWBinningTable(
             self.name, self._optb.splits, self._c, n_nonevent, n_event,
             x_clean.min(), x_clean.max(), d_metrics)

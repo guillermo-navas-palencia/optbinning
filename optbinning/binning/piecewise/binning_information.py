@@ -36,6 +36,9 @@ optimal_pw_binning_options = {
     "solver": "auto",
     "h_epsilon": 1.35,
     "quantile": 0.5,
+    "regularization": None,
+    "reg_l1": 1.0,
+    "reg_l2": 1.0,
     "random_state": None,
     "verbose": False
 }

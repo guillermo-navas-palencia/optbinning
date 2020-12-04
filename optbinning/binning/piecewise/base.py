@@ -15,6 +15,8 @@ from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import train_test_split
 
+from ...binning.auto_monotonic import type_of_monotonic_trend
+from ...binning.binning import OptimalBinning
 from ...binning.continuous_binning import ContinuousOptimalBinning
 from ...logging import Logger
 from ...preprocessing import split_data
@@ -28,8 +30,9 @@ def _check_parameters(name, estimator, objective, degree, continuous,
                       monotonic_trend, n_subsamples, max_pvalue,
                       max_pvalue_policy, outlier_detector, outlier_params,
                       user_splits, user_splits_fixed, special_codes,
-                      split_digits, solver, h_epsilon, quantile, random_state,
-                      verbose, problem_type):
+                      split_digits, solver, h_epsilon, quantile,
+                      regularization, reg_l1, reg_l2, random_state, verbose,
+                      problem_type):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -176,6 +179,19 @@ def _check_parameters(name, estimator, objective, degree, continuous,
         raise ValueError("quantile must be a value in (0, 1); got {}."
                          .format(quantile))
 
+    if regularization is not None:
+        if regularization not in ("l1", "l2"):
+            raise ValueError('Invalid value for regularization. Allowed '
+                             'string values are "l1" and "l2".')
+
+    if not isinstance(reg_l1, numbers.Number) or reg_l1 < 0.0:
+        raise ValueError("reg_l1 must be a positive value; got {}."
+                         .format(reg_l1))
+
+    if not isinstance(reg_l2, numbers.Number) or reg_l2 < 0.0:
+        raise ValueError("reg_l2 must be a positive value; got {}."
+                         .format(reg_l2))
+
     if random_state is not None:
         if not isinstance(random_state, (int, np.random.RandomState)):
             raise TypeError("random_state must an integer or a RandomState "
@@ -194,8 +210,8 @@ class BasePWBinning(BaseEstimator):
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, solver="auto",
-                 h_epsilon=1.35, quantile=0.5, random_state=None,
-                 verbose=False):
+                 h_epsilon=1.35, quantile=0.5, regularization=None, reg_l1=1.0,
+                 reg_l2=1.0, random_state=None, verbose=False):
 
         self.name = name
         self.estimator = estimator
@@ -228,6 +244,10 @@ class BasePWBinning(BaseEstimator):
         self.solver = solver
         self.h_epsilon = h_epsilon
         self.quantile = quantile
+        self.regularization = regularization
+        self.reg_l1 = reg_l1
+        self.reg_l2 = reg_l2
+
         self.random_state = random_state
         self.verbose = verbose
 
@@ -328,25 +348,45 @@ class BasePWBinning(BaseEstimator):
         if self.monotonic_trend in ("concave", "convex"):
             monotonic_trend = "auto"
 
-        self._optb = ContinuousOptimalBinning(
-            name=self.name, dtype="numerical",
-            prebinning_method=self.prebinning_method,
-            max_n_prebins=self.max_n_prebins,
-            min_prebin_size=self.min_prebin_size,
-            min_n_bins=self.min_n_bins,
-            max_n_bins=self.max_n_bins,
-            min_bin_size=self.min_bin_size,
-            max_bin_size=self.max_bin_size,
-            monotonic_trend=monotonic_trend,
-            max_pvalue=self.max_pvalue,
-            max_pvalue_policy=self.max_pvalue_policy,
-            outlier_detector=self.outlier_detector,
-            outlier_params=self.outlier_params,
-            user_splits=self.user_splits,
-            user_splits_fixed=self.user_splits_fixed,
-            split_digits=self.split_digits)
+        if self._problem_type == "regression":
+            self._optb = ContinuousOptimalBinning(
+                name=self.name, dtype="numerical",
+                prebinning_method=self.prebinning_method,
+                max_n_prebins=self.max_n_prebins,
+                min_prebin_size=self.min_prebin_size,
+                min_n_bins=self.min_n_bins,
+                max_n_bins=self.max_n_bins,
+                min_bin_size=self.min_bin_size,
+                max_bin_size=self.max_bin_size,
+                monotonic_trend=monotonic_trend,
+                max_pvalue=self.max_pvalue,
+                max_pvalue_policy=self.max_pvalue_policy,
+                outlier_detector=self.outlier_detector,
+                outlier_params=self.outlier_params,
+                user_splits=self.user_splits,
+                user_splits_fixed=self.user_splits_fixed,
+                split_digits=self.split_digits)
 
-        self._optb.fit(x, prediction)
+        elif self._problem_type == "classification":
+            self._optb = OptimalBinning(
+                name=self.name, dtype="numerical",
+                prebinning_method=self.prebinning_method,
+                max_n_prebins=self.max_n_prebins,
+                min_prebin_size=self.min_prebin_size,
+                min_n_bins=self.min_n_bins,
+                max_n_bins=self.max_n_bins,
+                min_bin_size=self.min_bin_size,
+                max_bin_size=self.max_bin_size,
+                monotonic_trend=monotonic_trend,
+                max_pvalue=self.max_pvalue,
+                max_pvalue_policy=self.max_pvalue_policy,
+                outlier_detector=self.outlier_detector,
+                outlier_params=self.outlier_params,
+                user_splits=self.user_splits,
+                user_splits_fixed=self.user_splits_fixed,
+                split_digits=self.split_digits)
+
+        self._optb.fit(x, y)
         splits = self._optb.splits
         n_splits = len(splits)
 
@@ -367,7 +407,7 @@ class BasePWBinning(BaseEstimator):
         else:
             indices = np.digitize(x, splits, right=False)
             [_, x_subsamples, _, pred_subsamples,
-            _, _, _, _] = train_test_split(
+             _, _, _, _] = train_test_split(
                 x, prediction, y, indices, test_size=self.n_subsamples,
                 random_state=self.random_state)
 
@@ -385,11 +425,30 @@ class BasePWBinning(BaseEstimator):
         if self.verbose:
             self._logger.info("Optimizer started.")
 
+        if self.monotonic_trend == "auto":
+            indices = np.digitize(x, splits, right=False)
+            mean = np.array([y[indices == i].mean() for i in range(n_bins)])
+
+            monotonic = type_of_monotonic_trend(mean)
+            if monotonic in ("undefined", "no monotonic"):
+                monotonic = None
+            elif "peak" in monotonic:
+                monotonic = "peak"
+            elif "valley" in monotonic:
+                monotonic = "valley"
+
+            if self.verbose:
+                self._logger.info("Optimizer: {} monotonic trend."
+                                  .format(monotonic))
+        else:
+            monotonic = self.monotonic_trend
+
         time_solver = time.perf_counter()
 
         optimizer = RobustPWRegression(
-            self.objective, self.degree, self.continuous, self.monotonic_trend,
-            self.solver, self.h_epsilon, self.quantile, self.verbose)
+            self.objective, self.degree, self.continuous, monotonic,
+            self.solver, self.h_epsilon, self.quantile, self.regularization,
+            self.reg_l1, self.reg_l1, self.verbose)
 
         optimizer.fit(x_subsamples, pred_subsamples, splits, lb, ub)
 

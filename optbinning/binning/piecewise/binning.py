@@ -195,24 +195,87 @@ class OptimalPWBinning(BasePWBinning):
 
     def fit_transform(self, x, y, metric="woe", metric_special=0,
                       metric_missing=0, lb=None, ub=None, check_input=False):
-        """
+        """Fit the optimal piecewise binning according to the given training
+        data, then transform it.
+
         Parameters
         ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Target vector relative to x.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence and "event_rate" to
+            choose the event rate.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        lb : float or None (default=None)
+            Avoid values below the lower bound lb.
+
+        ub : float or None (default=None)
+            Avoid values above the upper bound ub.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
 
         Returns
         -------
+        x_new : numpy array, shape = (n_samples,)
+            Transformed array.
         """
         return self.fit(x, y, lb, ub, check_input).transform(
             x, metric, metric_special, metric_missing, lb, ub, check_input)
 
     def transform(self, x, metric="woe", metric_special=0, metric_missing=0,
                   lb=None, ub=None, check_input=False):
-        """
+        """Transform given data to Weight of Evidence (WoE) or event rate using
+        bins from the fitted optimal piecewise binning.
+
         Parameters
         ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence and "event_rate" to
+            choose the event rate.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        lb : float or None (default=None)
+            Avoid values below the lower bound lb.
+
+        ub : float or None (default=None)
+            Avoid values above the upper bound ub.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
 
         Returns
         -------
+        x_new : numpy array, shape = (n_samples,)
+            Transformed array.
         """
         self._check_is_fitted()
 

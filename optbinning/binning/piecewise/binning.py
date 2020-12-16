@@ -7,8 +7,6 @@ Optimal piecewise binning algorithm for binary target.
 
 import time
 
-import numpy as np
-
 from sklearn.linear_model import LogisticRegression
 
 from ...binning.binning_statistics import target_info
@@ -179,22 +177,9 @@ class OptimalPWBinning(BasePWBinning):
         self._n_nonevent_missing = missing_target_info[0]
         self._n_event_missing = missing_target_info[1]
 
-        indices = np.digitize(x_clean, self._optb.splits, right=False)
-        n_nonevent = np.empty(self._n_bins + 2).astype(np.int64)
-        n_event = np.empty(self._n_bins + 2).astype(np.int64)
-
-        y0 = (y_clean == 0)
-        y1 = ~y0
-
-        for i in range(self._n_bins):
-            mask = (indices == i)
-            n_nonevent[i] = np.count_nonzero(y0 & mask)
-            n_event[i] = np.count_nonzero(y1 & mask)
-
-        n_nonevent[self._n_bins] = self._n_nonevent_special
-        n_nonevent[self._n_bins + 1] = self._n_nonevent_missing
-        n_event[self._n_bins] = self._n_event_special
-        n_event[self._n_bins + 1] = self._n_event_missing
+        bt = self._optb.binning_table.build(add_totals=False)
+        n_nonevent = bt["Non-event"].values
+        n_event = bt["Event"].values
 
         self._t_n_nonevent = n_nonevent.sum()
         self._t_n_event = n_event.sum()

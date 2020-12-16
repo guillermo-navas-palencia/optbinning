@@ -7,20 +7,60 @@ Binning tables for optimal continuous binning.
 
 import numbers
 
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from sklearn.exceptions import NotFittedError
-
+from ...binning.binning_statistics import _check_build_parameters
+from ...binning.binning_statistics import _check_is_built
 from ...binning.binning_statistics import bin_str_format
+from ...binning.binning_statistics import BinningTable
+from ...binning.metrics import bayesian_probability
+from ...binning.metrics import binning_quality_score
+from ...binning.metrics import chi2_cramer_v
+from ...binning.metrics import frequentist_pvalue
+from ...binning.metrics import hhi
 from ...formatting import dataframe_to_string
 from .transformations import transform_binary_target
 from .transformations import transform_continuous_target
 
 
-class PWBinningTable:
+class PWBinningTable(BinningTable):
+    """Piecewise binning table to summarize optimal binning of a numerical
+    variable with respecto a binary target.
+
+    Parameters
+    ----------
+    name : str, optional (default="")
+        The variable name.
+
+    splits : numpy.ndarray
+        List of split points.
+
+    coef : numpy.ndarray
+        Coefficients for each bin.
+
+    n_nonevent : numpy.ndarray
+        Number of non-events.
+
+    n_event : numpy.ndarray
+        Number of events.
+
+    min_x : float
+        Mininum value of x.
+
+    max_x : float
+        Maxinum value of x.
+
+    d_metrics : dict
+        Dictionary of performance metrics.
+
+    Warning
+    -------
+    This class is not intended to be instantiated by the user. It is
+    preferable to use the class returned by the property ``binning_table``
+    available in all optimal binning classes.
+    """
     def __init__(self, name, splits, coef, n_nonevent, n_event, min_x, max_x,
                  d_metrics):
         self.name = name
@@ -31,6 +71,21 @@ class PWBinningTable:
         self.min_x = min_x
         self.max_x = max_x
         self.d_metrics = d_metrics
+
+        self._n_records = None
+        self._event_rate = None
+        self._t_n_nonevent = None
+        self._t_n_event = None
+        self._hhi = None
+        self._hhi_norm = None
+        self._iv = None
+        self._js = None
+        self._gini = None
+        self._quality_score = None
+        self._ks = None
+
+        self._is_built = False
+        self._is_analyzed = False
 
     def build(self, show_digits=2, add_totals=True):
         """Build the binning table.
@@ -47,6 +102,8 @@ class PWBinningTable:
         -------
         binning_table : pandas.DataFrame
         """
+        _check_build_parameters(show_digits, add_totals)
+
         n_nonevent = self.n_nonevent
         n_event = self.n_event
 
@@ -56,7 +113,25 @@ class PWBinningTable:
         t_n_records = self._t_n_nonevent + self._t_n_event
         p_records = n_records / t_n_records
 
-        # Keep data for plotting
+        mask = (n_event > 0) & (n_nonevent > 0)
+        event_rate = np.zeros(len(n_records))
+        event_rate[mask] = n_event[mask] / n_records[mask]
+
+        self._n_records = n_records
+        self._event_rate = event_rate
+
+        # Gini / IV / JS / hellinger / triangular / KS
+        self._gini = self.d_metrics["Gini index"]
+        self._iv = self.d_metrics["IV (Jeffrey)"]
+        self._js = self.d_metrics["JS (Jensen-Shannon)"]
+        self._hellinger = self.d_metrics["Hellinger"]
+        self._triangular = self.d_metrics["Triangular"]
+        self._ks = self.d_metrics["KS"]
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)
+
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
 
@@ -101,11 +176,35 @@ class PWBinningTable:
             totals += ["-"] * n_coefs
             df.loc["Totals"] = totals
 
+        self._is_built = True
+
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
              n_samples=10000, savefig=None):
+        """Plot the binning table.
 
+        Visualize the non-event and event count, and the Weight of Evidence or
+        the event rate for each bin.
+
+        Parameters
+        ----------
+        metric : str, optional (default="woe")
+            Supported metrics are "woe" to show the Weight of Evidence (WoE)
+            measure and "event_rate" to show the event rate.
+
+        add_special : bool (default=True)
+            Whether to add the special codes bin.
+
+        add_missing : bool (default=True)
+            Whether to add the special values bin.
+
+        n_samples : int (default=10000)
+            Number of samples to be represented.
+
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+        """
         if metric not in ("event_rate", "woe"):
             raise ValueError('Invalid value for metric. Allowed string '
                              'values are "event_rate" and "woe".')
@@ -177,12 +276,123 @@ class PWBinningTable:
             plt.savefig(savefig)
             plt.close()
 
-    def analysis(self, print_output=True):
-        report = ""
-        for metric, value in self.d_metrics.items():
-            report += "    {:<20}{:>15.8f}\n".format(metric, value)
+    def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
+        """Binning table analysis.
 
-        print(report)
+        Statistical analysis of the binning table, computing the statistics
+        Gini index, Information Value (IV), Jensen-Shannon divergence, and
+        the quality score. Additionally, several statistical significance tests
+        between consecutive bins of the contingency table are performed: a
+        frequentist test using the Chi-square test or the Fisher's exact test,
+        and a Bayesian A/B test using the beta distribution as a conjugate
+        prior of the Bernoulli distribution.
+
+        Parameters
+        ----------
+        pvalue_test : str, optional (default="chi2")
+            The statistical test. Supported test are "chi2" to choose the
+            Chi-square test and "fisher" to choose the Fisher exact test.
+
+        n_samples : int, optional (default=100)
+            The number of samples to run the Bayesian A/B testing between
+            consecutive bins to compute the probability of the event rate of
+            bin A being greater than the event rate of bin B.
+
+        print_output : bool (default=True)
+            Whether to print analysis information.
+
+        Notes
+        -----
+        The Chi-square test uses `scipy.stats.chi2_contingency
+        <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.
+        chi2_contingency.html>`_, and the Fisher exact test uses
+        `scipy.stats.fisher_exact <https://docs.scipy.org/doc/scipy/reference/
+        generated/scipy.stats.fisher_exact.html>`_.
+        """
+        _check_is_built(self)
+
+        if pvalue_test not in ("chi2", "fisher"):
+            raise ValueError('Invalid value for pvalue_test. Allowed string '
+                             'values are "chi2" and "fisher".')
+
+        if not isinstance(n_samples, numbers.Integral) or n_samples <= 0:
+            raise ValueError("n_samples must be a positive integer; got {}."
+                             .format(n_samples))
+
+        # Significance tests
+        n_bins = len(self._n_records)
+        n_metric = n_bins - 2
+
+        n_nev = self.n_nonevent[:n_metric]
+        n_ev = self.n_event[:n_metric]
+
+        if len(n_nev) >= 2:
+            chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        else:
+            cramer_v = 0
+
+        t_statistics = []
+        p_values = []
+        p_a_b = []
+        p_b_a = []
+        for i in range(n_metric-1):
+            obs = np.array([n_nev[i:i+2] + 0.5, n_ev[i:i+2] + 0.5])
+            t_statistic, p_value = frequentist_pvalue(obs, pvalue_test)
+            pab, pba = bayesian_probability(obs, n_samples)
+
+            p_a_b.append(pab)
+            p_b_a.append(pba)
+
+            t_statistics.append(t_statistic)
+            p_values.append(p_value)
+
+        # Quality score
+        self._quality_score = binning_quality_score(self._iv, p_values,
+                                                    self._hhi_norm)
+        df_tests = pd.DataFrame({
+                "Bin A": np.arange(n_metric-1),
+                "Bin B": np.arange(n_metric-1) + 1,
+                "t-statistic": t_statistics,
+                "p-value": p_values,
+                "P[A > B]": p_a_b,
+                "P[B > A]": p_b_a
+            })
+
+        if pvalue_test == "fisher":
+            df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
+
+        tab = 4
+        if len(df_tests):
+            df_tests_string = dataframe_to_string(df_tests, tab)
+        else:
+            df_tests_string = " " * tab + "None"
+
+        # Metrics
+        metrics_string = ""
+        for km, kv in self.d_metrics.items():
+            metrics_string += "    {:<19} {:>15.8f}\n".format(km, kv)
+
+        report = (
+            "---------------------------------------------\n"
+            "OptimalBinning: Binary Binning Table Analysis\n"
+            "---------------------------------------------\n"
+            "\n"
+            "  General metrics"
+            "\n\n"
+            "{}"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "    Cramer's V          {:>15.8f}\n"
+            "    Quality score       {:>15.8f}\n"
+            "\n"
+            "  Significance tests\n\n{}\n"
+            ).format(metrics_string, self._hhi, self._hhi_norm, cramer_v,
+                     self._quality_score, df_tests_string)
+
+        if print_output:
+            print(report)
+
+        self._is_analyzed = True
 
 
 class PWContinuousBinningTable:

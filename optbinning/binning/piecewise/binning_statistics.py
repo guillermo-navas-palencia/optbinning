@@ -11,12 +11,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from scipy import stats
+
 from ...binning.binning_statistics import _check_build_parameters
 from ...binning.binning_statistics import _check_is_built
 from ...binning.binning_statistics import bin_str_format
 from ...binning.binning_statistics import BinningTable
 from ...binning.metrics import bayesian_probability
 from ...binning.metrics import binning_quality_score
+from ...binning.metrics import continuous_binning_quality_score
 from ...binning.metrics import chi2_cramer_v
 from ...binning.metrics import frequentist_pvalue
 from ...binning.metrics import hhi
@@ -73,7 +76,6 @@ class PWBinningTable(BinningTable):
         self.d_metrics = d_metrics
 
         self._n_records = None
-        self._event_rate = None
         self._t_n_nonevent = None
         self._t_n_event = None
         self._hhi = None
@@ -118,7 +120,6 @@ class PWBinningTable(BinningTable):
         event_rate[mask] = n_event[mask] / n_records[mask]
 
         self._n_records = n_records
-        self._event_rate = event_rate
 
         # Gini / IV / JS / hellinger / triangular / KS
         self._gini = self.d_metrics["Gini index"]
@@ -167,9 +168,9 @@ class PWBinningTable(BinningTable):
 
                 c_s_m = [event_rate_special, event_rate_missing]
 
-                df["ER c{}".format(i)] = list(self.coef[:, i]) + c_s_m
+                df["c{}".format(i)] = list(self.coef[:, i]) + c_s_m
             else:
-                df["ER c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
+                df["c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
 
         if add_totals:
             totals = ["", t_n_records, 1, self._t_n_nonevent, self._t_n_event]
@@ -184,8 +185,8 @@ class PWBinningTable(BinningTable):
              n_samples=10000, savefig=None):
         """Plot the binning table.
 
-        Visualize the non-event and event count, and the Weight of Evidence or
-        the event rate for each bin.
+        Visualize the non-event and event count, and the predicted Weight of
+        Evidence or event rate for each bin.
 
         Parameters
         ----------
@@ -396,6 +397,53 @@ class PWBinningTable(BinningTable):
 
 
 class PWContinuousBinningTable:
+    """Piecewise binning table to summarize optimal binning of a numerical
+    variable with respect to a continuous target.
+
+    Parameters
+    ----------
+    name : str, optional (default="")
+        The variable name.
+
+    splits : numpy.ndarray
+        List of split points.
+
+    coef : numpy.ndarray
+        Coefficients for each bin.
+
+    n_records : numpy.ndarray
+        Number of records.
+
+    sums : numpy.ndarray
+        Target sums.
+
+    stds : numpy.ndarray
+        Target stds.
+
+    min_target : numpy.ndarray
+        Target mininum values.
+
+    max_target : numpy.ndarray
+        Target maxinum values.
+
+    n_zeros : numpy.ndarray
+        Number of zeros.
+
+    min_x : float or None (default=None)
+        Mininum value of x.
+
+    max_x : float or None (default=None)
+        Maxinum value of x.
+
+    d_metrics : dict
+        Dictionary of performance metrics.
+
+    Warning
+    -------
+    This class is not intended to be instantiated by the user. It is
+    preferable to use the class returned by the property ``binning_table``
+    available in all optimal binning classes.
+    """
     def __init__(self, name, splits, coef, n_records, sums, stds, min_target,
                  max_target, n_zeros, lb, ub, min_x, max_x, d_metrics):
 
@@ -415,12 +463,116 @@ class PWContinuousBinningTable:
         self.max_x = max_x
         self.d_metrics = d_metrics
 
+        self._mean = None
+        self._hhi = None
+        self._hhi_norm = None
+
+        self._is_built = False
+        self._is_analyzed = False
+
     def build(self, show_digits=2, add_totals=True):
-        pass
+        """Build the binning table.
+
+        Parameters
+        ----------
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column.
+
+        add_totals : bool (default=True)
+            Whether to add a last row with totals.
+
+        Returns
+        -------
+        binning_table : pandas.DataFrame
+        """
+        _check_build_parameters(show_digits, add_totals)
+
+        t_n_records = np.nansum(self.n_records)
+        t_sum = np.nansum(self.sums)
+        p_records = self.n_records / t_n_records
+
+        mask = (self.n_records > 0)
+        self._mean = np.zeros(len(self.n_records))
+        self._mean[mask] = self.sums[mask] / self.n_records[mask]
+        if self.n_records[-1] > 0:
+            self._mean[-1] = 0
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)
+
+        bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
+        bin_str = bin_str_format(bins, show_digits)
+
+        bin_str.extend(["Special", "Missing"])
+
+        df = pd.DataFrame({
+            "Bin": bin_str,
+            "Count": self.n_records,
+            "Count (%)": p_records,
+            "Sum": self.sums,
+            "Std": self.stds,
+            "Min": self.min_target,
+            "Max": self.max_target,
+            "Zeros count": self.n_zeros,
+            })
+
+        n_coefs = self.coef.shape[1]
+
+        for i in range(n_coefs):
+            if i == 0:
+                n_records_special = self.n_records[-2]
+
+                if n_records_special > 0:
+                    meam_special = self.sums[-2] / self.n_records[-2]
+                else:
+                    meam_special = 0
+
+                n_records_missing = self.n_records[-1]
+
+                if n_records_missing > 0:
+                    mean_missing = self.sums[-1] / self.n_records[-1]
+                else:
+                    mean_missing = 0
+
+                c_s_m = [meam_special, mean_missing]
+
+                df["c{}".format(i)] = list(self.coef[:, i]) + c_s_m
+            else:
+                df["c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
+
+        if add_totals:
+            t_min = np.min(self.min_target)
+            t_max = np.max(self.max_target)
+            t_n_zeros = self.n_zeros.sum()
+            totals = ["", t_n_records, 1, t_sum, "", t_min, t_max, t_n_zeros]
+            totals += ["-"] * n_coefs
+            df.loc["Totals"] = totals
+
+        self._is_built = True
+
+        return df
 
     def plot(self, add_special=True, add_missing=True, n_samples=10000,
              savefig=None):
+        """Plot the binning table.
 
+        Visualize records count and the prediction for each bin.
+
+        Parameters
+        ----------
+        add_special : bool (default=True)
+            Whether to add the special codes bin.
+
+        add_missing : bool (default=True)
+            Whether to add the special values bin.
+
+        n_samples : int (default=10000)
+            Number of samples to be represented.
+
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+        """
         _n_records = self.n_records[:-2]
 
         n_splits = len(self.splits)
@@ -475,4 +627,77 @@ class PWContinuousBinningTable:
             plt.close()
 
     def analysis(self, print_output=True):
-        pass
+        """Binning table analysis.
+
+        Statistical analysis of the binning table, computing the Information
+        Value (IV) and Herfindahl-Hirschman Index (HHI).
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
+        """
+        _check_is_built(self)
+
+        # Significance tests
+        n_bins = len(self.n_records)
+        n_metric = n_bins - 2
+
+        n_records = self.n_records[:n_metric]
+        mean = self._mean[:n_metric]
+        std = self.stds[:n_metric]
+
+        t_statistics = []
+        p_values = []
+
+        for i in range(n_metric-1):
+            u, u2 = mean[i], mean[i+1]
+            s, s2 = std[i], std[i+1]
+            r, r2 = n_records[i], n_records[i+1]
+
+            t_statistic, p_value = stats.ttest_ind_from_stats(
+                u, s, r, u2, s2, r2, False)
+
+            t_statistics.append(t_statistic)
+            p_values.append(p_value)
+
+        df_tests = pd.DataFrame({
+                "Bin A": np.arange(n_metric-1),
+                "Bin B": np.arange(n_metric-1) + 1,
+                "t-statistic": t_statistics,
+                "p-value": p_values
+            })
+
+        tab = 4
+        if len(df_tests):
+            df_tests_string = dataframe_to_string(df_tests, tab)
+        else:
+            df_tests_string = " " * tab + "None"
+
+        # Quality score
+        self._quality_score = continuous_binning_quality_score(
+            p_values, self._hhi_norm)
+
+        # Metrics
+        metrics_string = ""
+        for km, kv in self.d_metrics.items():
+            metrics_string += "    {:<21} {:>21.8f}\n".format(km, kv)
+
+        report = (
+            "-------------------------------------------------\n"
+            "OptimalBinning: Continuous Binning Table Analysis\n"
+            "-------------------------------------------------\n"
+            "\n"
+            "  General metrics"
+            "\n\n"
+            "{}"
+            "    HHI                   {:>21.8f}\n"
+            "    HHI (normalized)      {:>21.8f}\n"
+            "    Quality score         {:>21.8f}\n"
+            "\n"
+            "  Significance tests\n\n{}\n"
+            ).format(metrics_string, self._hhi, self._hhi_norm,
+                     self._quality_score, df_tests_string)
+
+        if print_output:
+            print(report)

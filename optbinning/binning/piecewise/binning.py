@@ -7,6 +7,8 @@ Optimal piecewise binning algorithm for binary target.
 
 import time
 
+import numpy as np
+
 from sklearn.linear_model import LogisticRegression
 
 from ...binning.binning_statistics import target_info
@@ -279,15 +281,12 @@ class OptimalPWBinning(BasePWBinning):
         """
         self._check_is_fitted()
 
-        return transform_binary_target(self._optb.splits, x, self._c, lb, ub,
-                                       self._t_n_nonevent, self._t_n_event,
-                                       self._n_nonevent_special,
-                                       self._n_event_special,
-                                       self._n_nonevent_missing,
-                                       self._n_event_missing,
-                                       self.special_codes, metric,
-                                       metric_special, metric_missing,
-                                       check_input)
+        return transform_binary_target(
+            self._optb.splits, x, self._c, lb, ub, self._t_n_nonevent,
+            self._t_n_event, self._n_nonevent_special, self._n_event_special,
+            self._n_nonevent_missing, self._n_event_missing,
+            self.special_codes, metric, metric_special, metric_missing,
+            check_input)
 
     def _fit(self, x, y, lb, ub, check_input):
         time_init = time.perf_counter()
@@ -372,7 +371,7 @@ class OptimalPWBinning(BasePWBinning):
 
         time_postprocessing = time.perf_counter()
 
-        # Compute n_nonevent and n_event for special and missing.
+        # Compute n_nonevent and n_event for special and missing
         special_target_info = target_info(y_special)
         self._n_nonevent_special = special_target_info[0]
         self._n_event_special = special_target_info[1]
@@ -384,6 +383,10 @@ class OptimalPWBinning(BasePWBinning):
         bt = self._optb.binning_table.build(add_totals=False)
         n_nonevent = bt["Non-event"].values
         n_event = bt["Event"].values
+        n_nonevent[self._n_bins] = self._n_nonevent_special
+        n_nonevent[self._n_bins + 1] = self._n_nonevent_missing
+        n_event[self._n_bins] = self._n_event_special
+        n_event[self._n_bins + 1] = self._n_event_missing
 
         self._t_n_nonevent = n_nonevent.sum()
         self._t_n_event = n_event.sum()

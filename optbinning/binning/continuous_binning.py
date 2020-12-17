@@ -652,10 +652,17 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._min_target_others, self._max_target_others,
             self._n_zeros_others, self._cat_others)
 
+        if self.dtype == "numerical":
+            min_x = x_clean.min()
+            max_x = x_clean.max()
+        else:
+            min_x = None
+            max_x = None
+
         self._binning_table = ContinuousBinningTable(
             self.name, self.dtype, self._splits_optimal, self._n_records,
             self._sums, self._stds, self._min_target, self._max_target,
-            self._n_zeros, self._categories, self._cat_others,
+            self._n_zeros, min_x, max_x, self._categories, self._cat_others,
             self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing

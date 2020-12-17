@@ -1275,6 +1275,12 @@ class ContinuousBinningTable:
     n_zeros : numpy.ndarray
         Number of zeros.
 
+    min_x : float or None (default=None)
+        Mininum value of x.
+
+    max_x : float or None (default=None)
+        Maxinum value of x.
+
     categories : list, numpy.ndarray or None, optional (default=None)
         List of categories.
 
@@ -1291,8 +1297,8 @@ class ContinuousBinningTable:
     available in all optimal binning classes.
     """
     def __init__(self, name, dtype, splits, n_records, sums, stds, min_target,
-                 max_target, n_zeros, categories=None, cat_others=None,
-                 user_splits=None):
+                 max_target, n_zeros, min_x=None, max_x=None, categories=None,
+                 cat_others=None, user_splits=None):
 
         self.name = name
         self.dtype = dtype
@@ -1303,6 +1309,8 @@ class ContinuousBinningTable:
         self.min_target = min_target
         self.max_target = max_target
         self.n_zeros = n_zeros
+        self.min_x = min_x
+        self.max_x = max_x
         self.categories = categories
         self.cat_others = cat_others if cat_others is not None else []
         self.user_splits = user_splits
@@ -1389,7 +1397,8 @@ class ContinuousBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, savefig=None):
+    def plot(self, add_special=True, add_missing=True, style="bin",
+             savefig=None):
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -1401,6 +1410,11 @@ class ContinuousBinningTable:
 
         add_missing : bool (default=True)
             Whether to add the special values bin.
+
+        style: str, optional (default="bin")
+            Plot style. style="bin" shows the standard binning plot. If
+            style="actual", show the plot with the actual scale, i.e, actual
+            bin widths.
 
         savefig : str or None (default=None)
             Path to save the plot figure.
@@ -1415,90 +1429,145 @@ class ContinuousBinningTable:
             raise TypeError("add_missing must be a boolean; got {}."
                             .format(add_missing))
 
-        n_bins = len(self.n_records)
-        n_metric = n_bins - 2
+        if style not in ("bin", "actual"):
+            raise ValueError('Invalid value for style. Allowed string '
+                             'values are "bin" and "actual".')
 
-        if len(self.cat_others):
-            n_metric -= 1
+        if style == "actual":
+            if add_special or add_missing:
+                raise ValueError('If style="actual", add_special and '
+                                 'add_missing must be set to False.')
 
-        _n_records = list(self.n_records)
+            elif self.dtype == "categorical":
+                raise ValueError('If style="actual", dtype must be numerical.')
 
-        if not add_special:
-            _n_records.pop(-2)
-            n_bins -= 1
-
-        if not add_missing:
-            _n_records.pop(-1)
-            n_bins -= 1
-
-        fig, ax1 = plt.subplots()
-
-        p1 = ax1.bar(range(n_bins), _n_records, color="tab:blue")
-
-        handles = [p1[0]]
-        labels = ['Count']
-
-        ax1.set_xlabel("Bin ID", fontsize=12)
-        ax1.set_ylabel("Bin count", fontsize=13)
-
-        ax2 = ax1.twinx()
+            elif self.min_x is None or self.max_x is None:
+                raise ValueError('If style="actual", min_x and max_x must be '
+                                 'provided.')
 
         metric_values = self._mean
         metric_label = "Mean"
 
-        ax2.plot(range(n_metric), metric_values[:n_metric], linestyle="solid",
-                 marker="o", color="black")
+        fig, ax1 = plt.subplots()
 
-        # Positions special and missing bars
-        pos_special = 0
-        pos_missing = 0
+        if style == "bin":
+            n_bins = len(self.n_records)
+            n_metric = n_bins - 2
 
-        if add_special:
-            pos_special = n_metric
+            if len(self.cat_others):
+                n_metric -= 1
+
+            _n_records = list(self.n_records)
+
+            if not add_special:
+                _n_records.pop(-2)
+                n_bins -= 1
+
+            if not add_missing:
+                _n_records.pop(-1)
+                n_bins -= 1
+
+            p1 = ax1.bar(range(n_bins), _n_records, color="tab:blue")
+
+            handles = [p1[0]]
+            labels = ['Count']
+
+            ax1.set_xlabel("Bin ID", fontsize=12)
+            ax1.set_ylabel("Bin count", fontsize=13)
+
+            ax2 = ax1.twinx()
+
+            ax2.plot(range(n_metric), metric_values[:n_metric],
+                     linestyle="solid", marker="o", color="black")
+
+            # Positions special and missing bars
+            pos_special = 0
+            pos_missing = 0
+
+            if add_special:
+                pos_special = n_metric
+                if add_missing:
+                    pos_missing = n_metric + 1
+            elif add_missing:
+                pos_missing = n_metric
+
+            # Add points for others (optional), special and missing bin
+            if len(self.cat_others):
+                pos_others = n_metric
+                pos_special += 1
+                pos_missing += 1
+
+                p1[pos_others].set_alpha(0.5)
+
+                ax2.plot(pos_others, metric_values[pos_others], marker="o",
+                         color="black")
+
+            if add_special:
+                p1[pos_special].set_hatch("/")
+                handle_special = mpatches.Patch(hatch="/", alpha=0.1)
+                label_special = "Bin special"
+
+                ax2.plot(pos_special, metric_values[pos_special], marker="o",
+                         color="black")
+
             if add_missing:
-                pos_missing = n_metric + 1
-        elif add_missing:
-            pos_missing = n_metric
+                p1[pos_missing].set_hatch("\\")
+                handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
+                label_missing = "Bin missing"
 
-        # Add points for others (optional), special and missing bin
-        if len(self.cat_others):
-            pos_others = n_metric
-            pos_special += 1
-            pos_missing += 1
+                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                         color="black")
 
-            p1[pos_others].set_alpha(0.5)
+            if add_special and add_missing:
+                handles.extend([handle_special, handle_missing])
+                labels.extend([label_special, label_missing])
+            elif add_special:
+                handles.extend([handle_special])
+                labels.extend([label_special])
+            elif add_missing:
+                handles.extend([handle_missing])
+                labels.extend([label_missing])
 
-            ax2.plot(pos_others, metric_values[pos_others], marker="o",
-                     color="black")
+            ax2.set_ylabel(metric_label, fontsize=13)
+            ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
-        if add_special:
-            p1[pos_special].set_hatch("/")
-            handle_special = mpatches.Patch(hatch="/", alpha=0.1)
-            label_special = "Bin special"
+        elif style == "actual":
+            _n_records = self.n_records[:-2]
 
-            ax2.plot(pos_special, metric_values[pos_special], marker="o",
-                     color="black")
+            n_splits = len(self.splits)
 
-        if add_missing:
-            p1[pos_missing].set_hatch("\\")
-            handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
-            label_missing = "Bin missing"
+            y_pos = np.empty(n_splits + 2)
+            y_pos[0] = self.min_x
+            y_pos[1:-1] = self.splits
+            y_pos[-1] = self.max_x
 
-            ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
-                     color="black")
+            width = y_pos[1:] - y_pos[:-1]
+            y_pos2 = y_pos[:-1]
 
-        if add_special and add_missing:
-            handles.extend([handle_special, handle_missing])
-            labels.extend([label_special, label_missing])
-        elif add_special:
-            handles.extend([handle_special])
-            labels.extend([label_special])
-        elif add_missing:
-            handles.extend([handle_missing])
-            labels.extend([label_missing])
+            p1 = ax1.bar(y_pos2, _n_records, width, color="tab:blue",
+                         align="edge")
 
-        ax2.set_ylabel(metric_label, fontsize=13)
-        ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
+            handles = [p1[0]]
+            labels = ['Count']
+
+            ax1.set_xlabel("x", fontsize=12)
+            ax1.set_ylabel("Bin count", fontsize=13)
+            ax1.tick_params(axis='x', labelrotation=45)
+
+            ax2 = ax1.twinx()
+
+            for i in range(n_splits + 1):
+                ax2.plot([y_pos[i], y_pos[i+1]], [metric_values[i]] * 2,
+                         linestyle="solid", color="black")
+
+            ax2.plot(width / 2 + y_pos2, metric_values[:-2],
+                     linewidth=0.75, marker="o", color="black")
+
+            for split in self.splits:
+                ax2.axvline(x=split, color="black", linestyle="--",
+                            linewidth=0.9)
+
+            ax2.set_ylabel(metric_label, fontsize=13)
 
         plt.title(self.name, fontsize=14)
         plt.legend(handles, labels, loc="upper center",

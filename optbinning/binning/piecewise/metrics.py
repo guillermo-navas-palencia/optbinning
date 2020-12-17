@@ -14,7 +14,9 @@ from ...binning.metrics import hellinger
 from ...binning.metrics import triangular
 from ...scorecard.metrics import gini
 from ...scorecard.metrics import ks
+from ...scorecard.metrics import regression_metrics
 from .transformations import transform_binary_target
+from .transformations import transform_continuous_target
 
 
 def _fun_divergence(fun, n, pi, qi, pi_special, qi_special, pi_missing,
@@ -99,5 +101,18 @@ def binary_metrics(x, y, splits, c, t_n_nonevent, t_n_event,
     d_metrics["KS"] = ks(y, event_rate)[0]
     d_metrics["Avg precision"] = average_precision_score(y, event_rate)
     d_metrics["Brier score"] = brier_score_loss(y, event_rate)
+
+    return d_metrics
+
+
+def continuous_metrics(x, y, splits, c, lb, ub, n_records_special, sum_special,
+                       n_records_missing, sum_missing, special_codes):
+
+    y_pred = transform_continuous_target(
+        splits, x, c, lb, ub, n_records_special, sum_special,
+        n_records_missing, sum_missing, special_codes, "empirical",
+        "empirical")
+
+    d_metrics = regression_metrics(y, y_pred)
 
     return d_metrics

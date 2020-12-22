@@ -20,6 +20,10 @@ def transform_binary_target(splits, x, c, lb, ub, n_nonevent, n_event,
                             special_codes, metric, metric_special,
                             metric_missing, check_input=False):
 
+    if metric not in ("event_rate", "woe"):
+        raise ValueError('Invalid value for metric. Allowed string '
+                         'values are "event_rate" and "woe".')
+
     _check_metric_special_missing(metric_special, metric_missing)
 
     if check_input:

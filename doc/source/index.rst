@@ -40,6 +40,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    :caption: Optimal piecewise binning
 
    piecewise_binary
+   piecewise_continuous
 
 .. toctree::
    :maxdepth: 1

@@ -110,7 +110,7 @@ def transform_continuous_target(splits, x, c, lb, ub, n_records_special,
                                 sum_special, n_records_missing, sum_missing,
                                 special_codes, metric_special, metric_missing,
                                 check_input=False):
-    
+
     _check_metric_special_missing(metric_special, metric_missing)
 
     if check_input:

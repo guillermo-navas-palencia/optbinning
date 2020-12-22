@@ -7,8 +7,6 @@ Optimal piecewise binning algorithm for binary target.
 
 import time
 
-import numpy as np
-
 from sklearn.linear_model import LogisticRegression
 
 from ...binning.binning_statistics import target_info

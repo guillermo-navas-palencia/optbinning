@@ -321,6 +321,9 @@ class BasePWBinning(BaseEstimator):
 
         dict_user_options = self.get_params()
 
+        if self._problem_type == "regression":
+            dict_user_options["estimator"] = None
+
         print_binning_information(print_level, self.name, self._status,
                                   self.solver, solver, self._time_total,
                                   self._time_preprocessing,

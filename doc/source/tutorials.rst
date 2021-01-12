@@ -46,7 +46,7 @@ Optimal piecewise binning tutorials
    :maxdepth: 1
 
    tutorials/tutorial_piecewise_binary
-   tutorials/tutorial_piecewise_continuous
+   .. tutorials/tutorial_piecewise_continuous
 
 
 Optimal binning for batch and streaming data processing

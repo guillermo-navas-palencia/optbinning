@@ -36,6 +36,42 @@ def gini(y_true, y_pred_proba):
     return 2 * auc(fpr, tpr) - 1
 
 
+def ks(y_true, y_pred_proba):
+    """Compute the Kolmogorov-Smirnov (KS).
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        Ground truth (correct) target values.
+
+    y_pred_proba : array-like, shape (n_samples,)
+        Probability estimates of the positive class.
+
+    Returns
+    -------
+    ks : tuple(ks_score, ks_position)
+    """
+    n_samples = y_true.shape[0]
+    n_event = np.sum(y_true)
+    n_nonevent = n_samples - n_event
+
+    idx = np.argsort(y_pred_proba)
+    yy = y_true[idx]
+
+    cum_event = np.cumsum(yy)
+    cum_population = np.arange(0, n_samples)
+    cum_nonevent = cum_population - cum_event
+
+    p_event = cum_event / n_event
+    p_nonevent = cum_nonevent / n_nonevent
+
+    p_diff = p_nonevent - p_event
+    ks_max_idx = np.argmax(p_diff)
+    ks_score = p_diff[ks_max_idx]
+
+    return ks_score, ks_max_idx
+
+
 def imbalanced_classification_metrics(y_true, y_pred):
     """Compute imbalanced binary classification metrics.
 

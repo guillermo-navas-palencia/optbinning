@@ -39,6 +39,16 @@ Scorecard tutorials
    tutorials/tutorial_scorecard_monitoring
 
 
+Optimal piecewise binning tutorials
+-----------------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/tutorial_piecewise_binary
+   tutorials/tutorial_piecewise_continuous
+
+
 Optimal binning for batch and streaming data processing
 -------------------------------------------------------
 

@@ -110,10 +110,10 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
 
     x = np.asarray(x)
 
-    if isinstance(x.dtype, object):
-        missing_mask = pd.isnull(x)
+    if np.issubdtype(x.dtype, np.number):
+        missing_mask = np.isnan(x)
     else:
-        missing_mask = np.isinan(x)
+        missing_mask = pd.isnull(x)
 
     if special_codes is None:
         clean_mask = ~missing_mask
@@ -221,10 +221,10 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
 
     x = np.asarray(x)
 
-    if isinstance(x.dtype, object):
-        missing_mask = pd.isnull(x)
+    if np.issubdtype(x.dtype, np.number):
+        missing_mask = np.isnan(x)
     else:
-        missing_mask = np.isinan(x)
+        missing_mask = pd.isnull(x)
 
     if special_codes is None:
         clean_mask = ~missing_mask
@@ -320,10 +320,10 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
 
     x = np.asarray(x)
 
-    if isinstance(x.dtype, object):
-        missing_mask = pd.isnull(x)
+    if np.issubdtype(x.dtype, np.number):
+        missing_mask = np.isnan(x)
     else:
-        missing_mask = np.isinan(x)
+        missing_mask = pd.isnull(x)
 
     if special_codes is None:
         clean_mask = ~missing_mask

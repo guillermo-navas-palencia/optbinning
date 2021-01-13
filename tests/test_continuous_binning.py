@@ -208,7 +208,13 @@ def test_numerical_max_pvalue():
         optb.fit(x, y)
         assert optb.status == "OPTIMAL"
 
-    assert optb0.splits == approx(optb1.splits, rel=1e-6)
+    assert optb0.splits == approx([4.6500001, 5.49499989, 7.68499994,
+                                   9.7249999, 11.67499971, 14.4000001,
+                                   16.08500004, 19.89999962], rel=1e-6)
+
+    assert optb1.splits == approx([4.6500001, 5.49499989, 6.86500001,
+                                   11.67499971, 13.0999999, 19.89999962],
+                                  rel=1e-6)
 
 
 def test_auto_modes():

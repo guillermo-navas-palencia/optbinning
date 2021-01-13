@@ -37,6 +37,13 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
 
 .. toctree::
    :maxdepth: 1
+   :caption: Optimal piecewise binning
+
+   piecewise_binary
+   piecewise_continuous
+
+.. toctree::
+   :maxdepth: 1
    :caption: Batch and stream optimal binning
 
    binning_sketch

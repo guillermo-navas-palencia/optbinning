@@ -1386,8 +1386,8 @@ class ContinuousBinningTable:
             })
 
         if add_totals:
-            t_min = np.min(self.min_target)
-            t_max = np.max(self.max_target)
+            t_min = np.nanmin(self.min_target)
+            t_max = np.nanmax(self.max_target)
             t_n_zeros = self.n_zeros.sum()
             totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
                       t_n_zeros, "", t_iv]

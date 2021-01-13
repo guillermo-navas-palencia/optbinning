@@ -270,7 +270,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         return transform_continuous_target(
             self._optb.splits, x, self._c, lb, ub, self._n_records_special,
             self._sum_special, self._n_records_missing, self._sum_missing,
-            metric_special, metric_missing, check_input)
+            self.special_codes, metric_special, metric_missing, check_input)
 
     def _fit(self, x, y, lb, ub, check_input):
         time_init = time.perf_counter()

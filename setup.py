@@ -69,7 +69,7 @@ tests_require = [
 
 setup(
     name="optbinning",
-    version="0.8.0",
+    version="0.9.0",
     description="OptBinning: The Python Optimal Binning library",
     long_description=long_description,
     author="Guillermo Navas-Palencia",
@@ -80,7 +80,7 @@ setup(
     license="Apache Licence 2.0",
     url="https://github.com/guillermo-navas-palencia/optbinning",
     cmdclass={'clean': CleanCommand, 'test': PyTest},
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     install_requires=install_requires,
     tests_require=tests_require,
     classifiers=[
@@ -92,6 +92,5 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7']
     )

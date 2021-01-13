@@ -71,16 +71,16 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         ``max_bin_size = 1.0``.
 
     monotonic_trend : str or None, optional (default="auto")
-        The **event rate** monotonic trend. Supported trends are “auto”,
-        "auto_heuristic" and "auto_asc_desc" to automatically determine the
-        trend maximizing IV using a machine learning classifier, "ascending",
-        "descending", "concave", "convex", "peak" and "peak_heuristic" to allow
-        a peak change point, and "valley" and "valley_heuristic" to allow a
-        valley change point. Trends "auto_heuristic", "peak_heuristic" and
-        "valley_heuristic" use a heuristic to determine the change point,
-        and are significantly faster for large size instances (``max_n_prebins
-        > 20``). Trend "auto_asc_desc" is used to automatically select the best
-        monotonic trend between "ascending" and "descending". If None, then the
+        The monotonic trend. Supported trends are “auto”, "auto_heuristic" and
+        "auto_asc_desc" to automatically determine the trend maximizing IV
+        using a machine learning classifier, "ascending", "descending",
+        "concave", "convex", "peak" and "peak_heuristic" to allow a peak change
+        point, and "valley" and "valley_heuristic" to allow a valley change
+        point. Trends "auto_heuristic", "peak_heuristic" and "valley_heuristic"
+        use a heuristic to determine the change point, and are significantly
+        faster for large size instances (``max_n_prebins > 20``). Trend
+        "auto_asc_desc" is used to automatically select the best monotonic
+        trend between "ascending" and "descending". If None, then the
         monotonic constraint is disabled.
 
     n_subsamples : int or None (default=None)
@@ -206,13 +206,13 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
-            Supported metrics are "empirical" to use the empirical WoE or
-            event rate, and any numerical value.
+            Supported metrics are "empirical" to use the empirical mean and any
+            numerical value.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
-            Supported metrics are "empirical" to use the empirical WoE or
-            event rate and any numerical value.
+            Supported metrics are "empirical" to use the empirical mean and any
+            numerical value.
 
         lb : float or None (default=None)
             Avoid values below the lower bound lb.
@@ -233,8 +233,8 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
     def transform(self, x, metric_special=0, metric_missing=0,
                   lb=None, ub=None, check_input=False):
-        """Transform given data to Weight of Evidence (WoE) or event rate using
-        bins from the fitted optimal piecewise binning.
+        """Transform given data using bins from the fitted optimal piecewise
+        binning.
 
         Parameters
         ----------
@@ -243,13 +243,13 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
-            Supported metrics are "empirical" to use the empirical WoE or
-            event rate, and any numerical value.
+            Supported metrics are "empirical" to use the empirical mean and any
+            numerical value.
 
         metric_missing : float or str (default=0)
             The metric value to transform missing values in the input vector.
-            Supported metrics are "empirical" to use the empirical WoE or
-            event rate and any numerical value.
+            Supported metrics are "empirical" to use the empirical mean and any
+            numerical value.
 
         lb : float or None (default=None)
             Avoid values below the lower bound lb.

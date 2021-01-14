@@ -1,6 +1,28 @@
 Release Notes
 =============
 
+Version 0.9.0 (2021-01-14)
+--------------------------
+
+New features:
+
+   - Optimal piecewise polynomial binning.
+   - New plotting option for binning table for binary and continuous target. Parameter ``style`` allows to represent the binning plot with the actual scale, i.e., actual bin widths.
+
+Improvements:
+
+   - Improve computation of p-values and binning table analysis for ``ContinuousOptimalBinning``.
+
+Tutorials:
+   
+   - Tutorial: optimal piecewise binning with binary target
+   - Tutorial: optimal piecewise binning with continuous target
+
+Bugfixes:
+
+   - Fix sample weights bug: `Issue 64 <https://github.com/guillermo-navas-palencia/optbinning/issues/64>`_
+
+
 Version 0.8.0 (2020-09-18)
 --------------------------
 

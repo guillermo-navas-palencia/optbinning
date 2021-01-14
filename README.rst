@@ -2,11 +2,8 @@
 OptBinning
 ==========
 
-.. image::  https://travis-ci.com/guillermo-navas-palencia/optbinning.svg?branch=master
-   :target: https://travis-ci.com/guillermo-navas-palencia/optbinning
-
-.. image::  https://codecov.io/gh/guillermo-navas-palencia/optbinning/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/guillermo-navas-palencia/optbinning
+.. image::  https://github.com/guillermo-navas-palencia/optbinning/workflows/CI/badge.svg
+   :target: https://github.com/guillermo-navas-palencia/optbinning/workflows/CI/badge.svg
 
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
@@ -73,6 +70,7 @@ Tutorials
 * `Optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-tutorials>`_
 * `Binning process tutorials <http://gnpalencia.org/optbinning/tutorials.html#binning-process-tutorials>`_
 * `Scorecard tutorials <http://gnpalencia.org/optbinning/tutorials.html#scorecard-tutorials>`_
+* `Optimal piecewise binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-piecewise-binning-tutorials>`_
 * `Batch and stream optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-for-batch-and-streaming-data-processing>`_
 * `Optimal binning under uncertainty <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-under-uncertainty>`_
 

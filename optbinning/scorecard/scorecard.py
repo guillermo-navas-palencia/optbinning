@@ -555,10 +555,10 @@ class Scorecard(BaseEstimator):
 
             df_scorecard["Points"] = scaled_points
 
-            if self.intercept_based:
-                scaled_points, self.intercept_ = _compute_intercept_based(
-                    df_scorecard)
-                df_scorecard["Points"] = scaled_points
+        if self.intercept_based:
+            scaled_points, self.intercept_ = _compute_intercept_based(
+                df_scorecard)
+            df_scorecard["Points"] = scaled_points
 
         time_rounding = time.perf_counter()
         if self.rounding:

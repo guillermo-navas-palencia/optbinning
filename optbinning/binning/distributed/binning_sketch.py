@@ -24,10 +24,9 @@ from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
 from ...logging import Logger
+from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
-
-from .bsketch import BSketch, BCatSketch
 
 
 def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,

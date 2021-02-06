@@ -57,6 +57,16 @@ def _effective_n_jobs(n_jobs):
     return n_jobs
 
 
+def _read_column(input_path, extension, column, **kwargs):
+    if extension == "csv":
+        x = pd.read_csv(input_path, engine='c', usecols=[column],
+                        low_memory=False, memory_map=True, **kwargs).values
+    elif extension == "parquet":
+        x = pd.read_parquet(input_path, columns=[column], **kwargs).values
+
+    return x
+
+
 def _fit_variable(x, y, name, target_dtype, categorical_variables,
                   binning_fit_params, max_n_prebins, min_prebin_size,
                   min_n_bins, max_n_bins, min_bin_size, max_pvalue,
@@ -509,6 +519,35 @@ class BinningProcess(BaseEstimator):
                                                      metric_missing,
                                                      show_digits, check_input)
 
+    def fit_disk(self, input_path, target, **kwargs):
+        """Fit the binning process according to the given training data on
+        disk.
+
+        Parameters
+        ----------
+        input_path : str
+
+        target : str
+
+        **kwargs : keyword arguments
+        """
+        self._fit_disk(input_path, target, **kwargs)
+
+    def fit_transform_disk(self, input_path, output_path, target, **kwargs):
+        """
+        Parameters
+        ----------
+        input_path : str
+
+        output_path : str
+
+        target : str
+
+        **kwargs : keyword arguments
+        """
+        return self.fit_disk(input_path, target, **kwargs).transform(
+            input_path, output_path, target)
+
     def transform(self, X, metric=None, metric_special=0, metric_missing=0,
                   show_digits=2, check_input=False):
         """Transform given data to metric using bins from each fitted optimal
@@ -555,6 +594,9 @@ class BinningProcess(BaseEstimator):
 
         return self._transform(X, metric, metric_special, metric_missing,
                                show_digits, check_input)
+
+    def transform_disk(self, input_path, output_path):
+        pass
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -859,6 +901,40 @@ class BinningProcess(BaseEstimator):
         if self.verbose:
             self._logger.info("Binning process terminated. Time: {:.4f}s"
                               .format(self._time_total))
+
+        # Completed successfully
+        self._class_logger.close()
+        self._is_fitted = True
+
+        return self
+
+    def _fit_disk(self, input_path, target, **kwargs):
+
+        # Input file extension
+        extension = input_path.split(".")[1]
+
+        # Retrieve target and check dtype
+        y = _read_column(input_path, extension, target, **kwargs)
+        self._target_dtype = type_of_target(y)
+
+        self._n_samples = len(y)
+        self._n_variables = len(self.variable_names)
+
+        for name in self.variable_names:
+            x = _read_column(input_path, extension, name, **kwargs)
+
+            dtype, optb = _fit_variable(
+                x, y, name, self._target_dtype, self.categorical_variables,
+                self.binning_fit_params, self.max_n_prebins,
+                self.min_prebin_size, self.min_n_bins, self.max_n_bins,
+                self.min_bin_size, self.max_pvalue, self.max_pvalue_policy,
+                self.special_codes, self.split_digits)
+
+            self._variable_dtypes[name] = dtype
+            self._binned_variables[name] = optb
+
+        # Compute binning statistics and decide whether a variable is selected
+        self._binning_selection_criteria()
 
         # Completed successfully
         self._class_logger.close()

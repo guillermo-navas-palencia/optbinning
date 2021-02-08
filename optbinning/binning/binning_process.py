@@ -60,11 +60,11 @@ def _effective_n_jobs(n_jobs):
 def _read_column(input_path, extension, column, **kwargs):
     if extension == "csv":
         x = pd.read_csv(input_path, engine='c', usecols=[column],
-                        low_memory=False, memory_map=True, **kwargs).values
+                        low_memory=False, memory_map=True, **kwargs)
     elif extension == "parquet":
-        x = pd.read_parquet(input_path, columns=[column], **kwargs).values
+        x = pd.read_parquet(input_path, columns=[column], **kwargs)
 
-    return x
+    return x.iloc[:, 0].values
 
 
 def _fit_variable(x, y, name, target_dtype, categorical_variables,
@@ -531,9 +531,11 @@ class BinningProcess(BaseEstimator):
 
         **kwargs : keyword arguments
         """
-        self._fit_disk(input_path, target, **kwargs)
+        return self._fit_disk(input_path, target, **kwargs)
 
-    def fit_transform_disk(self, input_path, output_path, target, **kwargs):
+    def fit_transform_disk(self, input_path, output_path, target, chunksize,
+                           metric=None, metric_special=0, metric_missing=0,
+                           show_digits=2, check_input=False, **kwargs):
         """
         Parameters
         ----------
@@ -545,8 +547,9 @@ class BinningProcess(BaseEstimator):
 
         **kwargs : keyword arguments
         """
-        return self.fit_disk(input_path, target, **kwargs).transform(
-            input_path, output_path, target)
+        return self.fit_disk(input_path, target, **kwargs).transform_disk(
+            input_path, output_path, chunksize, metric, metric_special,
+            metric_missing, show_digits, check_input, **kwargs)
 
     def transform(self, X, metric=None, metric_special=0, metric_missing=0,
                   show_digits=2, check_input=False):
@@ -595,8 +598,15 @@ class BinningProcess(BaseEstimator):
         return self._transform(X, metric, metric_special, metric_missing,
                                show_digits, check_input)
 
-    def transform_disk(self, input_path, output_path):
-        pass
+    def transform_disk(self, input_path, output_path, chunksize, metric=None,
+                       metric_special=0, metric_missing=0, show_digits=2,
+                       check_input=False, **kwargs):
+
+        self._check_is_fitted()
+
+        return self._transform_disk(input_path, output_path, chunksize, metric,
+                                    metric_special, metric_missing,
+                                    show_digits, check_input, **kwargs)
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -909,6 +919,7 @@ class BinningProcess(BaseEstimator):
         return self
 
     def _fit_disk(self, input_path, target, **kwargs):
+        time_init = time.perf_counter()
 
         # Input file extension
         extension = input_path.split(".")[1]
@@ -935,6 +946,8 @@ class BinningProcess(BaseEstimator):
 
         # Compute binning statistics and decide whether a variable is selected
         self._binning_selection_criteria()
+
+        self._time_total = time.perf_counter() - time_init
 
         # Completed successfully
         self._class_logger.close()
@@ -1006,3 +1019,59 @@ class BinningProcess(BaseEstimator):
             return pd.DataFrame(X_transform, columns=selected_variables)
 
         return X_transform
+
+    def _transform_disk(self, input_path, output_path, chunksize, metric,
+                        metric_special, metric_missing, show_digits,
+                        check_input, **kwargs):
+
+        # check input_path and output_path extensions
+
+        # check chunksize
+
+        selected_variables = self.get_support(names=True)
+        n_selected_variables = len(selected_variables)
+
+        chunks = pd.read_csv(input_path, engine='c', chunksize=chunksize,
+                             usecols=selected_variables, **kwargs)
+
+        for k, chunk in enumerate(chunks):
+            n_samples, n_variables = chunk.shape
+
+            if metric == "indices":
+                X_transform = np.full(
+                    (n_samples, n_selected_variables), -1, dtype=np.int)
+            elif metric == "bins":
+                X_transform = np.full(
+                    (n_samples, n_selected_variables), "", dtype=np.object)
+            else:
+                X_transform = np.zeros((n_samples, n_selected_variables))
+
+            for i, name in enumerate(selected_variables):
+                optb = self._binned_variables[name]
+
+                params = {}
+                if self.binning_transform_params is not None:
+                    params = self.binning_transform_params.get(name, {})
+
+                metric_missing = params.get("metric_missing", metric_missing)
+                metric_special = params.get("metric_special", metric_special)
+
+                x = chunk[name]
+
+                if metric is None:
+                    # Use default metric for each target type
+                    X_transform[:, i] = optb.transform(
+                        x=x, metric_special=metric_special,
+                        metric_missing=metric_missing, show_digits=show_digits,
+                        check_input=check_input)
+                else:
+                    _metric = params.get("metric", metric)
+
+                    X_transform[:, i] = optb.transform(
+                        x, _metric, metric_special, metric_missing,
+                        show_digits, check_input)
+
+            df = pd.DataFrame(X_transform, columns=selected_variables)
+            df.to_csv(output_path, mode='a', index=False, header=(k == 0))
+
+        return self

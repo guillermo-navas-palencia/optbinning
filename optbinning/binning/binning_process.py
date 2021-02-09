@@ -1155,8 +1155,16 @@ class BinningProcess(BaseEstimator):
                         metric_special, metric_missing, show_digits, **kwargs):
 
         # check input_path and output_path extensions
+        input_extension = input_path.split(".")[1]
+        output_extension = output_path.split(".")[1]
+
+        if input_extension != "csv" or output_extension != "csv":
+            raise ValueError("input_path and output_path must be csv files.")
 
         # check chunksize
+        if not isinstance(chunksize, numbers.Integral) or chunksize <= 0:
+            raise ValueError("chunksize must be a positive integer; got {}."
+                             .format(chunksize))
 
         selected_variables = self.get_support(names=True)
         n_selected_variables = len(selected_variables)

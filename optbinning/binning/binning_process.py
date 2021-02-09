@@ -526,30 +526,78 @@ class BinningProcess(BaseEstimator):
         Parameters
         ----------
         input_path : str
+            Any valid string path to a file with extension .cvs or .parquet.
 
         target : str
+            Target column.
 
         **kwargs : keyword arguments
+            Keyword arguments for ``pandas.read_csv`` or
+            ``pandas.read_parquet``.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
         """
         return self._fit_disk(input_path, target, **kwargs)
 
     def fit_transform_disk(self, input_path, output_path, target, chunksize,
                            metric=None, metric_special=0, metric_missing=0,
-                           show_digits=2, check_input=False, **kwargs):
-        """
+                           show_digits=2, **kwargs):
+        """Fit the binning process according to the given training data on
+        disk, then transform it and save to comma-separated values (csv) file.
+
         Parameters
         ----------
         input_path : str
+            Any valid string path to a file with extension .cvs or .parquet.
 
         output_path : str
+            Any valid string path to a file with extension .cvs.
 
         target : str
+            Target column.
+
+        chunksize :
+            Rows to read, transform and write at a time.
+
+        metric : str or None, (default=None)
+            The metric used to transform the input vector. If None, the default
+            transformation metric for each target type is applied. For binary
+            target options are: "woe" (default), "event_rate", "indices" and
+            "bins". For continuous target options are: "mean" (default),
+            "indices" and "bins". For multiclass target options are:
+            "mean_woe" (default), "weighted_mean_woe", "indices" and "bins".
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate for a binary target, and any numerical value for other
+            targets.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate for a binary target, and any numerical value for other
+            targets.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
 
         **kwargs : keyword arguments
+            Keyword arguments for ``pandas.read_csv`` or
+            ``pandas.read_parquet``.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
         """
         return self.fit_disk(input_path, target, **kwargs).transform_disk(
             input_path, output_path, chunksize, metric, metric_special,
-            metric_missing, show_digits, check_input, **kwargs)
+            metric_missing, show_digits, **kwargs)
 
     def transform(self, X, metric=None, metric_special=0, metric_missing=0,
                   show_digits=2, check_input=False):
@@ -600,13 +648,59 @@ class BinningProcess(BaseEstimator):
 
     def transform_disk(self, input_path, output_path, chunksize, metric=None,
                        metric_special=0, metric_missing=0, show_digits=2,
-                       check_input=False, **kwargs):
+                       **kwargs):
+        """Transform given data on disk to metric using bins from each fitted
+        optimal binning. Save to comma-separated values (csv) file.
 
+        Parameters
+        ----------
+        input_path : str
+            Any valid string path to a file with extension .cvs or .parquet.
+
+        output_path : str
+            Any valid string path to a file with extension .cvs.
+
+        chunksize :
+            Rows to read, transform and write at a time.
+
+        metric : str or None, (default=None)
+            The metric used to transform the input vector. If None, the default
+            transformation metric for each target type is applied. For binary
+            target options are: "woe" (default), "event_rate", "indices" and
+            "bins". For continuous target options are: "mean" (default),
+            "indices" and "bins". For multiclass target options are:
+            "mean_woe" (default), "weighted_mean_woe", "indices" and "bins".
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate for a binary target, and any numerical value for other
+            targets.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate for a binary target, and any numerical value for other
+            targets.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        **kwargs : keyword arguments
+            Keyword arguments for ``pandas.read_csv`` or
+            ``pandas.read_parquet``.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
+        """
         self._check_is_fitted()
 
         return self._transform_disk(input_path, output_path, chunksize, metric,
                                     metric_special, metric_missing,
-                                    show_digits, check_input, **kwargs)
+                                    show_digits, **kwargs)
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -921,15 +1015,45 @@ class BinningProcess(BaseEstimator):
     def _fit_disk(self, input_path, target, **kwargs):
         time_init = time.perf_counter()
 
+        if self.verbose:
+            self._logger.info("Binning process started.")
+            self._logger.info("Options: check parameters.")
+
+        _check_parameters(**self.get_params())
+
         # Input file extension
         extension = input_path.split(".")[1]
+
+        # Check extension
+        if extension not in ("csv", "parquet"):
+            raise ValueError("input_path extension must be csv or parquet; "
+                             "got {}.".format(extension))
+
+        # Check target
+        if not isinstance(target, str):
+            raise TypeError("target must be a string.")
 
         # Retrieve target and check dtype
         y = _read_column(input_path, extension, target, **kwargs)
         self._target_dtype = type_of_target(y)
 
+        if self._target_dtype not in ("binary", "continuous", "multiclass"):
+            raise ValueError("Target type {} is not supported."
+                             .format(self._target_dtype))
+
+        if self.selection_criteria is not None:
+            _check_selection_criteria(self.selection_criteria,
+                                      self._target_dtype)
+
         self._n_samples = len(y)
         self._n_variables = len(self.variable_names)
+
+        if self.verbose:
+            self._logger.info("Dataset: number of samples: {}."
+                              .format(self._n_samples))
+
+            self._logger.info("Dataset: number of variables: {}."
+                              .format(self._n_variables))
 
         for name in self.variable_names:
             x = _read_column(input_path, extension, name, **kwargs)
@@ -944,10 +1068,17 @@ class BinningProcess(BaseEstimator):
             self._variable_dtypes[name] = dtype
             self._binned_variables[name] = optb
 
+        if self.verbose:
+            self._logger.info("Binning process variable selection...")
+
         # Compute binning statistics and decide whether a variable is selected
         self._binning_selection_criteria()
 
         self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Binning process terminated. Time: {:.4f}s"
+                              .format(self._time_total))
 
         # Completed successfully
         self._class_logger.close()
@@ -1021,8 +1152,7 @@ class BinningProcess(BaseEstimator):
         return X_transform
 
     def _transform_disk(self, input_path, output_path, chunksize, metric,
-                        metric_special, metric_missing, show_digits,
-                        check_input, **kwargs):
+                        metric_special, metric_missing, show_digits, **kwargs):
 
         # check input_path and output_path extensions
 
@@ -1062,14 +1192,13 @@ class BinningProcess(BaseEstimator):
                     # Use default metric for each target type
                     X_transform[:, i] = optb.transform(
                         x=x, metric_special=metric_special,
-                        metric_missing=metric_missing, show_digits=show_digits,
-                        check_input=check_input)
+                        metric_missing=metric_missing, show_digits=show_digits)
                 else:
                     _metric = params.get("metric", metric)
 
                     X_transform[:, i] = optb.transform(
                         x, _metric, metric_special, metric_missing,
-                        show_digits, check_input)
+                        show_digits)
 
             df = pd.DataFrame(X_transform, columns=selected_variables)
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))

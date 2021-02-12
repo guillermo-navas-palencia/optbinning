@@ -6,6 +6,7 @@ Binning process.
 # Copyright (C) 2020
 
 import numbers
+import pickle
 import time
 
 from multiprocessing import cpu_count
@@ -22,6 +23,7 @@ from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
 from ..logging import Logger
+from .base import Base
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
@@ -292,7 +294,7 @@ def _check_variable_dtype(x):
     return "categorical" if x.dtype == np.object else "numerical"
 
 
-class BinningProcess(BaseEstimator):
+class BinningProcess(Base, BaseEstimator):
     """Binning process to compute optimal binning of variables in a dataset,
     given a binary, continuous or multiclass target dtype.
 
@@ -824,6 +826,40 @@ class BinningProcess(BaseEstimator):
         else:
             return mask
 
+    @classmethod
+    def load(cls, path):
+        """Load binning process from pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+
+        Example
+        -------
+        >>> from optbinning import BinningProcess
+        >>> binning_process = BinningProcess.load("my_binning_process.pkl")
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    def save(self, path):
+        """Save binning process to pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
     def _support_selection_criteria(self):
         self._support = np.full(self._n_variables, True, dtype=np.bool)
 
@@ -898,12 +934,6 @@ class BinningProcess(BaseEstimator):
             self._variable_stats[name] = info
 
         self._support_selection_criteria()
-
-    def _check_is_fitted(self):
-        if not self._is_fitted:
-            raise NotFittedError("This {} instance is not fitted yet. Call "
-                                 "'fit' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     def _fit(self, X, y, check_input):
         time_init = time.perf_counter()
@@ -1151,8 +1181,8 @@ class BinningProcess(BaseEstimator):
 
             # Check if name was provided and matches dict_optb key.
             if optb.name and optb.name != name:
-                raise ValueError("Object with key={} has attribute name={}."
-                                 "If object has name those must coincide."
+                raise ValueError("Object with key={} has attribute name={}. "
+                                 "If object has a name those must coincide."
                                  .format(name, optb.name))
 
         obj_class = types.pop()
@@ -1253,8 +1283,9 @@ class BinningProcess(BaseEstimator):
                 _metric = params.get("metric", metric)
 
                 X_transform[:, i] = optb.transform(
-                    x, _metric, metric_special, metric_missing, show_digits,
-                    check_input)
+                    x=x, metric=_metric, metric_special=metric_special,
+                    metric_missing=metric_missing, show_digits=show_digits,
+                    check_input=check_input)
 
         if isinstance(X, pd.DataFrame):
             return pd.DataFrame(X_transform, columns=selected_variables)

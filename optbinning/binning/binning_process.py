@@ -470,6 +470,46 @@ class BinningProcess(BaseEstimator):
         """
         return self._fit(X, y, check_input)
 
+    def fit_disk(self, input_path, target, **kwargs):
+        """Fit the binning process according to the given training data on
+        disk.
+
+        Parameters
+        ----------
+        input_path : str
+            Any valid string path to a file with extension .cvs or .parquet.
+
+        target : str
+            Target column.
+
+        **kwargs : keyword arguments
+            Keyword arguments for ``pandas.read_csv`` or
+            ``pandas.read_parquet``.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
+        """
+        return self._fit_disk(input_path, target, **kwargs)
+
+    def fit_from_dict(self, dict_optb):
+        """Fit the binning process from a dict of OptimalBinning objects
+        already fitted.
+
+        Parameters
+        ----------
+        dict_optb : dict
+            Dictionary with OptimalBinning objects for binary, continuous
+            or multiclass target. All objects must share the same class.
+
+        Returns
+        -------
+        self : object
+            Fitted binning process.
+        """
+        return self._fit_from_dict(dict_optb)
+
     def fit_transform(self, X, y, metric=None, metric_special=0,
                       metric_missing=0, show_digits=2, check_input=False):
         """Fit the binning process according to the given training data, then
@@ -518,29 +558,6 @@ class BinningProcess(BaseEstimator):
         return self.fit(X, y, check_input).transform(X, metric, metric_special,
                                                      metric_missing,
                                                      show_digits, check_input)
-
-    def fit_disk(self, input_path, target, **kwargs):
-        """Fit the binning process according to the given training data on
-        disk.
-
-        Parameters
-        ----------
-        input_path : str
-            Any valid string path to a file with extension .cvs or .parquet.
-
-        target : str
-            Target column.
-
-        **kwargs : keyword arguments
-            Keyword arguments for ``pandas.read_csv`` or
-            ``pandas.read_parquet``.
-
-        Returns
-        -------
-        self : object
-            Fitted binning process.
-        """
-        return self._fit_disk(input_path, target, **kwargs)
 
     def fit_transform_disk(self, input_path, output_path, target, chunksize,
                            metric=None, metric_special=0, metric_missing=0,
@@ -924,6 +941,10 @@ class BinningProcess(BaseEstimator):
 
         self._n_samples, self._n_variables = X.shape
 
+        if self._n_variables != len(self.variable_names):
+            raise ValueError("The number of columns must be equal to the"
+                             "length of variable_names.")
+
         if self.verbose:
             self._logger.info("Dataset: number of samples: {}."
                               .format(self._n_samples))
@@ -1086,6 +1107,88 @@ class BinningProcess(BaseEstimator):
 
         return self
 
+    def _fit_from_dict(self, dict_optb):
+        time_init = time.perf_counter()
+
+        if self.verbose:
+            self._logger.info("Binning process started.")
+            self._logger.info("Options: check parameters.")
+
+        _check_parameters(**self.get_params())
+
+        if not isinstance(dict_optb, dict):
+            raise TypeError("dict_optb must be a dict.")
+
+        optb_types = (OptimalBinning, ContinuousOptimalBinning,
+                      MulticlassOptimalBinning)
+
+        # Check variable names
+        if set(dict_optb.keys()) != set(self.variable_names):
+            raise ValueError("dict_optb keys and variable names must "
+                             "coincide.")
+
+        # Check objects class
+        types = set()
+        for name, optb in dict_optb.items():
+            if not isinstance(name, str):
+                raise TypeError("Object key must be a string.")
+
+            if not isinstance(optb, optb_types):
+                raise TypeError("Object {} must be of type ({}); got {}"
+                                .format(name, optb_types, type(optb)))
+
+            types.add(type(optb).__name__)
+            if len(types) > 1:
+                raise TypeError("All binning objects must be of the same "
+                                "class.")
+
+            # Check if fitted
+            if not optb._is_fitted:
+                raise NotFittedError("Object with key={} is not fitted yet. "
+                                     "Call 'fit' for this object before "
+                                     "passing to a binning process."
+                                     .format(name))
+
+            # Check if name was provided and matches dict_optb key.
+            if optb.name and optb.name != name:
+                raise ValueError("Object with key={} has attribute name={}."
+                                 "If object has name those must coincide."
+                                 .format(name, optb.name))
+
+        obj_class = types.pop()
+        if obj_class == "OptimalBinning":
+            self._target_dtype = "binary"
+        elif obj_class == "ContinuousOptimalBinning":
+            self._target_dtype = "continuous"
+        elif obj_class == "MulticlassOptimalBinning":
+            self._target_dtype = "multiclass"
+
+        if self.selection_criteria is not None:
+            _check_selection_criteria(self.selection_criteria,
+                                      self._target_dtype)
+
+        self._n_samples = 0
+        self._n_variables = len(self.variable_names)
+
+        for name, optb in dict_optb.items():
+            self._variable_dtypes[name] = optb.dtype
+            self._binned_variables[name] = optb
+
+        # Compute binning statistics and decide whether a variable is selected
+        self._binning_selection_criteria()
+
+        self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Binning process terminated. Time: {:.4f}s"
+                              .format(self._time_total))
+
+        # Completed successfully
+        self._class_logger.close()
+        self._is_fitted = True
+
+        return self
+
     def _transform(self, X, metric, metric_special, metric_missing,
                    show_digits, check_input):
 
@@ -1101,8 +1204,16 @@ class BinningProcess(BaseEstimator):
                  " too noisy or the selection_criteria too strict.",
                  UserWarning)
             return np.empty(0).reshape((n_samples, 0))
-        if len(mask) != n_variables:
+
+        if isinstance(X, np.ndarray) and len(mask) != n_variables:
             raise ValueError("X has a different shape that during fitting.")
+
+        if isinstance(X, pd.DataFrame):
+            selected_variables = self.get_support(names=True)
+            for name in selected_variables:
+                if name not in X.columns:
+                    raise ValueError("Selected variable {} must be a column "
+                                     "in the input dataframe.".format(name))
 
         indices_selected_variables = self.get_support(indices=True)
         n_selected_variables = len(indices_selected_variables)
@@ -1146,7 +1257,6 @@ class BinningProcess(BaseEstimator):
                     check_input)
 
         if isinstance(X, pd.DataFrame):
-            selected_variables = self.get_support(names=True)
             return pd.DataFrame(X_transform, columns=selected_variables)
 
         return X_transform

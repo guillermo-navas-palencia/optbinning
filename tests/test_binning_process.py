@@ -107,6 +107,10 @@ def test_params():
                                  binning_transform_params=[1, 2])
         process.fit(X, y)
 
+    with raises(ValueError):
+        process = BinningProcess(variable_names=[], n_jobs="all")
+        process.fit(X, y)
+
     with raises(TypeError):
         process = BinningProcess(variable_names=[], verbose=1)
         process.fit(X, y)
@@ -183,6 +187,25 @@ def test_default():
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
 
 
+def test_default_parallel():
+    process = BinningProcess(variable_names, n_jobs=2)
+
+    with raises(ValueError):
+        process.fit(X[:, :2], y, check_input=True)
+
+    process.fit(X, y, check_input=True)
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
+
+
 def test_default_pandas():
     df = pd.DataFrame(data.data, columns=data.feature_names)
 
@@ -202,6 +225,86 @@ def test_default_pandas():
 
     optb.binning_table.build()
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
+
+
+def test_default_pandas_parallel():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    process = BinningProcess(variable_names, n_jobs=2)
+    process.fit(df, y, check_input=True)
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+    optb.binning_table.build()
+    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
+
+
+def test_default_disk_csv():
+    process = BinningProcess(variable_names, verbose=True)
+
+    with raises(ValueError):
+        process.fit_disk(input_path="tests/data/breast_cancer.txt",
+                         target="target")
+
+    with raises(TypeError):
+        process.fit_disk(input_path="tests/data/breast_cancer.csv", target=0)
+
+    process.fit_disk(input_path="tests/data/breast_cancer.csv",
+                     target="target")
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+
+def test_default_disk_parquet():
+    process = BinningProcess(variable_names, verbose=True)
+    process.fit_disk(input_path="tests/data/breast_cancer.parquet",
+                     target="target")
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
+
+
+def test_default_from_dict():
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    dict_optb = {}
+    for name in variable_names:
+        optb = OptimalBinning(name=name, dtype="numerical")
+        optb.fit(df[name], y)
+        dict_optb[name] = optb
+
+    process = BinningProcess(variable_names, verbose=True)
+
+    with raises(TypeError):
+        process.fit_from_dict(list(dict_optb.values()))
+
+    with raises(ValueError):
+        dict_optb2 = dict_optb.copy()
+        dict_optb2.pop("mean radius")
+        process.fit_from_dict(dict_optb2)
+
+    process.fit_from_dict(dict_optb)
+
+    optb = process.get_binned_variable("mean radius")
+
+    assert optb.status == "OPTIMAL"
+    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
+                                  13.70499992, 15.04500008, 16.92500019],
+                                 rel=1e-6)
 
 
 def test_auto_modes():

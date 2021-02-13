@@ -570,7 +570,7 @@ class BinningProcess(Base, BaseEstimator):
         Parameters
         ----------
         input_path : str
-            Any valid string path to a file with extension .cvs or .parquet.
+            Any valid string path to a file with extension .cvs.
 
         output_path : str
             Any valid string path to a file with extension .cvs.
@@ -606,8 +606,7 @@ class BinningProcess(Base, BaseEstimator):
             ``metric="bins"``.
 
         **kwargs : keyword arguments
-            Keyword arguments for ``pandas.read_csv`` or
-            ``pandas.read_parquet``.
+            Keyword arguments for ``pandas.read_csv``.
 
         Returns
         -------
@@ -674,7 +673,7 @@ class BinningProcess(Base, BaseEstimator):
         Parameters
         ----------
         input_path : str
-            Any valid string path to a file with extension .cvs or .parquet.
+            Any valid string path to a file with extension .cvs.
 
         output_path : str
             Any valid string path to a file with extension .cvs.
@@ -707,8 +706,7 @@ class BinningProcess(Base, BaseEstimator):
             ``metric="bins"``.
 
         **kwargs : keyword arguments
-            Keyword arguments for ``pandas.read_csv`` or
-            ``pandas.read_parquet``.
+            Keyword arguments for ``pandas.read_csv``.
 
         Returns
         -------

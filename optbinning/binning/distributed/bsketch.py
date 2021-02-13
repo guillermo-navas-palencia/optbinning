@@ -41,6 +41,25 @@ def _check_parameters(sketch, eps, K, special_codes):
             raise TypeError("special_codes must be a list or numpy.ndarray.")
 
 
+def _indices_count(sketch_type, sketch, splits):
+    values = np.zeros(len(sketch))
+    count = np.zeros(len(sketch))
+
+    if sketch_type == "gk":
+        for i, entry in enumerate(sketch.entries):
+            values[i] = entry.value
+            count[i] = entry.g
+
+    elif sketch_type == "t-digest":
+        for i, key in enumerate(sketch.C.keys()):
+            centroid = sketch.C.get_value(key)
+            values[i] = centroid.mean
+            count[i] = centroid.count
+
+    indices = np.searchsorted(splits, values, side='left')
+    return indices, count
+
+
 class BSketch:
     """BSketch: binning sketch for numerical values and binary target.
 
@@ -141,8 +160,10 @@ class BSketch:
         bins_e = np.zeros(n_bins).astype(np.int64)
         bins_ne = np.zeros(n_bins).astype(np.int64)
 
-        indices_e, count_e = self._indices_count(self._sketch_e, splits)
-        indices_ne, count_ne = self._indices_count(self._sketch_ne, splits)
+        indices_e, count_e = _indices_count(
+            self.sketch, self._sketch_e, splits)
+        indices_ne, count_ne = _indices_count(
+            self.sketch, self._sketch_ne, splits)
 
         for i in range(n_bins):
             bins_e[i] = count_e[(indices_e == i)].sum()
@@ -203,24 +224,6 @@ class BSketch:
         self._count_missing_ne = bsketch._count_missing_ne
         self._count_special_e = bsketch._count_special_e
         self._count_special_ne = bsketch._count_special_ne
-
-    def _indices_count(self, sketch, splits):
-        values = np.zeros(len(sketch))
-        count = np.zeros(len(sketch))
-
-        if self.sketch == "gk":
-            for i, entry in enumerate(sketch.entries):
-                values[i] = entry.value
-                count[i] = entry.g
-
-        elif self.sketch == "t-digest":
-            for i, key in enumerate(sketch.C.keys()):
-                centroid = sketch.C.get_value(key)
-                values[i] = centroid.mean
-                count[i] = centroid.count
-
-        indices = np.searchsorted(splits, values, side='left')
-        return indices, count
 
     def _mergeable(self, other):
         special_eq = True
@@ -300,8 +303,7 @@ class BCatSketch:
         self._d_categories = {}
 
     def add(self, x, y, check_input=False):
-        """
-        Add arrays to the sketch.
+        """Add arrays to the sketch.
 
         Parameters
         ----------

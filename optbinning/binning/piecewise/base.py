@@ -12,10 +12,10 @@ import numpy as np
 
 from ropwr import RobustPWRegression
 from sklearn.base import BaseEstimator
-from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import train_test_split
 
 from ...binning.auto_monotonic import type_of_monotonic_trend
+from ...binning.base import Base
 from ...binning.binning import OptimalBinning
 from ...binning.continuous_binning import ContinuousOptimalBinning
 from ...logging import Logger
@@ -201,7 +201,7 @@ def _check_parameters(name, estimator, objective, degree, continuous,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class BasePWBinning(BaseEstimator):
+class BasePWBinning(Base, BaseEstimator):
     def __init__(self, name="", estimator=None, objective="l2", degree=1,
                  continuous=True, prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
@@ -466,12 +466,6 @@ class BasePWBinning(BaseEstimator):
         if self.verbose:
             self._logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
-
-    def _check_is_fitted(self):
-        if not self._is_fitted:
-            raise NotFittedError("This {} instance is not fitted yet. Call "
-                                 "'fit' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     @property
     def binning_table(self):

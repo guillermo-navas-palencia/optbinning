@@ -14,9 +14,9 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
-from sklearn.exceptions import NotFittedError
 from sklearn.utils.multiclass import type_of_target
 
+from ..binning.base import Base
 from ..binning.binning_process import BinningProcess
 from ..logging import Logger
 from .rounding import RoundingMIP
@@ -158,7 +158,7 @@ def _compute_intercept_based(df_scorecard):
     return scaled_points, intercept
 
 
-class Scorecard(BaseEstimator):
+class Scorecard(Base, BaseEstimator):
     """Scorecard development given a binary or continuous target dtype.
 
     Parameters
@@ -596,9 +596,3 @@ class Scorecard(BaseEstimator):
         self._is_fitted = True
 
         return self
-
-    def _check_is_fitted(self):
-        if not self._is_fitted:
-            raise NotFittedError("This {} instance is not fitted yet. Call "
-                                 "'fit' with appropriate arguments."
-                                 .format(self.__class__.__name__))

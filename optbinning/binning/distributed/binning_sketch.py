@@ -13,10 +13,10 @@ import pandas as pd
 
 from pympler import asizeof
 from sklearn.base import BaseEstimator
-from sklearn.exceptions import NotFittedError
 
 from ...binning.auto_monotonic import auto_monotonic
 from ...binning.auto_monotonic import peak_valley_trend_change_heuristic
+from ...binning.base import Base
 from ...binning.binning_statistics import bin_categorical
 from ...binning.binning_statistics import bin_info
 from ...binning.binning_statistics import BinningTable
@@ -24,10 +24,9 @@ from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
 from ...logging import Logger
+from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
-
-from .bsketch import BSketch, BCatSketch
 
 
 def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
@@ -199,7 +198,7 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class OptimalBinningSketch(BaseEstimator):
+class OptimalBinningSketch(Base, BaseEstimator):
     """Optimal binning over data streams of a numerical or categorical
     variable with respect to a binary target.
 
@@ -938,12 +937,6 @@ class OptimalBinningSketch(BaseEstimator):
             "n_records": self._bsketch.n,
             "divergence".format(self.divergence): dv
         }
-
-    def _check_is_fitted(self):
-        if not self._is_fitted:
-            raise NotFittedError("This {} instance is not fitted yet. Call "
-                                 "'fit' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     @property
     def binning_table(self):

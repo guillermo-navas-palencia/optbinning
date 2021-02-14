@@ -12,9 +12,9 @@ from ...binning.metrics import jeffrey
 from ...binning.metrics import jensen_shannon
 from ...binning.metrics import hellinger
 from ...binning.metrics import triangular
-from ...scorecard.metrics import gini
-from ...scorecard.metrics import ks
-from ...scorecard.metrics import regression_metrics
+from ...metrics.classification import gini
+from ...metrics.classification import ks
+from ...metrics.regression import regression_metrics
 from .transformations import transform_binary_target
 from .transformations import transform_continuous_target
 

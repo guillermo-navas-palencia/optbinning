@@ -23,9 +23,9 @@ from ..binning.metrics import jeffrey
 from ..binning.prebinning import PreBinning
 from ..formatting import dataframe_to_string
 from ..logging import Logger
-from .metrics import gini
-from .metrics import imbalanced_classification_metrics
-from .metrics import regression_metrics
+from ..metrics.classification import gini
+from ..metrics.classification import imbalanced_classification_metrics
+from ..metrics.regression import regression_metrics
 from .monitoring_information import print_monitoring_information
 from .scorecard import Scorecard
 

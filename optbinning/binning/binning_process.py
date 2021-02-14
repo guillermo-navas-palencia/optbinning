@@ -28,6 +28,8 @@ from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
+from .piecewise.binning import OptimalPWBinning
+from .piecewise.continuous_binning import ContinuousOptimalPWBinning
 
 
 _METRICS = {
@@ -47,6 +49,13 @@ _METRICS = {
         "metrics": []
     }
 }
+
+
+_OPTB_TYPES = (OptimalBinning, ContinuousOptimalBinning,
+               MulticlassOptimalBinning)
+
+
+_OPTBPW_TYPES = (OptimalPWBinning, ContinuousOptimalPWBinning)
 
 
 def _effective_n_jobs(n_jobs):
@@ -786,6 +795,59 @@ class BinningProcess(Base, BaseEstimator):
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
+    def update_binned_variable(self, name, optb):
+        """Update optimal binning object for a given variable.
+
+        Parameters
+        ----------
+        name : string
+            The variable name.
+
+        optb : object
+            The optimal binning object already fitted.
+        """
+        self._check_is_fitted()
+
+        if not isinstance(name, str):
+            raise TypeError("name must be a string.")
+
+        if name not in self.variable_names:
+            raise ValueError("name {} does not match a binned variable."
+                             .format(name))
+
+        optb_types = _OPTB_TYPES + _OPTBPW_TYPES
+
+        if not isinstance(optb, optb_types):
+            raise TypeError("Object {} must be of type ({}); got {}"
+                            .format(name, optb_types, type(optb)))
+
+        # Check current class
+        if self._target_dtype == "binary":
+            optb_binary = (OptimalBinning, OptimalPWBinning)
+            if not isinstance(optb, optb_binary):
+                raise TypeError("target is binary and Object {} must be of "
+                                "type {}.".format(optb_binary))
+        elif self._target_dtype == "continuous":
+            optb_continuous = (ContinuousOptimalBinning,
+                               ContinuousOptimalPWBinning)
+            if not isinstance(optb, optb_continuous):
+                raise TypeError("target is continuous and Object {} must be "
+                                "of type {}.".format(optb_continuous))
+        elif self._target_dtype == "multiclass":
+            if not isinstance(optb, MulticlassOptimalBinning):
+                raise TypeError("target is multiclass and Object {} must be "
+                                "of type {}.".format(MulticlassOptimalBinning))
+
+        optb_old = self._binned_variables[name]
+        if optb_old.name and optb_old.name != optb.name:
+            raise ValueError("Update object name must match old object name; "
+                             "{} != {}.".format(optb_old.name, optb.name))
+
+        if optb.name and name != optb.name:
+            raise ValueError("name and object name must coincide.")
+
+        self._binned_variables[name] = optb
+
     def get_support(self, indices=False, names=False):
         """Get a mask, or integer index, or names of the variables selected.
 
@@ -1147,15 +1209,13 @@ class BinningProcess(Base, BaseEstimator):
         if not isinstance(dict_optb, dict):
             raise TypeError("dict_optb must be a dict.")
 
-        optb_types = (OptimalBinning, ContinuousOptimalBinning,
-                      MulticlassOptimalBinning)
-
         # Check variable names
         if set(dict_optb.keys()) != set(self.variable_names):
             raise ValueError("dict_optb keys and variable names must "
                              "coincide.")
 
         # Check objects class
+        optb_types = _OPTB_TYPES
         types = set()
         for name, optb in dict_optb.items():
             if not isinstance(name, str):
@@ -1243,6 +1303,13 @@ class BinningProcess(Base, BaseEstimator):
                     raise ValueError("Selected variable {} must be a column "
                                      "in the input dataframe.".format(name))
 
+        # Check metric
+        if metric in ("indices", "bins"):
+            if any(isinstance(optb, _OPTBPW_TYPES)
+                   for optb in self._binned_variables.values()):
+                raise TypeError("metric {} not supported for piecewise "
+                                "optimal binning objects.".format(metric))
+
         indices_selected_variables = self.get_support(indices=True)
         n_selected_variables = len(indices_selected_variables)
 
@@ -1259,6 +1326,11 @@ class BinningProcess(Base, BaseEstimator):
             name = self.variable_names[idx]
             optb = self._binned_variables[name]
 
+            if isinstance(X, np.ndarray):
+                x = X[:, idx]
+            else:
+                x = X[name]
+
             params = {}
             if self.binning_transform_params is not None:
                 params = self.binning_transform_params.get(name, {})
@@ -1266,24 +1338,24 @@ class BinningProcess(Base, BaseEstimator):
             metric_missing = params.get("metric_missing", metric_missing)
             metric_special = params.get("metric_special", metric_special)
 
-            if isinstance(X, np.ndarray):
-                x = X[:, idx]
-            else:
-                x = X[name]
+            tparams = {
+                "x": x,
+                "metric": metric,
+                "metric_special": metric_special,
+                "metric_missing": metric_missing,
+                "check_input": check_input,
+                "show_digits": show_digits
+                }
 
-            if metric is None:
-                # Use default metric for each target type
-                X_transform[:, i] = optb.transform(
-                    x=x, metric_special=metric_special,
-                    metric_missing=metric_missing, show_digits=show_digits,
-                    check_input=check_input)
-            else:
-                _metric = params.get("metric", metric)
+            if isinstance(optb, _OPTBPW_TYPES):
+                tparams.pop("show_digits")
 
-                X_transform[:, i] = optb.transform(
-                    x=x, metric=_metric, metric_special=metric_special,
-                    metric_missing=metric_missing, show_digits=show_digits,
-                    check_input=check_input)
+            if metric is not None:
+                tparams["metric"] = params.get("metric", metric)
+            else:
+                tparams.pop("metric")
+
+            X_transform[:, i] = optb.transform(**tparams)
 
         if isinstance(X, pd.DataFrame):
             return pd.DataFrame(X_transform, columns=selected_variables)
@@ -1304,6 +1376,13 @@ class BinningProcess(Base, BaseEstimator):
         if not isinstance(chunksize, numbers.Integral) or chunksize <= 0:
             raise ValueError("chunksize must be a positive integer; got {}."
                              .format(chunksize))
+
+        # Check metric
+        if metric in ("indices", "bins"):
+            if any(isinstance(optb, _OPTBPW_TYPES)
+                   for optb in self._binned_variables.values()):
+                raise TypeError("metric {} not supported for piecewise "
+                                "optimal binning objects.".format(metric))
 
         selected_variables = self.get_support(names=True)
         n_selected_variables = len(selected_variables)
@@ -1333,19 +1412,23 @@ class BinningProcess(Base, BaseEstimator):
                 metric_missing = params.get("metric_missing", metric_missing)
                 metric_special = params.get("metric_special", metric_special)
 
-                x = chunk[name]
+                tparams = {
+                    "x": chunk[name],
+                    "metric": metric,
+                    "metric_special": metric_special,
+                    "metric_missing": metric_missing,
+                    "show_digits": show_digits
+                    }
 
-                if metric is None:
-                    # Use default metric for each target type
-                    X_transform[:, i] = optb.transform(
-                        x=x, metric_special=metric_special,
-                        metric_missing=metric_missing, show_digits=show_digits)
+                if isinstance(optb, _OPTBPW_TYPES):
+                    tparams.pop("show_digits")
+
+                if metric is not None:
+                    tparams["metric"] = params.get("metric", metric)
                 else:
-                    _metric = params.get("metric", metric)
+                    tparams.pop("metric")
 
-                    X_transform[:, i] = optb.transform(
-                        x, _metric, metric_special, metric_missing,
-                        show_digits)
+                X_transform[:, i] = optb.transform(**tparams)
 
             df = pd.DataFrame(X_transform, columns=selected_variables)
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))

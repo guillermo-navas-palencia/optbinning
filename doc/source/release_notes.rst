@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+Version 0.9.1 (2021-02-14)
+--------------------------
+
+New features:
+
+   - Binning process can be constructed using OptimalBinning objects previously fitted. Method ``fit_from_dict``.
+   - Binning process can process large datasets directly on disk. Allowed file formats are csv and parquet. Methods ``fit_disk``, ``fit_transform_disk`` and ``transform_disk``.
+
+Bugfixes:
+
+   - Fix saving all OptBinning classes: `Issue 77 <https://github.com/guillermo-navas-palencia/optbinning/issues/77>`_
+
+
 Version 0.9.0 (2021-01-14)
 --------------------------
 

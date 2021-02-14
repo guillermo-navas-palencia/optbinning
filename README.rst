@@ -8,8 +8,11 @@ OptBinning
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 
-.. image:: https://img.shields.io/pypi/v/optbinning?color=blue
-   :target: https://img.shields.io/pypi/v/optbinning?color=blue
+.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9-blue
+   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9-blue
+
+.. image:: https://img.shields.io/pypi/v/optbinning?color=blueviolet
+   :target: https://img.shields.io/pypi/v/optbinning?color=blueviolet
 
 .. image:: https://pepy.tech/badge/optbinning
    :target: https://pepy.tech/project/optbinning

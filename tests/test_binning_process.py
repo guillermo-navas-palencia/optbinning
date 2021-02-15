@@ -509,6 +509,15 @@ def test_default_fit_transform_no_selected_variables():
     assert X_transform == approx(np.empty(0).reshape((X.shape[0], 0)))
 
 
+def test_default_fit_transform_disk():
+    input_csv = "tests/data/breast_cancer.csv"
+    output_csv = "tests/results/breast_cancer_woe_2.csv"
+
+    process = BinningProcess(variable_names, verbose=True)
+    process.fit_transform_disk(input_path=input_csv, output_path=output_csv,
+                               target="target", chunksize=100)
+
+
 def test_information():
     data = load_breast_cancer()
 

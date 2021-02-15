@@ -5,6 +5,8 @@ Binning process testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import os
+
 import pandas as pd
 import numpy as np
 
@@ -461,6 +463,29 @@ def test_default_transform_multiclass():
     optb.fit(x, y)
     assert optb.transform(x, metric="mean_woe") == approx(
         X_transform[:, 5], rel=1e-6)
+
+
+def test_default_transform_disk():
+    input_csv = "tests/data/breast_cancer.csv"
+    input_parquet = "tests/data/breast_cancer.parquet"
+    output_csv = "tests/results/breast_cancer_woe.csv"
+
+    process = BinningProcess(variable_names, verbose=True)
+    process.fit_disk(input_path=input_parquet, target="target")
+
+    with raises(ValueError):
+        process.transform_disk(input_path=input_parquet,
+                               output_path=output_csv, chunksize=1000)
+
+    with raises(ValueError):
+        process.transform_disk(input_path=input_csv, output_path=output_csv,
+                               chunksize=0)
+
+    if os.path.exists(output_csv):
+        os.remove(output_csv)
+
+    process.transform_disk(input_path=input_csv, output_path=output_csv,
+                           chunksize=100)
 
 
 def test_default_fit_transform():

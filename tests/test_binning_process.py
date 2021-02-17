@@ -518,6 +518,10 @@ def test_default_fit_transform_disk():
                                target="target", chunksize=100)
 
 
+def test_update_binned_variable():
+    pass
+
+
 def test_information():
     data = load_breast_cancer()
 

@@ -69,13 +69,13 @@ def gini(event, nonevent):
 
         ner = nonevent / (event + nonevent)
         idx = np.argsort(ner)
-        ev = event[idx]
-        ne = nonevent[idx]
+        ev = event[idx] / te
+        ne = nonevent[idx] / tne
 
         s = np.zeros(n)
         s[1:] = 2.0 * ne[:-1].cumsum()
 
-        return 1.0 - np.dot(ev, ne + s) / (te * tne)
+        return 1.0 - np.dot(ev, ne + s)
 
 
 def kullback_leibler(x, y, return_sum=False):

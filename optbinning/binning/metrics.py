@@ -57,8 +57,8 @@ def gini(event, nonevent):
     event, nonevent = _check_x_y(event, nonevent)
 
     mask = (event + nonevent) > 0
-    event = event[mask]
-    nonevent = nonevent[mask]
+    event = event[mask].astype(np.float)
+    nonevent = nonevent[mask].astype(np.float)
 
     n = len(event)
     if n <= 1:
@@ -69,13 +69,13 @@ def gini(event, nonevent):
 
         ner = nonevent / (event + nonevent)
         idx = np.argsort(ner)
-        ev = event[idx] / te
-        ne = nonevent[idx] / tne
+        ev = event[idx]
+        ne = nonevent[idx]
 
         s = np.zeros(n)
         s[1:] = 2.0 * ne[:-1].cumsum()
 
-        return 1.0 - np.dot(ev, ne + s)
+        return 1.0 - np.dot(ev, ne + s) / (te * tne)
 
 
 def kullback_leibler(x, y, return_sum=False):

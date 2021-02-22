@@ -11,17 +11,14 @@ from .options import binning_process_default_options
 
 
 def print_main_info(n_records, n_variables, time_total):
-    cpu_time = round(time_total, 4)
     print("  Number of records   : {}".format(n_records))
     print("  Number of variables : {}".format(n_variables))
-    print("  Time                : {:<7.4f} sec\n".format(cpu_time))
+    print("  Time                : {:<10.4f} sec\n".format(time_total))
 
 
 def print_binning_process_statistics(n_records, n_variables, target_dtype,
                                      n_numerical, n_categorical, n_selected,
                                      time_total):
-    cpu_time = round(time_total, 4)
-
     stats = (
         "  Statistics\n"
         "    Number of records             {:>10}\n"
@@ -30,9 +27,9 @@ def print_binning_process_statistics(n_records, n_variables, target_dtype,
         "    Number of numerical           {:>10}\n"
         "    Number of categorical         {:>10}\n"
         "    Number of selected            {:>10}\n\n"
-        "  Time                                {:<7.4f} sec\n"
+        "  Time                            {:>10.4f} sec\n"
         ).format(n_records, n_variables, target_dtype, n_numerical,
-                 n_categorical, n_selected, cpu_time)
+                 n_categorical, n_selected, time_total)
 
     print(stats)
 

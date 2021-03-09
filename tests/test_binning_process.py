@@ -16,8 +16,10 @@ from contextlib import redirect_stdout
 
 from optbinning import BinningProcess
 from optbinning import ContinuousOptimalBinning
+from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
+from optbinning import OptimalPWBinning
 from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_wine
@@ -519,7 +521,36 @@ def test_default_fit_transform_disk():
 
 
 def test_update_binned_variable():
-    pass
+    process = BinningProcess(variable_names)
+    process.fit(X, y, check_input=True)
+
+    optb = OptimalPWBinning()
+    x = X[:, 5]
+    optb.fit(x, y)
+
+    with raises(TypeError):
+        process.update_binned_variable(1, optb)
+
+    with raises(ValueError):
+        process.update_binned_variable('new_variable', optb)
+
+    with raises(TypeError):
+        process.update_binned_variable('mean compactness', None)
+
+    with raises(TypeError):
+        coptb = ContinuousOptimalPWBinning()
+        coptb.fit(x, y)
+        process.update_binned_variable('mean compactness', coptb)
+
+    with raises(ValueError):
+        optb = OptimalPWBinning(name="new_name")
+        optb.fit(x, y)
+        process.update_binned_variable('mean compactness', optb)
+
+    with raises(ValueError):
+        optb = OptimalPWBinning(name='mean compactness')
+        optb.fit(x, y)
+        process.update_binned_variable('mean radius', optb)
 
 
 def test_information():

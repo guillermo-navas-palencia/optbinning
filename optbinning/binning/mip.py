@@ -183,7 +183,7 @@ class BinningMIP:
                 status_name = "FEASIBLE"
 
             solution = np.array([self._x[i, i].solution_value()
-                                for i in range(self._n)]).astype(np.bool)
+                                for i in range(self._n)]).astype(bool)
         else:
             if status == pywraplp.Solver.ABNORMAL:
                 status_name = "ABNORMAL"
@@ -194,7 +194,7 @@ class BinningMIP:
             else:
                 status_name = "UNKNOWN"
 
-            solution = np.zeros(self._n).astype(np.bool)
+            solution = np.zeros(self._n).astype(bool)
             solution[-1] = True
 
         return status_name, solution

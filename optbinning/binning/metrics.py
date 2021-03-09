@@ -57,8 +57,8 @@ def gini(event, nonevent):
     event, nonevent = _check_x_y(event, nonevent)
 
     mask = (event + nonevent) > 0
-    event = event[mask].astype(np.float)
-    nonevent = nonevent[mask].astype(np.float)
+    event = event[mask].astype(np.float64)
+    nonevent = nonevent[mask].astype(np.float64)
 
     n = len(event)
     if n <= 1:

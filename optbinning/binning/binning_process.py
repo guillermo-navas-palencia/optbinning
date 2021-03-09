@@ -300,7 +300,7 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
 
 def _check_variable_dtype(x):
-    return "categorical" if x.dtype == np.object else "numerical"
+    return "categorical" if x.dtype == object else "numerical"
 
 
 class BinningProcess(Base, BaseEstimator):
@@ -833,17 +833,18 @@ class BinningProcess(Base, BaseEstimator):
             optb_binary = (OptimalBinning, OptimalPWBinning)
             if not isinstance(optb, optb_binary):
                 raise TypeError("target is binary and Object {} must be of "
-                                "type {}.".format(optb_binary))
+                                "type {}.".format(optb, optb_binary))
         elif self._target_dtype == "continuous":
             optb_continuous = (ContinuousOptimalBinning,
                                ContinuousOptimalPWBinning)
             if not isinstance(optb, optb_continuous):
                 raise TypeError("target is continuous and Object {} must be "
-                                "of type {}.".format(optb_continuous))
+                                "of type {}.".format(optb, optb_continuous))
         elif self._target_dtype == "multiclass":
             if not isinstance(optb, MulticlassOptimalBinning):
                 raise TypeError("target is multiclass and Object {} must be "
-                                "of type {}.".format(MulticlassOptimalBinning))
+                                "of type {}.".format(
+                                    optb, MulticlassOptimalBinning))
 
         optb_old = self._binned_variables[name]
         if optb_old.name and optb_old.name != optb.name:
@@ -928,7 +929,7 @@ class BinningProcess(Base, BaseEstimator):
             pickle.dump(self, f)
 
     def _support_selection_criteria(self):
-        self._support = np.full(self._n_variables, True, dtype=np.bool)
+        self._support = np.full(self._n_variables, True, dtype=bool)
 
         if self.selection_criteria is None:
             return
@@ -953,7 +954,7 @@ class BinningProcess(Base, BaseEstimator):
                     n_valid = len(metric_values)
 
                     # Auxiliary support
-                    support = np.full(self._n_variables, False, dtype=np.bool)
+                    support = np.full(self._n_variables, False, dtype=bool)
 
                     top = metric_info["top"]
                     if not isinstance(top, numbers.Integral):
@@ -1322,10 +1323,10 @@ class BinningProcess(Base, BaseEstimator):
 
         if metric == "indices":
             X_transform = np.full(
-                (n_samples, n_selected_variables), -1, dtype=np.int)
+                (n_samples, n_selected_variables), -1, dtype=int)
         elif metric == "bins":
             X_transform = np.full(
-                (n_samples, n_selected_variables), "", dtype=np.object)
+                (n_samples, n_selected_variables), "", dtype=object)
         else:
             X_transform = np.zeros((n_samples, n_selected_variables))
 
@@ -1402,10 +1403,10 @@ class BinningProcess(Base, BaseEstimator):
 
             if metric == "indices":
                 X_transform = np.full(
-                    (n_samples, n_selected_variables), -1, dtype=np.int)
+                    (n_samples, n_selected_variables), -1, dtype=int)
             elif metric == "bins":
                 X_transform = np.full(
-                    (n_samples, n_selected_variables), "", dtype=np.object)
+                    (n_samples, n_selected_variables), "", dtype=object)
             else:
                 X_transform = np.zeros((n_samples, n_selected_variables))
 

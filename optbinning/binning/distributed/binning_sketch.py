@@ -764,13 +764,13 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
             splits = splits[~mask_splits]
 
-            splits_int = np.ceil(splits).astype(np.int)
+            splits_int = np.ceil(splits).astype(int)
             indices = np.digitize(np.arange(len(categories)), splits_int,
                                   right=False)
             n_bins = len(splits) + 1
 
-            new_nonevent = np.empty(n_bins, dtype=np.int)
-            new_event = np.empty(n_bins, dtype=np.int)
+            new_nonevent = np.empty(n_bins, dtype=np.int64)
+            new_event = np.empty(n_bins, dtype=np.int64)
             new_categories = []
             for i in range(n_bins):
                 mask = (indices == i)
@@ -778,7 +778,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
                 new_nonevent[i] = n_nonevent[mask].sum()
                 new_event[i] = n_event[mask].sum()
 
-            new_categories = np.array(new_categories)
+            new_categories = np.array(new_categories, dtype=object)
 
             [splits, categories, n_nonevent,
              n_event] = self._compute_cat_prebins(
@@ -795,7 +795,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(np.bool)
+            self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
                 self._logger.warning("Optimizer: no bins after pre-binning.")
@@ -806,12 +806,12 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = np.int(np.ceil(self.min_bin_size * self._bsketch.n))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._bsketch.n))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = np.int(np.ceil(self.max_bin_size * self._bsketch.n))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._bsketch.n))
         else:
             max_bin_size = self.max_bin_size
 

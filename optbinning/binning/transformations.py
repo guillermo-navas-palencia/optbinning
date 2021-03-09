@@ -166,15 +166,15 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
         # Assign corresponding indices or bin intervals
         if metric == "indices":
             metric_value = np.arange(n_bins + 2)
-            x_transform = np.full(x.shape, -1, dtype=np.int)
+            x_transform = np.full(x.shape, -1, dtype=int)
         elif metric == "bins":
             bins_str.extend(["Special", "Missing"])
             metric_value = bins_str
-            x_transform = np.full(x.shape, "", dtype=np.object)
+            x_transform = np.full(x.shape, "", dtype=object)
 
     if dtype == "numerical":
         if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, "", dtype=np.object)
+            x_clean_transform = np.full(x_clean.shape, "", dtype=object)
         else:
             x_clean_transform = np.zeros(x_clean.shape)
 
@@ -274,13 +274,13 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
         # Assign corresponding indices or bin intervals
         if metric == "indices":
             metric_value = np.arange(n_bins + 2)
-            x_transform = np.full(x.shape, -1, dtype=np.int)
+            x_transform = np.full(x.shape, -1, dtype=int)
         elif metric == "bins":
             bins_str.extend(["Special", "Missing"])
             metric_value = bins_str
-            x_transform = np.full(x.shape, "", dtype=np.object)
+            x_transform = np.full(x.shape, "", dtype=object)
 
-        x_clean_transform = np.full(x_clean.shape, "").astype(np.object)
+        x_clean_transform = np.full(x_clean.shape, "").astype(object)
 
     for i in range(n_bins):
         mask = (indices == i)
@@ -359,15 +359,15 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
         # Assign corresponding indices or bin intervals
         if metric == "indices":
             metric_value = np.arange(n_bins + 2)
-            x_transform = np.full(x.shape, -1, dtype=np.int)
+            x_transform = np.full(x.shape, -1, dtype=int)
         elif metric == "bins":
             bins_str.extend(["Special", "Missing"])
             metric_value = bins_str
-            x_transform = np.full(x.shape, "", dtype=np.object)
+            x_transform = np.full(x.shape, "", dtype=object)
 
     if dtype == "numerical":
         if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, "").astype(np.object)
+            x_clean_transform = np.full(x_clean.shape, "").astype(object)
         else:
             x_clean_transform = np.zeros(x_clean.shape)
 

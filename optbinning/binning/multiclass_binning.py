@@ -655,7 +655,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(np.bool)
+            self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
                 self._logger.warning("Optimizer: no bins after pre-binning.")
@@ -665,12 +665,12 @@ class MulticlassOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = np.int(np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = np.int(np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
         else:
             max_bin_size = self.max_bin_size
 
@@ -771,7 +771,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         n_bins = n_splits + 1
         n_nonevent = np.empty((n_bins, self._n_classes)).astype(np.int64)
         n_event = np.empty((n_bins, self._n_classes)).astype(np.int64)
-        mask_remove = np.zeros(n_bins).astype(np.bool)
+        mask_remove = np.zeros(n_bins).astype(bool)
 
         for idx, cl in enumerate(self._classes):
             y1 = (y == cl)

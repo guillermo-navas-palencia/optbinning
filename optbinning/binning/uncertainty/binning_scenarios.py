@@ -567,7 +567,7 @@ class SBOptimalBinning(OptimalBinning):
         x = np.array(x)
         y = np.array(y)
 
-        min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
+        min_bin_size = int(np.ceil(self.min_prebin_size * self._n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
@@ -612,9 +612,9 @@ class SBOptimalBinning(OptimalBinning):
             return splits_prebinning, np.array([]), np.array([])
 
         n_bins = n_splits + 1
-        n_nonevent = np.empty((n_bins, self._n_scenarios)).astype(np.int)
-        n_event = np.empty((n_bins, self._n_scenarios)).astype(np.int)
-        mask_remove = np.zeros(n_bins).astype(np.bool)
+        n_nonevent = np.empty((n_bins, self._n_scenarios)).astype(np.int64)
+        n_event = np.empty((n_bins, self._n_scenarios)).astype(np.int64)
+        mask_remove = np.zeros(n_bins).astype(bool)
 
         for s in range(self._n_scenarios):
             y0 = (y[s] == 0)
@@ -667,7 +667,7 @@ class SBOptimalBinning(OptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(np.bool)
+            self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
                 self._logger.warning("Optimizer: no bins after pre-binning.")
@@ -677,14 +677,14 @@ class SBOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = [np.int(np.ceil(
+            min_bin_size = [int(np.ceil(
                 self.min_bin_size * self._n_samples_scenario[s]))
                 for s in range(self._n_scenarios)]
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = [np.int(np.ceil(
+            max_bin_size = [int(np.ceil(
                 self.max_bin_size * self._n_samples_scenario[s]))
                 for s in range(self._n_scenarios)]
         else:
@@ -696,7 +696,7 @@ class SBOptimalBinning(OptimalBinning):
                               self.max_pvalue, self.max_pvalue_policy, None,
                               self.user_splits_fixed, self.time_limit)
         if weights is None:
-            weights = np.ones(self._n_scenarios, np.int)
+            weights = np.ones(self._n_scenarios, int)
 
         if self.verbose:
             self._logger.info("Optimizer: build model...")

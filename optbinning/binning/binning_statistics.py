@@ -68,7 +68,7 @@ def bin_str_format(bins, show_digits):
 
 
 def bin_categorical(splits_categorical, categories, cat_others, user_splits):
-    splits = np.ceil(splits_categorical).astype(np.int)
+    splits = np.ceil(splits_categorical).astype(int)
     n_categories = len(categories)
 
     if user_splits is not None:
@@ -155,7 +155,7 @@ def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
 
-    return np.array(n_nev).astype(np.int), np.array(n_ev).astype(np.int)
+    return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
 
 
 def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
@@ -175,7 +175,7 @@ def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
     n_ev.append(n_event_special)
     n_ev.append(n_event_missing)
 
-    return np.array(n_ev).astype(np.int)
+    return np.array(n_ev).astype(np.int64)
 
 
 def nstd(s, ss, records):
@@ -257,9 +257,10 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
     min_t.append(min_target_missing)
     max_t.append(max_target_special)
 
-    return (np.array(r).astype(np.int64), np.array(s).astype(np.float),
-            np.array(st).astype(np.float), np.array(min_t).astype(np.float),
-            np.array(max_t).astype(np.float), np.array(z).astype(np.int64))
+    return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
+            np.array(st).astype(np.float64),
+            np.array(min_t).astype(np.float64),
+            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64))
 
 
 def _check_build_parameters(show_digits, add_totals):

@@ -92,7 +92,7 @@ def auto_monotonic_data(n_nonevent, n_event):
 
     # Linear regression coefficient sense
     lr_coef = np.polyfit(np.arange(n_prebins), event_rate, deg=1)[0]
-    lr_sense = np.int(lr_coef > 0)
+    lr_sense = int(lr_coef > 0)
 
     # Breakpoints data
     pos_min = np.argmin(event_rate)
@@ -165,7 +165,7 @@ def auto_monotonic_data_continuous(n_records, sums):
 
     # Linear regression coefficient sense
     lr_coef = np.polyfit(np.arange(n_prebins), mean, deg=1)[0]
-    lr_sense = np.int(lr_coef > 0)
+    lr_sense = int(lr_coef > 0)
 
     # Breakpoints data
     pos_min = np.argmin(mean)

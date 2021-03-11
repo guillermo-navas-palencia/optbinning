@@ -69,7 +69,7 @@ tests_require = [
 
 setup(
     name="optbinning",
-    version="0.9.1",
+    version="0.9.2",
     description="OptBinning: The Python Optimal Binning library",
     long_description=long_description,
     author="Guillermo Navas-Palencia",
@@ -92,5 +92,7 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7']
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9']
     )

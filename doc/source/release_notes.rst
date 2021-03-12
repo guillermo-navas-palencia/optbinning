@@ -1,6 +1,22 @@
 Release Notes
 =============
 
+Version 0.9.2 (2021-03-12)
+--------------------------
+
+New features:
+
+   - Binning process can update binned variables with new optimal binning object using method ``update_binned_variable``.
+
+Improvements:
+   
+   - Prevent large divisions to avoid overflow issues with int32 during Gini calculation.
+
+Tutorials:
+
+   - Tutorial: FICO Explainable Machine Learning Challenge - updating binning
+
+
 Version 0.9.1 (2021-02-14)
 --------------------------
 

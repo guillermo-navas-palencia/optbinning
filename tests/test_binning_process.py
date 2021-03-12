@@ -5,6 +5,8 @@ Binning process testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import os
+
 import pandas as pd
 import numpy as np
 
@@ -14,8 +16,10 @@ from contextlib import redirect_stdout
 
 from optbinning import BinningProcess
 from optbinning import ContinuousOptimalBinning
+from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
+from optbinning import OptimalPWBinning
 from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_wine
@@ -463,6 +467,29 @@ def test_default_transform_multiclass():
         X_transform[:, 5], rel=1e-6)
 
 
+def test_default_transform_disk():
+    input_csv = "tests/data/breast_cancer.csv"
+    input_parquet = "tests/data/breast_cancer.parquet"
+    output_csv = "tests/results/breast_cancer_woe.csv"
+
+    process = BinningProcess(variable_names, verbose=True)
+    process.fit_disk(input_path=input_parquet, target="target")
+
+    with raises(ValueError):
+        process.transform_disk(input_path=input_parquet,
+                               output_path=output_csv, chunksize=1000)
+
+    with raises(ValueError):
+        process.transform_disk(input_path=input_csv, output_path=output_csv,
+                               chunksize=0)
+
+    if os.path.exists(output_csv):
+        os.remove(output_csv)
+
+    process.transform_disk(input_path=input_csv, output_path=output_csv,
+                           chunksize=100)
+
+
 def test_default_fit_transform():
     process = BinningProcess(variable_names)
     X_transform = process.fit_transform(X, y, metric="indices")
@@ -482,6 +509,48 @@ def test_default_fit_transform_no_selected_variables():
 
     X_transform = process.fit_transform(X, y, metric="event_rate")
     assert X_transform == approx(np.empty(0).reshape((X.shape[0], 0)))
+
+
+def test_default_fit_transform_disk():
+    input_csv = "tests/data/breast_cancer.csv"
+    output_csv = "tests/results/breast_cancer_woe_2.csv"
+
+    process = BinningProcess(variable_names, verbose=True)
+    process.fit_transform_disk(input_path=input_csv, output_path=output_csv,
+                               target="target", chunksize=100)
+
+
+def test_update_binned_variable():
+    process = BinningProcess(variable_names)
+    process.fit(X, y, check_input=True)
+
+    optb = OptimalPWBinning()
+    x = X[:, 5]
+    optb.fit(x, y)
+
+    with raises(TypeError):
+        process.update_binned_variable(1, optb)
+
+    with raises(ValueError):
+        process.update_binned_variable('new_variable', optb)
+
+    with raises(TypeError):
+        process.update_binned_variable('mean compactness', None)
+
+    with raises(TypeError):
+        coptb = ContinuousOptimalPWBinning()
+        coptb.fit(x, y)
+        process.update_binned_variable('mean compactness', coptb)
+
+    with raises(ValueError):
+        optb = OptimalPWBinning(name="new_name")
+        optb.fit(x, y)
+        process.update_binned_variable('mean compactness', optb)
+
+    with raises(ValueError):
+        optb = OptimalPWBinning(name='mean compactness')
+        optb.fit(x, y)
+        process.update_binned_variable('mean radius', optb)
 
 
 def test_information():

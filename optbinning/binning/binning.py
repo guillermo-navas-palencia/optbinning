@@ -850,7 +850,7 @@ class OptimalBinning(BaseOptimalBinning):
                         class_weight=None, sw_clean=None, sw_missing=None,
                         sw_special=None, sw_others=None):
 
-        min_bin_size = np.int(np.ceil(self.min_prebin_size * self._n_samples))
+        min_bin_size = int(np.ceil(self.min_prebin_size * self._n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
@@ -873,7 +873,7 @@ class OptimalBinning(BaseOptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(np.bool)
+            self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
                 self._logger.warning("Optimizer: no bins after pre-binning.")
@@ -884,12 +884,12 @@ class OptimalBinning(BaseOptimalBinning):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = np.int(np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = np.int(np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
         else:
             max_bin_size = self.max_bin_size
 

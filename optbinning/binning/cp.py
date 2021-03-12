@@ -256,9 +256,9 @@ class BinningCP:
 
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             solution = np.array([self.solver_.BooleanValue(self._x[i, i])
-                                 for i in range(self._n)]).astype(np.bool)
+                                 for i in range(self._n)]).astype(bool)
         else:
-            solution = np.zeros(self._n).astype(np.bool)
+            solution = np.zeros(self._n).astype(bool)
             solution[-1] = True
 
         return status_name, solution

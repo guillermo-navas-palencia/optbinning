@@ -1059,6 +1059,10 @@ class BinningProcess(Base, BaseEstimator):
 
         if n_jobs == 1:
             for i, name in enumerate(self.variable_names):
+                if self.verbose:
+                    self._logger.info("Binning variable ({} / {}): {}."
+                                      .format(i, self._n_variables, name))
+
                 if isinstance(X, np.ndarray):
                     dtype, optb = _fit_variable(
                         X[:, i], y, name, self._target_dtype,

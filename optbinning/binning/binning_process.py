@@ -303,7 +303,118 @@ def _check_variable_dtype(x):
     return "categorical" if x.dtype == object else "numerical"
 
 
-class BinningProcess(Base, BaseEstimator):
+class BaseBinningProcess:
+    @classmethod
+    def load(cls, path):
+        """Load binning process from pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+
+        Example
+        -------
+        >>> from optbinning import BinningProcess
+        >>> binning_process = BinningProcess.load("my_binning_process.pkl")
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    def save(self, path):
+        """Save binning process to pickle file.
+
+        Parameters
+        ----------
+        path : str
+            Pickle file path.
+        """
+        if not isinstance(path, str):
+            raise TypeError("path must be a string.")
+
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+    def _support_selection_criteria(self):
+        self._support = np.full(self._n_variables, True, dtype=bool)
+
+        if self.selection_criteria is None:
+            return
+
+        default_metrics_info = _METRICS[self._target_dtype]
+        criteria_metrics = self.selection_criteria.keys()
+
+        binning_metrics = pd.DataFrame.from_dict(self._variable_stats).T
+
+        for metric in default_metrics_info["metrics"]:
+            if metric in criteria_metrics:
+                metric_info = self.selection_criteria[metric]
+                metric_values = binning_metrics[metric].values
+
+                if "min" in metric_info:
+                    self._support &= metric_values >= metric_info["min"]
+                if "max" in metric_info:
+                    self._support &= metric_values <= metric_info["max"]
+                if all(m in metric_info for m in ("strategy", "top")):
+                    indices_valid = np.where(self._support)[0]
+                    metric_values = metric_values[indices_valid]
+                    n_valid = len(metric_values)
+
+                    # Auxiliary support
+                    support = np.full(self._n_variables, False, dtype=bool)
+
+                    top = metric_info["top"]
+                    if not isinstance(top, numbers.Integral):
+                        top = int(np.ceil(n_valid * top))
+                    n_selected = min(n_valid, top)
+
+                    if metric_info["strategy"] == "highest":
+                        mask = np.argsort(-metric_values)[:n_selected]
+                    elif metric_info["strategy"] == "lowest":
+                        mask = np.argsort(metric_values)[:n_selected]
+
+                    support[indices_valid[mask]] = True
+                    self._support &= support
+
+    def _binning_selection_criteria(self):
+        for i, name in enumerate(self.variable_names):
+            optb = self._binned_variables[name]
+            optb.binning_table.build()
+
+            n_bins = len(optb.splits)
+            if optb.dtype == "numerical":
+                n_bins += 1
+
+            info = {"dtype": optb.dtype,
+                    "status": optb.status,
+                    "n_bins": n_bins}
+
+            if self._target_dtype in ("binary", "multiclass"):
+                optb.binning_table.analysis(print_output=False)
+
+                if self._target_dtype == "binary":
+                    metrics = {
+                        "iv": optb.binning_table.iv,
+                        "gini": optb.binning_table.gini,
+                        "js": optb.binning_table.js,
+                        "quality_score": optb.binning_table.quality_score}
+                else:
+                    metrics = {
+                        "js": optb.binning_table.js,
+                        "quality_score": optb.binning_table.quality_score}
+            elif self._target_dtype == "continuous":
+                metrics = {}
+
+            info = {**info, **metrics}
+            self._variable_stats[name] = info
+
+        self._support_selection_criteria()
+
+
+class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
     """Binning process to compute optimal binning of variables in a dataset,
     given a binary, continuous or multiclass target dtype.
 
@@ -672,7 +783,8 @@ class BinningProcess(Base, BaseEstimator):
 
         Returns
         -------
-        X_new : numpy array, shape = (n_samples, n_features_new)
+        X_new : numpy array or pandas.DataFrame, shape = (n_samples,
+        n_features_new)
             Transformed array.
         """
         self._check_is_fitted()
@@ -893,115 +1005,6 @@ class BinningProcess(Base, BaseEstimator):
             return np.asarray(self.variable_names)[mask]
         else:
             return mask
-
-    @classmethod
-    def load(cls, path):
-        """Load binning process from pickle file.
-
-        Parameters
-        ----------
-        path : str
-            Pickle file path.
-
-        Example
-        -------
-        >>> from optbinning import BinningProcess
-        >>> binning_process = BinningProcess.load("my_binning_process.pkl")
-        """
-        if not isinstance(path, str):
-            raise TypeError("path must be a string.")
-
-        with open(path, "rb") as f:
-            return pickle.load(f)
-
-    def save(self, path):
-        """Save binning process to pickle file.
-
-        Parameters
-        ----------
-        path : str
-            Pickle file path.
-        """
-        if not isinstance(path, str):
-            raise TypeError("path must be a string.")
-
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
-
-    def _support_selection_criteria(self):
-        self._support = np.full(self._n_variables, True, dtype=bool)
-
-        if self.selection_criteria is None:
-            return
-
-        default_metrics_info = _METRICS[self._target_dtype]
-        criteria_metrics = self.selection_criteria.keys()
-
-        binning_metrics = pd.DataFrame.from_dict(self._variable_stats).T
-
-        for metric in default_metrics_info["metrics"]:
-            if metric in criteria_metrics:
-                metric_info = self.selection_criteria[metric]
-                metric_values = binning_metrics[metric].values
-
-                if "min" in metric_info:
-                    self._support &= metric_values >= metric_info["min"]
-                if "max" in metric_info:
-                    self._support &= metric_values <= metric_info["max"]
-                if all(m in metric_info for m in ("strategy", "top")):
-                    indices_valid = np.where(self._support)[0]
-                    metric_values = metric_values[indices_valid]
-                    n_valid = len(metric_values)
-
-                    # Auxiliary support
-                    support = np.full(self._n_variables, False, dtype=bool)
-
-                    top = metric_info["top"]
-                    if not isinstance(top, numbers.Integral):
-                        top = int(np.ceil(n_valid * top))
-                    n_selected = min(n_valid, top)
-
-                    if metric_info["strategy"] == "highest":
-                        mask = np.argsort(-metric_values)[:n_selected]
-                    elif metric_info["strategy"] == "lowest":
-                        mask = np.argsort(metric_values)[:n_selected]
-
-                    support[indices_valid[mask]] = True
-                    self._support &= support
-
-    def _binning_selection_criteria(self):
-        for i, name in enumerate(self.variable_names):
-            optb = self._binned_variables[name]
-            optb.binning_table.build()
-
-            n_bins = len(optb.splits)
-            if optb.dtype == "numerical":
-                n_bins += 1
-
-            info = {"dtype": optb.dtype,
-                    "status": optb.status,
-                    "n_bins": n_bins}
-
-            if self._target_dtype in ("binary", "multiclass"):
-                optb.binning_table.analysis(print_output=False)
-
-                if self._target_dtype == "binary":
-                    metrics = {
-                        "iv": optb.binning_table.iv,
-                        "gini": optb.binning_table.gini,
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
-                else:
-                    metrics = {
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
-            elif self._target_dtype == "continuous":
-                metrics = {}
-
-            info = {**info, **metrics}
-            self._variable_stats[name] = info
-
-        self._support_selection_criteria()
 
     def _fit(self, X, y, check_input):
         time_init = time.perf_counter()
@@ -1292,7 +1295,7 @@ class BinningProcess(Base, BaseEstimator):
     def _transform(self, X, metric, metric_special, metric_missing,
                    show_digits, check_input):
 
-        # check X dtype
+        # Check X dtype
         if not isinstance(X, (pd.DataFrame, np.ndarray)):
             raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
 

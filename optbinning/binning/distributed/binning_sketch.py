@@ -448,11 +448,6 @@ class OptimalBinningSketch(Base, BaseEstimator):
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
 
-        sample_weight : array-like of shape (n_samples,) (default=None)
-            Array of weights that are assigned to individual samples.
-            If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``.
-
         check_input : bool (default=False)
             Whether to check input arrays.
         """

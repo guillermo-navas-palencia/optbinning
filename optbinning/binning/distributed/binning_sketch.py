@@ -13,6 +13,7 @@ import pandas as pd
 
 from pympler import asizeof
 from sklearn.base import BaseEstimator
+from sklearn.exceptions import NotFittedError
 
 from ...binning.auto_monotonic import auto_monotonic
 from ...binning.auto_monotonic import peak_valley_trend_change_heuristic
@@ -432,7 +433,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         self._class_logger = Logger(__name__)
         self._logger = self._class_logger.logger
 
-        self._is_fitted = False
+        self._is_solved = False
 
         # Check parameters
         _check_parameters(**self.get_params())
@@ -478,7 +479,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         print_level : int (default=1)
             Level of details.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         if not isinstance(print_level, numbers.Integral) or print_level < 0:
             raise ValueError("print_level must be an integer >= 0; got {}."
@@ -541,7 +542,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
     def plot_progress(self):
         """Plot divergence measure progress."""
-        self._check_is_fitted()
+        self._check_is_solved()
 
         df = pd.DataFrame.from_dict(self._solve_stats).T
         plot_progress_divergence(df, self.divergence)
@@ -617,7 +618,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._is_fitted = True
+        self._is_solved = True
         self._update_streaming_stats()
 
         return self
@@ -666,7 +667,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         Transformation of data including categories not present during training
         return zero WoE or event rate.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return transform_binary_target(self._splits_optimal, self.dtype, x,
                                        self._n_nonevent, self._n_event,
@@ -933,6 +934,12 @@ class OptimalBinningSketch(Base, BaseEstimator):
             "divergence".format(self.divergence): dv
         }
 
+    def _check_is_solved(self):
+        if not self._is_solved:
+            raise NotFittedError("This {} instance is not solved yet. Call "
+                                 "'solve' with appropriate arguments."
+                                 .format(self.__class__.__name__))
+
     @property
     def binning_table(self):
         """Return an instantiated binning table. Please refer to
@@ -942,7 +949,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         binning_table : BinningTable.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return self._binning_table
 
@@ -955,7 +962,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         splits : numpy.ndarray
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         if self.dtype == "numerical":
             return self._splits_optimal
@@ -971,6 +978,6 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         status : str
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return self._status

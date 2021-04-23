@@ -69,11 +69,13 @@ class BinningProcessSketch(Base, BaseEstimator):
 
         self._support = None
 
+        # streaming stats
+        self._n_add = 0
+        self._n_solve = 0
+
         # timing
         self._time_streaming_add = 0
         self._time_streaming_solve = 0
-
-        self._time_total = None
 
         # logger
         self._class_logger = Logger(__name__)
@@ -102,6 +104,11 @@ class BinningProcessSketch(Base, BaseEstimator):
             Binning process with new data.
         """
         if self._started:
+            self._n_samples = 0
+            self._n_variables = len(self.variable_names)
+            self._n_categorical = len(self.categorical_variables)
+            self._n_numerical = self._n_variables - self._n_categorical
+
             # Initialize bsketch for each variable. To avoid mixed dtypes
             # the user must provide a dtype for all variables. This differs
             # from the BinningProcess, where dtypes are inferred.
@@ -147,6 +154,8 @@ class BinningProcessSketch(Base, BaseEstimator):
 
                 self._binned_variables[name].add(X[name], y, check_input)
 
+        # Update count samples and addition operations
+        self._n_samples += X.shape[0]
         self._n_add += 1
 
         self._time_streaming_add += time.perf_counter() - time_add
@@ -158,13 +167,61 @@ class BinningProcessSketch(Base, BaseEstimator):
         pass
 
     def merge(self, bpsketch):
-        pass
+        """Merge current instance with another BinningProcessSketch instance.
+
+        Parameters
+        ----------
+        bpsketch : object
+            BinningProcessSketch instance.
+        """
+        if not self.mergeable(bpsketch):
+            raise Exception("bpsketch does not share signature.")
+
+        for name in self.variable_names:
+            self._binned_variables[name].merge(
+                bpsketch._binned_variables[name])
+
+        if self.verbose:
+            self._logger.info("Sketch: current sketch was merged.")
 
     def mergeable(self, bpsketch):
-        pass
+        """Check whether two BinningProcessSketch instances can be merged.
+
+        Parameters
+        ----------
+        bpsketch : object
+            BinningProcessSketch instance.
+
+        Returns
+        -------
+        mergeable : bool
+        """
+        return self.get_params() == bpsketch.get_params()
 
     def solve(self):
-        pass
+        """Solve optimal binning for all variables using added data.
 
-    def transform(self, X):
+        Returns
+        -------
+        self : object
+            Current fitted binning process.
+        """
+        time_init = time.perf_counter()
+
+        for i, name in enumerate(self.variable_names):
+            if self.verbose:
+                self._logger.info("Binning variable ({} / {}): {}."
+                                  .format(i, self._n_variables, name))
+            self._binned_variables[name].solve()
+
+        self._time_streaming_solve += time.perf_counter() - time_init
+        self._n_solve += 1
+
+        # Completed successfully
+        self._is_fitted = True
+
+        return self
+
+    def transform(self, X, metric="woe", metric_special=0, metric_missing=0,
+                  show_digits=2, check_input=False):
         pass

@@ -17,7 +17,6 @@ from sklearn.exceptions import NotFittedError
 
 from ...binning.auto_monotonic import auto_monotonic
 from ...binning.auto_monotonic import peak_valley_trend_change_heuristic
-from ...binning.base import Base
 from ...binning.binning_statistics import bin_categorical
 from ...binning.binning_statistics import bin_info
 from ...binning.binning_statistics import BinningTable
@@ -25,6 +24,7 @@ from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
 from ...logging import Logger
+from .base import BaseSketch
 from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
@@ -199,7 +199,7 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class OptimalBinningSketch(Base, BaseEstimator):
+class OptimalBinningSketch(BaseSketch, BaseEstimator):
     """Optimal binning over data streams of a numerical or categorical
     variable with respect to a binary target.
 
@@ -556,6 +556,10 @@ class OptimalBinningSketch(Base, BaseEstimator):
             Current fitted optimal binning.
         """
         time_init = time.perf_counter()
+
+        # Check if data was added
+        if not self._n_add:
+            raise NotFittedError("No data was added. Add data before solving.")
 
         # Pre-binning
         if self.verbose:
@@ -933,12 +937,6 @@ class OptimalBinningSketch(Base, BaseEstimator):
             "n_records": self._bsketch.n,
             "divergence".format(self.divergence): dv
         }
-
-    def _check_is_solved(self):
-        if not self._is_solved:
-            raise NotFittedError("This {} instance is not solved yet. Call "
-                                 "'solve' with appropriate arguments."
-                                 .format(self.__class__.__name__))
 
     @property
     def binning_table(self):

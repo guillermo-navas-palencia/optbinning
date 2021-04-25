@@ -5,30 +5,125 @@ Binning process sketch.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
+import numbers
 import time
 
-from sklearn.base import BaseEstimator
+from warnings import warn
 
-from ...binning.base import Base
+import numpy as np
+import pandas as pd
+
+from sklearn.base import BaseEstimator
+from sklearn.exceptions import NotFittedError
+
 from ...binning.binning_process import _check_selection_criteria
 from ...binning.binning_process import _METRICS
+from ...binning.binning_process import BaseBinningProcess
 from ...logging import Logger
+from .base import BaseSketch
+from .binning_process_sketch_information import (
+    print_binning_process_sketch_information)
 from .binning_sketch import OptimalBinningSketch
 
 
-def _fit_variable(x, y):
-    pass
+def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
+                      min_bin_size, max_bin_size, max_pvalue,
+                      max_pvalue_policy, selection_criteria,
+                      categorical_variables, special_codes, split_digits,
+                      binning_fit_params, binning_transform_params, n_jobs,
+                      verbose):
+
+    if not isinstance(variable_names, (np.ndarray, list)):
+        raise TypeError("variable_names must be a list or numpy.ndarray.")
+
+    if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:
+        raise ValueError("max_prebins must be an integer greater than 1; "
+                         "got {}.".format(max_n_prebins))
+
+    if min_n_bins is not None:
+        if not isinstance(min_n_bins, numbers.Integral) or min_n_bins <= 0:
+            raise ValueError("min_n_bins must be a positive integer; got {}."
+                             .format(min_n_bins))
+
+    if max_n_bins is not None:
+        if not isinstance(max_n_bins, numbers.Integral) or max_n_bins <= 0:
+            raise ValueError("max_n_bins must be a positive integer; got {}."
+                             .format(max_n_bins))
+
+    if min_n_bins is not None and max_n_bins is not None:
+        if min_n_bins > max_n_bins:
+            raise ValueError("min_n_bins must be <= max_n_bins; got {} <= {}."
+                             .format(min_n_bins, max_n_bins))
+
+    if min_bin_size is not None:
+        if (not isinstance(min_bin_size, numbers.Number) or
+                not 0. < min_bin_size <= 0.5):
+            raise ValueError("min_bin_size must be in (0, 0.5]; got {}."
+                             .format(min_bin_size))
+
+    if max_bin_size is not None:
+        if (not isinstance(max_bin_size, numbers.Number) or
+                not 0. < max_bin_size <= 1.0):
+            raise ValueError("max_bin_size must be in (0, 1.0]; got {}."
+                             .format(max_bin_size))
+
+    if min_bin_size is not None and max_bin_size is not None:
+        if min_bin_size > max_bin_size:
+            raise ValueError("min_bin_size must be <= max_bin_size; "
+                             "got {} <= {}.".format(min_bin_size,
+                                                    max_bin_size))
+
+    if max_pvalue is not None:
+        if (not isinstance(max_pvalue, numbers.Number) or
+                not 0. < max_pvalue <= 1.0):
+            raise ValueError("max_pvalue must be in (0, 1.0]; got {}."
+                             .format(max_pvalue))
+
+    if max_pvalue_policy not in ("all", "consecutive"):
+        raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
+                         'values are "all" and "consecutive".')
+
+    if selection_criteria is not None:
+        if not isinstance(selection_criteria, dict):
+            raise TypeError("selection_criteria must be a dict.")
+
+    if categorical_variables is not None:
+        if not isinstance(categorical_variables, (np.ndarray, list)):
+            raise TypeError("categorical_variables must be a list or "
+                            "numpy.ndarray.")
+
+        if not all(isinstance(c, str) for c in categorical_variables):
+            raise TypeError("variables in categorical_variables must be "
+                            "strings.")
+
+    if special_codes is not None:
+        if not isinstance(special_codes, (np.ndarray, list)):
+            raise TypeError("special_codes must be a list or numpy.ndarray.")
+
+    if split_digits is not None:
+        if (not isinstance(split_digits, numbers.Integral) or
+                not 0 <= split_digits <= 8):
+            raise ValueError("split_digits must be an integer in [0, 8]; "
+                             "got {}.".format(split_digits))
+
+    if binning_fit_params is not None:
+        if not isinstance(binning_fit_params, dict):
+            raise TypeError("binning_fit_params must be a dict.")
+
+    if binning_transform_params is not None:
+        if not isinstance(binning_transform_params, dict):
+            raise TypeError("binning_transform_params must be a dict.")
+
+    if n_jobs is not None:
+        if not isinstance(n_jobs, numbers.Integral):
+            raise ValueError("n_jobs must be an integer or None; got {}."
+                             .format(n_jobs))
+
+    if not isinstance(verbose, bool):
+        raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def _fit_block():
-    pass
-
-
-def _check_parameters():
-    pass
-
-
-class BinningProcessSketch(Base, BaseEstimator):
+class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
     def __init__(self, variable_names, max_n_prebins=20, min_n_bins=None,
                  max_n_bins=None, min_bin_size=None, max_bin_size=None,
                  max_pvalue=None, max_pvalue_policy="consecutive",
@@ -57,6 +152,9 @@ class BinningProcessSketch(Base, BaseEstimator):
         self.categorical_variables = categorical_variables
         self.verbose = verbose
 
+        # target information to reuse BaseBinningProcess
+        self._target_dtype = "binary"
+
         # auxiliary
         self._n_samples = None
         self._n_variables = None
@@ -83,7 +181,10 @@ class BinningProcessSketch(Base, BaseEstimator):
 
         # flags
         self._is_started = False
-        self._is_fitted = False
+        self._is_solved = False
+
+        # Check parameters
+        _check_parameters(**self.get_params())
 
     def add(self, X, y, check_input=False):
         """Add new data X, y to the binning sketch of each variable.
@@ -108,6 +209,11 @@ class BinningProcessSketch(Base, BaseEstimator):
             self._n_variables = len(self.variable_names)
             self._n_categorical = len(self.categorical_variables)
             self._n_numerical = self._n_variables - self._n_categorical
+
+            # Check selection criteria
+            if self.selection_criteria is not None:
+                _check_selection_criteria(self.selection_criteria,
+                                          self._target_dtype)
 
             # Initialize bsketch for each variable. To avoid mixed dtypes
             # the user must provide a dtype for all variables. This differs
@@ -164,7 +270,50 @@ class BinningProcessSketch(Base, BaseEstimator):
             self._logger.info("Sketch: added new data.")
 
     def information(self, print_level=1):
-        pass
+        """Print overview information about the options settings and
+        statistics.
+
+        Parameters
+        ----------
+        print_level : int (default=1)
+            Level of details.
+        """
+        self._check_is_solved()
+
+        if not isinstance(print_level, numbers.Integral) or print_level < 0:
+            raise ValueError("print_level must be an integer >= 0; got {}."
+                             .format(print_level))
+
+        self._n_selected = np.count_nonzero(self._support)
+
+        dict_user_options = self.get_params()
+
+        print_binning_process_sketch_information(
+            print_level, self._n_samples, self._n_variables,
+            self._target_dtype, self._n_numerical, self._n_categorical,
+            self._n_selected, self._n_add, self._time_streaming_add,
+            self._n_solve, self._time_streaming_solve, dict_user_options)
+
+    def summary(self):
+        """Binning process summary with main statistics for all binned
+        variables.
+
+        Parameters
+        ----------
+        df_summary : pandas.DataFrame
+            Binning process summary.
+        """
+        self._check_is_solved()
+
+        df_summary = pd.DataFrame.from_dict(self._variable_stats).T
+        df_summary.reset_index(inplace=True)
+        df_summary.rename(columns={"index": "name"}, inplace=True)
+        df_summary["selected"] = self._support
+
+        columns = ["name", "dtype", "status", "selected", "n_bins"]
+        columns += _METRICS[self._target_dtype]["metrics"]
+
+        return df_summary[columns]
 
     def merge(self, bpsketch):
         """Merge current instance with another BinningProcessSketch instance.
@@ -208,20 +357,188 @@ class BinningProcessSketch(Base, BaseEstimator):
         """
         time_init = time.perf_counter()
 
+        # Check if data was added
+        if not self._n_add:
+            raise NotFittedError("No data was added. Add data before solving.")
+
         for i, name in enumerate(self.variable_names):
             if self.verbose:
                 self._logger.info("Binning variable ({} / {}): {}."
                                   .format(i, self._n_variables, name))
             self._binned_variables[name].solve()
 
+        if self.verbose:
+            self._logger.info("Binning process variable selection...")
+
+        # Compute binning statistics and decide whether a variable is selected
+        self._binning_selection_criteria()
+
         self._time_streaming_solve += time.perf_counter() - time_init
         self._n_solve += 1
 
         # Completed successfully
-        self._is_fitted = True
+        self._is_solved = True
 
         return self
 
     def transform(self, X, metric="woe", metric_special=0, metric_missing=0,
                   show_digits=2, check_input=False):
-        pass
+        """Transform given data to metric using bins from each fitted optimal
+        binning.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        X_new : pandas.DataFrame, shape = (n_samples, n_features_new)
+            Transformed array.
+        """
+        self._check_is_solved()
+
+        # Check X dtype
+        if not isinstance(X, pd.DataFrame):
+            raise TypeError("X must be a pandas.DataFrame.")
+
+        n_samples, n_variables = X.shape
+
+        # Check metric
+        if metric not in ("event_rate", "woe"):
+            raise ValueError('Invalid value for metric. Allowed string '
+                             'values are "event_rate" and "woe".')
+
+        mask = self.get_support()
+        if not mask.any():
+            warn("No variables were selected: either the data is"
+                 " too noisy or the selection_criteria too strict.",
+                 UserWarning)
+            return np.empty(0).reshape((n_samples, 0))
+
+        selected_variables = self.get_support(names=True)
+        for name in selected_variables:
+            if name not in X.columns:
+                raise ValueError("Selected variable {} must be a column "
+                                 "in the input dataframe.".format(name))
+
+        n_selected_variables = len(selected_variables)
+
+        if metric == "indices":
+            X_transform = np.full(
+                (n_samples, n_selected_variables), -1, dtype=int)
+        elif metric == "bins":
+            X_transform = np.full(
+                (n_samples, n_selected_variables), "", dtype=object)
+        else:
+            X_transform = np.zeros((n_samples, n_selected_variables))
+
+        for i, name in enumerate(selected_variables):
+            optb = self._binned_variables[name]
+            x = X[name]
+
+            params = {}
+            if self.binning_transform_params is not None:
+                params = self.binning_transform_params.get(name, {})
+
+            metric_missing = params.get("metric_missing", metric_missing)
+            metric_special = params.get("metric_special", metric_special)
+
+            tparams = {
+                "x": x,
+                "metric": metric,
+                "metric_special": metric_special,
+                "metric_missing": metric_missing,
+                "check_input": check_input,
+                "show_digits": show_digits
+                }
+
+            if metric is not None:
+                tparams["metric"] = params.get("metric", metric)
+            else:
+                tparams.pop("metric")
+
+            X_transform[:, i] = optb.transform(**tparams)
+
+        return pd.DataFrame(X_transform, columns=selected_variables)
+
+    def get_binned_variable(self, name):
+        """Return optimal binning sketch object for a given variable name.
+
+        Parameters
+        ----------
+        name : string
+            The variable name.
+        """
+        self._check_is_solved()
+
+        if not isinstance(name, str):
+            raise TypeError("name must be a string.")
+
+        if name in self.variable_names:
+            return self._binned_variables[name]
+        else:
+            raise ValueError("name {} does not match a binned variable."
+                             .format(name))
+
+    def get_support(self, indices=False, names=False):
+        """Get a mask, or integer index, or names of the variables selected.
+
+        Parameters
+        ----------
+        indices : boolean (default=False)
+            If True, the return value will be an array of integers, rather
+            than a boolean mask.
+
+        names : boolean (default=False)
+            If True, the return value will be an array of strings, rather
+            than a boolean mask.
+
+        Returns
+        -------
+        support : array
+            An index that selects the retained features from a feature vector.
+            If `indices` is False, this is a boolean array of shape
+            [# input features], in which an element is True iff its
+            corresponding feature is selected for retention. If `indices` is
+            True, this is an integer array of shape [# output features] whose
+            values are indices into the input feature vector. If `names` is
+            True, this is an string array of sahpe [# output features], whose
+            values are names of the selected features.
+        """
+        self._check_is_solved()
+
+        if indices and names:
+            raise ValueError("Only indices or names can be True.")
+
+        mask = self._support
+        if indices:
+            return np.where(mask)[0]
+        elif names:
+            return np.asarray(self.variable_names)[mask]
+        else:
+            return mask

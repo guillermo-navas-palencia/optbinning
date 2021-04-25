@@ -30,8 +30,7 @@ def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
                       min_bin_size, max_bin_size, max_pvalue,
                       max_pvalue_policy, selection_criteria,
                       categorical_variables, special_codes, split_digits,
-                      binning_fit_params, binning_transform_params, n_jobs,
-                      verbose):
+                      binning_fit_params, binning_transform_params, verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -114,11 +113,6 @@ def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
         if not isinstance(binning_transform_params, dict):
             raise TypeError("binning_transform_params must be a dict.")
 
-    if n_jobs is not None:
-        if not isinstance(n_jobs, numbers.Integral):
-            raise ValueError("n_jobs must be an integer or None; got {}."
-                             .format(n_jobs))
-
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
@@ -130,7 +124,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
                  selection_criteria=None, categorical_variables=None,
                  special_codes=None, split_digits=None,
                  binning_fit_params=None, binning_transform_params=None,
-                 verbose=True):
+                 verbose=False):
 
         self.variable_names = variable_names
 
@@ -204,7 +198,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         self : object
             Binning process with new data.
         """
-        if self._started:
+        if not self._is_started:
             self._n_samples = 0
             self._n_variables = len(self.variable_names)
             self._n_categorical = len(self.categorical_variables)
@@ -245,7 +239,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
                 self._variable_dtypes[name] = dtype
                 self._binned_variables[name] = optb
 
-            self._started = True
+            self._is_started = True
 
         # Add new data stream
         time_add = time.perf_counter()

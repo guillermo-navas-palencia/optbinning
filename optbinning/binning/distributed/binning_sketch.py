@@ -592,8 +592,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_nonevent = self._t_n_nonevent
-            n_event = self._t_n_event
+            n_nonevent = np.array([self._t_n_nonevent])
+            n_event = np.array([self._t_n_event])
 
         self._n_nonevent, self._n_event = bin_info(
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,
@@ -792,13 +792,14 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         time_init = time.perf_counter()
 
-        if not len(n_nonevent):
+        if len(n_nonevent) <= 1:
             self._status = "OPTIMAL"
             self._splits_optimal = splits
             self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
-                self._logger.warning("Optimizer: no bins after pre-binning.")
+                self._logger.warning("Optimizer: {} bins after pre-binning."
+                                     .format(len(n_nonevent)))
                 self._logger.warning("Optimizer: solver not run.")
 
                 self._logger.info("Optimizer terminated. Time: 0s")

@@ -30,7 +30,7 @@ binning_process_sketch_default_options = {
 def print_main_info(n_records, n_variables, time_add, time_solve):
     print("  Number of records   : {}".format(n_records))
     print("  Number of variables : {}".format(n_variables))
-    print("  Time add            : {:<10.4f} sec\n".format(time_add))
+    print("  Time add            : {:<10.4f} sec".format(time_add))
     print("  Time solve          : {:<10.4f} sec\n".format(time_solve))
 
 

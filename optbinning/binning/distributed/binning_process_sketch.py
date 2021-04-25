@@ -118,6 +118,102 @@ def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
 
 
 class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
+    """Binning process over data streams to compute optimal binning of
+    variables with respect to a binary target.
+
+    Parameters
+    ----------
+    variable_names : array-like
+        List of variable names.
+
+    max_n_prebins : int (default=20)
+        The maximum number of bins after pre-binning (prebins).
+
+    min_n_bins : int or None, optional (default=None)
+        The minimum number of bins. If None, then ``min_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    max_n_bins : int or None, optional (default=None)
+        The maximum number of bins. If None, then ``max_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    min_bin_size : float or None, optional (default=None)
+        The fraction of minimum number of records for each bin. If None,
+        ``min_bin_size = min_prebin_size``.
+
+    max_bin_size : float or None, optional (default=None)
+        The fraction of maximum number of records for each bin. If None,
+        ``max_bin_size = 1.0``.
+
+    max_pvalue : float or None, optional (default=0.05)
+        The maximum p-value among bins.
+
+    max_pvalue_policy : str, optional (default="consecutive")
+        The method to determine bins not satisfying the p-value constraint.
+        Supported methods are "consecutive" to compare consecutive bins and
+        "all" to compare all bins.
+
+    selection_criteria : dict or None (default=None)
+        Variable selection criteria. See notes.
+
+    special_codes : array-like or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
+    split_digits : int or None, optional (default=None)
+        The significant digits of the split points. If ``split_digits`` is set
+        to 0, the split points are integers. If None, then all significant
+        digits in the split points are considered.
+
+    categorical_variables : array-like or None, optional (default=None)
+        List of variables numerical variables to be considered categorical.
+        These are nominal variables. Not applicable when target type is
+        multiclass.
+
+    binning_fit_params : dict or None, optional (default=None)
+        Dictionary with optimal binning fitting options for specific variables.
+        Example: ``{"variable_1": {"max_n_bins": 4}}``.
+
+    binning_transform_params : dict or None, optional (default=None)
+        Dictionary with optimal binning transform options for specific
+        variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
+
+    verbose : bool (default=False)
+        Enable verbose output.
+
+    Notes
+    -----
+    Parameter ``selection_criteria`` allows to specify criteria for
+    variable selection. The input is a dictionary as follows
+
+    .. code::
+
+        selection_criteria = {
+            "metric_1":
+                {
+                    "min": 0, "max": 1, "strategy": "highest", "top": 0.25
+                },
+            "metric_2":
+                {
+                    "min": 0.02
+                }
+        }
+
+    where several metrics can be combined. For example, above dictionary
+    indicates that top 25% variables with "metric_1" in [0, 1] and "metric_2"
+    greater or equal than 0.02 are selected. Supported key values are:
+
+    * keys ``min`` and ``max`` support numerical values.
+    * key ``strategy`` supports options "highest" and "lowest".
+    * key ``top`` supports an integer or decimal (percentage).
+
+
+    .. warning::
+
+        If the binning process instance is going to be saved, do not pass the
+        option ``"solver": "mip"`` via the binning_fit_params parameter.
+
+    """
     def __init__(self, variable_names, max_n_prebins=20, min_n_bins=None,
                  max_n_bins=None, min_bin_size=None, max_bin_size=None,
                  max_pvalue=None, max_pvalue_policy="consecutive",

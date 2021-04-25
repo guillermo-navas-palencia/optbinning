@@ -584,7 +584,7 @@ class MulticlassOptimalBinning(OptimalBinning):
             n_event = np.empty(self._n_classes).astype(np.int64)
 
             for i, cl in enumerate(self._classes):
-                n_event[i] = target_info(y_clean, cl)[1]
+                n_event[i] = target_info(y_clean, cl)[0]
 
         self._n_event = multiclass_bin_info(
             self._solution, self._n_classes, n_event, self._n_event_missing,
@@ -627,8 +627,8 @@ class MulticlassOptimalBinning(OptimalBinning):
         special_target_info = []
         missing_target_info = []
         for idx, cl in enumerate(self._classes):
-            special_target_info.append(target_info(y_special, cl)[1])
-            missing_target_info.append(target_info(y_missing, cl)[1])
+            special_target_info.append(target_info(y_special, cl)[0])
+            missing_target_info.append(target_info(y_missing, cl)[0])
 
         self._n_event_special = special_target_info
         self._n_event_missing = missing_target_info

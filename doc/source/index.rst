@@ -47,6 +47,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    :caption: Batch and stream optimal binning
 
    binning_sketch
+   binning_process_sketch
 
 .. toctree::
    :maxdepth: 1

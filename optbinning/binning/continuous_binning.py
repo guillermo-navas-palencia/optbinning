@@ -690,13 +690,14 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         time_init = time.perf_counter()
 
-        if not len(n_records):
+        if len(n_records) <= 1:
             self._status = "OPTIMAL"
             self._splits_optimal = splits
             self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
-                self._logger.warning("Optimizer: no bins after pre-binning.")
+                self._logger.warning("Optimizer: {} bins after pre-binning."
+                                     .format(len(n_records)))
                 self._logger.warning("Optimizer: solver not run.")
 
                 self._logger.info("Optimizer terminated. Time: 0s")

@@ -94,8 +94,8 @@ class BinningLS:
         model.constraint(x[n-1] == 1)
 
         for i in range(n):
-            a[i] = (a[i - 1] + 1) * (1 - x[i])
-            z[i] = a[i - 1] * x[i] * (1 - x[i - 1])
+            model.constraint(a[i] == (a[i - 1] + 1) * (1 - x[i]))
+            model.constraint(z[i] == a[i - 1] * x[i] * (1 - x[i - 1]))
 
         # Constraints: monotonicity
         if self.monotonic_trend == "ascending":

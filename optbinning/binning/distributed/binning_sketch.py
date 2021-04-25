@@ -13,10 +13,10 @@ import pandas as pd
 
 from pympler import asizeof
 from sklearn.base import BaseEstimator
+from sklearn.exceptions import NotFittedError
 
 from ...binning.auto_monotonic import auto_monotonic
 from ...binning.auto_monotonic import peak_valley_trend_change_heuristic
-from ...binning.base import Base
 from ...binning.binning_statistics import bin_categorical
 from ...binning.binning_statistics import bin_info
 from ...binning.binning_statistics import BinningTable
@@ -24,6 +24,7 @@ from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
 from ...logging import Logger
+from .base import BaseSketch
 from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
@@ -198,7 +199,7 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-class OptimalBinningSketch(Base, BaseEstimator):
+class OptimalBinningSketch(BaseSketch, BaseEstimator):
     """Optimal binning over data streams of a numerical or categorical
     variable with respect to a binary target.
 
@@ -432,7 +433,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         self._class_logger = Logger(__name__)
         self._logger = self._class_logger.logger
 
-        self._is_fitted = False
+        self._is_solved = False
 
         # Check parameters
         _check_parameters(**self.get_params())
@@ -447,11 +448,6 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
-
-        sample_weight : array-like of shape (n_samples,) (default=None)
-            Array of weights that are assigned to individual samples.
-            If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -483,7 +479,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         print_level : int (default=1)
             Level of details.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         if not isinstance(print_level, numbers.Integral) or print_level < 0:
             raise ValueError("print_level must be an integer >= 0; got {}."
@@ -546,7 +542,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
     def plot_progress(self):
         """Plot divergence measure progress."""
-        self._check_is_fitted()
+        self._check_is_solved()
 
         df = pd.DataFrame.from_dict(self._solve_stats).T
         plot_progress_divergence(df, self.divergence)
@@ -560,6 +556,10 @@ class OptimalBinningSketch(Base, BaseEstimator):
             Current fitted optimal binning.
         """
         time_init = time.perf_counter()
+
+        # Check if data was added
+        if not self._n_add:
+            raise NotFittedError("No data was added. Add data before solving.")
 
         # Pre-binning
         if self.verbose:
@@ -592,8 +592,8 @@ class OptimalBinningSketch(Base, BaseEstimator):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_nonevent = self._t_n_nonevent
-            n_event = self._t_n_event
+            n_nonevent = np.array([self._t_n_nonevent])
+            n_event = np.array([self._t_n_event])
 
         self._n_nonevent, self._n_event = bin_info(
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,
@@ -622,7 +622,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._is_fitted = True
+        self._is_solved = True
         self._update_streaming_stats()
 
         return self
@@ -671,7 +671,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         Transformation of data including categories not present during training
         return zero WoE or event rate.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return transform_binary_target(self._splits_optimal, self.dtype, x,
                                        self._n_nonevent, self._n_event,
@@ -792,13 +792,14 @@ class OptimalBinningSketch(Base, BaseEstimator):
 
         time_init = time.perf_counter()
 
-        if not len(n_nonevent):
+        if len(n_nonevent) <= 1:
             self._status = "OPTIMAL"
             self._splits_optimal = splits
             self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
-                self._logger.warning("Optimizer: no bins after pre-binning.")
+                self._logger.warning("Optimizer: {} bins after pre-binning."
+                                     .format(len(n_nonevent)))
                 self._logger.warning("Optimizer: solver not run.")
 
                 self._logger.info("Optimizer terminated. Time: 0s")
@@ -947,7 +948,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         binning_table : BinningTable.
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return self._binning_table
 
@@ -960,7 +961,7 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         splits : numpy.ndarray
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         if self.dtype == "numerical":
             return self._splits_optimal
@@ -976,6 +977,6 @@ class OptimalBinningSketch(Base, BaseEstimator):
         -------
         status : str
         """
-        self._check_is_fitted()
+        self._check_is_solved()
 
         return self._status

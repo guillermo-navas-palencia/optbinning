@@ -297,7 +297,12 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         if not self._is_started:
             self._n_samples = 0
             self._n_variables = len(self.variable_names)
-            self._n_categorical = len(self.categorical_variables)
+
+            if self.categorical_variables is not None:
+                self._n_categorical = len(self.categorical_variables)
+            else:
+                self._n_categorical = 0
+
             self._n_numerical = self._n_variables - self._n_categorical
 
             # Check selection criteria
@@ -309,7 +314,8 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
             # the user must provide a dtype for all variables. This differs
             # from the BinningProcess, where dtypes are inferred.
             for name in self.variable_names:
-                if name in self.categorical_variables:
+                if (self.categorical_variables is not None and
+                        name in self.categorical_variables):
                     dtype = "categorical"
                 else:
                     dtype = "numerical"

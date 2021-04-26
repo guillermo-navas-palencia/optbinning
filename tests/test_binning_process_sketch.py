@@ -10,6 +10,7 @@ import pandas as pd
 from pytest import approx, raises
 
 from optbinning import BinningProcessSketch
+from optbinning import OptimalBinningSketch
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 
@@ -134,6 +135,32 @@ def test_default_tdigest_merge():
 
     optb.binning_table.build()
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+
+def test_default_transform():
+    bpsketch = BinningProcessSketch(variable_names)
+    bpsketch.add(df, y)
+
+    with raises(NotFittedError):
+        bpsketch.transform(df, metric="woe")
+
+    bpsketch.solve()
+
+    with raises(TypeError):
+        X_transform = bpsketch.transform(df.values, metric="woe")
+
+    with raises(ValueError):
+        X_transform = bpsketch.transform(df, metric="new_woe")
+
+    X_transform = bpsketch.transform(df)
+
+    optb = OptimalBinningSketch()
+    x = df["mean radius"]
+    optb.add(x, y)
+    optb.solve()
+
+    assert optb.transform(x, metric="woe") == approx(
+        X_transform["mean radius"], rel=1e-6)
 
 
 def test_information():

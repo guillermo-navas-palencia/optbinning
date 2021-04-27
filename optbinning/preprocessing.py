@@ -344,7 +344,7 @@ def preprocessing_user_splits_categorical(user_splits, x, y,
     sorted_idx = np.argsort(event_rate)
     sorted_splits = np.array([np.array(split)
                               for split in user_splits[sorted_idx]],
-                              dtype=object)
+                             dtype=object)
 
     for i in range(n_user_splits):
         mask = x_p.isin(sorted_splits[i])

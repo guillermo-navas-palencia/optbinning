@@ -334,9 +334,9 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(df_t,
-                    metric_special=self._metric_special,
-                    metric_missing=self._metric_missing)
+        df_t = self.binning_process_.transform(
+            df_t, metric_special=self._metric_special,
+            metric_missing=self._metric_missing)
         return self.estimator_.predict(df_t)
 
     def predict_proba(self, df):
@@ -356,9 +356,9 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(df_t,
-                    metric_special=self._metric_special,
-                    metric_missing=self._metric_missing)
+        df_t = self.binning_process_.transform(
+            df_t, metric_special=self._metric_special,
+            metric_missing=self._metric_missing)
         return self.estimator_.predict_proba(df_t)
 
     def score(self, df):
@@ -554,7 +554,7 @@ class Scorecard(Base, BaseEstimator):
             if metric_special != 'empirical':
                 binning_table.at[len(binning_table)-2,
                                  "Points"] = metric_special * c
-            elif metric_missing!= 'empirical':
+            elif metric_missing != 'empirical':
                 binning_table.at[len(binning_table)-1,
                                  "Points"] = metric_missing * c
 

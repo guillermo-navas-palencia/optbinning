@@ -206,7 +206,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.9.2)
+   optbinning (Version 0.10.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -314,7 +314,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.9.2)
+   optbinning (Version 0.10.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

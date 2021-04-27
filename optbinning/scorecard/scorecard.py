@@ -3,6 +3,7 @@ Scorecard development.
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
+# Kasper De Blieck <kasperdeblieck@hotmail.com>
 # Copyright (C) 2020
 
 import numbers

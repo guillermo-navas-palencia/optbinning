@@ -3,6 +3,7 @@ Release Notes
 
 Version 0.10.0 (2021-04-27)
 ---------------------------
+
 New features:
    - Batch and streaming binning process.
 

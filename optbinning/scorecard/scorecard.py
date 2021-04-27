@@ -235,6 +235,9 @@ class Scorecard(Base, BaseEstimator):
         self.estimator_ = None
         self.intercept_ = 0
 
+        self._metric_special = None
+        self._metric_missing = None
+
         # auxiliary
         self._target_dtype = None
 
@@ -330,7 +333,7 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(df_t)
+        df_t = self.binning_process_.transform(df_t, metric_special = self._metric_special, metric_missing = self._metric_missing)
         return self.estimator_.predict(df_t)
 
     def predict_proba(self, df):
@@ -350,7 +353,7 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(df_t)
+        df_t = self.binning_process_.transform(df_t, metric_special = self._metric_special, metric_missing = self._metric_missing)
         return self.estimator_.predict_proba(df_t)
 
     def score(self, df):
@@ -450,6 +453,11 @@ class Scorecard(Base, BaseEstimator):
     def _fit(self, df, metric_special, metric_missing, show_digits,
              check_input):
 
+    
+        # Store the metrics for missing and special bins for predictions
+        self._metric_special = metric_special
+        self._metric_missing = metric_missing
+
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -539,6 +547,11 @@ class Scorecard(Base, BaseEstimator):
             binning_table["Variable"] = variable
             binning_table["Coefficient"] = c
             binning_table["Points"] = binning_table[bt_metric] * c
+            if metric_special != 'empirical':
+                binning_table.at[len(binning_table.index)-2, "Points"] = metric_special*c
+            elif metric_missing!= 'empirical':
+                binning_table.at[len(binning_table.index)-1, "Points"] = metric_missing*c
+
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)
             binning_tables.append(binning_table)

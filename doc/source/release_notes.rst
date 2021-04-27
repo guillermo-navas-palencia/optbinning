@@ -5,9 +5,11 @@ Version 0.10.0 (2021-04-27)
 ---------------------------
 
 New features:
+
    - Batch and streaming binning process.
 
 Improvements:
+
    - Improve LocalSolver formulation for optimal binning with a binary target.
 
 Bugfixes:

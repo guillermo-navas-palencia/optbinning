@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+Version 0.10.0 (2021-04-27)
+---------------------------
+New features:
+   - Batch and streaming binning process.
+
+Improvements:
+   - Improve LocalSolver formulation for optimal binning with a binary target.
+
+Bugfixes:
+
+   - Fix MulticlassOptimalBinning when no prebins: `Issue 94 <https://github.com/guillermo-navas-palencia/optbinning/issues/94>`_
+
+
 Version 0.9.2 (2021-03-12)
 --------------------------
 

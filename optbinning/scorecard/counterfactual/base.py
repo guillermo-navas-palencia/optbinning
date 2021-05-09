@@ -9,10 +9,9 @@ from abc import ABCMeta
 from abc import abstractmethod
 
 from sklearn.base import BaseEstimator
-from sklearn.exceptions import NotFittedError
 
 from ...binning.base import Base
-from ...logging import Logger
+from ...exceptions import NotGeneratedError
 
 
 class BaseCounterfactual(Base, BaseEstimator, metaclass=ABCMeta):
@@ -32,3 +31,10 @@ class BaseCounterfactual(Base, BaseEstimator, metaclass=ABCMeta):
     @abstractmethod
     def status(self):
         """The status of the underlying optimization solver."""
+
+    def _check_is_generated(self):
+        if not self._is_generated:
+            raise NotGeneratedError("This {} instance has not generated "
+                                    "counterfactuals yet. Call "
+                                    "'generate' with appropriate arguments."
+                                    .format(self.__class__.__name__))

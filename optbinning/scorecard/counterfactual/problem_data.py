@@ -24,7 +24,7 @@ def problem_data(scorecard, df):
     intercept = float(scorecard.estimator_.intercept_)
     coef = scorecard.estimator_.coef_.ravel()
 
-    # Big-M parameters (min, max) points. 
+    # Big-M parameters (min, max) points.
     # Proximity weights. Inverse value range for each feature
     min_p = 0
     max_p = 0

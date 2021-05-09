@@ -6,22 +6,31 @@ Counterfactual model data.
 # Copyright (C) 2021
 
 
-def model_data(scorecard, x):
+def model_data(scorecard, x, special_missing):
     s_vars = scorecard.binning_process_.get_support(names=True)
-    n_vars = len(s_vars)
 
     sc = scorecard.table(style="detailed")
     metric_name = "WoE" if scorecard._target_dtype == "binary" else "Mean"
 
-    # Number of bins and metric
+    # Number of bins, metric and indices
     nbins = []
     metric = []
-
+    indices = []
     for i, v in enumerate(s_vars):
-        metric_i = sc[sc.Variable == v][metric_name].values[:-2]
-        metric_i = [mi for mi in metric_i if mi != x[i]]
-        
-        metric.append(metric_i)
-        nbins.append(len(metric_i))
+        metric_i = sc[sc.Variable == v][metric_name].values
 
-    return nbins, metric
+        if not special_missing:
+            metric_i = metric_i[:-2]
+
+        _metric = []
+        _indices = []
+        for j, m in enumerate(metric_i):
+            if m != x[i]:
+                _indices.append(j)
+                _metric.append(m)
+
+        metric.append(_metric)
+        nbins.append(len(_metric))
+        indices.append(_indices)
+
+    return nbins, metric, indices

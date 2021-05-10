@@ -353,12 +353,9 @@ class Counterfactual(BaseCounterfactual):
         counterfactuals : pandas.DataFrame
         """
         self._check_is_generated()
-
-        if self._cfs is None:
-            raise Exception("No feasible counterfactuals were found.")
+        self._check_counterfactual_is_found()
 
         cf_queries = []
-
         for cf in self._cfs:
             cf_query = cf["query"].copy()
 

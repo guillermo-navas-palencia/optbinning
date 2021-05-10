@@ -10,7 +10,6 @@ import numpy as np
 from ortools.linear_solver import pywraplp
 
 from .mip import CFMIP
-from .utils import logistic_pw
 
 
 class MCFMIP(CFMIP):
@@ -47,8 +46,8 @@ class MCFMIP(CFMIP):
         weights = {**self.objectives, **self.soft_constraints}
         names = weights.keys()
 
-        objs = self.compute_objectives(solver, names, p, wrange, t_p, t_m, m_p,
-                                       m_m, q_p, q_m, u, d)
+        objs = self.compute_objectives(solver, names, p, nbins, wrange, t_p,
+                                       t_m, m_p, m_m, q_p, q_m, u, d)
 
         solver.Minimize(solver.Sum([weights[name] * objs[name]
                                     for name in names]))
@@ -72,35 +71,36 @@ class MCFMIP(CFMIP):
 
             # Constraints applicable depending on outcome type
             if outcome_type == "binary":
-                self.add_constraint_opposite(solver, p, y, intercept, coef, x_p)
+                self.add_constraint_opposite(
+                    solver, p, y, intercept, coef, x_p)
 
             elif outcome_type in ("probability", "continuous"):
                 self.add_constraint_min_max_diff_outcome(
-                    solver, p, y, intercept, coef, outcome_type, b_pw, c_pw, x_p,
-                    q_p, q_m, h, s, f)
+                    solver, p, y, intercept, coef, outcome_type, b_pw, c_pw,
+                    x_p, q_p, q_m, h, s, f)
 
             # Diversity constraints
             for l in range(k + 1, self.K):
                 for i in range(p):
                     hki = a[k, i]
                     hli = a[l, i]
-                    
+
                     solver.Add(u[k, l, i] <= hki + hli)
                     solver.Add(u[k, l, i] >= hki - hli)
                     solver.Add(u[k, l, i] >= hli - hki)
                     solver.Add(u[k, l, i] <= 2 - hki - hli)
-                
+
                     for j in range(nbins[i]):
                         solver.Add(d[k, l, i, j] <= z[k, i, j] + z[l, i, j])
                         solver.Add(d[k, l, i, j] >= z[k, i, j] - z[l, i, j])
                         solver.Add(d[k, l, i, j] >= -z[k, i, j] + z[l, i, j])
-                        solver.Add(d[k, l, i, j] <= 2 - z[k, i, j] - z[l, i, j])
-                    
+                        solver.Add(d[k, l, i, j] <= 2 - z[k, i, j]-z[l, i, j])
+
                     if "diversity_values" in self.hard_constraints:
-                        solver.Add(solver.Sum([d[k, l, i, j]
-                                               for j in range(nbins[i])]
-                                             ) >= a[k, i] + a[l, i] - 1)
-                
+                        solver.Add(solver.Sum(
+                            [d[k, l, i, j] for j in range(nbins[i])]
+                            ) >= a[k, i] + a[l, i] - 1)
+
                 if "diversity_features" in self.hard_constraints:
                     solver.Add(solver.Sum([u[k, l, i] for i in range(p)]) >= 1)
 
@@ -121,12 +121,13 @@ class MCFMIP(CFMIP):
                 status_name = "OPTIMAL"
             else:
                 status_name = "FEASIBLE"
-            
-            solution = np.array([np.array([np.array(
-                    [self._z[k, i, j].solution_value()
-                     for j in range(self._nbins[i])]).astype(bool)
-                                           for i in range(self._p)], dtype=object)
-                                 for k in range(self.K)], dtype=object)
+
+            solution = np.array(
+                [np.array(
+                    [np.array([self._z[k, i, j].solution_value()
+                               for j in range(self._nbins[i])]).astype(bool)
+                     for i in range(self._p)], dtype=object)
+                 for k in range(self.K)], dtype=object)
         else:
             if status == pywraplp.Solver.ABNORMAL:
                 status_name = "ABNORMAL"
@@ -164,7 +165,7 @@ class MCFMIP(CFMIP):
                                           "x_p[{}, {}]".format(k, i))
                 a[k, i] = solver.IntVar(0, nbins[i], "a[{}, {}]".format(k, i))
                 for j in range(nbins[i]):
-                    z[k, i, j] = solver.BoolVar("z[{}, {}, {}]".format(k, i, j))
+                    z[k, i, j] = solver.BoolVar("z[{},{},{}]".format(k, i, j))
 
                 if "proximity" in self.objectives:
                     t_p[k, i] = solver.NumVar(0, np.inf,
@@ -208,8 +209,9 @@ class MCFMIP(CFMIP):
                 solver.Add(t_p[k, i] - t_m[k, i] == x[i] - x_p[k, i])
 
                 # Compute x'
-                solver.Add(x_p[k, i] == x[i] + solver.Sum([
-                    (metric[i][j] - x[i]) * z[k, i, j] for j in range(nbins[i])]))
+                solver.Add(x_p[k, i] == x[i] + solver.Sum(
+                    [(metric[i][j] - x[i]) * z[k, i, j]
+                     for j in range(nbins[i])]))
 
     def add_constraint_closeness(self, solver, p, F, mu, x_p, m_p, m_m):
         # Mahalanobis distance l1-norm
@@ -221,10 +223,12 @@ class MCFMIP(CFMIP):
     def add_constraint_max_changes(self, solver, p, nbins, a, z):
         for k in range(self.K):
             for i in range(p):
-                solver.Add(a[k, i] == solver.Sum([z[k, i, j] for j in range(nbins[i])]))
+                solver.Add(a[k, i] == solver.Sum(
+                    [z[k, i, j] for j in range(nbins[i])]))
                 solver.Add(a[k, i] <= 1)
 
-            solver.Add(solver.Sum([a[k, i] for i in range(p)]) <= self.max_changes)
+            solver.Add(
+                solver.Sum([a[k, i] for i in range(p)]) <= self.max_changes)
 
     def add_constraint_actionable(self, solver, p, a):
         for k in range(self.K):
@@ -244,7 +248,7 @@ class MCFMIP(CFMIP):
     def add_constraint_min_max_diff_outcome(self, solver, p, y, intercept,
                                             coef, outcome_type, b_pw, c_pw,
                                             x_p, q_p, q_m, h, s, f):
-        
+
         for k in range(self.K):
             activation = intercept + solver.Sum(
                 [coef[i] * x_p[k, i] for i in range(p)])
@@ -253,10 +257,12 @@ class MCFMIP(CFMIP):
                 nbins_pw = len(b_pw)
 
                 solver.Add(
-                    solver.Sum([h[k, r] for r in range(nbins_pw)]) == activation)
+                    solver.Sum(
+                        [h[k, r] for r in range(nbins_pw)]) == activation)
 
-                solver.Add(solver.Sum([c_pw[r][1] * h[k, r] + c_pw[r][0] * s[k, r]
-                                       for r in range(nbins_pw)]) == f[k])
+                solver.Add(solver.Sum(
+                    [c_pw[r][1] * h[k, r] + c_pw[r][0] * s[k, r]
+                     for r in range(nbins_pw)]) == f[k])
 
                 solver.Add(solver.Sum([s[k, r] for r in range(nbins_pw)]) == 1)
 
@@ -311,10 +317,10 @@ class MCFMIP(CFMIP):
             [solver.Sum([solver.Sum([solver.Sum([d[k, l, i, j]
                                                  for j in range(nbins[i])])
                                      for i in range(p)])
-             for l in range(k + 1, self.K)]) for k in range(self.K)])        
+             for l in range(k + 1, self.K)]) for k in range(self.K)])
 
-    def compute_objectives(self, solver, names, p, wrange, t_p, t_m, m_p, m_m,
-                           q_p, q_m, u, d):
+    def compute_objectives(self, solver, names, p, nbins, wrange, t_p, t_m,
+                           m_p, m_m, q_p, q_m, u, d):
         objs = {}
         for name in names:
             if name == "proximity":

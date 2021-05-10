@@ -298,7 +298,7 @@ class CFMIP:
     def add_constraint_min_max_diff_outcome(self, solver, p, y, intercept,
                                             coef, outcome_type, b_pw, c_pw,
                                             x_p, q_p, q_m, h, s, f):
-        
+
         activation = intercept + solver.Sum(
             [coef[i] * x_p[i] for i in range(p)])
 

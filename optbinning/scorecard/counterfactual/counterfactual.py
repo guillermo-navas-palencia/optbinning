@@ -286,35 +286,28 @@ class Counterfactual(BaseCounterfactual):
 
         self._optimizer = optimizer
 
-        # Post-processing (this operation for all)
+        # Post-processing
         if status in ("OPTIMAL", "FEASIBLE"):
             cfs = []
             sc = self.scorecard.table()
 
-            for k in range(n_cf):
-                new_indices = {}
-                score = 0
-                for i, v in enumerate(self._variable_names):
-                    new_index = np.array(indices[i])[solution[k][i]]
-                    if len(new_index):
-                        new_indices[v] = new_index
-
-                    new_metric = x[i] + np.sum(
-                        [(metric[i][j] - x[i]) * solution[k][i][j]
-                         for j in range(nbins[i])])
-
-                    score += self._coef[i] * new_metric
-
-                score += self._intercept
-
-                new_query = query.copy()
-                for v, index in new_indices.items():
-                    new_query[v] = sc[sc["Variable"] == v]["Bin"][index].values
+            if n_cf == 1:
+                new_indices, new_query, score = self._get_counterfactual(
+                    query, sc, x, nbins, metric, indices, solution)
 
                 cfs.append({"outcome_type": outcome_type,
                             "query": new_query,
                             "score": score,
                             "features": new_indices.keys()})
+            else:
+                for k in range(n_cf):
+                    new_indices, new_query, score = self._get_counterfactual(
+                        query, sc, x, nbins, metric, indices, solution[k])
+
+                    cfs.append({"outcome_type": outcome_type,
+                                "query": new_query,
+                                "score": score,
+                                "features": new_indices.keys()})
         else:
             cfs = None
 
@@ -323,6 +316,29 @@ class Counterfactual(BaseCounterfactual):
         self._is_generated = True
 
         return self
+
+    def _get_counterfactual(self, query, sc, x, nbins, metric, indices,
+                            solution):
+        new_indices = {}
+        score = 0
+        for i, v in enumerate(self._variable_names):
+            new_index = np.array(indices[i])[solution[i]]
+            if len(new_index):
+                new_indices[v] = new_index
+
+            new_metric = x[i] + np.sum(
+                [(metric[i][j] - x[i]) * solution[i][j]
+                 for j in range(nbins[i])])
+
+            score += self._coef[i] * new_metric
+
+        score += self._intercept
+
+        new_query = query.copy()
+        for v, index in new_indices.items():
+            new_query[v] = sc[sc["Variable"] == v]["Bin"][index].values
+
+        return new_indices, new_query, score
 
     def display(self, only_changes=False, show_outcome=False):
         """

@@ -110,10 +110,125 @@ class MCFMIP(CFMIP):
         self._nbins = nbins
         self._z = z
 
+    def hierarchical_model(self, p, nbins, metric, x, y, outcome_type,
+                           intercept, coef, min_p, max_p, wrange, F, mu, b_pw,
+                           c_pw):
+
+        # Objective functions
+        weights = {**self.objectives, **self.soft_constraints}
+
+        # descending priority
+        names = [k for k, v in sorted(
+            weights.items(), key=lambda item: item[1], reverse=True)]
+
+        # store previous objectives
+        pre_objs = {}
+
+        for name in names:
+            # Initialize solver
+            solver = pywraplp.Solver(
+                'CFMIP', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+
+            # Decision variables
+            (x_p, t_p, t_m, m_p, m_m, a, z, q_p, q_m,
+             h, s, f, u, d) = self.decision_variables(solver, outcome_type, p,
+                                                      nbins, b_pw)
+
+            # Objective functions
+            objs = self.compute_objectives(solver, names, p, nbins, wrange,
+                                           t_p, t_m, m_p, m_m, q_p, q_m, u, d)
+
+            solver.Minimize(objs[name])
+
+            # Constraint: maximum relative degradation of previous objectives
+            if pre_objs:
+                d_p = {}
+                d_m = {}
+
+                for i, (pobj_name, pobj_val) in enumerate(pre_objs.items()):
+                    # Auxiliary decision variablaes
+                    d_p[i] = solver.NumVar(0, np.inf, "d_p[{}]".format(i))
+                    d_m[i] = solver.NumVar(0, np.inf, "d_m[{}]".format(i))
+
+                    # Constraint: maximum relative degradation
+                    absval = abs(pobj_val)
+                    solver.Add(d_p[i] - d_m[i] == objs[pobj_name] - pobj_val)
+                    solver.Add(d_p[i] + d_m[i] <= self.priority_tol * absval)
+
+            # Constraints
+            for k in range(self.K):
+                # Constraint: proximity
+                if "proximity" in self.objectives:
+                    self.add_constraint_proximity(
+                        solver, p, x, nbins, metric, x_p, t_p, t_m, z)
+
+                # Constraint: closeness
+                if "closeness" in self.objectives:
+                    self.add_constraint_closeness(
+                        solver, p, F, mu, x_p, m_p, m_m)
+
+                # Constraint: max changes
+                self.add_constraint_max_changes(solver, p, nbins, a, z)
+
+                # Constraint: actionable features
+                self.add_constraint_actionable(solver, p, a)
+
+                # Constraints applicable depending on outcome type
+                if outcome_type == "binary":
+                    self.add_constraint_opposite(
+                        solver, p, y, intercept, coef, x_p)
+
+                elif outcome_type in ("probability", "continuous"):
+                    self.add_constraint_min_max_diff_outcome(
+                        solver, p, y, intercept, coef, outcome_type, b_pw,
+                        c_pw, x_p, q_p, q_m, h, s, f)
+
+                # Diversity constraints
+                for l in range(k + 1, self.K):
+                    for i in range(p):
+                        hki = a[k, i]
+                        hli = a[l, i]
+
+                        solver.Add(u[k, l, i] <= hki + hli)
+                        solver.Add(u[k, l, i] >= hki - hli)
+                        solver.Add(u[k, l, i] >= hli - hki)
+                        solver.Add(u[k, l, i] <= 2 - hki - hli)
+
+                        for j in range(nbins[i]):
+                            solver.Add(d[k, l, i, j] <= z[k, i, j]+z[l, i, j])
+                            solver.Add(d[k, l, i, j] >= z[k, i, j]-z[l, i, j])
+                            solver.Add(d[k, l, i, j] >= -z[k, i, j]+z[l, i, j])
+                            solver.Add(d[k, l, i, j] <= (
+                                2-z[k, i, j]-z[l, i, j]))
+
+                        if "diversity_values" in self.hard_constraints:
+                            solver.Add(solver.Sum(
+                                [d[k, l, i, j] for j in range(nbins[i])]
+                                ) >= a[k, i] + a[l, i] - 1)
+
+                    if "diversity_features" in self.hard_constraints:
+                        solver.Add(
+                            solver.Sum([u[k, l, i] for i in range(p)]) >= 1)
+
+            self.solver_ = solver
+            self._p = p
+            self._objectives = objs
+            self._nbins = nbins
+            self._z = z
+
+            # Only solve #objs - 1
+            if name != names[-1]:
+                status_name, solution = self.solve()
+
+                if status_name not in ("OPTIMAL", "FEASIBLE"):
+                    raise Exception("{} problem in hierarchical model."
+                                    .format(status_name))
+                else:
+                    pre_objs[name] = self._objectives[name].solution_value()
+
     def solve(self):
         self.solver_.SetTimeLimit(self.time_limit * 1000)
-        self.solver_.EnableOutput()
-        # self.solver_.SetNumThreads(4)
+        self.solver_.SetNumThreads(self.n_jobs)
         status = self.solver_.Solve()
 
         if status in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):

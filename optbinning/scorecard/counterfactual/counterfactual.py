@@ -42,7 +42,7 @@ def _check_parameters(scorecard, special_missing, priority_tol, time_limit,
                       verbose):
     # Check scorecard
     if not isinstance(scorecard, Scorecard):
-        raise TypeError()
+        raise TypeError("scorecard must be a Scorecard instance.")
 
     scorecard._check_is_fitted()
 
@@ -52,7 +52,8 @@ def _check_parameters(scorecard, special_missing, priority_tol, time_limit,
 
     if (not isinstance(priority_tol, numbers.Number) or
             not 0 <= priority_tol <= 1):
-        raise ValueError()
+        raise ValueError("priority_tol must be in [0, 1]; got {}."
+                         .format(priority_tol))
 
     if not isinstance(time_limit, numbers.Number) or time_limit < 0:
         raise ValueError("time_limit must be a positive value in seconds; "
@@ -68,36 +69,45 @@ def _check_generate_params(query, y, outcome_type, n_cf, method, objectives,
 
     # Check query
     if not isinstance(query, (dict, pd.DataFrame)):
-        raise TypeError()
+        raise TypeError("query must be a dict or a pandas.DataFrame.")
 
     # Check target
     if not isinstance(y, numbers.Number):
-        raise TypeError()
+        raise TypeError("y must be numeric.")
 
     # Check target and outcome type
     if target_dtype == "binary":
         if outcome_type not in ("binary", "probability"):
-            raise ValueError()
+            raise ValueError("outcome_type must either binary or probability "
+                             "if target_dtype=binary; got {}."
+                             .format(outcome_type))
         elif outcome_type == "binary" and y not in [0, 1]:
-            raise ValueError()
+            raise ValueError("y must be either 0 or 1 if outcome_type=binary; "
+                             "got {}.".format(y))
         elif outcome_type == "probability" and not 0 <= y <= 1:
-            raise ValueError()
+            raise ValueError("y must be in [0, 1] if outcome_type=probability "
+                             "; got {}.".format(y))
     elif target_dtype == "continuous":
         if outcome_type != "continuous":
-            raise ValueError()
+            raise ValueError("outcome_type must be continuous if "
+                             "target_dtype=continuous; got {}."
+                             .format(outcome_type))
 
     # Check number of counterfactuals
     if not isinstance(n_cf, numbers.Integral) or n_cf <= 0:
-        raise ValueError()
+        raise ValueError("n_cf must be a positive integer; got {}."
+                         .format(n_cf))
 
     # Check actionable features
     if actionable_features is not None:
         if not isinstance(actionable_features, (list, np.ndarray)):
-            raise TypeError()
+            raise TypeError("actionable_features must be either a list or "
+                            "a numpy.ndarray.")
 
         for av in actionable_features:
             if av not in variable_names:
-                raise ValueError()
+                raise ValueError("actionable feature {} is not in {}."
+                                 .format(av, variable_names))
 
     # Check method and constraints
     _check_objectives_method_constraints(
@@ -110,44 +120,55 @@ def _check_objectives_method_constraints(method, objectives, hard_constraints,
 
     # Check types
     if method not in ("weighted", "hierarchical"):
-        raise ValueError()
+        raise ValueError('Invalid value for method. Allowed string values are '
+                         '"weighted" and "hierarchical".')
 
     if objectives is not None:
         if not isinstance(objectives, dict):
-            raise TypeError()
+            raise TypeError("objectives must be a dict.")
 
         if not len(objectives):
-            raise ValueError()
+            raise ValueError("objectives cannot be empty.")
 
         for obj, value in objectives.items():
             if obj not in OBJECTIVES:
-                raise ValueError()
+                raise ValueError("objective names must be in {}; got {}."
+                                 .format(OBJECTIVES, obj))
             elif not isinstance(value, numbers.Number) or value <= 0:
-                raise ValueError()
+                raise ValueError("objective values must be positive; got {}."
+                                 .format({obj, value}))
 
     if hard_constraints is not None:
         if not isinstance(hard_constraints, (list, tuple, np.ndarray)):
-            raise TypeError()
+            raise TypeError("hard_constraints must a list, tuple or "
+                            "numpy.ndarray.")
 
         if len(hard_constraints) != len(set(hard_constraints)):
-            raise ValueError()
+            raise ValueError("hard_constraints cannot be repeated.")
 
-        for hc in set(hard_constraints):
+        for hc in hard_constraints:
             if hc not in HARD_CONSTRAINTS[outcome_type]:
-                raise ValueError()
+                raise ValueError(
+                    "Invalid hard constraint for outcome_type={}. Allowed "
+                    "strings values are {}.".format(
+                        outcome_type, HARD_CONSTRAINTS[outcome_type]))
 
     if soft_constraints is not None:
         if not isinstance(soft_constraints, dict):
-            raise TypeError()
+            raise TypeError("soft_constraints must be a dict.")
 
         if len(soft_constraints) != len(set(soft_constraints)):
-            raise ValueError()
+            raise ValueError("soft_constraints cannot be repeated.")
 
         for sc, value in soft_constraints.items():
             if sc not in SOFT_CONSTRAINTS[outcome_type]:
-                raise ValueError()
+                raise ValueError(
+                    "Invalid soft constraint for outcome_type={}. Allowed "
+                    "string values are {}.".format(
+                        outcome_type, SOFT_CONSTRAINTS[outcome_type]))
             elif not isinstance(value, numbers.Number) or value <= 0:
-                raise ValueError()
+                raise ValueError("soft constraint values must be positive; "
+                                 "got {}.".format({sc, value}))
 
     # Check combination of hard and soft constraints for outcome type
     # probability and continuous. Al least one of:
@@ -157,7 +178,9 @@ def _check_objectives_method_constraints(method, objectives, hard_constraints,
     # must be included.
     if outcome_type in ("probability", "continuous"):
         if hard_constraints is None and soft_constraints is None:
-            raise ValueError()
+            raise ValueError("If outcome_type is either probability or "
+                             "continuous, at least one hard constraint or"
+                             "soft constraint must be provided.")
 
         # check number of suitable constraints
         _scons = ("min_outcome", "max_outcome", "diff_outcome")
@@ -203,7 +226,7 @@ class Counterfactual(BaseCounterfactual):
     def fit(self, df):
         """"""
         if not isinstance(df, pd.DataFrame):
-            raise TypeError()
+            raise TypeError("df must be a pandas.DataFrame.")
 
         # Scorecard selected variables
         self._variable_names = self.scorecard.binning_process_.get_support(
@@ -211,7 +234,8 @@ class Counterfactual(BaseCounterfactual):
 
         for v in self._variable_names:
             if v not in df.columns:
-                raise ValueError()
+                raise ValueError("Variable {} not in df. df must include {}."
+                                 .format(v, self._variable_names))
 
         # Problem data
         intercept, coef, min_p, max_p, wrange, F, mu = problem_data(
@@ -389,10 +413,20 @@ class Counterfactual(BaseCounterfactual):
 
     def _prepare_constraints(self, outcome_type, n_cf, hard_constraints,
                              soft_constraints):
-
         # Remove diversity_features and diversity_values if n_cf == 1.
-        hard_cons = {} if hard_constraints is None else hard_constraints
-        soft_cons = {} if soft_constraints is None else soft_constraints
+        diversity_constraints = ["diversity_features", "diversity_values"]
+
+        if hard_constraints is None:
+            hard_cons = {}
+        elif n_cf == 1:
+            hard_cons = [c for c in hard_constraints
+                         if c not in diversity_constraints]
+
+        if soft_constraints is None:
+            soft_cons = {}
+        elif n_cf == 1:
+            soft_cons = [c for c in soft_constraints
+                         if c not in diversity_constraints]
 
         return hard_cons, soft_cons
 

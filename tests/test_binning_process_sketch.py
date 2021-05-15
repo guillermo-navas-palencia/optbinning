@@ -11,8 +11,9 @@ from pytest import approx, raises
 
 from optbinning import BinningProcessSketch
 from optbinning import OptimalBinningSketch
+from optbinning.exceptions import NotSolvedError
+from optbinning.exceptions import NotDataAddedError
 from sklearn.datasets import load_breast_cancer
-from sklearn.exceptions import NotFittedError
 
 data = load_breast_cancer()
 variable_names = data.feature_names
@@ -141,7 +142,7 @@ def test_default_transform():
     bpsketch = BinningProcessSketch(variable_names)
     bpsketch.add(df, y)
 
-    with raises(NotFittedError):
+    with raises(NotSolvedError):
         bpsketch.transform(df, metric="woe")
 
     bpsketch.solve()
@@ -166,12 +167,12 @@ def test_default_transform():
 def test_information():
     bpsketch = BinningProcessSketch(variable_names)
 
-    with raises(NotFittedError):
+    with raises(NotDataAddedError):
         bpsketch.solve()
 
     bpsketch.add(df, y)
 
-    with raises(NotFittedError):
+    with raises(NotSolvedError):
         bpsketch.information()
 
     bpsketch.solve()

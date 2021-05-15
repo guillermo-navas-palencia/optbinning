@@ -11,8 +11,8 @@ import pandas as pd
 from pytest import approx, raises
 
 from optbinning import OptimalBinningSketch
+from optbinning.exceptions import NotSolvedError
 from sklearn.datasets import load_breast_cancer
-from sklearn.exceptions import NotFittedError
 
 data = load_breast_cancer()
 df = pd.DataFrame(data.data, columns=data.feature_names)
@@ -246,7 +246,7 @@ def test_categorical_default_user_splits():
 def test_information():
     optb = OptimalBinningSketch(solver="cp")
 
-    with raises(NotFittedError):
+    with raises(NotSolvedError):
         optb.information()
 
     optb.add(x, y)

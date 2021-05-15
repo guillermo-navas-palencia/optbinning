@@ -38,8 +38,8 @@ SOFT_CONSTRAINTS = {
 }
 
 
-def _check_parameters(scorecard, special_missing, priority_tol, time_limit,
-                      verbose):
+def _check_parameters(scorecard, special_missing, priority_tol, n_jobs,
+                      time_limit, verbose):
     # Check scorecard
     if not isinstance(scorecard, Scorecard):
         raise TypeError("scorecard must be a Scorecard instance.")
@@ -58,6 +58,10 @@ def _check_parameters(scorecard, special_missing, priority_tol, time_limit,
     if not isinstance(time_limit, numbers.Number) or time_limit < 0:
         raise ValueError("time_limit must be a positive value in seconds; "
                          "got {}.".format(time_limit))
+
+    if not isinstance(n_jobs, numbers.Integral) or n_jobs <= 0:
+        raise ValueError("n_jobs must be a positive integer; got {}."
+                         .format(n_jobs))
 
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
@@ -172,9 +176,7 @@ def _check_objectives_method_constraints(method, objectives, hard_constraints,
 
     # Check combination of hard and soft constraints for outcome type
     # probability and continuous. Al least one of:
-    # - min_outcome
-    # - max_outcome
-    # - diff_outcome
+    #   [min_outcome, max_outcome, diff_outcome]
     # must be included.
     if outcome_type in ("probability", "continuous"):
         if hard_constraints is None and soft_constraints is None:
@@ -199,9 +201,33 @@ def _check_objectives_method_constraints(method, objectives, hard_constraints,
 
 
 class Counterfactual(BaseCounterfactual):
+    """Optimal counterfactual explanations given a scorecard model.
+
+    Parameters
+    ----------
+    scorecard : object
+        A ``Scorecard`` instance.
+
+    special_missing : bool (default=False)
+        Whether the special and missing bin are considered as valid
+        counterfactual values.
+
+    priority_tol : float, optional (default=0.1)
+
+    n_jobs : int, optional (default=1)
+        Number of cores to run the optimization solver.
+
+    time_limit : int (default=10)
+        The maximum time in seconds to run the optimization solver.
+
+    verbose : bool (default=False)
+        Enable verbose output.
+
+    Notes
+    -----
+    """
     def __init__(self, scorecard, special_missing=False, priority_tol=0.1,
                  n_jobs=1, time_limit=10, verbose=True):
-
         self.scorecard = scorecard
         self.special_missing = special_missing
         self.priority_tol = priority_tol
@@ -224,7 +250,20 @@ class Counterfactual(BaseCounterfactual):
         self._is_generated = False
 
     def fit(self, df):
-        """"""
+        """Fit counterfactual. Compute problem data to generate countefactual
+        explanations.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+
+        Returns
+        -------
+        self : object
+            Fitted counterfactual.
+        """
+        _check_parameters(**self.get_params())
+
         if not isinstance(df, pd.DataFrame):
             raise TypeError("df must be a pandas.DataFrame.")
 
@@ -251,9 +290,49 @@ class Counterfactual(BaseCounterfactual):
 
         self._is_fitted = True
 
+        return self
+
     def generate(self, query, y, outcome_type, n_cf, method="weighted",
                  objectives=None, max_changes=None, actionable_features=None,
                  hard_constraints=None, soft_constraints=None):
+        """Generate counterfactual explanations subject given objectives and
+        constraints.
+
+        Parameters
+        ----------
+        query : dict or pandas.DataFrame
+            Input data points for which a single or multiple counterfactual
+            explanations are to be generated.
+
+        y : int or float
+            Desired outcome.
+
+        outcome_type : str
+            Desired outcome type. Supported outcome types are "binary",
+            "probability" and "continuous".
+
+        n_cf : int
+            Number of counterfactuals to be generated.
+
+        method : str (default="weighted")
+            Multi-objective optimization method. Supported methods are
+            "weighted" and "hierarchical".
+
+        objectives : dict or None (default=None)
+
+        max_changes : int or None (default=None)
+
+        actionable_features : array-like or None (default=None)
+
+        hard_constraints : array-like or None (default=None)
+
+        soft_constraints : dict or None (default=None)
+
+        Returns
+        -------
+        self : object
+            Generated counterfactuals.
+        """
 
         self._check_is_fitted()
 

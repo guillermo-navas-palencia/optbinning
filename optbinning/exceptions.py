@@ -6,6 +6,10 @@ Custom error and warning exceptions.
 # Copyright (C) 2021
 
 
+class NotDataAddedError(ValueError, AttributeError):
+    """"""
+
+
 class NotGeneratedError(ValueError, AttributeError):
     """"""
 

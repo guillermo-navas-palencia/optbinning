@@ -6,6 +6,7 @@ Counterfactual explanations for scorecard models.
 # Copyright (C) 2021
 
 import numbers
+import time
 
 import numpy as np
 import pandas as pd
@@ -213,6 +214,8 @@ class Counterfactual(BaseCounterfactual):
         counterfactual values.
 
     priority_tol : float, optional (default=0.1)
+        Relative tolerance when solving the multi-objective optimization
+        problem with ``method="hierarchical"``.
 
     n_jobs : int, optional (default=1)
         Number of cores to run the optimization solver.
@@ -239,7 +242,15 @@ class Counterfactual(BaseCounterfactual):
 
         # auxiliary
         self._cfs = None
+
+        # info
+        self._optimizer = None
         self._status = None
+
+        # timing
+        self._time_fit = None
+        self._time_solver = None
+        self._time_postprocessing = None
 
         # logger
         self._class_logger = Logger(__name__)
@@ -262,7 +273,13 @@ class Counterfactual(BaseCounterfactual):
         self : object
             Fitted counterfactual.
         """
-        _check_parameters(**self.get_params())
+        time_init = time.perf_counter()
+
+        if self.verbose:
+            self._logger.info("Counterfactual fit started.")
+            self._logger.info("Options: check parameters.")
+
+        _check_parameters(**self.get_params(deep=False))
 
         if not isinstance(df, pd.DataFrame):
             raise TypeError("df must be a pandas.DataFrame.")
@@ -276,6 +293,9 @@ class Counterfactual(BaseCounterfactual):
                 raise ValueError("Variable {} not in df. df must include {}."
                                  .format(v, self._variable_names))
 
+        if self.verbose:
+            self._logger.info("Compute optimization problem data.")
+
         # Problem data
         intercept, coef, min_p, max_p, wrange, F, mu = problem_data(
             self.scorecard, df[self._variable_names])
@@ -287,6 +307,12 @@ class Counterfactual(BaseCounterfactual):
         self._wrange = wrange
         self._F = F
         self._mu = mu
+
+        time_fit = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Counterfactual fit terminated. Time: {:.4f}s"
+                              .format(time_fit))
 
         self._is_fitted = True
 
@@ -319,22 +345,37 @@ class Counterfactual(BaseCounterfactual):
             "weighted" and "hierarchical".
 
         objectives : dict or None (default=None)
+            Objectives with their corresponding weights or priorities,
+            depending on the method.
 
         max_changes : int or None (default=None)
+            Maximum number of features to be changed. If None, the maximum
+            number of changes is the number of features.
 
         actionable_features : array-like or None (default=None)
+            List of actionable features. If None. all features are suitable to
+            be changed.
 
         hard_constraints : array-like or None (default=None)
+            Constraint to be enforced when solving the underlying optimization
+            problem.
 
         soft_constraints : dict or None (default=None)
+            Constraints to be moved to the objective function as a penalization
+            term.
 
         Returns
         -------
         self : object
             Generated counterfactuals.
         """
+        time_init = time.perf_counter()
 
         self._check_is_fitted()
+
+        if self.verbose:
+            self._logger.info("Counterfactual generation started.")
+            self._logger.info("Options: check parameters.")
 
         # Check parameters
         _check_generate_params(
@@ -344,6 +385,9 @@ class Counterfactual(BaseCounterfactual):
 
         # Transform query using scorecard binning process
         x, query = self._transform_query(query)
+
+        if self.verbose:
+            self._logger.info("Options: check objectives and constraints.")
 
         # Set default objectives
         if objectives is None:
@@ -362,6 +406,11 @@ class Counterfactual(BaseCounterfactual):
         non_actionable = self._non_actionable_indices(actionable_features)
 
         # Optimization problem
+        if self.verbose:
+            self._logger.info("Optimizer started.")
+
+        time_solver = time.perf_counter()
+
         if n_cf == 1:
             optimizer = CFMIP(method, _objectives, max_changes, non_actionable,
                               _hard_constraints, _soft_constraints,
@@ -373,6 +422,9 @@ class Counterfactual(BaseCounterfactual):
                                self.n_jobs, self.time_limit)
 
         # Problem data. Indices is required to construct counterfactual
+        if self.verbose:
+            self._logger.info("Optimizer: build model...")
+
         nbins, metric, indices = model_data(
             self.scorecard, x, self.special_missing)
 
@@ -382,14 +434,25 @@ class Counterfactual(BaseCounterfactual):
                               nbins, metric)
 
         # Optimization
+        if self.verbose:
+            self._logger.info("Optimizer: solve...")
+
         status, solution = optimizer.solve()
 
         self._status = status
-        self._solution = solution
-
         self._optimizer = optimizer
 
+        self._time_solver = time.perf_counter() - time_solver
+
+        self._logger.info("Optimizer terminated. Time: {:.4f}s"
+                          .format(self._time_solver))
+
         # Post-processing
+        if self.verbose:
+            self._logger.info("Post-processing started.")
+
+        time_postprocessing = time.perf_counter()
+
         if status in ("OPTIMAL", "FEASIBLE"):
             cfs = []
             sc = self.scorecard.table()
@@ -416,6 +479,20 @@ class Counterfactual(BaseCounterfactual):
 
         self._cfs = cfs
 
+        self._time_postprocessing = time.perf_counter() - time_postprocessing
+
+        if self.verbose:
+            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+                              .format(self._time_postprocessing))
+
+        self._time_total = time.perf_counter() - time_init
+
+        if self.verbose:
+            self._logger.info("Counterfactual generation terminated. Status: "
+                              "{}. Time: {:.4f}s"
+                              .format(self._status, self._time_total))
+
+        # Completed successfully
         self._is_generated = True
 
         return self
@@ -500,12 +577,16 @@ class Counterfactual(BaseCounterfactual):
         elif n_cf == 1:
             hard_cons = [c for c in hard_constraints
                          if c not in diversity_constraints]
+        else:
+            hard_cons = hard_constraints
 
         if soft_constraints is None:
             soft_cons = {}
         elif n_cf == 1:
             soft_cons = [c for c in soft_constraints
                          if c not in diversity_constraints]
+        else:
+            soft_cons = soft_constraints
 
         return hard_cons, soft_cons
 

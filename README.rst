@@ -1,6 +1,6 @@
 ==========
 OptBinning
-==========
+========== 
 
 .. image::  https://github.com/guillermo-navas-palencia/optbinning/workflows/CI/badge.svg
    :target: https://github.com/guillermo-navas-palencia/optbinning/workflows/CI/badge.svg

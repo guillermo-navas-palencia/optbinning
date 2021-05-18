@@ -8,14 +8,13 @@ Binning process.
 import numbers
 import time
 
-from multiprocessing import cpu_count
 from warnings import warn
 
 import dill
 import numpy as np
 import pandas as pd
 
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
@@ -56,16 +55,6 @@ _OPTB_TYPES = (OptimalBinning, ContinuousOptimalBinning,
 
 
 _OPTBPW_TYPES = (OptimalPWBinning, ContinuousOptimalPWBinning)
-
-
-def _effective_n_jobs(n_jobs):
-    # Joblib check
-    if n_jobs is None:
-        n_jobs = 1
-    elif n_jobs < 0:
-        n_jobs = max(cpu_count() + 1 + n_jobs, 1)
-
-    return n_jobs
 
 
 def _read_column(input_path, extension, column, **kwargs):
@@ -1054,7 +1043,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                               .format(self._n_variables))
 
         # Number of jobs
-        n_jobs = _effective_n_jobs(self.n_jobs)
+        n_jobs = effective_n_jobs(self.n_jobs)
 
         if self.verbose:
             self._logger.info("Options: number of jobs (cores): {}."

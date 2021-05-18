@@ -6,16 +6,16 @@ Binning process.
 # Copyright (C) 2020
 
 import numbers
-import pickle
 import time
 
 from multiprocessing import cpu_count
-from multiprocessing import Pool
 from warnings import warn
 
+import dill
 import numpy as np
 import pandas as pd
 
+from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
@@ -322,7 +322,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "rb") as f:
-            return pickle.load(f)
+            return dill.load(f)
 
     def save(self, path):
         """Save binning process to pickle file.
@@ -336,7 +336,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "wb") as f:
-            pickle.dump(self, f)
+            dill.dump(self, f)
 
     def _support_selection_criteria(self):
         self._support = np.full(self._n_variables, True, dtype=bool)
@@ -1086,37 +1086,36 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 self._variable_dtypes[name] = dtype
                 self._binned_variables[name] = optb
         else:
-            pool = Pool(processes=n_jobs)
-
             ids = np.arange(len(self.variable_names))
             id_blocks = np.array_split(ids, n_jobs)
             names = np.asarray(self.variable_names)
 
             if isinstance(X, np.ndarray):
-                blocks = [pool.apply_async(
-                    _fit_block, args=(
+                blocks = Parallel(n_jobs=n_jobs, prefer="threads")(
+                    delayed(_fit_block)(
                         X[:, id_block], y, names[id_block],
                         self._target_dtype, self.categorical_variables,
                         self.binning_fit_params, self.max_n_prebins,
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits))
-                         for id_block in id_blocks]
+                        self.special_codes, self.split_digits)
+                    for id_block in id_blocks)
+
             else:
-                blocks = [pool.apply_async(
-                    _fit_block, args=(
+                blocks = Parallel(n_jobs=n_jobs, prefer="threads")(
+                    delayed(_fit_block)(
                         X[names[id_block]], y, names[id_block],
                         self._target_dtype, self.categorical_variables,
                         self.binning_fit_params, self.max_n_prebins,
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits))
-                         for id_block in id_blocks]
+                        self.special_codes, self.split_digits)
+                    for id_block in id_blocks)
 
             for b in blocks:
-                vt, bv = b.get()
+                vt, bv = b
                 self._variable_dtypes.update(vt)
                 self._binned_variables.update(bv)
 

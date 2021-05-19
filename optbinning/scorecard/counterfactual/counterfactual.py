@@ -14,6 +14,7 @@ import pandas as pd
 from ...logging import Logger
 from ..scorecard import Scorecard
 from .base import BaseCounterfactual
+from .counterfactual_information import print_counterfactual_information
 from .mip import CFMIP
 from .model_data import model_data
 from .multi_mip import MCFMIP
@@ -225,9 +226,6 @@ class Counterfactual(BaseCounterfactual):
 
     verbose : bool (default=False)
         Enable verbose output.
-
-    Notes
-    -----
     """
     def __init__(self, scorecard, special_missing=False, priority_tol=0.1,
                  n_jobs=1, time_limit=10, verbose=True):
@@ -308,15 +306,49 @@ class Counterfactual(BaseCounterfactual):
         self._F = F
         self._mu = mu
 
-        time_fit = time.perf_counter() - time_init
+        self._time_fit = time.perf_counter() - time_init
 
         if self.verbose:
             self._logger.info("Counterfactual fit terminated. Time: {:.4f}s"
-                              .format(time_fit))
+                              .format(self._time_fit))
 
         self._is_fitted = True
+        self._is_generated = False
 
         return self
+
+    def information(self, print_level=1):
+        """Print overview information about the options settings and
+        statistics.
+
+        Parameters
+        ----------
+        print_level : int (default=1)
+            Level of details.
+        """
+        self._check_is_generated()
+
+        if not isinstance(print_level, numbers.Integral) or print_level < 0:
+            raise ValueError("print_level must be an integer >= 0; got {}."
+                             .format(print_level))
+
+        if self._optimizer is not None:
+            solver = self._optimizer.solver_
+            objectives = self._optimizer._objectives
+            time_solver = self._time_solver
+        else:
+            solver = None
+            objectives = None
+            time_solver = 0
+
+        time_total = self._time_fit + time_solver + self._time_postprocessing
+
+        dict_user_options = self.get_params(deep=False)
+
+        print_counterfactual_information(
+            print_level, self._status, solver, objectives, time_total,
+            self._time_fit, time_solver, self._time_postprocessing,
+            dict_user_options)
 
     def generate(self, query, y, outcome_type, n_cf, method="weighted",
                  objectives=None, max_changes=None, actionable_features=None,
@@ -525,12 +557,17 @@ class Counterfactual(BaseCounterfactual):
         Parameters
         ----------
         only_changes : boolean (default=False)
+            Whether to show only changes on feature values.
 
         show_outcome : boolean (default=False)
+            Whether to add a column with the scorecard outcome. If
+            ``outcome_type`` is "binary" or "probability", the estimated
+            probability of the counterfactual is added.
 
         Returns
         -------
         counterfactuals : pandas.DataFrame
+            Counterfactual explanations.
         """
         self._check_is_generated()
         self._check_counterfactual_is_found()

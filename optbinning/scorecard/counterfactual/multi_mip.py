@@ -445,8 +445,8 @@ class MCFMIP(CFMIP):
             elif name == "diff_outcome":
                 objs[name] = self.obj_diff_outcome(solver, q_p, q_m)
             elif name == "diversity_features":
-                objs[name] = self.obj_diversity_features(solver, p, u)
+                objs[name] = -self.obj_diversity_features(solver, p, u)
             elif name == "diversity_values":
-                objs[name] = self.obj_diversity_values(solver, p, nbins, d)
+                objs[name] = -self.obj_diversity_values(solver, p, nbins, d)
 
         return objs

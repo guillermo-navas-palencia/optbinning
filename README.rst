@@ -56,6 +56,7 @@ Dependencies
 ------------
 OptBinning requires
 
+* dill
 * matplotlib
 * numpy (>=1.16.1)
 * ortools (>=7.2)
@@ -63,6 +64,7 @@ OptBinning requires
 * ropwr
 * scikit-learn (>=0.22.0)
 * scipy
+* tdigest
 
 Getting started
 ===============

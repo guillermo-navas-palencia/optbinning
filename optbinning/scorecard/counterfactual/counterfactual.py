@@ -639,4 +639,12 @@ class Counterfactual(BaseCounterfactual):
 
     @property
     def status(self):
+        """The status of the underlying optimization solver.
+
+        Returns
+        -------
+        status : str
+        """
+        self._check_is_generated()
+
         return self._status

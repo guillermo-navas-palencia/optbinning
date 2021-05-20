@@ -529,6 +529,50 @@ class Counterfactual(BaseCounterfactual):
 
         return self
 
+    def display(self, show_only_changes=False, show_outcome=False):
+        """Display the generatedcounterfactual explanations.
+
+        Parameters
+        ----------
+        show_only_changes : boolean (default=False)
+            Whether to show only changes on feature values.
+
+        show_outcome : boolean (default=False)
+            Whether to add a column with the scorecard outcome. If
+            ``outcome_type`` is "binary" or "probability", the estimated
+            probability of the counterfactual is added.
+
+        Returns
+        -------
+        counterfactuals : pandas.DataFrame
+            Counterfactual explanations.
+        """
+        self._check_is_generated()
+        self._check_counterfactual_is_found()
+
+        cf_queries = []
+        for cf in self._cfs:
+            cf_query = cf["query"].copy()
+
+            if show_only_changes:
+                cf_features = cf["features"]
+                for v in cf_query.columns:
+                    if v not in cf_features:
+                        cf_query[v] = "-"
+
+            if show_outcome:
+                outcome_type = cf["outcome_type"]
+
+                if outcome_type == "continuous":
+                    cf_query["outcome"] = cf["score"]
+                else:
+                    cf_score = cf["score"]
+                    cf_query["outcome"] = 1.0 / (1.0 + np.exp(-cf_score))
+
+            cf_queries.append(cf_query)
+
+        return pd.concat(cf_queries)
+
     def _get_counterfactual(self, query, sc, x, nbins, metric, indices,
                             solution):
         new_indices = {}
@@ -551,49 +595,6 @@ class Counterfactual(BaseCounterfactual):
             new_query[v] = sc[sc["Variable"] == v]["Bin"][index].values
 
         return new_indices, new_query, score
-
-    def display(self, only_changes=False, show_outcome=False):
-        """
-        Parameters
-        ----------
-        only_changes : boolean (default=False)
-            Whether to show only changes on feature values.
-
-        show_outcome : boolean (default=False)
-            Whether to add a column with the scorecard outcome. If
-            ``outcome_type`` is "binary" or "probability", the estimated
-            probability of the counterfactual is added.
-
-        Returns
-        -------
-        counterfactuals : pandas.DataFrame
-            Counterfactual explanations.
-        """
-        self._check_is_generated()
-        self._check_counterfactual_is_found()
-
-        cf_queries = []
-        for cf in self._cfs:
-            cf_query = cf["query"].copy()
-
-            if only_changes:
-                cf_features = cf["features"]
-                for v in cf_query.columns:
-                    if v not in cf_features:
-                        cf_query[v] = "-"
-
-            if show_outcome:
-                outcome_type = cf["outcome_type"]
-
-                if outcome_type == "continuous":
-                    cf_query["outcome"] = cf["score"]
-                else:
-                    cf_score = cf["score"]
-                    cf_query["outcome"] = 1.0 / (1.0 + np.exp(-cf_score))
-
-            cf_queries.append(cf_query)
-
-        return pd.concat(cf_queries)
 
     def _transform_query(self, query):
         if isinstance(query, dict):

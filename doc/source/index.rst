@@ -34,6 +34,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    :caption: Scorecard development
 
    scorecard
+   counterfactual
 
 .. toctree::
    :maxdepth: 1

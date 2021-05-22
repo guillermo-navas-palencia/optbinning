@@ -13,9 +13,7 @@ from ...binning.binning_information import print_solver_statistics
 counterfactual_default_options = {
     "scorecard": None,
     "special_missing": False,
-    "priority_tol": 0.1,
     "n_jobs": 1,
-    "time_limit": 10,
     "verbose": False
 }
 

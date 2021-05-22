@@ -40,8 +40,7 @@ SOFT_CONSTRAINTS = {
 }
 
 
-def _check_parameters(scorecard, special_missing, priority_tol, n_jobs,
-                      time_limit, verbose):
+def _check_parameters(scorecard, special_missing, n_jobs, verbose):
     # Check scorecard
     if not isinstance(scorecard, Scorecard):
         raise TypeError("scorecard must be a Scorecard instance.")
@@ -51,15 +50,6 @@ def _check_parameters(scorecard, special_missing, priority_tol, n_jobs,
     if not isinstance(special_missing, bool):
         raise TypeError("special_missing must be a boolean; got {}."
                         .format(special_missing))
-
-    if (not isinstance(priority_tol, numbers.Number) or
-            not 0 <= priority_tol <= 1):
-        raise ValueError("priority_tol must be in [0, 1]; got {}."
-                         .format(priority_tol))
-
-    if not isinstance(time_limit, numbers.Number) or time_limit < 0:
-        raise ValueError("time_limit must be a positive value in seconds; "
-                         "got {}.".format(time_limit))
 
     if not isinstance(n_jobs, numbers.Integral) or n_jobs <= 0:
         raise ValueError("n_jobs must be a positive integer; got {}."
@@ -214,27 +204,17 @@ class Counterfactual(BaseCounterfactual):
         Whether the special and missing bin are considered as valid
         counterfactual values.
 
-    priority_tol : float, optional (default=0.1)
-        Relative tolerance when solving the multi-objective optimization
-        problem with ``method="hierarchical"``.
-
     n_jobs : int, optional (default=1)
         Number of cores to run the optimization solver.
-
-    time_limit : int (default=10)
-        The maximum time in seconds to run the optimization solver.
 
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, scorecard, special_missing=False, priority_tol=0.1,
-                 n_jobs=1, time_limit=10, verbose=True):
+    def __init__(self, scorecard, special_missing=False, n_jobs=1,
+                 verbose=False):
         self.scorecard = scorecard
         self.special_missing = special_missing
-        self.priority_tol = priority_tol
-
         self.n_jobs = n_jobs
-        self.time_limit = time_limit
 
         self.verbose = verbose
 
@@ -352,7 +332,8 @@ class Counterfactual(BaseCounterfactual):
 
     def generate(self, query, y, outcome_type, n_cf, method="weighted",
                  objectives=None, max_changes=None, actionable_features=None,
-                 hard_constraints=None, soft_constraints=None):
+                 hard_constraints=None, soft_constraints=None,
+                 priority_tol=0.1, time_limit=10):
         """Generate counterfactual explanations subject given objectives and
         constraints.
 
@@ -382,7 +363,7 @@ class Counterfactual(BaseCounterfactual):
 
         max_changes : int or None (default=None)
             Maximum number of features to be changed. If None, the maximum
-            number of changes is the number of features.
+            number of changes is half of the number of features.
 
         actionable_features : array-like or None (default=None)
             List of actionable features. If None. all features are suitable to
@@ -395,6 +376,13 @@ class Counterfactual(BaseCounterfactual):
         soft_constraints : dict or None (default=None)
             Constraints to be moved to the objective function as a penalization
             term.
+
+        priority_tol : float, optional (default=0.1)
+            Relative tolerance when solving the multi-objective optimization
+            problem with ``method="hierarchical"``.
+
+        time_limit : int (default=10)
+            The maximum time in seconds to run the optimization solver.
 
         Returns
         -------
@@ -415,6 +403,17 @@ class Counterfactual(BaseCounterfactual):
             actionable_features, hard_constraints, soft_constraints,
             self._variable_names, self.scorecard._target_dtype)
 
+        # Check priority tolerance
+        if (not isinstance(priority_tol, numbers.Number) or
+                not 0 <= priority_tol <= 1):
+            raise ValueError("priority_tol must be in [0, 1]; got {}."
+                             .format(priority_tol))
+
+        # Check time limit
+        if not isinstance(time_limit, numbers.Number) or time_limit < 0:
+            raise ValueError("time_limit must be a positive value in seconds; "
+                             "got {}.".format(time_limit))
+
         # Transform query using scorecard binning process
         x, query = self._transform_query(query)
 
@@ -430,6 +429,12 @@ class Counterfactual(BaseCounterfactual):
         else:
             _objectives = objectives
 
+        # Set max changes
+        if max_changes is None:
+            _max_changes = len(self._variable_names) // 2
+        else:
+            _max_changes = max_changes
+
         # Clean constraints given the number of counterfactuals
         _hard_constraints, _soft_constraints = self._prepare_constraints(
             outcome_type, n_cf, hard_constraints, soft_constraints)
@@ -444,14 +449,15 @@ class Counterfactual(BaseCounterfactual):
         time_solver = time.perf_counter()
 
         if n_cf == 1:
-            optimizer = CFMIP(method, _objectives, max_changes, non_actionable,
-                              _hard_constraints, _soft_constraints,
-                              self.priority_tol, self.n_jobs, self.time_limit)
+            optimizer = CFMIP(method, _objectives, _max_changes,
+                              non_actionable, _hard_constraints,
+                              _soft_constraints, priority_tol, self.n_jobs,
+                              time_limit)
         else:
-            optimizer = MCFMIP(n_cf, method, _objectives, max_changes,
+            optimizer = MCFMIP(n_cf, method, _objectives, _max_changes,
                                non_actionable, _hard_constraints,
-                               _soft_constraints, self.priority_tol,
-                               self.n_jobs, self.time_limit)
+                               _soft_constraints, priority_tol, self.n_jobs,
+                               time_limit)
 
         # Problem data. Indices is required to construct counterfactual
         if self.verbose:
@@ -476,8 +482,9 @@ class Counterfactual(BaseCounterfactual):
 
         self._time_solver = time.perf_counter() - time_solver
 
-        self._logger.info("Optimizer terminated. Time: {:.4f}s"
-                          .format(self._time_solver))
+        if self.verbose:
+            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+                              .format(self._time_solver))
 
         # Post-processing
         if self.verbose:

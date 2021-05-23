@@ -38,6 +38,8 @@ Scorecard tutorials
    tutorials/tutorial_scorecard_binary_target
    tutorials/tutorial_scorecard_continuous_target
    tutorials/tutorial_scorecard_monitoring
+   tutorials/tutorial_counterfactual_binary_target
+   tutorials/tutorial_counterfactual_continuous_target
 
 
 Optimal piecewise binning tutorials

@@ -1349,6 +1349,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             if self.binning_transform_params is not None:
                 params = self.binning_transform_params.get(name, {})
 
+            metric = params.get("metric", metric)
             metric_missing = params.get("metric_missing", metric_missing)
             metric_special = params.get("metric_special", metric_special)
 
@@ -1364,9 +1365,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             if isinstance(optb, _OPTBPW_TYPES):
                 tparams.pop("show_digits")
 
-            if metric is not None:
-                tparams["metric"] = params.get("metric", metric)
-            else:
+            if metric is None:
                 tparams.pop("metric")
 
             X_transform[:, i] = optb.transform(**tparams)
@@ -1423,6 +1422,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 if self.binning_transform_params is not None:
                     params = self.binning_transform_params.get(name, {})
 
+                metric = params.get("metric", metric)
                 metric_missing = params.get("metric_missing", metric_missing)
                 metric_special = params.get("metric_special", metric_special)
 
@@ -1437,9 +1437,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 if isinstance(optb, _OPTBPW_TYPES):
                     tparams.pop("show_digits")
 
-                if metric is not None:
-                    tparams["metric"] = params.get("metric", metric)
-                else:
+                if metric is None:
                     tparams.pop("metric")
 
                 X_transform[:, i] = optb.transform(**tparams)

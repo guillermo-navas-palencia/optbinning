@@ -22,7 +22,7 @@ from sklearn.linear_model import LogisticRegression
 data = load_breast_cancer()
 feature_names_binary = data.feature_names
 df_binary = pd.DataFrame(data.data, columns=feature_names_binary)
-df_binary["target"] = data_binary.target
+df_binary["target"] = data.target
 
 scorecard_binary = Scorecard(
     target="target",

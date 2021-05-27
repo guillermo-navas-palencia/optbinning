@@ -7,7 +7,7 @@ Scorecard testing.
 
 import pandas as pd
 
-from pytest import approx, raises
+from pytest import raises
 
 from optbinning import BinningProcess
 from optbinning import Scorecard
@@ -201,26 +201,22 @@ def test_generate_binary():
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1,
                 max_changes=3, method="weighted")
 
-    objectives = cf._optimizer._objectives
-    assert objectives["proximity"].solution_value() == approx(2.89, rel=1e-2)
+    assert all(cf.display(show_outcome=True)["outcome"] > 0.5)
 
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1,
                 max_changes=3, method="hierarchical")
 
-    objectives = cf._optimizer._objectives
-    assert objectives["proximity"].solution_value() == approx(2.82, rel=1e-2)
+    assert all(cf.display(show_outcome=True)["outcome"] > 0.5)
 
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=2,
                 max_changes=4, method="weighted")
 
-    objectives = cf._optimizer._objectives
-    assert objectives["proximity"].solution_value() == approx(7.87, rel=1e-2)
+    assert all(cf.display(show_outcome=True)["outcome"] > 0.5)
 
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=2,
                 max_changes=4, method="hierarchical")
 
-    objectives = cf._optimizer._objectives
-    assert objectives["proximity"].solution_value() == approx(5.65, rel=1e-2)
+    assert all(cf.display(show_outcome=True)["outcome"] > 0.5)
 
     cf.generate(query=query, y=0.7, outcome_type="probability", n_cf=1,
                 max_changes=4, method="hierarchical",

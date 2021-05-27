@@ -94,6 +94,11 @@ def _check_generate_params(query, y, outcome_type, n_cf, method, objectives,
         raise ValueError("n_cf must be a positive integer; got {}."
                          .format(n_cf))
 
+    if max_changes is not None:
+        if not isinstance(max_changes, numbers.Integral) or max_changes <= 0:
+            raise ValueError("max_changes must be a positive integer; got {}."
+                             .format(max_changes))
+
     # Check actionable features
     if actionable_features is not None:
         if not isinstance(actionable_features, (list, np.ndarray)):
@@ -152,9 +157,6 @@ def _check_objectives_method_constraints(method, objectives, hard_constraints,
     if soft_constraints is not None:
         if not isinstance(soft_constraints, dict):
             raise TypeError("soft_constraints must be a dict.")
-
-        if len(soft_constraints) != len(set(soft_constraints)):
-            raise ValueError("soft_constraints cannot be repeated.")
 
         for sc, value in soft_constraints.items():
             if sc not in SOFT_CONSTRAINTS[outcome_type]:
@@ -410,7 +412,7 @@ class Counterfactual(BaseCounterfactual):
                              .format(priority_tol))
 
         # Check time limit
-        if not isinstance(time_limit, numbers.Number) or time_limit < 0:
+        if not isinstance(time_limit, numbers.Number) or time_limit <= 0:
             raise ValueError("time_limit must be a positive value in seconds; "
                              "got {}.".format(time_limit))
 
@@ -557,6 +559,14 @@ class Counterfactual(BaseCounterfactual):
         self._check_is_generated()
         self._check_counterfactual_is_found()
 
+        if not isinstance(show_only_changes, bool):
+            raise TypeError("show_only_changes must be a boolean; got {}."
+                            .format(show_only_changes))
+
+        if not isinstance(show_outcome, bool):
+            raise TypeError("show_outcome must be a boolean; got {}."
+                            .format(show_outcome))
+
         cf_queries = []
         for cf in self._cfs:
             cf_query = cf["query"].copy()
@@ -628,8 +638,8 @@ class Counterfactual(BaseCounterfactual):
         if soft_constraints is None:
             soft_cons = {}
         elif n_cf == 1:
-            soft_cons = [c for c in soft_constraints
-                         if c not in diversity_constraints]
+            soft_cons = {c: v for c, v in soft_constraints.items()
+                         if c not in diversity_constraints}
         else:
             soft_cons = soft_constraints
 

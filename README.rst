@@ -76,7 +76,7 @@ Tutorials
 
 * `Optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-tutorials>`_
 * `Binning process tutorials <http://gnpalencia.org/optbinning/tutorials.html#binning-process-tutorials>`_
-* `Scorecard tutorials <http://gnpalencia.org/optbinning/tutorials.html#scorecard-tutorials>`_
+* `Scorecard and counterfactual tutorials <http://gnpalencia.org/optbinning/tutorials.html#scorecard-tutorials>`_
 * `Optimal piecewise binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-piecewise-binning-tutorials>`_
 * `Batch and stream optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-for-batch-and-streaming-data-processing>`_
 * `Optimal binning under uncertainty <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-under-uncertainty>`_
@@ -208,7 +208,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.10.0)
+   optbinning (Version 0.11.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -316,7 +316,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.10.0)
+   optbinning (Version 0.11.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -398,6 +398,83 @@ Compute score and predicted target using the fitted estimator.
 
    score = scorecard.score(df)
    y_pred = scorecard.predict(df)
+
+
+Example: Counterfactual explanations for scorecard with continuous target
+-------------------------------------------------------------------------
+
+First, we load the dataset and a scorecard previously developed.
+
+.. code-block:: python
+
+   import pandas as pd
+
+   from optbinning import Scorecard
+   from optbinning.scorecard import Counterfactual
+
+   from sklearn.datasets import load_boston
+
+   data = load_boston()
+   df = pd.DataFrame(data.data, columns=data.feature_names)
+   df["target"] = data.target
+
+   scorecard = Scorecard.load("myscorecard.pkl")
+
+We create a new Counterfactual instance that is fitted with the dataset
+used during the scorecard development. Then, we select a sample from which to generate
+counterfactual explanations.
+
+.. code-block:: python
+
+   cf = Counterfactual(scorecard=scorecard)
+   cf.fit(df)
+
+   query = df.iloc[0, :-1].to_frame().T
+
+The scorecard model predicts 26.8. However, we would like to find out what needs to be
+changed to return a prediction greater or equal to 30.
+
+.. code-block:: python
+
+   >>> query
+         CRIM    ZN  INDUS  CHAS    NOX     RM   AGE   DIS  RAD    TAX  PTRATIO      B  LSTAT
+   0  0.00632  18.0   2.31   0.0  0.538  6.575  65.2  4.09  1.0  296.0     15.3  396.9   4.98
+
+   >>> scorecard.predict(query)
+   array([26.83423364])
+
+
+We can generate a single counterfactual explanation:
+
+.. code-block:: python
+
+   >>> cf.generate(query=query, y=30, outcome_type="continuous", n_cf=1, max_changes=3,
+                   hard_constraints=["min_outcome"])
+
+   >>> cf.status
+   'OPTIMAL'
+
+   >>> cf.display(show_only_changes=True, show_outcome=True)
+              CRIM ZN INDUS CHAS           NOX            RM AGE DIS RAD TAX PTRATIO  B LSTAT   outcome
+   0  [0.04, 0.07)  -     -    -  [0.45, 0.50)  [6.94, 7.44)   -   -   -   -       -  -     -  31.28763
+
+
+Or simultaneously three counterfactuals, enforcing diversity on the feature values and selecting only a few actionable features.
+
+.. code-block:: python
+
+   >>> cf.generate(query=query, y=30, outcome_type="continuous", n_cf=3, max_changes=3,
+                   hard_constraints=["diversity_values", "min_outcome"],
+                   actionable_features=["CRIM", "NOX", "RM", "PTRATIO"])
+
+   >>> cf.status
+   'OPTIMAL'
+
+   >>> cf.display(show_only_changes=True, show_outcome=True)
+              CRIM ZN INDUS CHAS           NOX            RM AGE DIS RAD TAX         PTRATIO  B LSTAT    outcome
+   0  [0.03, 0.04)  -     -    -  [0.42, 0.45)  [6.94, 7.44)   -   -   -   -               -  -     -  31.737844
+   0  [0.04, 0.07)  -     -    -             -   [7.44, inf)   -   -   -   -  [17.85, 18.55)  -     -  36.370086
+   0             -  -     -    -  [0.45, 0.50)  [6.68, 6.94)   -   -   -   -   [-inf, 15.15)  -     -  30.095258
 
 
 Benchmarks
@@ -483,6 +560,8 @@ Currently **officially** using OptBinning:
 
 1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_ & `@GabrielSGoncalves <https://github.com/GabrielSGoncalves>`_]
 2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`_]
+3. `Aplazame <https://www.aplazame.com/>`_
+
 
 Citation
 ========
@@ -499,3 +578,14 @@ If you use OptBinning in your research/work, please cite the paper using the fol
     volume    = {abs/2001.08025},
     url       = {http://arxiv.org/abs/2001.08025},
   }
+
+  @article{Navas-Palencia2021Counterfactual,
+    title     = {Optimal Counterfactual Explanations for Scorecard modelling},
+    author    = {Guillermo Navas-Palencia},
+    year      = {2021},
+    eprint    = {2104.08619},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.LG},
+    volume    = {abs/2104.08619},
+    url       = {http://arxiv.org/abs/2104.08619},
+  }  

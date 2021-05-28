@@ -485,6 +485,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._n_refinements = 0
         self._n_samples = None
         self._optimizer = None
+        self._solution = None
         self._splits_optimal = None
         self._status = None
 

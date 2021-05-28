@@ -83,7 +83,7 @@ def imbalanced_classification_metrics(y_true, y_pred):
     metrics : dict
         Dictionary of metrics.
     """
-    tp, fp, fn, tn = confusion_matrix(y_true, y_pred).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
     # Sensitivity - True positive rate (TPR)
     tpr = tp / (tp + fn)

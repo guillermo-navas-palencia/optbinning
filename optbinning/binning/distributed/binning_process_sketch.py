@@ -14,11 +14,11 @@ import numpy as np
 import pandas as pd
 
 from sklearn.base import BaseEstimator
-from sklearn.exceptions import NotFittedError
 
 from ...binning.binning_process import _check_selection_criteria
 from ...binning.binning_process import _METRICS
 from ...binning.binning_process import BaseBinningProcess
+from ...exceptions import NotDataAddedError
 from ...logging import Logger
 from .base import BaseSketch
 from .binning_process_sketch_information import (
@@ -455,7 +455,8 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         # Check if data was added
         if not self._n_add:
-            raise NotFittedError("No data was added. Add data before solving.")
+            raise NotDataAddedError(
+                "No data was added. Add data before solving.")
 
         for i, name in enumerate(self.variable_names):
             if self.verbose:

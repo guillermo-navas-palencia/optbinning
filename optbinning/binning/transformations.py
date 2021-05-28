@@ -190,12 +190,16 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
             x_transform[mask] = metric_value[i]
 
     if special_codes:
-        if metric_special == "empirical" or metric in ("indices", "bins"):
+        if (metric_special == "empirical" or
+            (metric == "indices" and not isinstance(metric_special, int)) or
+                metric == "bins"):
             x_transform[special_mask] = metric_value[n_bins]
         else:
             x_transform[special_mask] = metric_special
 
-    if metric_missing == "empirical" or metric in ("indices", "bins"):
+    if (metric_missing == "empirical" or
+        (metric == "indices" and not isinstance(metric_missing, int)) or
+            metric == "bins"):
         x_transform[missing_mask] = metric_value[n_bins + 1]
     else:
         x_transform[missing_mask] = metric_missing
@@ -289,12 +293,16 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
     x_transform[clean_mask] = x_clean_transform
 
     if special_codes:
-        if metric_special == "empirical" or metric in ("indices", "bins"):
+        if (metric_special == "empirical" or
+            (metric == "indices" and not isinstance(metric_special, int)) or
+                metric == "bins"):
             x_transform[special_mask] = metric_value[n_bins]
         else:
             x_transform[special_mask] = metric_special
 
-    if metric_missing == "empirical" or metric in ("indices", "bins"):
+    if (metric_missing == "empirical" or
+        (metric == "indices" and not isinstance(metric_missing, int)) or
+            metric == "bins"):
         x_transform[missing_mask] = metric_value[n_bins + 1]
     else:
         x_transform[missing_mask] = metric_missing
@@ -383,12 +391,16 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
             x_transform[mask] = metric_value[i]
 
     if special_codes:
-        if metric_special == "empirical" or metric in ("indices", "bins"):
+        if (metric_special == "empirical" or
+            (metric == "indices" and not isinstance(metric_special, int)) or
+                metric == "bins"):
             x_transform[special_mask] = metric_value[n_bins]
         else:
             x_transform[special_mask] = metric_special
 
-    if metric_missing == "empirical" or metric in ("indices", "bins"):
+    if (metric_missing == "empirical" or
+        (metric == "indices" and not isinstance(metric_missing, int)) or
+            metric == "bins"):
         x_transform[missing_mask] = metric_value[n_bins + 1]
     else:
         x_transform[missing_mask] = metric_missing

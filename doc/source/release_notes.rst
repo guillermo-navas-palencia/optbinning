@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+Version 0.11.0 (2021-05-28)
+---------------------------
+
+New features:
+
+   - Counterfactual explanations for scorecard modelling.
+
+Improvements:
+
+   - Replace pickle by dill in save and load methods.
+
+Bugfixes:
+
+   - Parallel binning uses joblib: `Issue 103 <https://github.com/guillermo-navas-palencia/optbinning/issues/103>`_
+   - Fix custom  ``metric_special`` and ``metric_missing`` in binning_transform_params.
+
+
 Version 0.10.0 (2021-04-27)
 ---------------------------
 

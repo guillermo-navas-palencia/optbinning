@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.utils import check_array
 
 from ...logging import Logger
-from ...preprocessing import split_data_scenarios
+from ...binning.preprocessing import split_data_scenarios
 from ..binning import OptimalBinning
 from ..binning_statistics import bin_info
 from ..binning_statistics import BinningTable

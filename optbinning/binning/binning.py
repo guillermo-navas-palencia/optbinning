@@ -13,8 +13,6 @@ import numpy as np
 from sklearn.utils import check_array
 
 from ..logging import Logger
-from ..preprocessing import preprocessing_user_splits_categorical
-from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
 from .auto_monotonic import peak_valley_trend_change_heuristic
 from .base import BaseOptimalBinning
@@ -27,6 +25,8 @@ from .cp import BinningCP
 from .ls import BinningLS
 from .mip import BinningMIP
 from .prebinning import PreBinning
+from .preprocessing import preprocessing_user_splits_categorical
+from .preprocessing import split_data
 from .transformations import transform_binary_target
 
 

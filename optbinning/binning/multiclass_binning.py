@@ -13,7 +13,6 @@ import numpy as np
 from sklearn.utils import check_array
 
 from ..logging import Logger
-from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic
 from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning
@@ -22,6 +21,7 @@ from .binning_statistics import MulticlassBinningTable
 from .binning_statistics import target_info
 from .multiclass_cp import MulticlassBinningCP
 from .multiclass_mip import MulticlassBinningMIP
+from .preprocessing import split_data
 from .transformations import transform_multiclass_target
 
 

@@ -9,10 +9,10 @@ import numpy as np
 
 from sklearn.base import BaseEstimator
 
-from .options import continuous_optimal_binning_default_options
-from .options import multiclass_optimal_binning_default_options
-from .options import optimal_binning_default_options
-from .options import sboptimal_binning_default_options
+from ..options import continuous_optimal_binning_default_options
+from ..options import multiclass_optimal_binning_default_options
+from ..options import optimal_binning_default_options
+from ..options import sboptimal_binning_default_options
 
 try:
     from localsolver import LSStatistics

@@ -7,7 +7,7 @@ Binning process information.
 
 from .binning_information import print_header
 from .binning_information import print_optional_parameters
-from .options import binning_process_default_options
+from ..options import binning_process_default_options
 
 
 def print_main_info(n_records, n_variables, time_total):

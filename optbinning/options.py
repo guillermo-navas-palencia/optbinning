@@ -126,3 +126,118 @@ sboptimal_binning_default_options = {
     "time_limit": 100,
     "verbose": False
 }
+
+
+optimal_binning_sketch_options = {
+    "name": "",
+    "dtype": "numerical",
+    "sketch": "gk",
+    "eps": 1e-4,
+    "K": 25,
+    "solver": "cp",
+    "divergence": "iv",
+    "max_n_prebins": 20,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "min_bin_n_nonevent": None,
+    "max_bin_n_nonevent": None,
+    "min_bin_n_event": None,
+    "max_bin_n_event": None,
+    "monotonic_trend": "auto",
+    "min_event_rate_diff": 0,
+    "max_pvalue": None,
+    "max_pvalue_policy": "consecutive",
+    "gamma": 0,
+    "cat_cutoff": None,
+    "cat_heuristic": False,
+    "special_codes": None,
+    "split_digits": None,
+    "mip_solver": "bop",
+    "time_limit": 100,
+    "verbose": False
+}
+
+
+binning_process_sketch_default_options = {
+    "max_n_prebins": 20,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "max_pvalue": None,
+    "max_pvalue_policy": "consecutive",
+    "selection_criteria": None,
+    "categorical_variables": None,
+    "special_codes": None,
+    "split_digits": None,
+    "binning_fit_params": None,
+    "binning_transform_params": None,
+    "verbose": False
+}
+
+
+optimal_pw_binning_options = {
+    "name": "",
+    "estimator": None,
+    "objective": "l2",
+    "degree": 1,
+    "continuous": True,
+    "prebinning_method": "cart",
+    "max_n_prebins": 20,
+    "min_prebin_size": 0.05,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "monotonic_trend": "auto",
+    "n_subsamples": None,
+    "max_pvalue": None,
+    "max_pvalue_policy": "consecutive",
+    "outlier_detector": None,
+    "outlier_params": None,
+    "user_splits": None,
+    "special_codes": None,
+    "split_digits": None,
+    "solver": "auto",
+    "h_epsilon": 1.35,
+    "quantile": 0.5,
+    "regularization": None,
+    "reg_l1": 1.0,
+    "reg_l2": 1.0,
+    "random_state": None,
+    "verbose": False
+}
+
+
+scorecard_monitoring_default_options = {
+    "target": "",
+    "scorecard": None,
+    "psi_method": "cart",
+    "psi_n_bins": 20,
+    "psi_min_bin_size": 0.05,
+    "show_digits": 2,
+    "verbose": False
+}
+
+
+scorecard_default_options = {
+    "target": "",
+    "binning_process": None,
+    "estimator": None,
+    "scaling_method": None,
+    "scaling_method_params": None,
+    "intercept_based": False,
+    "reverse_scorecard": False,
+    "rounding": False,
+    "verbose": False
+}
+
+
+counterfactual_default_options = {
+    "scorecard": None,
+    "special_missing": False,
+    "n_jobs": 1,
+    "verbose": False
+}

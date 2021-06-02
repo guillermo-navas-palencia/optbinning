@@ -7,19 +7,7 @@ Scorecard information.
 
 from ..binning.binning_information import print_header
 from ..binning.binning_information import print_optional_parameters
-
-
-scorecard_default_options = {
-    "target": "",
-    "binning_process": None,
-    "estimator": None,
-    "scaling_method": None,
-    "scaling_method_params": None,
-    "intercept_based": False,
-    "reverse_scorecard": False,
-    "rounding": False,
-    "verbose": False
-}
+from ..options import scorecard_default_options
 
 
 def print_main_info(n_records, n_variables, time_total):

@@ -5,8 +5,8 @@ Binning process sketch information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
-from ...binning.binning_information import print_header
-from ...binning.binning_information import print_optional_parameters
+from ...information import print_header
+from ...information import print_optional_parameters
 from ...options import binning_process_sketch_default_options
 
 

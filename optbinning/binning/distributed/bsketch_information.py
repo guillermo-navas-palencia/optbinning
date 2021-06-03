@@ -5,12 +5,12 @@ Binning sketch information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-from ...binning.binning_information import print_header
 from ...binning.binning_information import print_main_info
 from ...binning.binning_information import print_name_status
-from ...binning.binning_information import print_optional_parameters
 from ...binning.binning_information import print_prebinning_statistics
-from ...binning.binning_information import print_solver_statistics
+from ...information import print_header
+from ...information import print_optional_parameters
+from ...information import print_solver_statistics
 from ...options import optimal_binning_sketch_options
 
 

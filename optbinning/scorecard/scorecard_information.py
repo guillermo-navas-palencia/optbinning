@@ -5,8 +5,8 @@ Scorecard information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-from ..binning.binning_information import print_header
-from ..binning.binning_information import print_optional_parameters
+from ..information import print_header
+from ..information import print_optional_parameters
 from ..options import scorecard_default_options
 
 

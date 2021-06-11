@@ -116,12 +116,12 @@ class Binning2DMIP:
     def decision_variables(self, solver, n_rectangles):
         x = {}
 
-        if self.is_lp:
-            for i in range(n_rectangles):
-                x[i] = solver.NumVar(0, 1, "x[{}]".format(i))
-        else:
-            for i in range(n_rectangles):
-                x[i] = solver.BoolVar("x[{}]".format(i))
+        # if self.is_lp:
+        #     for i in range(n_rectangles):
+        #         x[i] = solver.NumVar(0, 1, "x[{}]".format(i))
+        # else:
+        for i in range(n_rectangles):
+            x[i] = solver.BoolVar("x[{}]".format(i))
 
         d = None
 

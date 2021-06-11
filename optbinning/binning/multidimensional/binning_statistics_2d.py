@@ -11,13 +11,48 @@ import pandas as pd
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from ..binning_statistics import bin_str_format
+from ...formatting import dataframe_to_string
 from ..binning_statistics import _check_build_parameters
 from ..binning_statistics import _check_is_analyzed
 from ..binning_statistics import _check_is_built
+from ..metrics import bayesian_probability
+from ..metrics import binning_quality_score
+from ..metrics import chi2_cramer_v
+from ..metrics import frequentist_pvalue
+from ..metrics import hhi
 from ..metrics import gini
+from ..metrics import hellinger
 from ..metrics import jeffrey
 from ..metrics import jensen_shannon
+from ..metrics import triangular
+
+
+def _bin_fmt(bin, show_digits):
+    if np.isinf(bin[0]):
+        return "({0:.{2}f}, {1:.{2}f})".format(bin[0], bin[1], show_digits)
+    else:
+        return "[{0:.{2}f}, {1:.{2}f})".format(bin[0], bin[1], show_digits)
+
+def bin_xy_str_format(bins_x, bins_y, show_digits):
+    show_digits = 2 if show_digits is None else show_digits
+
+    bins_xy = []
+    for bx, by in zip(bins_x, bins_y):
+        _bx = _bin_fmt(bx, show_digits)
+        _by = _bin_fmt(by, show_digits)
+        bins_xy.append(r"{} $\cup$ {}".format(_bx, _by))
+
+    return bins_xy
+
+
+def bin_str_format(bins, show_digits):
+    show_digits = 2 if show_digits is None else show_digits
+
+    bin_str = []
+    for bin in bins:
+        bin_str.append(_bin_fmt(bin, show_digits))
+
+    return bin_str
 
 
 class BinningTable2D:
@@ -51,7 +86,7 @@ class BinningTable2D:
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True, bin_x_y=False):
+    def build(self, show_digits=2, show_bin_xy=False, add_totals=True):
         _check_build_parameters(show_digits, add_totals)
 
         n_nonevent = self.n_nonevent
@@ -77,6 +112,10 @@ class BinningTable2D:
         event_rate[mask] = n_event[mask] / n_records[mask]
         constant = np.log(t_n_event / t_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
+        W = np.log(1 / self.D - 1) + constant
+
+        # Compute Gini
+        self._gini = gini(self.n_event, self.n_nonevent)
 
         # Compute divergence measures
         p_ev = p_event[mask]
@@ -87,23 +126,79 @@ class BinningTable2D:
         t_iv = iv.sum()
         t_js = js.sum()
 
-        bin_str = ["{} U {}".format(sx, sy) for sx, sy in zip(self.splits_x, self.splits_y)]
+        self._iv = t_iv
+        self._js = t_js
+        self._hellinger = hellinger(p_ev, p_nev, return_sum=True)
+        self._triangular = triangular(p_ev, p_nev, return_sum=True)
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": n_records,
-            "Count (%)": p_records,
-            "Non-event": n_nonevent,
-            "Event": n_event,
-            "Event rate": event_rate,
-            "WoE": woe,
-            "IV": iv,
-            "JS": js
-            })
+        # Keep data for plotting
+        self._n_records = n_records
+        self._event_rate = event_rate
+        self._woe = woe
+        self._W = W
+
+        # Compute KS
+        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)        
+
+        # Compute paths. This is required for both plot and analysis
+        # paths x: horizontal
+        self._paths_x = []
+        for i in range(self.m):
+            path = tuple(dict.fromkeys(self.P[i, :]))
+            if not path in self._paths_x:
+                self._paths_x.append(path)
+        
+        # paths y: vertical     
+        self._paths_y = []
+        for j in range(self.n):
+            path = tuple(dict.fromkeys(self.P[:, j]))
+            if not path in self._paths_y:
+                self._paths_y.append(path)
+
+        if show_bin_xy:
+            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
+                                           show_digits)
+
+            df = pd.DataFrame({
+                "Bin": bin_xy_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Event rate": event_rate,
+                "WoE": woe,
+                "IV": iv,
+                "JS": js
+                })
+        else:
+            bin_x_str = bin_str_format(self.splits_x, show_digits)
+            bin_y_str = bin_str_format(self.splits_y, show_digits)
+
+            df = pd.DataFrame({
+                "Bin x": bin_x_str,
+                "Bin y": bin_y_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Event rate": event_rate,
+                "WoE": woe,
+                "IV": iv,
+                "JS": js
+                })
 
         if add_totals:
-            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
-                      t_event_rate, "", t_iv, t_js]
+            if show_bin_xy:
+                totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
+                          t_event_rate, "", t_iv, t_js]
+            else:
+                totals = ["", "", t_n_records, 1, t_n_nonevent, t_n_event,
+                          t_event_rate, "", t_iv, t_js]
+
             df.loc["Totals"] = totals
 
         self._is_built = True
@@ -111,19 +206,14 @@ class BinningTable2D:
         return df
 
     def plot(self, metric="woe", savefig=None):
-        # paths x: horizontal
-        paths_x = []
-        for i in range(self.m):
-            path = tuple(dict.fromkeys(self.P[i, :]))
-            if not path in paths_x:
-                paths_x.append(path)
-        
-        # paths y: vertical     
-        paths_y = []
-        for j in range(self.n):
-            path = tuple(dict.fromkeys(self.P[:, j]))
-            if not path in paths_y:
-                paths_y.append(path) 
+        if metric == "woe":
+            metric_values = self._woe
+            metric_matrix = self._W
+            metric_label = "WoE"
+        elif metric == "event_rate":
+            metric_values = self._event_rate
+            metric_matrix = self.D
+            metric_label = "Event rate"
 
         fig, ax = plt.subplots(figsize=(7, 7))
 
@@ -134,23 +224,23 @@ class BinningTable2D:
         # right plots.
 
         # Position [0, 0]
-        for path in paths_x:
+        for path in self._paths_x:
             er = sum([
-                [self.event_rate[p]] * np.count_nonzero(
+                [metric_values[p]] * np.count_nonzero(
                     self.P == p, axis=1).max() for p in path], [])
 
             er = er + [er[-1]]
             axtop.step(np.arange(self.n + 1) - 0.5, er,
                        label=path, where="post")
             
-        for i in range(self.m):
+        for i in range(self.n):
             axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)    
 
         axtop.get_xaxis().set_visible(False)
-        axtop.set_ylabel("Event rate", fontsize=12)
+        axtop.set_ylabel(metric_label, fontsize=12)
 
         # Position [1, 0]
-        pos = ax.matshow(self.D, cmap=plt.cm.bwr)
+        pos = ax.matshow(metric_matrix, cmap=plt.cm.bwr)
         for j in range(self.n):
             for i in range(self.m):
                 c = int(self.P[i, j])
@@ -165,9 +255,9 @@ class BinningTable2D:
         ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
 
         # Position [1, 1]
-        for j, path in enumerate(paths_y):
+        for path in self._paths_y:
             er = sum([
-                [self.event_rate[p]] * (np.count_nonzero(
+                [metric_values[p]] * (np.count_nonzero(
                     self.P == p, axis=0).max()) for p in path], [])
 
             er = er + [er[-1]]
@@ -178,7 +268,7 @@ class BinningTable2D:
             axright.axhline(j -0.5, color="grey", linestyle="--", alpha=0.5)
             
         axright.get_yaxis().set_visible(False)
-        axright.set_xlabel("Event rate", fontsize=12)
+        axright.set_xlabel(metric_label, fontsize=12)
 
         #adjust margins
         axright.margins(y=0)
@@ -190,8 +280,100 @@ class BinningTable2D:
 
         plt.show()
 
-    def analysis(self, print_output=True):
-        pass
+    def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
+        pairs = set()
+
+        for path in self._paths_x:
+            tpairs = tuple(zip(path[:-1], path[1:]))
+            for tp in tpairs:
+                pairs.add(tp)
+
+        for path in self._paths_y:
+            tpairs = tuple(zip(path[:-1], path[1:]))
+            for tp in tpairs:
+                pairs.add(tp)
+
+        pairs = sorted(pairs)
+
+        # Significance tests
+        n_bins = len(self._n_records)
+        n_metric = n_bins # -2
+
+        # if len(self.cat_others):
+        #     n_metric -= 1
+
+        n_nev = self.n_nonevent[:n_metric]
+        n_ev = self.n_event[:n_metric]
+
+        if len(n_nev) >= 2:
+            chi2, cramer_v = chi2_cramer_v(n_nev, n_ev)
+        else:
+            cramer_v = 0
+
+        t_statistics = []
+        p_values = []
+        p_a_b = []
+        p_b_a = []
+        for pair in pairs:
+            obs = np.array([n_nev[list(pair)], n_ev[list(pair)]])
+            t_statistic, p_value = frequentist_pvalue(obs, pvalue_test)
+            pab, pba = bayesian_probability(obs, n_samples)
+
+            p_a_b.append(pab)
+            p_b_a.append(pba)
+
+            t_statistics.append(t_statistic)
+            p_values.append(p_value)
+
+        df_tests = pd.DataFrame({
+                "Bin A": np.array([p[0] for p in pairs]),
+                "Bin B": np.array([p[1] for p in pairs]),
+                "t-statistic": t_statistics,
+                "p-value": p_values,
+                "P[A > B]": p_a_b,
+                "P[B > A]": p_b_a
+            })
+
+        if pvalue_test == "fisher":
+            df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
+
+        tab = 4
+        if len(df_tests):
+            df_tests_string = dataframe_to_string(df_tests, tab)
+        else:
+            df_tests_string = " " * tab + "None"
+
+        # Quality score
+        self._quality_score = binning_quality_score(self._iv, p_values,
+                                                    self._hhi_norm)
+
+        report = (
+            "------------------------------------------------\n"
+            "OptimalBinning: Binary Binning Table 2D Analysis\n"
+            "------------------------------------------------\n"
+            "\n"
+            "  General metrics"
+            "\n\n"
+            "    Gini index          {:>15.8f}\n"
+            "    IV (Jeffrey)        {:>15.8f}\n"
+            "    JS (Jensen-Shannon) {:>15.8f}\n"
+            "    Hellinger           {:>15.8f}\n"
+            "    Triangular          {:>15.8f}\n"
+            "    KS                  {:>15.8f}\n"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "    Cramer's V          {:>15.8f}\n"
+            "    Quality score       {:>15.8f}\n"
+            "\n"
+            "  Significance tests\n\n{}\n"
+            ).format(self._gini, self._iv, self._js, self._hellinger,
+                     self._triangular, self._ks, self._hhi, self._hhi_norm,
+                     cramer_v, self._quality_score, df_tests_string)
+
+        if print_output:
+            print(report)
+
+        self._is_analyzed = True
 
     @property
     def iv(self):

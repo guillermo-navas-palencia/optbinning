@@ -12,9 +12,9 @@ from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
 
-def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes=None,
-                  cat_cutoff=None, user_splits_x=None, user_splits_y=None,
-                  check_input=True):
+def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
+                  special_codes_y=None, cat_cutoff=None, user_splits_x=None,
+                  user_splits_y=None, check_input=True):
     """Split 2d data into clean, missing and special values data.
 
     Parameters
@@ -74,11 +74,14 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes=None,
     else:
         missing_mask_y = np.isnan(y) | pd.isnull(z)
 
-    if special_codes is not None:
-        special_mask_x = pd.Series(x).isin(special_codes).values
-        special_mask_y = pd.Series(x).isin(special_codes).values
+    if special_codes_x is not None:
+        special_mask_x = pd.Series(x).isin(special_codes_x).values
     else:
         special_mask_x = np.zeros(len(x), dtype=bool)
+        
+    if special_codes_y is not None:
+        special_mask_y = pd.Series(x).isin(special_codes_y).values
+    else:
         special_mask_y = np.zeros(len(y), dtype=bool)
     
     clean_mask_x = ~missing_mask_x & ~special_mask_x

@@ -7,11 +7,14 @@ Model data for optimal binning 2D formulations.
 
 import numpy as np
 
-from scipy.special import xlogy
+from ..metrics import jeffrey
+from ..metrics import jensen_shannon
+from ..metrics import hellinger
+from ..metrics import triangular
 
 
 def _connected_rectangles(m, n, n_rectangles, monotonicity_x, monotonicity_y,
-                          rows, cols, outer_h, outer_v):
+                          rows, cols, outer_x, outer_y):
 
     d_connected_x = None
     d_connected_y = None
@@ -31,20 +34,20 @@ def _connected_rectangles(m, n, n_rectangles, monotonicity_x, monotonicity_y,
         setr = set_pos - set().union(*(cols[r] for r in rows[i]))
 
         if monotonicity_x:
-            hh = (connected_x[r] for r in outer_h[i] if r in connected_x)
+            hh = (connected_x[r] for r in outer_x[i] if r in connected_x)
             seth = set().union(*(cols[h] for h in hh))
             d_connected_x[i] = seth & setr
 
         if monotonicity_y:
-            vv = (connected_y[r] for r in outer_v[i] if r in connected_y)
+            vv = (connected_y[r] for r in outer_y[i] if r in connected_y)
             setv = set().union(*(cols[v] for v in vv))
             d_connected_y[i] = setv & setr
 
     return d_connected_x, d_connected_y
 
 
-def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
-               max_bin_size, min_bin_n_event, max_bin_n_event,
+def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
+               min_bin_size, max_bin_size, min_bin_n_event, max_bin_n_event,
                min_bin_n_nonevent, max_bin_n_nonevent):
     # Compute all rectangles and event and non-event records
     m, n = E.shape
@@ -58,8 +61,8 @@ def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
 
     rows = []
     cols = {c: [] for c in range(n_grid)}
-    outer_h = []
-    outer_v = []
+    outer_x = []
+    outer_y = []
 
     # Auxiliary checks
     is_min_bin_size = min_bin_size is not None
@@ -85,12 +88,11 @@ def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
             p = i * n + j
             for k in range(1, h + 1):
                 for l in range(1, w + 1):
-                    srow = cached_rectangles[(k, l)]
-                    row = [p + r for r in srow]
+                    row = [p + r for r in cached_rectangles[(k, l)]]
 
                     sfe = fe[row].sum()
                     sfne = fne[row].sum()
-                    
+
                     if sfe == 0 or sfne == 0:
                         continue
 
@@ -113,11 +115,11 @@ def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
                         cols[r].append(n_rectangles)
     
                     if monotonicity_x is not None:
-                        outer_h.append(
+                        outer_x.append(
                             [row[_i * l + (l - 1)] for _i in range(k)])
 
                     if monotonicity_y is not None:
-                        outer_v.append(
+                        outer_y.append(
                             [row[(k - 1) * l + _j] for _j in range(l)])
 
                     rows.append(row)
@@ -133,7 +135,7 @@ def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
     if monotonicity_x is not None or monotonicity_y is not None:
         d_connected_x, d_connected_y = _connected_rectangles(
             m, n, n_rectangles, monotonicity_x, monotonicity_y, rows, cols,
-            outer_h, outer_v)
+            outer_x, outer_y)
     else:
         d_connected_x = None
         d_connected_y = None
@@ -142,21 +144,26 @@ def model_data(NE, E, monotonicity_x, monotonicity_y, scale, min_bin_size,
     n_records = n_event + n_nonevent
 
     # Event rate and Information value
-    event_rate = np.zeros(n_rectangles)
-    iv = np.zeros(n_rectangles)
-
     event_rate = n_event / n_records
     p = n_event / E.sum()
     q = n_nonevent / NE.sum()
-    iv = xlogy(p - q, p / q)
+    
+    if divergence == "iv":
+        iv = jeffrey(p, q)
+    elif divergence == "js":
+        iv = jensen_shannon(p, q)
+    elif divergence == "hellinger":
+        iv = hellinger(p, q)
+    elif divergence == "triangular":
+        iv = triangular(p, q)
 
     if scale is not None:
-        V = (iv * scale).astype(int)
+        c = (iv * scale).astype(int)
     else:
-        V = iv
+        c = iv
 
-    return (n_grid, n_rectangles, rows, cols, V, d_connected_x,
-            d_connected_y, iv, event_rate, n_event, n_nonevent, n_records)
+    return (n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
+            event_rate, n_event, n_nonevent, n_records)
 
 
 def continuous_model_data(R, S, monotonicity_x, monotonicity_y, scale,
@@ -183,8 +190,8 @@ def continuous_model_data(R, S, monotonicity_x, monotonicity_y, scale,
 
     rows = []
     cols = {c: [] for c in range(n_grid)}
-    outer_h = []
-    outer_v = []
+    outer_x = []
+    outer_y = []
 
     n_rectangles = 0
     for i in range(m):
@@ -199,10 +206,10 @@ def continuous_model_data(R, S, monotonicity_x, monotonicity_y, scale,
                         cols[r].append(n_rectangles)
 
                     if monotonicity_x is not None:
-                        outer_h.append([n * ik + (l-1) for ik in range(i, k)])
+                        outer_x.append([n * ik + (l-1) for ik in range(i, k)])
 
                     if monotonicity_y is not None:
-                        outer_v.append([n * (k-1) + jl for jl in range(j, l)])
+                        outer_y.append([n * (k-1) + jl for jl in range(j, l)])
 
                     s = sum(fs[row])
                     r = sum(fr[row])
@@ -228,7 +235,7 @@ def continuous_model_data(R, S, monotonicity_x, monotonicity_y, scale,
     if monotonicity_x is not None or monotonicity_y is not None:
         d_connected_x, d_connected_y = _connected_rectangles(
             m, n, n_rectangles, monotonicity_x, monotonicity_y, rows, cols,
-            outer_h, outer_v)
+            outer_x, outer_y)
     else:
         d_connected_x = None
         d_connected_y = None

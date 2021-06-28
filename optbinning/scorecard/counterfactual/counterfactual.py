@@ -241,7 +241,7 @@ class Counterfactual(BaseCounterfactual):
         self._is_generated = False
 
     def fit(self, df):
-        """Fit counterfactual. Compute problem data to generate countefactual
+        """Fit counterfactual. Compute problem data to generate counterfactual
         explanations.
 
         Parameters
@@ -336,7 +336,7 @@ class Counterfactual(BaseCounterfactual):
                  objectives=None, max_changes=None, actionable_features=None,
                  hard_constraints=None, soft_constraints=None,
                  priority_tol=0.1, time_limit=10):
-        """Generate counterfactual explanations subject given objectives and
+        """Generate counterfactual explanations given objectives and
         constraints.
 
         Parameters

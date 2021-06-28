@@ -10,7 +10,6 @@ from ..binning.binning_information import print_optional_parameters
 
 
 scorecard_default_options = {
-    "target": "",
     "binning_process": None,
     "estimator": None,
     "scaling_method": None,

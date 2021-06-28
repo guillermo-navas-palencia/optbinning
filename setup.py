@@ -56,8 +56,8 @@ install_requires = [
     'ortools>=7.2',
     'pympler',
     'pandas',
-    'ropwr',
-    'scipy',
+    'ropwr>=0.2.0',
+    'scipy>=1.6.0',
     'scikit-learn>=0.22.0',
     'tdigest'
 ]

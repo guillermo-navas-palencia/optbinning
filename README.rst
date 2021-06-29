@@ -320,7 +320,6 @@ and the number of selected variables after the binning process.
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
-       target                            target   * U
        binning_process                      yes   * U
        estimator                            yes   * U
        scaling_method                   min_max   * U

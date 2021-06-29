@@ -561,6 +561,7 @@ Currently **officially** using OptBinning:
 1. `Jeitto <https://www.jeitto.com.br>`_ [`@BrennerPablo <https://github.com/BrennerPablo>`_ & `@ds-mauri <https://github.com/ds-mauri>`_ & `@GabrielSGoncalves <https://github.com/GabrielSGoncalves>`_]
 2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`_]
 3. `Aplazame <https://www.aplazame.com/>`_
+4. `Praelexis Credit <https://www.praelexis.com/praelexis-credit/>`_
 
 
 Citation

@@ -24,63 +24,61 @@ from sklearn.linear_model import LogisticRegression
 
 data = load_breast_cancer()
 feature_names_binary = data.feature_names
-df_binary = pd.DataFrame(data.data, columns=feature_names_binary)
-df_binary["target"] = data.target
+X_binary = pd.DataFrame(data.data, columns=feature_names_binary)
+y_binary = data.target
 
 scorecard_binary = Scorecard(
-    target="target",
     binning_process=BinningProcess(feature_names_binary),
     estimator=LogisticRegression()
-    ).fit(df_binary)
+    ).fit(X_binary, y_binary)
 
 
 data = load_boston()
 feature_names_continuous = data.feature_names
-df_continuous = pd.DataFrame(data.data, columns=feature_names_continuous)
-df_continuous["target"] = data.target
+X_continuous = pd.DataFrame(data.data, columns=feature_names_continuous)
+y_continuous = data.target
 
 scorecard_continuous = Scorecard(
-    target="target",
     binning_process=BinningProcess(feature_names_continuous),
     estimator=LinearRegression()
-    ).fit(df_continuous)
+    ).fit(X_continuous, y_continuous)
 
 
 def test_params():
     with raises(TypeError):
         cf = Counterfactual(scorecard=None)
-        cf.fit(df_binary)
+        cf.fit(X_binary)
 
     with raises(NotFittedError):
         binning_process = BinningProcess(feature_names_binary)
         estimator = LogisticRegression()
-        scorecard = Scorecard(target="target", binning_process=binning_process,
+        scorecard = Scorecard(binning_process=binning_process,
                               estimator=estimator)
 
         cf = Counterfactual(scorecard=scorecard)
-        cf.fit(df_binary)
+        cf.fit(X_binary)
 
     with raises(TypeError):
         cf = Counterfactual(scorecard_binary, special_missing=1)
-        cf.fit(df_binary)
+        cf.fit(X_binary)
 
     with raises(ValueError):
         cf = Counterfactual(scorecard_binary, n_jobs=-1)
-        cf.fit(df_binary)
+        cf.fit(X_binary)
 
     with raises(TypeError):
         cf = Counterfactual(scorecard_binary, verbose=1)
-        cf.fit(df_binary)
+        cf.fit(X_binary)
 
 
 def test_fit():
     cf = Counterfactual(scorecard_binary)
 
     with raises(TypeError):
-        cf.fit(df_binary.values)
+        cf.fit(X_binary.values)
 
     with raises(ValueError):
-        cf.fit(df_binary[feature_names_binary[10:]])
+        cf.fit(X_binary[feature_names_binary[10:]])
 
 
 def test_generate_binary_params():
@@ -89,12 +87,12 @@ def test_generate_binary_params():
     with raises(NotFittedError):
         cf.generate(query=[], y=1, outcome_type="binary", n_cf=1)
 
-    cf.fit(df_binary)
+    cf.fit(X_binary)
 
     with raises(TypeError):
         cf.generate(query=[], y=1, outcome_type="binary", n_cf=1)
 
-    query = df_binary.iloc[0, :-1].to_frame().T
+    query = X_binary.iloc[0, :].to_frame().T
     with raises(TypeError):
         cf.generate(query=query, y="1", outcome_type="binary", n_cf=1)
 
@@ -184,9 +182,9 @@ def test_generate_binary_params():
 
 def test_generate_continuous_params():
     cf = Counterfactual(scorecard_continuous)
-    cf.fit(df_continuous)
+    cf.fit(X_continuous)
 
-    query = df_continuous.iloc[0, :-1].to_frame().T
+    query = X_continuous.iloc[0, :].to_frame().T
 
     with raises(ValueError):
         cf.generate(query=query, y=1, outcome_type="binary", n_cf=1)
@@ -194,9 +192,9 @@ def test_generate_continuous_params():
 
 def test_generate_binary():
     cf = Counterfactual(scorecard_binary)
-    cf.fit(df_binary)
+    cf.fit(X_binary)
 
-    query = df_binary.iloc[0, :-1].to_frame().T
+    query = X_binary.iloc[0, :].to_frame().T
 
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1,
                 max_changes=3, method="weighted")
@@ -227,9 +225,9 @@ def test_generate_binary():
 
 def test_generate_continuous():
     cf = Counterfactual(scorecard_continuous)
-    cf.fit(df_continuous)
+    cf.fit(X_continuous)
 
-    query = df_continuous.iloc[0, :-1].to_frame().T
+    query = X_continuous.iloc[0, :].to_frame().T
 
     cf.generate(query=query, y=30, outcome_type="continuous", n_cf=1,
                 max_changes=4, method="hierarchical",
@@ -262,8 +260,8 @@ def test_information():
     with raises(NotGeneratedError):
         cf.information()
 
-    cf.fit(df_binary)
-    query = df_binary.iloc[0, :-1].to_frame().T
+    cf.fit(X_binary)
+    query = X_binary.iloc[0, :].to_frame().T
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1)
 
     with raises(ValueError):
@@ -276,9 +274,9 @@ def test_information():
 
 def test_display():
     cf = Counterfactual(scorecard_binary)
-    cf.fit(df_binary)
+    cf.fit(X_binary)
 
-    query = df_binary.iloc[0, :-1].to_frame().T
+    query = X_binary.iloc[0, :].to_frame().T
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1)
 
     with raises(TypeError):
@@ -309,9 +307,9 @@ def test_display():
 
 def test_status():
     cf = Counterfactual(scorecard_binary)
-    cf.fit(df_binary)
+    cf.fit(X_binary)
 
-    query = df_binary.iloc[0, :-1].to_frame().T
+    query = X_binary.iloc[0, :].to_frame().T
     cf.generate(query=query, y=1, outcome_type="binary", n_cf=1,
                 max_changes=4)
 

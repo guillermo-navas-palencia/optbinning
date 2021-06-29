@@ -748,12 +748,13 @@ class ScorecardMonitoring(BaseEstimator):
 
         self._df_performance = df_performance
 
-    def _system_performance_continuous(self, X_actual, X_expected):
-        y_true_a = X_actual[self.target]
+    def _system_performance_continuous(self, X_actual, y_actual, X_expected,
+                                       y_expected):
+        y_true_a = y_actual
         y_pred_a = self.scorecard.predict(X_actual)
         d_metrics_a = regression_metrics(y_true_a, y_pred_a)
 
-        y_true_e = X_expected[self.target]
+        y_true_e = y_expected
         y_pred_e = self.scorecard.predict(X_expected)
         d_metrics_e = regression_metrics(y_true_e, y_pred_e)
 

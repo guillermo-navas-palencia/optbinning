@@ -10,7 +10,6 @@ from ..binning.binning_information import print_optional_parameters
 
 
 scorecard_monitoring_default_options = {
-    "target": "",
     "scorecard": None,
     "psi_method": "cart",
     "psi_n_bins": 20,

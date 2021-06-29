@@ -240,13 +240,14 @@ class Counterfactual(BaseCounterfactual):
         self._is_fitted = False
         self._is_generated = False
 
-    def fit(self, df):
+    def fit(self, X):
         """Fit counterfactual. Compute problem data to generate countefactual
         explanations.
 
         Parameters
         ----------
-        df : pandas.DataFrame
+        X : pandas.DataFrame (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
 
         Returns
         -------
@@ -261,16 +262,16 @@ class Counterfactual(BaseCounterfactual):
 
         _check_parameters(**self.get_params(deep=False))
 
-        if not isinstance(df, pd.DataFrame):
-            raise TypeError("df must be a pandas.DataFrame.")
+        if not isinstance(X, pd.DataFrame):
+            raise TypeError("X must be a pandas.DataFrame.")
 
         # Scorecard selected variables
         self._variable_names = self.scorecard.binning_process_.get_support(
             names=True)
 
         for v in self._variable_names:
-            if v not in df.columns:
-                raise ValueError("Variable {} not in df. df must include {}."
+            if v not in X.columns:
+                raise ValueError("Variable {} not in X. X must include {}."
                                  .format(v, self._variable_names))
 
         if self.verbose:
@@ -278,7 +279,7 @@ class Counterfactual(BaseCounterfactual):
 
         # Problem data
         intercept, coef, min_p, max_p, wrange, F, mu = problem_data(
-            self.scorecard, df[self._variable_names])
+            self.scorecard, X[self._variable_names])
 
         self._intercept = intercept
         self._coef = coef

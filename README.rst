@@ -287,8 +287,8 @@ Let's load the California housing dataset.
 
    target = "target"
    variable_names = data.feature_names
-   df = pd.DataFrame(data.data, columns=variable_names)
-   df[target] = data.target
+   X = pd.DataFrame(data.data, columns=variable_names)
+   y = data.target
 
 
 Instantiate a binning process, an estimator, and a scorecard with scaling
@@ -300,12 +300,12 @@ method and reverse mode.
 
    estimator = HuberRegressor(max_iter=200)
 
-   scorecard = Scorecard(binning_process=binning_process, target=target,
-                         estimator=estimator, scaling_method="min_max",
+   scorecard = Scorecard(binning_process=binning_process, estimator=estimator,
+                         scaling_method="min_max",
                          scaling_method_params={"min": 0, "max": 100},
                          reverse_scorecard=True)
 
-   scorecard.fit(df)
+   scorecard.fit(X, y)
 
 Print overview information about the options settings, problems statistics,
 and the number of selected variables after the binning process.
@@ -320,7 +320,6 @@ and the number of selected variables after the binning process.
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
-       target                            target   * U
        binning_process                      yes   * U
        estimator                            yes   * U
        scaling_method                   min_max   * U
@@ -396,8 +395,8 @@ Compute score and predicted target using the fitted estimator.
 
 .. code-block:: python
 
-   score = scorecard.score(df)
-   y_pred = scorecard.predict(df)
+   score = scorecard.score(X)
+   y_pred = scorecard.predict(X)
 
 
 Example: Counterfactual explanations for scorecard with continuous target
@@ -415,8 +414,7 @@ First, we load the dataset and a scorecard previously developed.
    from sklearn.datasets import load_boston
 
    data = load_boston()
-   df = pd.DataFrame(data.data, columns=data.feature_names)
-   df["target"] = data.target
+   X = pd.DataFrame(data.data, columns=data.feature_names)
 
    scorecard = Scorecard.load("myscorecard.pkl")
 
@@ -427,9 +425,9 @@ counterfactual explanations.
 .. code-block:: python
 
    cf = Counterfactual(scorecard=scorecard)
-   cf.fit(df)
+   cf.fit(X)
 
-   query = df.iloc[0, :-1].to_frame().T
+   query = X.iloc[0, :].to_frame().T
 
 The scorecard model predicts 26.8. However, we would like to find out what needs to be
 changed to return a prediction greater or equal to 30.

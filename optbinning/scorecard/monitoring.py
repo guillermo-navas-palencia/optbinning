@@ -35,11 +35,8 @@ PSI_VERDICT_MSG = {0: "No significant change",
                    2: "Significance change"}
 
 
-def _check_parameters(target, scorecard, psi_method, psi_n_bins,
+def _check_parameters(scorecard, psi_method, psi_n_bins,
                       psi_min_bin_size, show_digits, verbose):
-
-    if not isinstance(target, str):
-        raise TypeError("target must be a string.")
 
     if not isinstance(scorecard, Scorecard):
         raise TypeError("scorecard must be a Scorecard instance.")
@@ -168,9 +165,6 @@ class ScorecardMonitoring(BaseEstimator):
 
     Parameters
     ----------
-    target : str
-        Target column.
-
     scorecard : object
         A ``Scorecard`` fitted instance.
 
@@ -195,10 +189,9 @@ class ScorecardMonitoring(BaseEstimator):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, target, scorecard, psi_method="cart", psi_n_bins=20,
+    def __init__(self, scorecard, psi_method="cart", psi_n_bins=20,
                  psi_min_bin_size=0.05, show_digits=2, verbose=False):
 
-        self.target = target
         self.scorecard = scorecard
 
         self.psi_method = psi_method
@@ -230,16 +223,22 @@ class ScorecardMonitoring(BaseEstimator):
         # flags
         self._is_fitted = False
 
-    def fit(self, df_actual, df_expected):
+    def fit(self, X_actual, y_actual, X_expected, y_expected):
         """Fit monitoring with actual and expected data.
 
         Parameters
         ----------
-        df_actual : pandas.DataFrame
+        X_actual : pandas.DataFrame
             New/actual/test data input samples.
 
-        df_expected : pandas.DataFrame
+        y_actual : array-like of shape (n_samples,)
+            Target vector relative to X actual.
+
+        X_expected : pandas.DataFrame
             Trainning data used for fitting the scorecard.
+
+        y_expected : array-like of shape (n_samples,)
+            Target vector relative to X expected.
 
         Returns
         -------
@@ -257,9 +256,6 @@ class ScorecardMonitoring(BaseEstimator):
 
         # Check if scorecard is fitted
         self.scorecard._check_is_fitted()
-
-        y_actual = df_actual[self.target]
-        y_expected = df_expected[self.target]
 
         target_dtype = type_of_target(y_actual)
         target_dtype_e = type_of_target(y_expected)
@@ -279,8 +275,8 @@ class ScorecardMonitoring(BaseEstimator):
         self._target_dtype = target_dtype
 
         # Check variable names
-        if list(df_actual.columns) != list(df_expected.columns):
-            raise ValueError("Dataframes df_actual and df_expected must "
+        if list(X_actual.columns) != list(X_expected.columns):
+            raise ValueError("Dataframes X_actual and X_expected must "
                              "have the same columns.")
 
         # Statistics at system level
@@ -288,7 +284,7 @@ class ScorecardMonitoring(BaseEstimator):
             self._logger.info("System stability analysis started.")
 
         time_system = time.perf_counter()
-        self._fit_system(df_actual, y_actual, df_expected, y_expected)
+        self._fit_system(X_actual, y_actual, X_expected, y_expected)
         self._time_system = time.perf_counter() - time_system
 
         if self.verbose:
@@ -300,7 +296,7 @@ class ScorecardMonitoring(BaseEstimator):
             self._logger.info("Variable analysis started.")
 
         time_variable = time.perf_counter()
-        self._fit_variables(df_actual, df_expected)
+        self._fit_variables(X_actual, X_expected)
         self._time_variable = time.perf_counter() - time_variable
 
         if self.verbose:
@@ -484,14 +480,14 @@ class ScorecardMonitoring(BaseEstimator):
             plt.savefig(savefig)
             plt.close()
 
-    def _fit_system(self, df_actual, y_actual, df_expected, y_expected):
+    def _fit_system(self, X_actual, y_actual, X_expected, y_expected):
         if self._target_dtype == "binary":
             problem_type = "classification"
         else:
             problem_type = "regression"
 
-        score_actual = self.scorecard.score(df_actual)
-        score_expected = self.scorecard.score(df_expected)
+        score_actual = self.scorecard.score(X_actual)
+        score_expected = self.scorecard.score(X_expected)
 
         prebinning = PreBinning(problem_type=problem_type,
                                 method=self.psi_method,
@@ -573,9 +569,11 @@ class ScorecardMonitoring(BaseEstimator):
 
         # Performance analysis
         if self._target_dtype == "binary":
-            self._system_performance_binary(df_actual, df_expected)
+            self._system_performance_binary(
+                X_actual, y_actual, X_expected, y_expected)
         else:
-            self._system_performance_continuous(df_actual, df_expected)
+            self._system_performance_continuous(
+                X_actual, y_actual, X_expected, y_expected)
 
         self._splits = splits
         self._n_records_a = n_records_a
@@ -713,14 +711,15 @@ class ScorecardMonitoring(BaseEstimator):
 
         self._df_target_analysis = df_target
 
-    def _system_performance_binary(self, df_actual, df_expected):
+    def _system_performance_binary(self, X_actual, y_actual, X_expected,
+                                   y_expected):
         # Metrics derived from confusion matrix
-        y_true_a = df_actual[self.target]
-        y_pred_a = self.scorecard.predict(df_actual)
+        y_true_a = y_actual
+        y_pred_a = self.scorecard.predict(X_actual)
         d_metrics_a = imbalanced_classification_metrics(y_true_a, y_pred_a)
 
-        y_true_e = df_expected[self.target]
-        y_pred_e = self.scorecard.predict(df_expected)
+        y_true_e = y_expected
+        y_pred_e = self.scorecard.predict(X_expected)
         d_metrics_e = imbalanced_classification_metrics(y_true_e, y_pred_e)
 
         metric_names = list(d_metrics_a.keys())
@@ -728,10 +727,10 @@ class ScorecardMonitoring(BaseEstimator):
         metrics_e = list(d_metrics_e.values())
 
         # Gini
-        y_pred_proba_a = self.scorecard.predict_proba(df_actual)[:, 1]
+        y_pred_proba_a = self.scorecard.predict_proba(X_actual)[:, 1]
         gini_a = gini(y_true_a, y_pred_proba_a)
 
-        y_pred_proba_e = self.scorecard.predict_proba(df_expected)[:, 1]
+        y_pred_proba_e = self.scorecard.predict_proba(X_expected)[:, 1]
         gini_e = gini(y_true_e, y_pred_proba_e)
 
         metric_names.append("Gini")
@@ -749,13 +748,14 @@ class ScorecardMonitoring(BaseEstimator):
 
         self._df_performance = df_performance
 
-    def _system_performance_continuous(self, df_actual, df_expected):
-        y_true_a = df_actual[self.target]
-        y_pred_a = self.scorecard.predict(df_actual)
+    def _system_performance_continuous(self, X_actual, y_actual, X_expected,
+                                       y_expected):
+        y_true_a = y_actual
+        y_pred_a = self.scorecard.predict(X_actual)
         d_metrics_a = regression_metrics(y_true_a, y_pred_a)
 
-        y_true_e = df_expected[self.target]
-        y_pred_e = self.scorecard.predict(df_expected)
+        y_true_e = y_expected
+        y_pred_e = self.scorecard.predict(X_expected)
         d_metrics_e = regression_metrics(y_true_e, y_pred_e)
 
         metric_names = list(d_metrics_a.keys())
@@ -773,7 +773,7 @@ class ScorecardMonitoring(BaseEstimator):
 
         self._df_performance = df_performance
 
-    def _fit_variables(self, df_actual, df_expected):
+    def _fit_variables(self, X_actual, X_expected):
         variables = self.scorecard.binning_process_.get_support(names=True)
         sc_table = self.scorecard.table()
 
@@ -781,8 +781,8 @@ class ScorecardMonitoring(BaseEstimator):
 
         for name in variables:
             optb = self.scorecard.binning_process_.get_binned_variable(name)
-            ta = optb.transform(df_actual[name], metric="indices")
-            te = optb.transform(df_expected[name], metric="indices")
+            ta = optb.transform(X_actual[name], metric="indices")
+            te = optb.transform(X_expected[name], metric="indices")
 
             n_bins = te.max() + 1
 

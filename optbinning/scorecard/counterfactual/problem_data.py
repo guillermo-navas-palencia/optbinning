@@ -8,9 +8,9 @@ Counterfactual problem data.
 import numpy as np
 
 
-def problem_data(scorecard, df):
-    s_vars = df.columns
-    n_vars = df.shape[1]
+def problem_data(scorecard, X):
+    s_vars = X.columns
+    n_vars = X.shape[1]
 
     # Scorecard table
     sc = scorecard.table(style="detailed")
@@ -43,7 +43,7 @@ def problem_data(scorecard, df):
     max_p += intercept
 
     # Mahalanobis distance
-    Xt = scorecard.binning_process_.transform(df).values
+    Xt = scorecard.binning_process_.transform(X).values
     F = np.linalg.cholesky(np.linalg.inv(np.cov(Xt.T)))
     mu = Xt.mean(axis=0)
 

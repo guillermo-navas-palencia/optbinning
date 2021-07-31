@@ -24,12 +24,9 @@ from .rounding import RoundingMIP
 from .scorecard_information import print_scorecard_information
 
 
-def _check_parameters(target, binning_process, estimator, scaling_method,
+def _check_parameters(binning_process, estimator, scaling_method,
                       scaling_method_params, intercept_based,
                       reverse_scorecard, rounding, verbose):
-
-    if not isinstance(target, str):
-        raise TypeError("target must be a string.")
 
     if not isinstance(binning_process, BinningProcess):
         raise TypeError("binning_process must be a BinningProcess instance.")
@@ -164,9 +161,6 @@ class Scorecard(Base, BaseEstimator):
 
     Parameters
     ----------
-    target : str
-        Target column.
-
     binning_process : object
         A ``BinningProcess`` instance.
 
@@ -217,11 +211,10 @@ class Scorecard(Base, BaseEstimator):
     intercept_ : float
         The intercept if ``intercept_based=True``.
     """
-    def __init__(self, target, binning_process, estimator, scaling_method=None,
+    def __init__(self, binning_process, estimator, scaling_method=None,
                  scaling_method_params=None, intercept_based=False,
                  reverse_scorecard=False, rounding=False, verbose=False):
 
-        self.target = target
         self.binning_process = binning_process
         self.estimator = estimator
         self.scaling_method = scaling_method
@@ -255,14 +248,17 @@ class Scorecard(Base, BaseEstimator):
 
         self._is_fitted = False
 
-    def fit(self, df, metric_special=0, metric_missing=0, show_digits=2,
+    def fit(self, X, y, metric_special=0, metric_missing=0, show_digits=2,
             check_input=False):
         """Fit scorecard.
 
         Parameters
         ----------
-        df : pandas.DataFrame (n_samples, n_features)
+        X : pandas.DataFrame (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
+
+        y : array-like of shape (n_samples,)
+            Target vector relative to x.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -285,7 +281,7 @@ class Scorecard(Base, BaseEstimator):
         self : object
             Fitted scorecard.
         """
-        return self._fit(df, metric_special, metric_missing, show_digits,
+        return self._fit(X, y, metric_special, metric_missing, show_digits,
                          check_input)
 
     def information(self, print_level=1):
@@ -317,35 +313,35 @@ class Scorecard(Base, BaseEstimator):
             self._time_binning_process, self._time_estimator,
             self._time_build_scorecard, self._time_rounding, dict_user_options)
 
-    def predict(self, df):
+    def predict(self, X):
         """Predict using the fitted underlying estimator and the reduced
         dataset.
 
         Parameters
         ----------
-        df : pandas.DataFrame (n_samples, n_features)
+        X : pandas.DataFrame (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         Returns
         -------
-        y: array of shape (n_samples)
+        pred: array of shape (n_samples)
             The predicted target values.
         """
         self._check_is_fitted()
 
-        df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(
-            df_t, metric_special=self._metric_special,
+        X_t = X[self.binning_process_.variable_names]
+        X_t = self.binning_process_.transform(
+            X, metric_special=self._metric_special,
             metric_missing=self._metric_missing)
-        return self.estimator_.predict(df_t)
+        return self.estimator_.predict(X_t)
 
-    def predict_proba(self, df):
+    def predict_proba(self, X):
         """Predict class probabilities using the fitted underlying estimator
         and the reduced dataset.
 
         Parameters
         ----------
-        df : pandas.DataFrame (n_samples, n_features)
+        X : pandas.DataFrame (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         Returns
@@ -355,18 +351,18 @@ class Scorecard(Base, BaseEstimator):
         """
         self._check_is_fitted()
 
-        df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(
-            df_t, metric_special=self._metric_special,
+        X_t = X[self.binning_process_.variable_names]
+        X_t = self.binning_process_.transform(
+            X, metric_special=self._metric_special,
             metric_missing=self._metric_missing)
-        return self.estimator_.predict_proba(df_t)
+        return self.estimator_.predict_proba(X_t)
 
-    def score(self, df):
+    def score(self, X):
         """Score of the dataset.
 
         Parameters
         ----------
-        df : pandas.DataFrame (n_samples, n_features)
+        X : pandas.DataFrame (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         Returns
@@ -376,16 +372,16 @@ class Scorecard(Base, BaseEstimator):
         """
         self._check_is_fitted()
 
-        df_t = df[self.binning_process_.variable_names]
-        df_t = self.binning_process_.transform(df_t, metric="indices")
+        X_t = X[self.binning_process_.variable_names]
+        X_t = self.binning_process_.transform(X_t, metric="indices")
 
-        score_ = np.zeros(df_t.shape[0])
+        score_ = np.zeros(X_t.shape[0])
         selected_variables = self.binning_process_.get_support(names=True)
 
         for variable in selected_variables:
             mask = self._df_scorecard.Variable == variable
             points = self._df_scorecard[mask].Points.values
-            score_ += points[df_t[variable]]
+            score_ += points[X_t[variable]]
 
         return score_ + self.intercept_
 
@@ -455,7 +451,7 @@ class Scorecard(Base, BaseEstimator):
         with open(path, "wb") as f:
             dill.dump(self, f)
 
-    def _fit(self, df, metric_special, metric_missing, show_digits,
+    def _fit(self, X, y, metric_special, metric_missing, show_digits,
              check_input):
 
         # Store the metrics for missing and special bins for predictions
@@ -470,9 +466,12 @@ class Scorecard(Base, BaseEstimator):
 
         _check_parameters(**self.get_params(deep=False))
 
+        # Check X dtype
+        if not isinstance(X, pd.DataFrame):
+            raise TypeError("X must be a pandas.DataFrame.")
+
         # Target type and metric
-        target = df[self.target]
-        self._target_dtype = type_of_target(target)
+        self._target_dtype = type_of_target(y)
 
         if self._target_dtype not in ("binary", "continuous"):
             raise ValueError("Target type {} is not supported."
@@ -501,10 +500,9 @@ class Scorecard(Base, BaseEstimator):
         # Suppress binning process verbosity
         self.binning_process_.set_params(verbose=False)
 
-        df_t = self.binning_process_.fit_transform(
-            df[self.binning_process.variable_names], target,
-            metric, metric_special, metric_missing, show_digits,
-            check_input)
+        X_t = self.binning_process_.fit_transform(
+            X[self.binning_process.variable_names], y, metric, metric_special,
+            metric_missing, show_digits, check_input)
 
         self._time_binning_process = time.perf_counter() - time_binning_process
 
@@ -518,7 +516,7 @@ class Scorecard(Base, BaseEstimator):
             self._logger.info("Fitting estimator.")
 
         self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(df_t, target)
+        self.estimator_.fit(X_t, y)
 
         self._time_estimator = time.perf_counter() - time_estimator
 

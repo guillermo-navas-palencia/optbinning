@@ -241,7 +241,7 @@ class Counterfactual(BaseCounterfactual):
         self._is_generated = False
 
     def fit(self, X):
-        """Fit counterfactual. Compute problem data to generate countefactual
+        """Fit counterfactual. Compute problem data to generate counterfactual
         explanations.
 
         Parameters

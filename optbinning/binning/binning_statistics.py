@@ -521,7 +521,7 @@ class BinningTable:
             add_special = False
             add_missing = False
 
-            elif self.dtype == "categorical":
+            if self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:
@@ -1449,7 +1449,7 @@ class ContinuousBinningTable:
             add_special = False
             add_missing = False
 
-            elif self.dtype == "categorical":
+            if self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:

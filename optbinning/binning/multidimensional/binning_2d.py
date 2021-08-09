@@ -23,12 +23,10 @@ from ..binning_information import print_binning_information
 from ..prebinning import PreBinning
 from .binning_statistics_2d import BinningTable2D
 from .cp_2d import Binning2DCP
-from .lp_2d import Binning2DLP
 from .mip_2d import Binning2DMIP
 from .model_data_2d import model_data
 from .model_data_cart_2d import model_data_cart
 from .preprocessing_2d import split_data_2d
-from .utils import check_is_lp
 
 
 class OptimalBinning2D(OptimalBinning):
@@ -340,22 +338,6 @@ class OptimalBinning2D(OptimalBinning):
         else:
             max_bin_size = self.max_bin_size
 
-        # Check if problem can be formulated as a LP
-        is_lp = check_is_lp(self.gamma, self.monotonic_trend_x,
-                            self.monotonic_trend_y, self.min_n_bins,
-                            self.max_n_bins)
-
-        if self.solver == "auto":
-            if is_lp:
-                solver = "lp"
-            else:
-                solver = "cp"
-        else:
-            solver = self.solver
-
-            if solver == "lp" and not is_lp:
-                raise ValueError()
-
         if solver == "cp":
             scale = int(1e6)
 
@@ -371,12 +353,7 @@ class OptimalBinning2D(OptimalBinning):
             optimizer = Binning2DMIP(
                 self.monotonic_trend_x, self.monotonic_trend_y,
                 self.min_n_bins, self.max_n_bins, self.min_event_rate_diff_x,
-                self.min_event_rate_diff_y, self.gamma, is_lp, self.time_limit)
-
-        elif solver == "lp":
-            scale = None
-
-            optimizer = Binning2DLP()
+                self.min_event_rate_diff_y, self.gamma, self.time_limit)
 
         time_model_data = time.perf_counter()
 
@@ -399,13 +376,10 @@ class OptimalBinning2D(OptimalBinning):
 
         print("model data:", self._time_model_data)
 
-        if solver in ("cp", "mip"):
-            optimizer.build_model(n_grid, n_rectangles, cols, c, d_connected_x,
-                                  d_connected_y, event_rate, n_records)
+        optimizer.build_model(n_grid, n_rectangles, cols, c, d_connected_x,
+                              d_connected_y, event_rate, n_records)
 
-            status, solution = optimizer.solve()
-        elif solver == "lp":
-            status, solution = optimizer.solve(n_grid, n_rectangles, cols, c)
+        status, solution = optimizer.solve()
 
         self._solution = solution
 

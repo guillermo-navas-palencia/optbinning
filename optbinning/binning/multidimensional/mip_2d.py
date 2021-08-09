@@ -14,7 +14,7 @@ from ortools.linear_solver import pywraplp
 class Binning2DMIP:
     def __init__(self, monotonic_trend_x, monotonic_trend_y, min_n_bins,
                  max_n_bins, min_event_rate_diff_x, min_event_rate_diff_y,
-                 gamma, is_lp, time_limit):
+                 gamma, time_limit):
 
         self.monotonic_trend_x = monotonic_trend_x
         self.monotonic_trend_y = monotonic_trend_y
@@ -23,7 +23,6 @@ class Binning2DMIP:
         self.min_event_rate_diff_x = min_event_rate_diff_x
         self.min_event_rate_diff_y = min_event_rate_diff_y
         self.gamma = gamma
-        self.is_lp = is_lp
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -116,10 +115,6 @@ class Binning2DMIP:
     def decision_variables(self, solver, n_rectangles):
         x = {}
 
-        # if self.is_lp:
-        #     for i in range(n_rectangles):
-        #         x[i] = solver.NumVar(0, 1, "x[{}]".format(i))
-        # else:
         for i in range(n_rectangles):
             x[i] = solver.BoolVar("x[{}]".format(i))
 

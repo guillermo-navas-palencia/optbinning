@@ -517,9 +517,9 @@ class BinningTable:
                              'values are "bin" and "actual".')
 
         if style == "actual":
-            if add_special or add_missing:
-                raise ValueError('If style="actual", add_special and '
-                                 'add_missing must be set to False.')
+            # Hide special and missing bin
+            add_special = False
+            add_missing = False
 
             elif self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')

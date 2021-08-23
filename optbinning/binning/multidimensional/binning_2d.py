@@ -15,6 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 from ...logging import Logger
 from ..binning import OptimalBinning
 from ..binning_information import print_binning_information
+from ..binning_statistics import target_info
 from ..prebinning import PreBinning
 from .binning_statistics_2d import BinningTable2D
 from .cp_2d import Binning2DCP
@@ -256,9 +257,24 @@ class OptimalBinning2D(OptimalBinning):
         self.verbose = verbose
 
         # auxiliary
+        self._n_event = None
+        self._n_nonevent = None
+        self._n_event_special = None
+        self._n_nonevent_special = None
+        self._n_event_missing = None
+        self._n_nonevent_missing = None
         self._problem_type = "classification"
 
         # info
+        self._binning_table = None
+        self._n_prebins = None
+        self._n_refinements = 0
+        self._n_samples = None
+        self._optimizer = None
+        self._solution = None
+        self._splits_x_optimal = None
+        self._splits_y_optimal = None
+        self._status = None
 
         # timing
         self._time_total = None
@@ -297,8 +313,8 @@ class OptimalBinning2D(OptimalBinning):
 
         time_preprocessing = time.perf_counter()
 
-        [x_clean, y_clean, z_clean, special_mask_x, special_mask_y,
-         missing_mask_x, missing_mask_y, mask_others_x, mask_others_y,
+        [x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
+         x_special, y_special, z_special, mask_others_x, mask_others_y,
          categories_x, categories_y, others_x, others_y] = split_data_2d(
             self.dtype_x, self.dtype_y, x, y, z, self.special_codes_x,
             self.special_codes_y, None, None, check_input)
@@ -323,8 +339,9 @@ class OptimalBinning2D(OptimalBinning):
                                         self.max_n_prebins_y,
                                         self.min_prebin_size_y)
 
-        E, NE = self._prebinning_matrices(splits_x, splits_y, x_clean, y_clean,
-                                          z_clean)
+        E, NE = self._prebinning_matrices(
+            splits_x, splits_y, x_clean, y_clean, z_clean, x_missing,
+            y_missing, z_missing, x_special, y_special, z_special)
 
         if self.strategy == "cart":
             n_splits_x = len(splits_x)
@@ -421,6 +438,9 @@ class OptimalBinning2D(OptimalBinning):
             splits_x_optimal.append([bin_x[0][0], bin_x[-1][1]])
             splits_y_optimal.append([bin_y[0][0], bin_y[-1][1]])
 
+        self._splits_x_optimal = splits_x_optimal
+        self._splits_y_optimal = splits_y_optimal
+
         self._binning_table = BinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_nonevent,
@@ -454,18 +474,26 @@ class OptimalBinning2D(OptimalBinning):
         return prebinning.splits
 
     def _prebinning_matrices(self, splits_x, splits_y, x_clean, y_clean,
-                             z_clean):
+                             z_clean, x_missing, y_missing, z_missing,
+                             x_special, y_special, z_special):
         z0 = z_clean == 0
         z1 = ~z0
 
         # Compute n_nonevent and n_event for special, missing and others
         # self._n_nonevent_special
-        # self._n_event_special
-        # self._n_nonevent_missing
-        # self._n_event_missing
+        special_target_info = target_info(z_special)
+        self._n_nonevent_special = special_target_info[0]
+        self._n_event_special = special_target_info[1]
+
+        missing_target_info = target_info(z_missing)
+        self._n_nonevent_missing = missing_target_info[0]
+        self._n_event_missing = missing_target_info[1]
 
         n_splits_x = len(splits_x)
         n_splits_y = len(splits_y)
+
+        if not n_splits_x and not n_splits_y:
+            pass
 
         indices_x = np.digitize(x_clean, splits_x, right=False)
         n_bins_x = n_splits_x + 1
@@ -556,3 +584,10 @@ class OptimalBinning2D(OptimalBinning):
         self._c = c
 
         return rows, n_nonevent, n_event
+
+
+    @property
+    def splits(self):
+        self._check_is_fitted()
+
+        return (self._splits_x_optimal, self._splits_y_optimal)

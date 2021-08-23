@@ -84,14 +84,22 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     else:
         special_mask_y = np.zeros(len(y), dtype=bool)
     
-    clean_mask_x = ~missing_mask_x & ~special_mask_x
-    clean_mask_y = ~missing_mask_y & ~special_mask_y
+    missing_mask = missing_mask_x | missing_mask_y
+    special_mask = special_mask_x | special_mask_y
 
-    clean_mask = clean_mask_x & clean_mask_y
+    clean_mask = ~missing_mask & ~special_mask
 
     x_clean = x[clean_mask]
     y_clean = y[clean_mask]
     z_clean = z[clean_mask]
+
+    x_missing = x[missing_mask]
+    y_missing = y[missing_mask]
+    z_missing = z[missing_mask]
+
+    x_special = x[special_mask]
+    y_special = y[special_mask]
+    z_special = z[special_mask]
 
     categories_x = None
     categories_y = None
@@ -121,6 +129,6 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
 
         categories_y, y_clean = categorical_transform(y_clean, z_clean)
 
-    return (x_clean, y_clean, z_clean, special_mask_x, special_mask_y,
-            missing_mask_x, missing_mask_y, mask_others_x, mask_others_y,
+    return (x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
+            x_special, y_special, z_special, mask_others_x, mask_others_y,
             categories_x, categories_y, others_x, others_y)

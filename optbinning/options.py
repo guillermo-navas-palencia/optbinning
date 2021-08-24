@@ -241,3 +241,38 @@ counterfactual_default_options = {
     "n_jobs": 1,
     "verbose": False
 }
+
+
+optimal_binning_2d_default_options = {
+    "name_x": "",
+    "name_y": "",
+    "dtype_x": "numerical",
+    "dtype_y": "numerical",
+    "prebinning_method": "cart",
+    "strategy": "grid",
+    "solver": "cp",
+    "divergence": "iv",
+    "max_n_prebins_x": 5,
+    "max_n_prebins_y": 5,
+    "min_prebin_size_x": 0.05,
+    "min_prebin_size_y": 0.05,
+    "min_n_bins": None,
+    "max_n_bins": None,
+    "min_bin_size": None,
+    "max_bin_size": None,
+    "min_bin_n_nonevent": None,
+    "max_bin_n_nonevent": None,
+    "min_bin_n_event": None,
+    "max_bin_n_event": None,
+    "monotonic_trend_x": None,
+    "monotonic_trend_y": None,
+    "min_event_rate_diff_x": 0,
+    "min_event_rate_diff_y": 0,
+    "gamma": 0,
+    "special_codes_x": None,
+    "special_codes_y": None,
+    "split_digits": None,
+    "n_jobs": 1,
+    "time_limit": 100,
+    "verbose": False
+}

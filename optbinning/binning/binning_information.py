@@ -12,6 +12,7 @@ from ..options import continuous_optimal_binning_default_options
 from ..options import multiclass_optimal_binning_default_options
 from ..options import optimal_binning_default_options
 from ..options import sboptimal_binning_default_options
+from ..options import optimal_binning_2d_default_options
 
 
 def print_prebinning_statistics(n_prebins, n_refinement):
@@ -97,6 +98,8 @@ def print_binning_information(binning_type, print_level, name, status,
             dict_default_options = continuous_optimal_binning_default_options
         elif binning_type == "sboptimalbinning":
             dict_default_options = sboptimal_binning_default_options
+        elif binning_type == "optimalbinning2d":
+            dict_default_options = optimal_binning_2d_default_options
 
         print_optional_parameters(dict_default_options, dict_user_options)
 

@@ -314,10 +314,9 @@ class OptimalBinning2D(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
-         x_special, y_special, z_special, mask_others_x, mask_others_y,
-         categories_x, categories_y, others_x, others_y] = split_data_2d(
+         x_special, y_special, z_special] = split_data_2d(
             self.dtype_x, self.dtype_y, x, y, z, self.special_codes_x,
-            self.special_codes_y, None, None, check_input)
+            self.special_codes_y, check_input)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -397,7 +396,7 @@ class OptimalBinning2D(OptimalBinning):
         self._selected_rows = selected_rows
         self._m, self._n = m, n
 
-        n_selected_rows = selected_rows.shape[0]
+        n_selected_rows = selected_rows.shape[0] + 2
 
         opt_n_nonevent = np.empty(n_selected_rows, dtype=int)
         opt_n_event = np.empty(n_selected_rows, dtype=int)
@@ -413,6 +412,12 @@ class OptimalBinning2D(OptimalBinning):
             opt_n_nonevent[i] = _n_nonevent
             opt_n_event[i] = _n_event
             opt_event_rate[i] = _event_rate
+
+        opt_n_nonevent[-2] = self._n_nonevent_special
+        opt_n_event[-2] = self._n_event_special
+
+        opt_n_nonevent[-1] = self._n_nonevent_missing
+        opt_n_event[-1] = self._n_event_missing
 
         D = D.reshape((m, n))
         P = P.reshape((m, n))
@@ -479,8 +484,7 @@ class OptimalBinning2D(OptimalBinning):
         z0 = z_clean == 0
         z1 = ~z0
 
-        # Compute n_nonevent and n_event for special, missing and others
-        # self._n_nonevent_special
+        # Compute n_nonevent and n_event for special and missing
         special_target_info = target_info(z_special)
         self._n_nonevent_special = special_target_info[0]
         self._n_event_special = special_target_info[1]
@@ -584,7 +588,6 @@ class OptimalBinning2D(OptimalBinning):
         self._c = c
 
         return rows, n_nonevent, n_event
-
 
     @property
     def splits(self):

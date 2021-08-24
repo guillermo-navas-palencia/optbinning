@@ -13,8 +13,7 @@ from sklearn.utils import check_consistent_length
 
 
 def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
-                  special_codes_y=None, cat_cutoff=None, user_splits_x=None,
-                  user_splits_y=None, check_input=True):
+                  special_codes_y=None, check_input=True):
     """Split 2d data into clean, missing and special values data.
 
     Parameters
@@ -32,15 +31,6 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
-
-    cat_cutoff : float or None, optional (default=None)
-        Generate bin others with categories in which the fraction of
-        occurrences is below the  ``cat_cutoff`` value. This option is
-        available when ``dtype`` is "categorical".
-
-    user_splits : array-like or None, optional (default=None)
-        The list of pre-binning split points when ``dtype`` is "numerical" or
-        the list of prebins when ``dtype`` is "categorical".
 
     check_input : bool, (default=True)
         If False, the input arrays x and y will not be checked.
@@ -101,34 +91,5 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     y_special = y[special_mask]
     z_special = z[special_mask]
 
-    categories_x = None
-    categories_y = None
-    others_x = None
-    others_y = None
-
-    mask_others_x = None
-    mask_others_y = None
-
-    if dtype_x == "categorical" and user_splits_x is None:
-        if cat_cutoff is not None:
-            mask_others_x, others_x = categorical_cutoff(
-                x_clean, z_clean, cat_cutoff)
-        else:
-            mask_others_x = None
-            others_x = None
-
-        categories_x, x_clean = categorical_transform(x_clean, z_clean)
-
-    if dtype_y == "categorical" and user_splits_y is None:
-        if cat_cutoff is not None:
-            mask_others_y, others_y = categorical_cutoff(
-                y_clean, z_clean, cat_cutoff)
-        else:
-            mask_others_y = None
-            others_y = None
-
-        categories_y, y_clean = categorical_transform(y_clean, z_clean)
-
     return (x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
-            x_special, y_special, z_special, mask_others_x, mask_others_y,
-            categories_x, categories_y, others_x, others_y)
+            x_special, y_special, z_special)

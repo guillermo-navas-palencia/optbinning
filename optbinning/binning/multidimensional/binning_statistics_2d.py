@@ -33,6 +33,7 @@ def _bin_fmt(bin, show_digits):
     else:
         return "[{0:.{2}f}, {1:.{2}f})".format(bin[0], bin[1], show_digits)
 
+
 def bin_xy_str_format(bins_x, bins_y, show_digits):
     show_digits = 2 if show_digits is None else show_digits
 
@@ -56,10 +57,10 @@ def bin_str_format(bins, show_digits):
 
 
 class BinningTable2D:
+    """
+    """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_nonevent, n_event, event_rate, D, P,
-                 categories_x=None, categories_y=None, cat_others_x=None,
-                 cat_others_y=None, user_splits_x=None, user_splits_y=None):
+                 m, n, n_nonevent, n_event, event_rate, D, P):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -74,14 +75,6 @@ class BinningTable2D:
         self.event_rate = event_rate
         self.D = D
         self.P = P
-
-        self.categories_x = categories_x
-        self.categories_y = categories_y
-        self.cat_others_x = cat_others_x
-        self.cat_others_y = cat_others_y
-
-        self.user_splits_x = user_splits_x
-        self.user_splits_y = user_splits_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -163,6 +156,8 @@ class BinningTable2D:
             bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
                                            show_digits)
 
+            bin_xy_str.extend(["Special", "Missing"])
+
             df = pd.DataFrame({
                 "Bin": bin_xy_str,
                 "Count": n_records,
@@ -177,6 +172,9 @@ class BinningTable2D:
         else:
             bin_x_str = bin_str_format(self.splits_x, show_digits)
             bin_y_str = bin_str_format(self.splits_y, show_digits)
+
+            bin_x_str.extend(["Special", "Missing"])
+            bin_y_str.extend(["Special", "Missing"])
 
             df = pd.DataFrame({
                 "Bin x": bin_x_str,
@@ -297,10 +295,7 @@ class BinningTable2D:
 
         # Significance tests
         n_bins = len(self._n_records)
-        n_metric = n_bins # -2
-
-        # if len(self.cat_others):
-        #     n_metric -= 1
+        n_metric = n_bins - 2
 
         n_nev = self.n_nonevent[:n_metric]
         n_ev = self.n_event[:n_metric]

@@ -92,8 +92,6 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
 
     cart_rectangles = get_rectangles(tree, [0, 1])
 
-    print("cart rectangles:", len(cart_rectangles))
-
     A = np.empty((m, n), dtype=int)
     R = np.arange(n_grid).reshape((m, n)).astype(int)
     idx_x = np.arange(n)

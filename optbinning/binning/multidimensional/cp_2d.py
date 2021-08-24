@@ -86,7 +86,6 @@ class Binning2DCP:
     def solve(self):
         # Solve
         self.solver_ = cp_model.CpSolver()
-        self.solver_.parameters.log_search_progress = True
         if self.n_jobs > 1:
             self.solver_.parameters.num_search_workers = self.n_jobs
         else:

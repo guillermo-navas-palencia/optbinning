@@ -85,7 +85,6 @@ class Binning2DMIP:
     def solve(self):
         # Solve
         self.solver_.SetTimeLimit(self.time_limit * 1000)
-        self.solver_.EnableOutput()
         status = self.solver_.Solve()
 
         if status in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):

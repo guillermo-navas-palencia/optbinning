@@ -58,10 +58,57 @@ def bin_str_format(bins, show_digits):
 
 
 class BinningTable2D(BinningTable):
-    """
+    """Binning table to summarize optimal binning of two numerical variables
+    with respect to a binary target.
+
+    Parameters
+    ----------
+    name_x : str, optional (default="")
+        The name of variable x.
+
+    name_y : str, optional (default="")
+        The name of variable y.        
+
+    dtype_x : str, optional (default="numerical")
+        The data type of variable x. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    dtype_y : str, optional (default="numerical")
+        The data type of variable y. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    splits_x : numpy.ndarray
+        List of split points for variable x.
+
+    splits_y : numpy.ndarray
+        List of split points for variable y.
+
+    m : int 
+        Number of rows of the 2D array.
+
+    n : int
+        Number of columns of the 2D array.
+
+    n_nonevent : numpy.ndarray
+        Number of non-events.
+
+    n_event : numpy.ndarray
+        Number of events.
+
+    D : numpy.ndarray
+        Event rate 2D array.
+
+    P : numpy-ndarray
+        Records 2D array.
+
+    Warning
+    -------
+    This class is not intended to be instantiated by the user. It is
+    preferable to use the class returned by the property ``binning_table``
+    available in all optimal binning classes.        
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_nonevent, n_event, event_rate, D, P):
+                 m, n, n_nonevent, n_event, D, P):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -73,7 +120,6 @@ class BinningTable2D(BinningTable):
         self.n = n
         self.n_nonevent = n_nonevent
         self.n_event = n_event
-        self.event_rate = event_rate
         self.D = D
         self.P = P
 

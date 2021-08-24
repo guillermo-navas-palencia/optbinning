@@ -554,7 +554,6 @@ class OptimalBinning2D(OptimalBinning):
 
         opt_n_nonevent = np.empty(n_selected_rows, dtype=int)
         opt_n_event = np.empty(n_selected_rows, dtype=int)
-        opt_event_rate = np.empty(n_selected_rows, dtype=float)
 
         for i, r in enumerate(selected_rows):
             _n_nonevent = n_nonevent[self._solution][i]
@@ -565,7 +564,6 @@ class OptimalBinning2D(OptimalBinning):
             D[r] = _event_rate
             opt_n_nonevent[i] = _n_nonevent
             opt_n_event[i] = _n_event
-            opt_event_rate[i] = _event_rate
 
         opt_n_nonevent[-2] = self._n_nonevent_special
         opt_n_event[-2] = self._n_event_special
@@ -603,7 +601,7 @@ class OptimalBinning2D(OptimalBinning):
         self._binning_table = BinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_nonevent,
-            opt_n_event, opt_event_rate, D, P)
+            opt_n_event, D, P)
 
         self.name = "-".join((self.name_x, self.name_y))
 

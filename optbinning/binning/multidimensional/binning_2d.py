@@ -236,8 +236,8 @@ class OptimalBinning2D(OptimalBinning):
         The strategy used to create the initial prebinning 2D after computing
         prebinning splits on the x and y axis. The strategy "grid" creates a
         prebinning 2D with n_prebins_x times n_prebins_y elements. The strategy
-        "cart" reduces the number of elements by pruning. The latter is
-        recommended when the number of prebins is large.
+        "cart" (experimental) reduces the number of elements by pruning. The
+        latter is recommended when the number of prebins is large.
 
     solver : str, optional (default="cp")
         The optimizer to solve the optimal binning problem. Supported solvers
@@ -479,6 +479,10 @@ class OptimalBinning2D(OptimalBinning):
             y_missing, z_missing, x_special, y_special, z_special)
 
         if self.strategy == "cart":
+
+            if self.verbose:
+                self._logger.info("Prebinning: applying strategy cart...")
+
             n_splits_x = len(splits_x)
             n_splits_y = len(splits_y)
 
@@ -504,8 +508,6 @@ class OptimalBinning2D(OptimalBinning):
             min_prebin_size = min(self.min_prebin_size_x,
                                   self.min_prebin_size_y) * 0.25
 
-            print(clf_nodes, min_prebin_size)
-
             clf = DecisionTreeClassifier(min_samples_leaf=min_prebin_size,
                                          max_leaf_nodes=clf_nodes)
             clf.fit(xyt, z)
@@ -514,16 +516,32 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
+        
+        self._n_prebins = E.size
+
+        if self.verbose:
+            self._logger.info("Pre-binning: number of prebins: {}"
+                              .format(self._n_prebins))
+
+            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+                              .format(self._time_prebinning))
+
         # Optimization
         rows, n_nonevent, n_event = self._fit_optimizer(
             splits_x, splits_y, NE, E)
 
         # Post-processing
+        if self.verbose:
+            self._logger.info("Post-processing started.")
+            self._logger.info("Post-processing: compute binning information.")
+
         time_postprocessing = time.perf_counter()
 
-        # solution matrices
+        # Refinements
         m, n = E.shape
+        self._n_refinements = (m * n * (m + 1) * (n + 1)) // 4 - len(rows)
 
+        # solution matrices
         D = np.empty(m * n, dtype=float)
         P = np.empty(m * n, dtype=int)
 
@@ -591,19 +609,24 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
-        self._n_prebins = E.size
-        self._n_refinements = (m * n * (m + 1) * (n + 1)) // 4 - len(rows)
+        if self.verbose:
+            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+                              .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
+        if self.verbose:
+            self._logger.info("Optimal binning terminated. Status: {}. "
+                              "Time: {:.4f}s"
+                              .format(self._status, self._time_total))
+
         # Completed successfully
+        self._class_logger.close()
         self._is_fitted = True
 
         return self
 
     def _fit_prebinning(self, dtype, x, z, max_n_prebins, min_prebin_size):
-        # Check user splits
-
         # Pre-binning algorithm
         min_bin_size = int(np.ceil(min_prebin_size * self._n_samples))
 
@@ -632,9 +655,6 @@ class OptimalBinning2D(OptimalBinning):
         n_splits_x = len(splits_x)
         n_splits_y = len(splits_y)
 
-        if not n_splits_x and not n_splits_y:
-            pass
-
         indices_x = np.digitize(x_clean, splits_x, right=False)
         n_bins_x = n_splits_x + 1
 
@@ -656,6 +676,9 @@ class OptimalBinning2D(OptimalBinning):
         return NE, E
 
     def _fit_optimizer(self, splits_x, splits_y, NE, E):
+        if self.verbose:
+            self._logger.info("Optimizer started.")
+
         time_init = time.perf_counter()
 
         # Min/max number of bins (bin size)
@@ -671,6 +694,23 @@ class OptimalBinning2D(OptimalBinning):
 
         # Number of threads
         n_jobs = effective_n_jobs(self.n_jobs)
+
+        if self.verbose:
+            self._logger.info("Optimizer: {} jobs.".format(n_jobs))
+
+            if self.monotonic_trend_x is None:
+                self._logger.info(
+                    "Optimizer: monotonic trend x not set.")
+            else:
+                self._logger.info("Optimizer: monotonic trend x set to "
+                                  "{}.".format(self.monotonic_trend_x))
+
+            if self.monotonic_trend_y is None:
+                self._logger.info(
+                    "Optimizer: monotonic trend y not set.")
+            else:
+                self._logger.info("Optimizer: monotonic trend y set to "
+                                  "{}.".format(self.monotonic_trend_x))                
 
         if self.solver == "cp":
             scale = int(1e6)
@@ -689,6 +729,9 @@ class OptimalBinning2D(OptimalBinning):
                 self.min_n_bins, self.max_n_bins, self.min_event_rate_diff_x,
                 self.min_event_rate_diff_y, self.gamma, n_jobs,
                 self.time_limit)
+
+        if self.verbose:
+            self._logger.info("Optimizer: model data...")
 
         time_model_data = time.perf_counter()
 
@@ -709,10 +752,18 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_model_data = time.perf_counter() - time_model_data
 
-        print("model data:", self._time_model_data)
+        if self.verbose:
+            self._logger.info("Optimizer: model data terminated. Time {:.4f}s"
+                              .format(self._time_model_data))
+
+        if self.verbose:
+            self._logger.info("Optimizer: build model...")
 
         optimizer.build_model(n_grid, n_rectangles, cols, c, d_connected_x,
                               d_connected_y, event_rate, n_records)
+
+        if self.verbose:
+            self._logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
@@ -723,6 +774,10 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_solver = time.perf_counter() - time_init
 
+        if self.verbose:
+            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+                              .format(self._time_solver))
+
         self._cols = cols
         self._rows = rows
         self._c = c
@@ -731,6 +786,12 @@ class OptimalBinning2D(OptimalBinning):
 
     @property
     def splits(self):
+        """List of optimal split points and bins for axis x and y.
+
+        Returns
+        -------
+        splits : (numpy.ndarray, numpy.ndarray)
+        """        
         self._check_is_fitted()
 
         return (self._splits_x_optimal, self._splits_y_optimal)

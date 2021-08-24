@@ -3,13 +3,14 @@ Optimal binning 2D algorithm.
 """
 
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
-# Copyright (C) 2019
+# Copyright (C) 2021
 
 import numbers
 import time
 
 import numpy as np
 
+from joblib import effective_n_jobs
 from sklearn.tree import DecisionTreeClassifier
 
 from ...logging import Logger
@@ -203,11 +204,146 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
 
 
 class OptimalBinning2D(OptimalBinning):
-    """
+    """Optimal binning of two numerical variables with respect to a binary
+    target.
+
+    Parameters
+    ----------
+    name_x : str, optional (default="")
+        The name of variable x.
+
+    name_y : str, optional (default="")
+        The name of variable y.        
+
+    dtype_x : str, optional (default="numerical")
+        The data type of variable x. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    dtype_y : str, optional (default="numerical")
+        The data type of variable y. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    prebinning_method : str, optional (default="cart")
+        The pre-binning method. Supported methods are "cart" for a CART
+        decision tree, "mdlp" for Minimum Description Length Principle (MDLP),
+        "quantile" to generate prebins with approximately same frequency and
+        "uniform" to generate prebins with equal width. Method "cart" uses
+        `sklearn.tree.DecistionTreeClassifier
+        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
+        DecisionTreeClassifier.html>`_.
+
+    strategy: str, optional (default="grid")
+        The strategy used to create the initial prebinning 2D after computing
+        prebinning splits on the x and y axis. The strategy "grid" creates a
+        prebinning 2D with n_prebins_x times n_prebins_y elements. The strategy
+        "cart" reduces the number of elements by pruning. The latter is
+        recommended when the number of prebins is large.
+
+    solver : str, optional (default="cp")
+        The optimizer to solve the optimal binning problem. Supported solvers
+        are "mip" to choose a mixed-integer programming solver, and "cp" to
+        choose a constrained programming solver.    
+
+    divergence : str, optional (default="iv")
+        The divergence measure in the objective function to be maximized.
+        Supported divergences are "iv" (Information Value or Jeffrey's
+        divergence), "js" (Jensen-Shannon), "hellinger" (Hellinger divergence)
+        and "triangular" (triangular discrimination).
+
+    max_n_prebins_x : int (default=5)
+        The maximum number of bins on variable x after pre-binning (prebins).
+
+    max_n_prebins_y : int (default=5)
+        The maximum number of bins on variable y after pre-binning (prebins).
+
+    min_prebin_size_x : float (default=0.05)
+        The fraction of mininum number of records for each prebin on variable
+        x.
+
+    min_prebin_size_y : float (default=0.05)
+        The fraction of mininum number of records for each prebin on variable
+        y.
+
+    min_n_bins : int or None, optional (default=None)
+        The minimum number of bins. If None, then ``min_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    max_n_bins : int or None, optional (default=None)
+        The maximum number of bins. If None, then ``max_n_bins`` is
+        a value in ``[0, max_n_prebins]``.
+
+    min_bin_size : float or None, optional (default=None)
+        The fraction of minimum number of records for each bin. If None,
+        ``min_bin_size = min_prebin_size``.
+
+    max_bin_size : float or None, optional (default=None)
+        The fraction of maximum number of records for each bin. If None,
+        ``max_bin_size = 1.0``.
+
+    min_bin_n_nonevent : int or None, optional (default=None)
+        The minimum number of non-event records for each bin. If None,
+        ``min_bin_n_nonevent = 1``.
+
+    max_bin_n_nonevent : int or None, optional (default=None)
+        The maximum number of non-event records for each bin. If None, then an
+        unlimited number of non-event records for each bin.
+
+    min_bin_n_event : int or None, optional (default=None)
+        The minimum number of event records for each bin. If None,
+        ``min_bin_n_event = 1``.
+
+    max_bin_n_event : int or None, optional (default=None)
+        The maximum number of event records for each bin. If None, then an
+        unlimited number of event records for each bin.
+
+    monotonic_trend_x : str or None, optional (default=None)
+        The **event rate** monotonic trend on the x axis. Supported trends are
+        “ascending”, and "descending". If None, then the monotonic constraint
+        is disabled.
+
+    monotonic_trend_y : str or None, optional (default=None)
+        The **event rate** monotonic trend on the y axis. Supported trends are
+        “ascending”, and "descending". If None, then the monotonic constraint
+        is disabled.
+
+    min_event_rate_diff_x : float, optional (default=0)
+        The minimum event rate difference between consecutives bins on the x
+        axis.
+
+    min_event_rate_diff_y : float, optional (default=0)
+        The minimum event rate difference between consecutives bins on the y
+        axis.
+
+    gamma : float, optional (default=0)
+        Regularization strength to reduce the number of dominating bins. Larger
+        values specify stronger regularization.
+
+    special_codes_x : array-like or None, optional (default=None)
+        List of special codes for the variable x. Use special codes to specify
+        the data values that must be treated separately.
+
+    special_codes_y : array-like or None, optional (default=None)
+        List of special codes for the variable y. Use special codes to specify
+        the data values that must be treated separately.
+
+    split_digits : int or None, optional (default=None)
+        The significant digits of the split points. If ``split_digits`` is set
+        to 0, the split points are integers. If None, then all significant
+        digits in the split points are considered.
+
+    n_jobs : int or None, optional (default=None)
+        Number of cores to run in parallel while binning variables.
+        ``None`` means 1 core. ``-1`` means using all processors.
+
+    time_limit : int (default=100)
+        The maximum time in seconds to run the optimization solver.
+
+    verbose : bool (default=False)
+        Enable verbose output.        
     """
     def __init__(self, name_x="", name_y="", dtype_x="numerical",
                  dtype_y="numerical", prebinning_method="cart",
-                 strategy="grid", solver="mip", divergence="iv",
+                 strategy="grid", solver="cp", divergence="iv",
                  max_n_prebins_x=5, max_n_prebins_y=5, min_prebin_size_x=0.05,
                  min_prebin_size_y=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
@@ -533,13 +669,16 @@ class OptimalBinning2D(OptimalBinning):
         else:
             max_bin_size = self.max_bin_size
 
+        # Number of threads
+        n_jobs = effective_n_jobs(self.n_jobs)
+
         if self.solver == "cp":
             scale = int(1e6)
 
             optimizer = Binning2DCP(
                 self.monotonic_trend_x, self.monotonic_trend_y,
                 self.min_n_bins, self.max_n_bins, self.min_event_rate_diff_x,
-                self.min_event_rate_diff_y, self.gamma, self.n_jobs,
+                self.min_event_rate_diff_y, self.gamma, n_jobs,
                 self.time_limit)
 
         elif self.solver == "mip":
@@ -548,7 +687,8 @@ class OptimalBinning2D(OptimalBinning):
             optimizer = Binning2DMIP(
                 self.monotonic_trend_x, self.monotonic_trend_y,
                 self.min_n_bins, self.max_n_bins, self.min_event_rate_diff_x,
-                self.min_event_rate_diff_y, self.gamma, self.time_limit)
+                self.min_event_rate_diff_y, self.gamma, n_jobs,
+                self.time_limit)
 
         time_model_data = time.perf_counter()
 

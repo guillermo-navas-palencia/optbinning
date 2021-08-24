@@ -14,7 +14,7 @@ from ortools.linear_solver import pywraplp
 class Binning2DMIP:
     def __init__(self, monotonic_trend_x, monotonic_trend_y, min_n_bins,
                  max_n_bins, min_event_rate_diff_x, min_event_rate_diff_y,
-                 gamma, time_limit):
+                 gamma, n_jobs, time_limit):
 
         self.monotonic_trend_x = monotonic_trend_x
         self.monotonic_trend_y = monotonic_trend_y
@@ -23,6 +23,8 @@ class Binning2DMIP:
         self.min_event_rate_diff_x = min_event_rate_diff_x
         self.min_event_rate_diff_y = min_event_rate_diff_y
         self.gamma = gamma
+
+        self.n_jobs = n_jobs
         self.time_limit = time_limit
 
         self.solver_ = None
@@ -85,6 +87,7 @@ class Binning2DMIP:
     def solve(self):
         # Solve
         self.solver_.SetTimeLimit(self.time_limit * 1000)
+        self.solver_.SetNumThreads(self.n_jobs)
         status = self.solver_.Solve()
 
         if status in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):

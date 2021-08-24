@@ -15,6 +15,7 @@ from ...formatting import dataframe_to_string
 from ..binning_statistics import _check_build_parameters
 from ..binning_statistics import _check_is_analyzed
 from ..binning_statistics import _check_is_built
+from ..binning_statistics import BinningTable
 from ..metrics import bayesian_probability
 from ..metrics import binning_quality_score
 from ..metrics import chi2_cramer_v
@@ -56,7 +57,7 @@ def bin_str_format(bins, show_digits):
     return bin_str
 
 
-class BinningTable2D:
+class BinningTable2D(BinningTable):
     """
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
@@ -369,17 +370,3 @@ class BinningTable2D:
             print(report)
 
         self._is_analyzed = True
-
-    @property
-    def iv(self):
-        """The Information Value (IV) or Jeffrey's divergence measure.
-
-        The IV ranges from 0 to Infinity.
-
-        Returns
-        -------
-        iv : float
-        """
-        _check_is_built(self)
-
-        return self._iv    

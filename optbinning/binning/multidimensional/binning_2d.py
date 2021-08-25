@@ -15,7 +15,6 @@ from sklearn.tree import DecisionTreeClassifier
 
 from ...logging import Logger
 from ..binning import OptimalBinning
-from ..binning_information import print_binning_information
 from ..binning_statistics import target_info
 from ..prebinning import PreBinning
 from .binning_statistics_2d import BinningTable2D
@@ -213,7 +212,7 @@ class OptimalBinning2D(OptimalBinning):
         The name of variable x.
 
     name_y : str, optional (default="")
-        The name of variable y.        
+        The name of variable y.
 
     dtype_x : str, optional (default="numerical")
         The data type of variable x. Supported data type is "numerical" for
@@ -242,7 +241,7 @@ class OptimalBinning2D(OptimalBinning):
     solver : str, optional (default="cp")
         The optimizer to solve the optimal binning problem. Supported solvers
         are "mip" to choose a mixed-integer programming solver, and "cp" to
-        choose a constrained programming solver.    
+        choose a constrained programming solver.
 
     divergence : str, optional (default="iv")
         The divergence measure in the objective function to be maximized.
@@ -339,7 +338,7 @@ class OptimalBinning2D(OptimalBinning):
         The maximum time in seconds to run the optimization solver.
 
     verbose : bool (default=False)
-        Enable verbose output.        
+        Enable verbose output.
     """
     def __init__(self, name_x="", name_y="", dtype_x="numerical",
                  dtype_y="numerical", prebinning_method="cart",
@@ -516,7 +515,6 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
-        
         self._n_prebins = E.size
 
         if self.verbose:
@@ -708,7 +706,7 @@ class OptimalBinning2D(OptimalBinning):
                     "Optimizer: monotonic trend y not set.")
             else:
                 self._logger.info("Optimizer: monotonic trend y set to "
-                                  "{}.".format(self.monotonic_trend_x))                
+                                  "{}.".format(self.monotonic_trend_x))
 
         if self.solver == "cp":
             scale = int(1e6)
@@ -789,7 +787,7 @@ class OptimalBinning2D(OptimalBinning):
         Returns
         -------
         splits : (numpy.ndarray, numpy.ndarray)
-        """        
+        """
         self._check_is_fitted()
 
         return (self._splits_x_optimal, self._splits_y_optimal)

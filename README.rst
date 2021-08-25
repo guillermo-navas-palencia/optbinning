@@ -32,6 +32,10 @@ not previously addressed.
 
       - .. figure:: doc/source/_images/binning_data_stream.gif
 
+      - .. figure:: doc/source/_images/binning_2d_readme.png
+
+      - .. figure:: doc/source/_images/binning_2d_readme_woe.png
+
 
 .. contents:: **Table of Contents**
 
@@ -560,6 +564,7 @@ Currently **officially** using OptBinning:
 2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`_]
 3. `Aplazame <https://www.aplazame.com/>`_
 4. `Praelexis Credit <https://www.praelexis.com/praelexis-credit/>`_
+5. `ING <www.ing.com>`_ 
 
 
 Citation

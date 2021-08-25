@@ -32,6 +32,8 @@ not previously addressed.
 
       - .. figure:: doc/source/_images/binning_data_stream.gif
 
+.. list-table::
+
     * - .. figure:: doc/source/_images/binning_2d_readme.png
 
       - .. figure:: doc/source/_images/binning_2d_readme_woe.png

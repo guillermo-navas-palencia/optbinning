@@ -13,8 +13,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from ...formatting import dataframe_to_string
 from ..binning_statistics import _check_build_parameters
-from ..binning_statistics import _check_is_analyzed
-from ..binning_statistics import _check_is_built
 from ..binning_statistics import BinningTable
 from ..metrics import bayesian_probability
 from ..metrics import binning_quality_score
@@ -67,7 +65,7 @@ class BinningTable2D(BinningTable):
         The name of variable x.
 
     name_y : str, optional (default="")
-        The name of variable y.        
+        The name of variable y.
 
     dtype_x : str, optional (default="numerical")
         The data type of variable x. Supported data type is "numerical" for
@@ -83,7 +81,7 @@ class BinningTable2D(BinningTable):
     splits_y : numpy.ndarray
         List of split points for variable y.
 
-    m : int 
+    m : int
         Number of rows of the 2D array.
 
     n : int
@@ -105,7 +103,7 @@ class BinningTable2D(BinningTable):
     -------
     This class is not intended to be instantiated by the user. It is
     preferable to use the class returned by the property ``binning_table``
-    available in all optimal binning classes.        
+    available in all optimal binning classes.
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
                  m, n, n_nonevent, n_event, D, P):
@@ -127,7 +125,28 @@ class BinningTable2D(BinningTable):
         self._is_analyzed = False
 
     def build(self, show_digits=2, show_bin_xy=False, add_totals=True):
+        """Build the binning table.
+
+        Parameters
+        ----------
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column.
+
+        show_bin_xy: bool (default=False)
+            Whether to show a single bin column with x and y.
+
+        add_totals : bool (default=True)
+            Whether to add a last row with totals.
+
+        Returns
+        -------
+        binning_table : pandas.DataFrame
+        """
         _check_build_parameters(show_digits, add_totals)
+
+        if not isinstance(show_bin_xy, bool):
+            raise TypeError("show_bin_xy must be a boolean; got {}."
+                            .format(show_bin_xy))
 
         n_nonevent = self.n_nonevent
         n_event = self.n_event
@@ -182,21 +201,21 @@ class BinningTable2D(BinningTable):
 
         # Compute HHI
         self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)        
+        self._hhi_norm = hhi(p_records, normalized=True)
 
         # Compute paths. This is required for both plot and analysis
         # paths x: horizontal
         self._paths_x = []
         for i in range(self.m):
             path = tuple(dict.fromkeys(self.P[i, :]))
-            if not path in self._paths_x:
+            if path not in self._paths_x:
                 self._paths_x.append(path)
-        
-        # paths y: vertical     
+
+        # paths y: vertical
         self._paths_y = []
         for j in range(self.n):
             path = tuple(dict.fromkeys(self.P[:, j]))
-            if not path in self._paths_y:
+            if path not in self._paths_y:
                 self._paths_y.append(path)
 
         if show_bin_xy:
@@ -251,6 +270,20 @@ class BinningTable2D(BinningTable):
         return df
 
     def plot(self, metric="woe", savefig=None):
+        """Plot the binning table.
+
+        Visualize the non-event and event count, and the Weight of Evidence or
+        the event rate for each bin.
+
+        Parameters
+        ----------
+        metric : str, optional (default="woe")
+            Supported metrics are "woe" to show the Weight of Evidence (WoE)
+            measure and "event_rate" to show the event rate.
+
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+        """
         if metric == "woe":
             metric_values = self._woe
             metric_matrix = self._W
@@ -277,9 +310,9 @@ class BinningTable2D(BinningTable):
             er = er + [er[-1]]
             axtop.step(np.arange(self.n + 1) - 0.5, er,
                        label=path, where="post")
-            
+
         for i in range(self.n):
-            axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)    
+            axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
 
         axtop.get_xaxis().set_visible(False)
         axtop.set_ylabel(metric_label, fontsize=12)
@@ -292,7 +325,7 @@ class BinningTable2D(BinningTable):
                 ax.text(j, i, str(c), va='center', ha='center')
 
         fig.colorbar(pos, ax=ax, orientation="horizontal",
-                     fraction=0.025, pad=0.125)        
+                     fraction=0.025, pad=0.125)
 
         ax.xaxis.set_label_position("bottom")
         ax.xaxis.tick_bottom()
@@ -308,14 +341,14 @@ class BinningTable2D(BinningTable):
             er = er + [er[-1]]
             axright.step(er, np.arange(self.m + 1) - 0.5, label=path,
                          where="pre")
-                
+
         for j in range(self.m):
-            axright.axhline(j -0.5, color="grey", linestyle="--", alpha=0.5)
-            
+            axright.axhline(j - 0.5, color="grey", linestyle="--", alpha=0.5)
+
         axright.get_yaxis().set_visible(False)
         axright.set_xlabel(metric_label, fontsize=12)
 
-        #adjust margins
+        # adjust margins
         axright.margins(y=0)
         axtop.margins(x=0)
         plt.tight_layout()
@@ -326,6 +359,38 @@ class BinningTable2D(BinningTable):
         plt.show()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
+        """Binning table analysis.
+
+        Statistical analysis of the binning table, computing the statistics
+        Gini index, Information Value (IV), Jensen-Shannon divergence, and
+        the quality score. Additionally, several statistical significance tests
+        between consecutive bins of the contingency table are performed: a
+        frequentist test using the Chi-square test or the Fisher's exact test,
+        and a Bayesian A/B test using the beta distribution as a conjugate
+        prior of the Bernoulli distribution.
+
+        Parameters
+        ----------
+        pvalue_test : str, optional (default="chi2")
+            The statistical test. Supported test are "chi2" to choose the
+            Chi-square test and "fisher" to choose the Fisher exact test.
+
+        n_samples : int, optional (default=100)
+            The number of samples to run the Bayesian A/B testing between
+            consecutive bins to compute the probability of the event rate of
+            bin A being greater than the event rate of bin B.
+
+        print_output : bool (default=True)
+            Whether to print analysis information.
+
+        Notes
+        -----
+        The Chi-square test uses `scipy.stats.chi2_contingency
+        <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.
+        chi2_contingency.html>`_, and the Fisher exact test uses
+        `scipy.stats.fisher_exact <https://docs.scipy.org/doc/scipy/reference/
+        generated/scipy.stats.fisher_exact.html>`_.
+        """
         pairs = set()
 
         for path in self._paths_x:

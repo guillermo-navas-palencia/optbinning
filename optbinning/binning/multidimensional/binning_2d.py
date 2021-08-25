@@ -425,6 +425,27 @@ class OptimalBinning2D(OptimalBinning):
         self._is_fitted = False
 
     def fit(self, x, y, z, check_input=False):
+        """Fit the optimal binning 2D according to the given training data.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        z : array-like, shape = (n_samples,)
+            Target vector relative to x and y.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        self : object
+            Fitted optimal binning 2D.
+        """
         return self._fit(x, y, z, check_input)
 
     def _fit(self, x, y, z, check_input):

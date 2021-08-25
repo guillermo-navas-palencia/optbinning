@@ -1,6 +1,11 @@
-import numpy as np
+"""
+Model data for optimal binning 2D formulations using CART pruning.
+"""
 
-from sklearn.tree import _tree
+# Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
+# Copyright (C) 2021
+
+import numpy as np
 
 from ..metrics import jeffrey
 from ..metrics import jensen_shannon
@@ -58,7 +63,7 @@ def get_rectangles(tree, feature_names):
             if isinstance(node, tuple):
                 rectangle.append(node)
         rectangles.append(rectangle)
-        
+
     final_rectangles = refine_rectangles(rectangles)
 
     return final_rectangles
@@ -67,7 +72,7 @@ def get_rectangles(tree, feature_names):
 def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
                     scale, min_bin_size, max_bin_size, min_bin_n_event,
                     max_bin_n_event, min_bin_n_nonevent, max_bin_n_nonevent):
-    
+
     m, n = E.shape
     n_grid = m * n
 
@@ -146,23 +151,28 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
                                     continue
                                 elif is_max_bin_size and sn > max_bin_size:
                                     continue
-                                elif is_min_bin_n_event and sfe < min_bin_n_event:
+                                elif (is_min_bin_n_event and
+                                        sfe < min_bin_n_event):
                                     continue
-                                elif is_max_bin_n_event and sfe > max_bin_n_event:
+                                elif (is_max_bin_n_event and
+                                        sfe > max_bin_n_event):
                                     continue
-                                elif is_min_bin_n_nonevent and sfne < min_bin_n_nonevent:
+                                elif (is_min_bin_n_nonevent and
+                                        sfne < min_bin_n_nonevent):
                                     continue
-                                elif is_max_bin_n_nonevent and sfne > max_bin_n_nonevent:
+                                elif (is_max_bin_n_nonevent and
+                                        sfne > max_bin_n_nonevent):
                                     continue
 
                                 for r in row:
                                     cols[r].append(n_rectangles)
-                
+
                                 if monotonicity_x is not None:
                                     out = np.array([R[M]])
                                     outer_x.append(list(out[:, -1]))
 
                                 if monotonicity_y is not None:
+                                    out = np.array([R[M]])
                                     outer_y.append(list(out[-1, :]))
 
                                 rows.append(row)
@@ -174,7 +184,7 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
                                 rectangles.append(path)
                         else:
                             rectangles.append(path)
-                        
+
                         paths.add(path)
 
     n_event = np.array(n_fe)
@@ -196,7 +206,7 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
     event_rate = n_event / n_records
     p = n_event / E.sum()
     q = n_nonevent / NE.sum()
-    
+
     if divergence == "iv":
         iv = jeffrey(p, q)
     elif divergence == "js":
@@ -212,4 +222,4 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
         c = iv
 
     return (n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
-            event_rate, n_event, n_nonevent, n_records)                        
+            event_rate, n_event, n_nonevent, n_records)

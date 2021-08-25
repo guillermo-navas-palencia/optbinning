@@ -113,7 +113,7 @@ def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
 
                     for r in row:
                         cols[r].append(n_rectangles)
-    
+
                     if monotonicity_x is not None:
                         outer_x.append(
                             [row[_i * l + (l - 1)] for _i in range(k)])
@@ -147,7 +147,7 @@ def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
     event_rate = n_event / n_records
     p = n_event / E.sum()
     q = n_nonevent / NE.sum()
-    
+
     if divergence == "iv":
         iv = jeffrey(p, q)
     elif divergence == "js":

@@ -18,19 +18,30 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
 
     Parameters
     ----------
-    dtype_x : str
+    dtype_x : str, optional (default="numerical")
+        The data type of variable x. Supported data type is "numerical" for
+        continuous and ordinal variables.
 
-    dtype_y : str
+    dtype_y : str, optional (default="numerical")
+        The data type of variable y. Supported data type is "numerical" for
+        continuous and ordinal variables.
 
-    x : array-like, shape = (n_samples)
+    x : array-like, shape = (n_samples,)
+        Training vector x, where n_samples is the number of samples.
 
-    y : array-like, shape = (n_samples)
+    y : array-like, shape = (n_samples,)
+        Training vector y, where n_samples is the number of samples.
 
-    z : array-like, shape = (n_samples)
+    z : array-like, shape = (n_samples,)
+        Target vector relative to x and y.
 
-    special_codes : array-like or None, optional (default=None)
-        List of special codes. Use special codes to specify the data values
-        that must be treated separately.
+    special_codes_x : array-like or None, optional (default=None)
+        List of special codes for the variable x. Use special codes to specify
+        the data values that must be treated separately.
+
+    special_codes_y : array-like or None, optional (default=None)
+        List of special codes for the variable y. Use special codes to specify
+        the data values that must be treated separately.
 
     check_input : bool, (default=True)
         If False, the input arrays x and y will not be checked.
@@ -68,12 +79,12 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
         special_mask_x = pd.Series(x).isin(special_codes_x).values
     else:
         special_mask_x = np.zeros(len(x), dtype=bool)
-        
+
     if special_codes_y is not None:
         special_mask_y = pd.Series(x).isin(special_codes_y).values
     else:
         special_mask_y = np.zeros(len(y), dtype=bool)
-    
+
     missing_mask = missing_mask_x | missing_mask_y
     special_mask = special_mask_x | special_mask_y
 

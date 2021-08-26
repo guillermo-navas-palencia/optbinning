@@ -9,6 +9,8 @@ import numpy as np
 
 from sklearn.base import BaseEstimator
 
+from ._version import __version__
+
 try:
     from localsolver import LSStatistics
     LOCALSOLVER_AVAILABLE = True
@@ -18,9 +20,9 @@ except ImportError:
 
 def print_header():
     header = (
-        "optbinning (Version 0.11.0)\n"
+        "optbinning (Version {})\n"
         "Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0"
-        "\n")
+        "\n".format(__version__))
 
     print(header)
 

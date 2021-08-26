@@ -23,6 +23,7 @@ from .mip_2d import Binning2DMIP
 from .model_data_2d import model_data
 from .model_data_cart_2d import model_data_cart
 from .preprocessing_2d import split_data_2d
+from .transformations_2d import transform_binary_target
 
 
 def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
@@ -448,6 +449,105 @@ class OptimalBinning2D(OptimalBinning):
         """
         return self._fit(x, y, z, check_input)
 
+    def fit_transform(self, x, y, z, metric="woe", metric_special=0,
+                      metric_missing=0, show_digits=2, check_input=False):
+        """Fit the optimal binning 2D according to the given training data,
+        then transform it.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        z : array-like, shape = (n_samples,)
+            Target vector relative to x and y.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        z_new : numpy array, shape = (n_samples,)
+            Transformed array.
+        """
+        return self.fit(x, y, z, check_input).transform(
+            x, y, metric, metric_special, metric_missing, show_digits,
+            check_input)
+
+    def transform(self, x, y, metric="woe", metric_special=0, metric_missing=0,
+                  show_digits=2, check_input=False):
+        """Transform given data to Weight of Evidence (WoE) or event rate using
+        bins from the fitted optimal binning 2D.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        z_new : numpy array, shape = (n_samples,)
+            Transformed array.
+        """
+        self._check_is_fitted()
+
+        return transform_binary_target(
+            self._splits_x_optimal, self._splits_y_optimal, x, y,
+            self._n_nonevent, self._n_event, self.special_codes_x,
+            self.special_codes_y, metric, metric_special, metric_missing,
+            show_digits, check_input)
+
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()
 
@@ -476,6 +576,19 @@ class OptimalBinning2D(OptimalBinning):
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
+        if self.verbose:
+            n_clean = len(x_clean)
+            n_missing = len(x_missing)
+            n_special = len(x_special)
+
+            self._logger.info("Pre-processing: number of clean samples: {}"
+                              .format(n_clean))
+
+            self._logger.info("Pre-processing: number of missing samples: {}"
+                              .format(n_missing))
+
+            self._logger.info("Pre-processing: number of special samples: {}"
+                              .format(n_special))
         if self.verbose:
             self._logger.info("Pre-processing terminated. Time: {:.4f}s"
                               .format(self._time_preprocessing))
@@ -589,6 +702,9 @@ class OptimalBinning2D(OptimalBinning):
 
         opt_n_nonevent[-1] = self._n_nonevent_missing
         opt_n_event[-1] = self._n_event_missing
+
+        self._n_nonevent = opt_n_nonevent
+        self._n_event = opt_n_event
 
         D = D.reshape((m, n))
         P = P.reshape((m, n))

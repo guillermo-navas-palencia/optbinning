@@ -58,6 +58,12 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
 
 .. toctree::
    :maxdepth: 1
+   :caption: Optimal binning 2D
+
+   binning_2d_binary
+
+.. toctree::
+   :maxdepth: 1
    :caption: Other binning algorithms
 
    mdlp

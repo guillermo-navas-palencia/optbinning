@@ -13,6 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from ...formatting import dataframe_to_string
 from ..binning_statistics import _check_build_parameters
+from ..binning_statistics import _check_is_built
 from ..binning_statistics import BinningTable
 from ..metrics import bayesian_probability
 from ..metrics import binning_quality_score
@@ -284,6 +285,12 @@ class BinningTable2D(BinningTable):
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
+        _check_is_built(self)
+
+        if metric not in ("event_rate", "woe"):
+            raise ValueError('Invalid value for metric. Allowed string '
+                             'values are "event_rate" and "woe".')
+
         if metric == "woe":
             metric_values = self._woe
             metric_matrix = self._W
@@ -356,7 +363,14 @@ class BinningTable2D(BinningTable):
         axtop.legend(bbox_to_anchor=(1, 1))
         axright.legend(bbox_to_anchor=(1, 1))
 
-        plt.show()
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
         """Binning table analysis.

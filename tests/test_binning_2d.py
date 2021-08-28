@@ -213,6 +213,34 @@ def test_numerical_strategy():
     assert optb.binning_table.iv == approx(6.63764258, rel=1e-6)
 
 
+def test_numerical_monotonic_xy():
+    optb_mip = OptimalBinning2D(solver="mip", monotonic_trend_x="ascending",
+                                monotonic_trend_y="ascending")
+
+    optb_cp = OptimalBinning2D(solver="cp", monotonic_trend_x="ascending",
+                               monotonic_trend_y="ascending")
+
+    for optb in [optb_mip, optb_cp]:
+        optb.fit(x, y, z)
+        assert optb.status == "OPTIMAL"
+
+        optb.binning_table.build()
+        assert optb.binning_table.iv == approx(7.59474677, rel=1e-6)
+
+    optb_mip = OptimalBinning2D(solver="mip", monotonic_trend_x="descending",
+                                monotonic_trend_y="descending")
+
+    optb_cp = OptimalBinning2D(solver="cp", monotonic_trend_x="descending",
+                               monotonic_trend_y="descending")
+
+    for optb in [optb_mip, optb_cp]:
+        optb.fit(x, y, z)
+        assert optb.status == "OPTIMAL"
+
+        optb.binning_table.build()
+        assert optb.binning_table.iv == approx(0, rel=1e-6)
+
+
 def test_numerical_min_max_n_bins():
     optb_mip = OptimalBinning2D(solver="mip", min_n_bins=2, max_n_bins=5)
     optb_cp = OptimalBinning2D(solver="cp", min_n_bins=2, max_n_bins=5)
@@ -240,11 +268,15 @@ def test_numerical_default_transform():
         z_transform = optb.transform(x, y)
 
     optb.fit(x, y, z)
+
+    with raises(ValueError):
+        z_transform = optb.transform(x, y, metric="new_metric")
+
     z_transform = optb.transform(x, y, metric="woe")
     assert z_transform[:5] == approx([-5.37317977, -3.51688178, -5.37317977,
                                       -0.52114951, -5.37317977], rel=1e-6)
 
-    z_transform = optb.transform(x, y, metric="event_rate")
+    z_transform = optb.transform(x, y, metric="event_rate", check_input=True)
     assert z_transform[:5] == approx([0.99224806, 0.95238095, 0.99224806, 0.5,
                                       0.99224806], rel=1e-6)
 

@@ -9,7 +9,7 @@ import numbers
 
 import numpy as np
 
-from ...preprocessing import split_data
+from ...binning.preprocessing import split_data
 from .gk import GK
 
 try:

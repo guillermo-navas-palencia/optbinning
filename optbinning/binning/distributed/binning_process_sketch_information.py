@@ -5,26 +5,9 @@ Binning process sketch information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
-from ...binning.binning_information import print_header
-from ...binning.binning_information import print_optional_parameters
-
-
-binning_process_sketch_default_options = {
-    "max_n_prebins": 20,
-    "min_n_bins": None,
-    "max_n_bins": None,
-    "min_bin_size": None,
-    "max_bin_size": None,
-    "max_pvalue": None,
-    "max_pvalue_policy": "consecutive",
-    "selection_criteria": None,
-    "categorical_variables": None,
-    "special_codes": None,
-    "split_digits": None,
-    "binning_fit_params": None,
-    "binning_transform_params": None,
-    "verbose": False
-}
+from ...information import print_header
+from ...information import print_optional_parameters
+from ...options import binning_process_sketch_default_options
 
 
 def print_main_info(n_records, n_variables, time_add, time_solve):

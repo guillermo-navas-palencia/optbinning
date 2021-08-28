@@ -9,39 +9,7 @@ from ...binning.binning_information import print_header
 from ...binning.binning_information import print_optional_parameters
 from ...binning.binning_information import print_name_status
 from ...binning.binning_information import print_main_info
-
-
-optimal_pw_binning_options = {
-    "name": "",
-    "estimator": None,
-    "objective": "l2",
-    "degree": 1,
-    "continuous": True,
-    "prebinning_method": "cart",
-    "max_n_prebins": 20,
-    "min_prebin_size": 0.05,
-    "min_n_bins": None,
-    "max_n_bins": None,
-    "min_bin_size": None,
-    "max_bin_size": None,
-    "monotonic_trend": "auto",
-    "n_subsamples": None,
-    "max_pvalue": None,
-    "max_pvalue_policy": "consecutive",
-    "outlier_detector": None,
-    "outlier_params": None,
-    "user_splits": None,
-    "special_codes": None,
-    "split_digits": None,
-    "solver": "auto",
-    "h_epsilon": 1.35,
-    "quantile": 0.5,
-    "regularization": None,
-    "reg_l1": 1.0,
-    "reg_l2": 1.0,
-    "random_state": None,
-    "verbose": False
-}
+from ...options import optimal_pw_binning_options
 
 
 def print_prebinning_statistics(n_prebins):

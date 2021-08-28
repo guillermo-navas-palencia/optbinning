@@ -321,8 +321,9 @@ def test_categorical_default_user_splits():
 
     assert optb.status == "OPTIMAL"
 
-    user_splits = [['Pensioner', 'Working'],
-                   ['Commercial associate'], ['State servant']]
+    user_splits = np.array([
+        ['Pensioner', 'Working'], ['Commercial associate'], ['State servant']
+        ], dtype=object)
 
     optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
                           user_splits=user_splits, verbose=True)

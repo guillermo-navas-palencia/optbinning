@@ -595,7 +595,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         Parameters
         ----------
         input_path : str
-            Any valid string path to a file with extension .cvs or .parquet.
+            Any valid string path to a file with extension .csv or .parquet.
 
         target : str
             Target column.
@@ -686,10 +686,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         Parameters
         ----------
         input_path : str
-            Any valid string path to a file with extension .cvs.
+            Any valid string path to a file with extension .csv.
 
         output_path : str
-            Any valid string path to a file with extension .cvs.
+            Any valid string path to a file with extension .csv.
 
         target : str
             Target column.
@@ -790,10 +790,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         Parameters
         ----------
         input_path : str
-            Any valid string path to a file with extension .cvs.
+            Any valid string path to a file with extension .csv.
 
         output_path : str
-            Any valid string path to a file with extension .cvs.
+            Any valid string path to a file with extension .csv.
 
         chunksize :
             Rows to read, transform and write at a time.

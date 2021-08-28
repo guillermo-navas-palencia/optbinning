@@ -61,10 +61,20 @@ COLORS_RGB = [
 
 
 def bin_str_format(bins, show_digits):
-    # Auto
     show_digits = 2 if show_digits is None else show_digits
-    return ["[{0:.{2}f}, {1:.{2}f})".format(bins[i], bins[i+1], show_digits)
-            for i in range(len(bins)-1)]
+
+    bin_str = []
+    for i in range(len(bins) - 1):
+        if np.isinf(bins[i]):
+            b = "({0:.{2}f}, {1:.{2}f})".format(
+                bins[i], bins[i+1], show_digits)
+        else:
+            b = "[{0:.{2}f}, {1:.{2}f})".format(
+                bins[i], bins[i+1], show_digits)
+
+        bin_str.append(b)
+
+    return bin_str
 
 
 def bin_categorical(splits_categorical, categories, cat_others, user_splits):
@@ -507,11 +517,11 @@ class BinningTable:
                              'values are "bin" and "actual".')
 
         if style == "actual":
-            if add_special or add_missing:
-                raise ValueError('If style="actual", add_special and '
-                                 'add_missing must be set to False.')
+            # Hide special and missing bin
+            add_special = False
+            add_missing = False
 
-            elif self.dtype == "categorical":
+            if self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:
@@ -1435,11 +1445,11 @@ class ContinuousBinningTable:
                              'values are "bin" and "actual".')
 
         if style == "actual":
-            if add_special or add_missing:
-                raise ValueError('If style="actual", add_special and '
-                                 'add_missing must be set to False.')
+            # Hide special and missing bin
+            add_special = False
+            add_missing = False
 
-            elif self.dtype == "categorical":
+            if self.dtype == "categorical":
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:

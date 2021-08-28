@@ -5,17 +5,10 @@ Counterfactual information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
-from ...binning.binning_information import print_header
-from ...binning.binning_information import print_optional_parameters
-from ...binning.binning_information import print_solver_statistics
-
-
-counterfactual_default_options = {
-    "scorecard": None,
-    "special_missing": False,
-    "n_jobs": 1,
-    "verbose": False
-}
+from ...information import print_header
+from ...information import print_optional_parameters
+from ...information import print_solver_statistics
+from ...options import counterfactual_default_options
 
 
 def print_status(status):

@@ -5,44 +5,13 @@ Binning sketch information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-from ...binning.binning_information import print_header
 from ...binning.binning_information import print_main_info
 from ...binning.binning_information import print_name_status
-from ...binning.binning_information import print_optional_parameters
 from ...binning.binning_information import print_prebinning_statistics
-from ...binning.binning_information import print_solver_statistics
-
-
-optimal_binning_sketch_options = {
-    "name": "",
-    "dtype": "numerical",
-    "sketch": "gk",
-    "eps": 1e-4,
-    "K": 25,
-    "solver": "cp",
-    "divergence": "iv",
-    "max_n_prebins": 20,
-    "min_n_bins": None,
-    "max_n_bins": None,
-    "min_bin_size": None,
-    "max_bin_size": None,
-    "min_bin_n_nonevent": None,
-    "max_bin_n_nonevent": None,
-    "min_bin_n_event": None,
-    "max_bin_n_event": None,
-    "monotonic_trend": "auto",
-    "min_event_rate_diff": 0,
-    "max_pvalue": None,
-    "max_pvalue_policy": "consecutive",
-    "gamma": 0,
-    "cat_cutoff": None,
-    "cat_heuristic": False,
-    "special_codes": None,
-    "split_digits": None,
-    "mip_solver": "bop",
-    "time_limit": 100,
-    "verbose": False
-}
+from ...information import print_header
+from ...information import print_optional_parameters
+from ...information import print_solver_statistics
+from ...options import optimal_binning_sketch_options
 
 
 def print_timing(solver_type, solver, time_total, time_prebinning, time_solver,

@@ -56,8 +56,8 @@ install_requires = [
     'ortools>=7.2',
     'pympler',
     'pandas',
-    'ropwr',
-    'scipy',
+    'ropwr>=0.2.0',
+    'scipy>=1.6.0',
     'scikit-learn>=0.22.0',
     'tdigest'
 ]
@@ -69,9 +69,15 @@ tests_require = [
 ]
 
 
+# Read version file
+version_info = {}
+with open("optbinning/_version.py") as f:
+    exec(f.read(), version_info)
+
+
 setup(
     name="optbinning",
-    version="0.11.0",
+    version=version_info['__version__'],
     description="OptBinning: The Python Optimal Binning library",
     long_description=long_description,
     author="Guillermo Navas-Palencia",

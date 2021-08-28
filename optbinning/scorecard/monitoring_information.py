@@ -7,16 +7,7 @@ Monitoring information.
 
 from ..binning.binning_information import print_header
 from ..binning.binning_information import print_optional_parameters
-
-
-scorecard_monitoring_default_options = {
-    "scorecard": None,
-    "psi_method": "cart",
-    "psi_n_bins": 20,
-    "psi_min_bin_size": 0.05,
-    "show_digits": 2,
-    "verbose": False
-}
+from ..options import scorecard_monitoring_default_options
 
 
 def print_main_info(n_records_a, n_records_e, n_variables, time_total):

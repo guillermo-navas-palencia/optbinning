@@ -5,20 +5,9 @@ Scorecard information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-from ..binning.binning_information import print_header
-from ..binning.binning_information import print_optional_parameters
-
-
-scorecard_default_options = {
-    "binning_process": None,
-    "estimator": None,
-    "scaling_method": None,
-    "scaling_method_params": None,
-    "intercept_based": False,
-    "reverse_scorecard": False,
-    "rounding": False,
-    "verbose": False
-}
+from ..information import print_header
+from ..information import print_optional_parameters
+from ..options import scorecard_default_options
 
 
 def print_main_info(n_records, n_variables, time_total):

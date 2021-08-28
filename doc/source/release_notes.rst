@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+Version 0.12.0 (2021-08-28)
+---------------------------
+
+New features:
+
+   - Optimal binning 2D with binary target.
+
+Improvements:
+
+   - Update bin string format in binning tables.
+   - Simplify logic when ``style="actual"`` in binning table plots.
+
+
+API changes:
+
+   - Scorecard fit method arguments changed to the usual ``(X, y)``: `Issue 111 <X, y. https://github.com/guillermo-navas-palencia/optbinning/issues/111>`_
+
+
 Version 0.11.0 (2021-05-28)
 ---------------------------
 

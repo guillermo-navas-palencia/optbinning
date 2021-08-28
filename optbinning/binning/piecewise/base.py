@@ -18,8 +18,8 @@ from ...binning.auto_monotonic import type_of_monotonic_trend
 from ...binning.base import Base
 from ...binning.binning import OptimalBinning
 from ...binning.continuous_binning import ContinuousOptimalBinning
+from ...binning.preprocessing import split_data
 from ...logging import Logger
-from ...preprocessing import split_data
 from .binning_information import print_binning_information
 from .binning_information import retrieve_status
 

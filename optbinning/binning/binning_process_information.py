@@ -5,9 +5,9 @@ Binning process information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
-from .binning_information import print_header
-from .binning_information import print_optional_parameters
-from .options import binning_process_default_options
+from ..information import print_header
+from ..information import print_optional_parameters
+from ..options import binning_process_default_options
 
 
 def print_main_info(n_records, n_variables, time_total):

@@ -13,14 +13,14 @@ from sklearn.utils import check_array
 import numpy as np
 
 from ..logging import Logger
-from ..preprocessing import preprocessing_user_splits_categorical
-from ..preprocessing import split_data
 from .auto_monotonic import auto_monotonic_continuous
 from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning
 from .binning_statistics import continuous_bin_info
 from .binning_statistics import ContinuousBinningTable
 from .continuous_cp import ContinuousBinningCP
+from .preprocessing import preprocessing_user_splits_categorical
+from .preprocessing import split_data
 from .transformations import transform_continuous_target
 
 

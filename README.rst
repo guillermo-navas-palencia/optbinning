@@ -32,6 +32,12 @@ not previously addressed.
 
       - .. figure:: doc/source/_images/binning_data_stream.gif
 
+.. list-table::
+
+    * - .. figure:: doc/source/_images/binning_2d_readme.png
+
+      - .. figure:: doc/source/_images/binning_2d_readme_woe.png
+
 
 .. contents:: **Table of Contents**
 
@@ -208,7 +214,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.11.0)
+   optbinning (Version 0.12.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -268,6 +274,66 @@ Print overview information about the options settings, problem statistics, and t
        Post-processing                     0.00 sec   (  0.30%)
 
 
+Example: Optimal binning 2D with binary target
+----------------------------------------------
+
+In this case, we choose two variables to discretized and the binary target.
+
+.. code-block:: python
+
+   import pandas as pd
+   from sklearn.datasets import load_breast_cancer
+
+   data = load_breast_cancer()
+   df = pd.DataFrame(data.data, columns=data.feature_names)
+
+   variable1 = "mean radius"
+   variable2 = "worst concavity"
+   x = df[variable1].values
+   y = df[variable2].values
+   z = data.target
+
+Import and instantiate an ``OptimalBinning2D`` object class. We pass the variable names, and monotonic trends. Fit the optimal binning object with arrays ``x``, ``y`` and ``z``.
+
+.. code-block:: python
+
+   from optbinning import OptimalBinning2D
+   optb = OptimalBinning2D(name_x=variable1, name_y=variable2, monotonic_trend_x="ascending",
+                           monotonic_trend_y="ascending", min_bin_size=0.05)
+   optb.fit(x, y, z)
+
+
+Show binning table:
+
+.. code-block:: python
+
+   >>> optb.binning_table.build()
+
+.. code-block:: text
+
+                    Bin x         Bin y  Count  Count (%)  Non-event  Event  Event rate       WoE        IV        JS
+   0        (-inf, 13.70)  (-inf, 0.21)    219   0.384886        218      1    0.004566  4.863346  2.946834  0.199430
+   1         [13.70, inf)  (-inf, 0.21)     48   0.084359         43      5    0.104167  1.630613  0.157946  0.017811
+   2        (-inf, 13.09)  [0.21, 0.38)     48   0.084359         47      1    0.020833  3.328998  0.422569  0.037010
+   3       [13.09, 15.05)  [0.21, 0.38)     46   0.080844         29     17    0.369565  0.012933  0.000013  0.000002
+   4         [15.05, inf)  [0.21, 0.32)     32   0.056239          3     29    0.906250 -2.789833  0.358184  0.034271
+   5         [15.05, inf)   [0.32, inf)    129   0.226714          1    128    0.992248 -5.373180  3.229133  0.201294
+   6        (-inf, 15.05)   [0.38, inf)     47   0.082601         16     31    0.659574 -1.182548  0.119920  0.014173
+   7              Special       Special      0   0.000000          0      0    0.000000  0.000000  0.000000  0.000000
+   8              Missing       Missing      0   0.000000          0      0    0.000000  0.000000  0.000000  0.000000
+   Totals                                  569   1.000000        357    212    0.372583            7.234600  0.503991
+
+Similar to the optimal binning, you can generate a histogram 2D to visualize WoE and event rate.
+
+.. code-block:: python
+
+   >>> optb.binning_table.plot(metric="event_rate")
+
+
+.. image:: doc/source/_images/binning_2d_readme_example.png
+   :target: doc/source/_images/binning_2d_readme_example.png
+
+
 Example: Scorecard with continuous target
 -----------------------------------------
 
@@ -316,7 +382,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.11.0)
+   optbinning (Version 0.12.0)
    Copyright (c) 2019-2021 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -560,6 +626,7 @@ Currently **officially** using OptBinning:
 2. `Bilendo <https://www.bilendo.de>`_ [`@FlorianKappert <https://github.com/floriankappert>`_ & `@JakobBeyer <https://github.com/jakobbeyer>`_]
 3. `Aplazame <https://www.aplazame.com/>`_
 4. `Praelexis Credit <https://www.praelexis.com/praelexis-credit/>`_
+5. `ING <www.ing.com>`_ 
 
 
 Citation

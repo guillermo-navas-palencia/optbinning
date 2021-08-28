@@ -212,7 +212,6 @@ optimal_pw_binning_options = {
 
 
 scorecard_monitoring_default_options = {
-    "target": "",
     "scorecard": None,
     "psi_method": "cart",
     "psi_n_bins": 20,
@@ -223,7 +222,6 @@ scorecard_monitoring_default_options = {
 
 
 scorecard_default_options = {
-    "target": "",
     "binning_process": None,
     "estimator": None,
     "scaling_method": None,

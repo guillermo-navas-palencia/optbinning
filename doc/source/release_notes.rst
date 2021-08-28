@@ -16,7 +16,7 @@ Improvements:
 
 API changes:
 
-   - Scorecard fit method arguments changed to the usual ``(X, y)`` `Issue 111 <X, y. https://github.com/guillermo-navas-palencia/optbinning/issues/111>`_
+   - Scorecard fit method arguments changed to the usual ``(X, y)``: `Issue 111 <X, y. https://github.com/guillermo-navas-palencia/optbinning/issues/111>`_
 
 
 Version 0.11.0 (2021-05-28)

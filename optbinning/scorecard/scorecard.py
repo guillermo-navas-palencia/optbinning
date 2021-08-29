@@ -278,7 +278,7 @@ class Scorecard(Base, BaseEstimator):
 
         Returns
         -------
-        self : object
+        self : Scorecard
             Fitted scorecard.
         """
         return self._fit(X, y, metric_special, metric_missing, show_digits,

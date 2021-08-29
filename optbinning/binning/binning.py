@@ -523,7 +523,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         Returns
         -------
-        self : object
+        self : OptimalBinning
             Fitted optimal binning.
         """
         return self._fit(x, y, sample_weight, check_input)
@@ -1114,7 +1114,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         Returns
         -------
-        binning_table : BinningTable.
+        binning_table : BinningTable
         """
         self._check_is_fitted()
 

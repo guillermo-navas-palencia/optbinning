@@ -444,7 +444,7 @@ class OptimalBinning2D(OptimalBinning):
 
         Returns
         -------
-        self : object
+        self : OptimalBinning2D
             Fitted optimal binning 2D.
         """
         return self._fit(x, y, z, check_input)

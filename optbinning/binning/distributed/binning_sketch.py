@@ -552,7 +552,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         Returns
         -------
-        self : object
+        self : OptimalBinningSketch
             Current fitted optimal binning.
         """
         time_init = time.perf_counter()

@@ -292,7 +292,7 @@ class BasePWBinning(Base, BaseEstimator):
 
         Returns
         -------
-        self : object
+        self : BasePWBinning
             Fitted optimal piecewise binning.
         """
         return self._fit(x, y, lb, ub, check_input)

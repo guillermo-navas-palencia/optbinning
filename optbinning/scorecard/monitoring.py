@@ -242,7 +242,7 @@ class ScorecardMonitoring(BaseEstimator):
 
         Returns
         -------
-        self : object
+        self : ScorecardMonitoring
             Fitted monitoring.
         """
         time_init = time.perf_counter()

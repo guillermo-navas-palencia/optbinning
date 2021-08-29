@@ -583,7 +583,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcess
             Fitted binning process.
         """
         return self._fit(X, y, check_input)
@@ -606,7 +606,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcess
             Fitted binning process.
         """
         return self._fit_disk(input_path, target, **kwargs)
@@ -623,7 +623,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcess
             Fitted binning process.
         """
         return self._fit_from_dict(dict_optb)
@@ -726,7 +726,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcess
             Fitted binning process.
         """
         return self.fit_disk(input_path, target, **kwargs).transform_disk(
@@ -827,7 +827,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcess
             Fitted binning process.
         """
         self._check_is_fitted()

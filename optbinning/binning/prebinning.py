@@ -76,7 +76,7 @@ class PreBinning:
 
         Returns
         -------
-        self : object
+        self : PreBinning
         """
         if self.method not in ("uniform", "quantile", "cart", "mdlp"):
             raise ValueError('Invalid value for prebinning method. Allowed '

@@ -92,7 +92,7 @@ class MDLP(BaseEstimator):
 
         Returns
         -------
-        self : object
+        self : MDLP
         """
         return self._fit(x, y)
 

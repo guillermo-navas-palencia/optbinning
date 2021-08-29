@@ -353,7 +353,7 @@ class SBOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        self : object
+        self : SBOptimalBinning
             Fitted optimal binning.
         """
         return self._fit(X, Y, weights, check_input)

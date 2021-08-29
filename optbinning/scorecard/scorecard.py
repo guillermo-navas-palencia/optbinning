@@ -248,8 +248,8 @@ class Scorecard(Base, BaseEstimator):
 
         self._is_fitted = False
 
-    def fit(self, X, y, metric_special=0, metric_missing=0, show_digits=2,
-            check_input=False):
+    def fit(self, X, y, sample_weight=None, metric_special=0, metric_missing=0,
+            show_digits=2, check_input=False):
         """Fit scorecard.
 
         Parameters
@@ -259,6 +259,11 @@ class Scorecard(Base, BaseEstimator):
 
         y : array-like of shape (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            This option is only available for a binary target.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -281,8 +286,8 @@ class Scorecard(Base, BaseEstimator):
         self : Scorecard
             Fitted scorecard.
         """
-        return self._fit(X, y, metric_special, metric_missing, show_digits,
-                         check_input)
+        return self._fit(X, y, sample_weight, metric_special, metric_missing,
+                         show_digits, check_input)
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -451,8 +456,8 @@ class Scorecard(Base, BaseEstimator):
         with open(path, "wb") as f:
             dill.dump(self, f)
 
-    def _fit(self, X, y, metric_special, metric_missing, show_digits,
-             check_input):
+    def _fit(self, X, y, sample_weight, metric_special, metric_missing,
+             show_digits, check_input):
 
         # Store the metrics for missing and special bins for predictions
         self._metric_special = metric_special
@@ -481,6 +486,11 @@ class Scorecard(Base, BaseEstimator):
                                  self.scaling_method_params,
                                  self._target_dtype)
 
+        # Check sample weight
+        if sample_weight is not None and self._target_dtype != "binary":
+            raise ValueError("Target type {} does not support sample weight."
+                             .format(self._target_dtype))
+
         if self._target_dtype == "binary":
             metric = "woe"
             bt_metric = "WoE"
@@ -501,8 +511,8 @@ class Scorecard(Base, BaseEstimator):
         self.binning_process_.set_params(verbose=False)
 
         X_t = self.binning_process_.fit_transform(
-            X[self.binning_process.variable_names], y, metric, metric_special,
-            metric_missing, show_digits, check_input)
+            X[self.binning_process.variable_names], y, sample_weight, metric,
+            metric_special, metric_missing, show_digits, check_input)
 
         self._time_binning_process = time.perf_counter() - time_binning_process
 
@@ -516,7 +526,7 @@ class Scorecard(Base, BaseEstimator):
             self._logger.info("Fitting estimator.")
 
         self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X_t, y)
+        self.estimator_.fit(X_t, y, sample_weight)
 
         self._time_estimator = time.perf_counter() - time_estimator
 

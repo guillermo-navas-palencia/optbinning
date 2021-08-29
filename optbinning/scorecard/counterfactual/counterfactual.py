@@ -251,7 +251,7 @@ class Counterfactual(BaseCounterfactual):
 
         Returns
         -------
-        self : object
+        self : Counterfactual
             Fitted counterfactual.
         """
         time_init = time.perf_counter()
@@ -389,7 +389,7 @@ class Counterfactual(BaseCounterfactual):
 
         Returns
         -------
-        self : object
+        self : Counterfactual
             Generated counterfactuals.
         """
         time_init = time.perf_counter()

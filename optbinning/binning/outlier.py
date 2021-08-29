@@ -30,7 +30,7 @@ class OutlierDetector:
 
         Returns
         -------
-        self : object
+        self : OutlierDetector
         """
         self._fit(x)
 

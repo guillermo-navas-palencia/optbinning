@@ -291,7 +291,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcessSketch
             Binning process with new data.
         """
         if not self._is_started:
@@ -364,6 +364,8 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             self._logger.info("Sketch: added new data.")
+
+        return self
 
     def information(self, print_level=1):
         """Print overview information about the options settings and
@@ -448,7 +450,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         Returns
         -------
-        self : object
+        self : BinningProcessSketch
             Current fitted binning process.
         """
         time_init = time.perf_counter()

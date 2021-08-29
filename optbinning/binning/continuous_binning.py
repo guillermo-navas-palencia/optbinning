@@ -395,7 +395,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        self : object
+        self : ContinuousOptimalBinning
             Fitted optimal binning.
         """
         return self._fit(x, y, check_input)

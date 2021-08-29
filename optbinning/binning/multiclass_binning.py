@@ -369,7 +369,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        self : object
+        self : MulticlassOptimalBinning
             Fitted optimal binning.
         """
         return self._fit(x, y, check_input)

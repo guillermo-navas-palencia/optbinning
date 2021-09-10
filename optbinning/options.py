@@ -96,6 +96,7 @@ binning_process_default_options = {
     "max_pvalue": None,
     "max_pvalue_policy": "consecutive",
     "selection_criteria": None,
+    "fixed_variables": None,
     "categorical_variables": None,
     "special_codes": None,
     "split_digits": None,

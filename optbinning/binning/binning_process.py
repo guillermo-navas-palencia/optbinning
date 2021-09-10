@@ -70,7 +70,8 @@ def _read_column(input_path, extension, column, **kwargs):
 def _fit_variable(x, y, name, target_dtype, categorical_variables,
                   binning_fit_params, max_n_prebins, min_prebin_size,
                   min_n_bins, max_n_bins, min_bin_size, max_pvalue,
-                  max_pvalue_policy, special_codes, split_digits):
+                  max_pvalue_policy, special_codes, split_digits,
+                  sample_weight=None):
     params = {}
     dtype = _check_variable_dtype(x)
 
@@ -113,7 +114,11 @@ def _fit_variable(x, y, name, target_dtype, categorical_variables,
             split_digits=split_digits)
 
     optb.set_params(**params)
-    optb.fit(x, y)
+
+    if target_dtype == "binary":
+        optb.fit(x, y, sample_weight)
+    else:
+        optb.fit(x, y)
 
     return dtype, optb
 
@@ -121,7 +126,8 @@ def _fit_variable(x, y, name, target_dtype, categorical_variables,
 def _fit_block(X, y, names, target_dtype, categorical_variables,
                binning_fit_params, max_n_prebins, min_prebin_size,
                min_n_bins, max_n_bins, min_bin_size, max_pvalue,
-               max_pvalue_policy, special_codes, split_digits):
+               max_pvalue_policy, special_codes, split_digits,
+               sample_weight=None):
 
     variable_dtypes = {}
     binned_variables = {}
@@ -132,13 +138,13 @@ def _fit_block(X, y, names, target_dtype, categorical_variables,
                 X[:, i], y, name, target_dtype, categorical_variables,
                 binning_fit_params, max_n_prebins, min_prebin_size, min_n_bins,
                 max_n_bins, min_bin_size, max_pvalue, max_pvalue_policy,
-                special_codes, split_digits)
+                special_codes, split_digits, sample_weight)
         else:
             dtype, optb = _fit_variable(
                 X[name], y, name, target_dtype, categorical_variables,
                 binning_fit_params, max_n_prebins, min_prebin_size, min_n_bins,
                 max_n_bins, min_bin_size, max_pvalue, max_pvalue_policy,
-                special_codes, split_digits)
+                special_codes, split_digits, sample_weight)
 
         variable_dtypes[name] = dtype
         binned_variables[name] = optb
@@ -190,9 +196,9 @@ def _check_selection_criteria(selection_criteria, target_dtype):
 def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       min_n_bins, max_n_bins, min_bin_size, max_bin_size,
                       max_pvalue, max_pvalue_policy, selection_criteria,
-                      categorical_variables, special_codes, split_digits,
-                      binning_fit_params, binning_transform_params, n_jobs,
-                      verbose):
+                      fixed_variables, categorical_variables, special_codes,
+                      split_digits, binning_fit_params,
+                      binning_transform_params, n_jobs, verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -251,6 +257,10 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
     if selection_criteria is not None:
         if not isinstance(selection_criteria, dict):
             raise TypeError("selection_criteria must be a dict.")
+
+    if fixed_variables is not None:
+        if not isinstance(fixed_variables, (np.ndarray, list)):
+            raise TypeError("fixed_variables must be a list or numpy.ndarray.")
 
     if categorical_variables is not None:
         if not isinstance(categorical_variables, (np.ndarray, list)):
@@ -368,6 +378,12 @@ class BaseBinningProcess:
                     support[indices_valid[mask]] = True
                     self._support &= support
 
+        # Fixed variables
+        if self.fixed_variables is not None:
+            for fv in self.fixed_variables:
+                idfv = list(self.variable_names).index(fv)
+                self._support[idfv] = True
+
     def _binning_selection_criteria(self):
         for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
@@ -447,6 +463,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         .. versionadded:: 0.6.0
 
+    fixed_variables : array-like or None
+        List of variables to be fixed. The binning process will retain these
+        variables if the selection criteria is not satisfied.
+
+        .. versionadded:: 0.12.1
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
@@ -515,9 +537,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, max_pvalue=None,
                  max_pvalue_policy="consecutive", selection_criteria=None,
-                 categorical_variables=None, special_codes=None,
-                 split_digits=None, binning_fit_params=None,
-                 binning_transform_params=None, n_jobs=None, verbose=False):
+                 fixed_variables=None, categorical_variables=None,
+                 special_codes=None, split_digits=None,
+                 binning_fit_params=None, binning_transform_params=None,
+                 n_jobs=None, verbose=False):
 
         self.variable_names = variable_names
 
@@ -531,6 +554,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self.max_pvalue_policy = max_pvalue_policy
 
         self.selection_criteria = selection_criteria
+        self.fixed_variables = fixed_variables
 
         self.binning_fit_params = binning_fit_params
         self.binning_transform_params = binning_transform_params
@@ -563,7 +587,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         self._is_fitted = False
 
-    def fit(self, X, y, check_input=False):
+    def fit(self, X, y, sample_weight=None, check_input=False):
         """Fit the binning process. Fit the optimal binning to all variables
         according to the given training data.
 
@@ -578,6 +602,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         y : array-like of shape (n_samples,)
             Target vector relative to x.
 
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``. This option is only
+            available for a binary target.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -586,7 +616,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self : BinningProcess
             Fitted binning process.
         """
-        return self._fit(X, y, check_input)
+        return self._fit(X, y, sample_weight, check_input)
 
     def fit_disk(self, input_path, target, **kwargs):
         """Fit the binning process according to the given training data on
@@ -628,8 +658,9 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         """
         return self._fit_from_dict(dict_optb)
 
-    def fit_transform(self, X, y, metric=None, metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(self, X, y, sample_weight=None, metric=None,
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the binning process according to the given training data, then
         transform it.
 
@@ -640,6 +671,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         y : array-like of shape (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``. This option is only
+            available for a binary target.
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default
@@ -673,9 +710,9 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         X_new : numpy array, shape = (n_samples, n_features_new)
             Transformed array.
         """
-        return self.fit(X, y, check_input).transform(X, metric, metric_special,
-                                                     metric_missing,
-                                                     show_digits, check_input)
+        return self.fit(X, y, sample_weight, check_input).transform(
+            X, metric, metric_special, metric_missing, show_digits,
+            check_input)
 
     def fit_transform_disk(self, input_path, output_path, target, chunksize,
                            metric=None, metric_special=0, metric_missing=0,
@@ -995,7 +1032,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         else:
             return mask
 
-    def _fit(self, X, y, check_input):
+    def _fit(self, X, y, sample_weight, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -1013,6 +1050,11 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
             raise ValueError("Target type {} is not supported."
+                             .format(self._target_dtype))
+
+        # check sample weight
+        if sample_weight is not None and self._target_dtype != "binary":
+            raise ValueError("Target type {} does not support sample weight."
                              .format(self._target_dtype))
 
         if self.selection_criteria is not None:
@@ -1062,7 +1104,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.max_n_prebins, self.min_prebin_size,
                         self.min_n_bins, self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
                 else:
                     dtype, optb = _fit_variable(
                         X[name], y, name, self._target_dtype,
@@ -1070,7 +1112,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.max_n_prebins, self.min_prebin_size,
                         self.min_n_bins, self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
 
                 self._variable_dtypes[name] = dtype
                 self._binned_variables[name] = optb
@@ -1158,6 +1200,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if self.selection_criteria is not None:
             _check_selection_criteria(self.selection_criteria,
                                       self._target_dtype)
+
+        if self.fixed_variables is not None:
+            for fv in self.fixed_variables:
+                if fv not in self.variable_names:
+                    raise ValueError("Variable {} to be fixed is not a valid "
+                                     "variable name.".format(fv))
 
         self._n_samples = len(y)
         self._n_variables = len(self.variable_names)

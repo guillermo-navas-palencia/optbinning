@@ -196,9 +196,9 @@ def _check_selection_criteria(selection_criteria, target_dtype):
 def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       min_n_bins, max_n_bins, min_bin_size, max_bin_size,
                       max_pvalue, max_pvalue_policy, selection_criteria,
-                      categorical_variables, special_codes, split_digits,
-                      binning_fit_params, binning_transform_params, n_jobs,
-                      verbose):
+                      fixed_variables, categorical_variables, special_codes,
+                      split_digits, binning_fit_params,
+                      binning_transform_params, n_jobs, verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -257,6 +257,10 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
     if selection_criteria is not None:
         if not isinstance(selection_criteria, dict):
             raise TypeError("selection_criteria must be a dict.")
+
+    if fixed_variables is not None:
+        if not isinstance(fixed_variables, (np.ndarray, list)):
+            raise TypeError("fixed_variables must be a list or numpy.ndarray.")
 
     if categorical_variables is not None:
         if not isinstance(categorical_variables, (np.ndarray, list)):
@@ -374,6 +378,12 @@ class BaseBinningProcess:
                     support[indices_valid[mask]] = True
                     self._support &= support
 
+        # Fixed variables
+        if self.fixed_variables is not None:
+            for fv in self.fixed_variables:
+                idfv = list(self.variable_names).index(fv)
+                self._support[idfv] = True
+
     def _binning_selection_criteria(self):
         for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
@@ -453,6 +463,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         .. versionadded:: 0.6.0
 
+    fixed_variables : array-like or None
+        List of variables to be fixed. The binning process will retain these
+        variables if the selection criteria is not satisfied.
+
+        .. versionadded:: 0.12.1
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
@@ -521,9 +537,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
                  max_bin_size=None, max_pvalue=None,
                  max_pvalue_policy="consecutive", selection_criteria=None,
-                 categorical_variables=None, special_codes=None,
-                 split_digits=None, binning_fit_params=None,
-                 binning_transform_params=None, n_jobs=None, verbose=False):
+                 fixed_variables=None, categorical_variables=None,
+                 special_codes=None, split_digits=None,
+                 binning_fit_params=None, binning_transform_params=None,
+                 n_jobs=None, verbose=False):
 
         self.variable_names = variable_names
 
@@ -537,6 +554,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self.max_pvalue_policy = max_pvalue_policy
 
         self.selection_criteria = selection_criteria
+        self.fixed_variables = fixed_variables
 
         self.binning_fit_params = binning_fit_params
         self.binning_transform_params = binning_transform_params
@@ -1182,6 +1200,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if self.selection_criteria is not None:
             _check_selection_criteria(self.selection_criteria,
                                       self._target_dtype)
+
+        if self.fixed_variables is not None:
+            for fv in self.fixed_variables:
+                if fv not in self.variable_names:
+                    raise ValueError("Variable {} to be fixed is not a valid "
+                                     "variable name.".format(fv))
 
         self._n_samples = len(y)
         self._n_variables = len(self.variable_names)

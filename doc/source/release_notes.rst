@@ -1,6 +1,16 @@
 Release Notes
 =============
 
+Version 0.12.1 (2021-09-12)
+---------------------------
+
+New features:
+
+   - Binning process supports ``sample_weight`` for binary target. `Issue 124 <https://github.com/guillermo-navas-palencia/optbinning/issues/124>`_
+
+   - Binning process can fix variables not satisfying selection criteria. `Issue 123 <https://github.com/guillermo-navas-palencia/optbinning/issues/123>`_
+
+
 Version 0.12.0 (2021-08-28)
 ---------------------------
 
@@ -16,7 +26,7 @@ Improvements:
 
 API changes:
 
-   - Scorecard fit method arguments changed to the usual ``(X, y)``: `Issue 111 <X, y. https://github.com/guillermo-navas-palencia/optbinning/issues/111>`_
+   - Scorecard fit method arguments changed to the usual ``(X, y)``: `Issue 111 <https://github.com/guillermo-navas-palencia/optbinning/issues/111>`_
 
 
 Version 0.11.0 (2021-05-28)

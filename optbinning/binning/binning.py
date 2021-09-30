@@ -12,6 +12,7 @@ import numpy as np
 
 from sklearn.utils import check_array
 
+from ..information import solver_statistics
 from ..logging import Logger
 from .auto_monotonic import auto_monotonic
 from .auto_monotonic import peak_valley_trend_change_heuristic
@@ -494,6 +495,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._time_preprocessing = None
         self._time_prebinning = None
         self._time_solver = None
+        self._time_optimizer = None
         self._time_postprocessing = None
 
         # logger
@@ -652,7 +654,7 @@ class OptimalBinning(BaseOptimalBinning):
         binning_type = self.__class__.__name__.lower()
 
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver = self._optimizer
             time_solver = self._time_solver
         else:
             solver = None
@@ -664,6 +666,7 @@ class OptimalBinning(BaseOptimalBinning):
                                   self._status, self.solver, solver,
                                   self._time_total, self._time_preprocessing,
                                   self._time_prebinning, time_solver,
+                                  self._time_optimizer,
                                   self._time_postprocessing, self._n_prebins,
                                   self._n_refinements, dict_user_options)
 
@@ -998,7 +1001,8 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._solution = solution
 
-        self._optimizer = optimizer
+        self._optimizer, self._time_optimizer = solver_statistics(
+            self.solver, optimizer.solver_)
         self._status = status
 
         if self.dtype == "categorical" and self.user_splits is not None:

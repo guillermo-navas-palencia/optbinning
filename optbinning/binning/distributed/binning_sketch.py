@@ -23,6 +23,7 @@ from ...binning.binning_statistics import BinningTable
 from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
+from ...information import solver_statistics
 from ...logging import Logger
 from .base import BaseSketch
 from .bsketch import BSketch, BCatSketch
@@ -427,6 +428,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_total = None
         self._time_prebinning = None
         self._time_solver = None
+        self._time_optimizer = None
         self._time_postprocessing = None
 
         # logger
@@ -489,7 +491,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         # Optimizer
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver = self._optimizer
             time_solver = self._time_solver
         else:
             solver = None
@@ -503,12 +505,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         print_binning_information(binning_type, print_level, self.name,
                                   self._status, self.solver, solver,
                                   self._time_total, self._time_prebinning,
-                                  time_solver, self._time_postprocessing,
-                                  self._n_prebins, self._n_refinements,
-                                  self._bsketch.n, self._n_add,
-                                  self._time_streaming_add, self._n_solve,
-                                  self._time_streaming_solve, memory_usage,
-                                  dict_user_options)
+                                  time_solver, self._time_optimizer,
+                                  self._time_postprocessing, self._n_prebins,
+                                  self._n_refinements, self._bsketch.n,
+                                  self._n_add, self._time_streaming_add,
+                                  self._n_solve, self._time_streaming_solve,
+                                  memory_usage, dict_user_options)
 
     def merge(self, optbsketch):
         """Merge current instance with another OptimalBinningSketch instance.
@@ -910,7 +912,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         self._solution = solution
 
-        self._optimizer = optimizer
+        self._optimizer, self._time_optimizer = solver_statistics(
+            self.solver, optimizer.solver_)
         self._status = status
 
         self._splits_optimal = splits[solution[:-1]]

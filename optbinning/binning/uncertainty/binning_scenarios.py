@@ -13,6 +13,7 @@ import numpy as np
 
 from sklearn.utils import check_array
 
+from ...information import solver_statistics
 from ...logging import Logger
 from ...binning.preprocessing import split_data_scenarios
 from ..binning import OptimalBinning
@@ -325,6 +326,7 @@ class SBOptimalBinning(OptimalBinning):
         self._time_preprocessing = None
         self._time_prebinning = None
         self._time_solver = None
+        self._time_optimizer = None
         self._time_postprocessing = None
 
         # logger
@@ -710,7 +712,8 @@ class SBOptimalBinning(OptimalBinning):
 
         self._solution = solution
 
-        self._optimizer = optimizer
+        self._optimizer, self._time_optimizer = solver_statistics(
+            self.solver, optimizer.solver_)
         self._status = status
 
         self._splits_optimal = splits[solution[:-1]]

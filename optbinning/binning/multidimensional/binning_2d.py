@@ -27,6 +27,9 @@ from .preprocessing_2d import split_data_2d
 from .transformations_2d import transform_binary_target
 
 
+logger = Logger(__name__).logger
+
+
 def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
                       strategy, solver, divergence, max_n_prebins_x,
                       max_n_prebins_y, min_prebin_size_x, min_prebin_size_y,
@@ -421,10 +424,6 @@ class OptimalBinning2D(OptimalBinning):
         self._time_optimizer = None
         self._time_postprocessing = None
 
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
-
         self._is_fitted = False
 
     def fit(self, x, y, z, check_input=False):
@@ -554,19 +553,19 @@ class OptimalBinning2D(OptimalBinning):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Optimal binning started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Optimal binning started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
 
         # Pre-processing
         if self.verbose:
-            self._logger.info("Pre-processing started.")
+            logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
 
         if self.verbose:
-            self._logger.info("Pre-processing: number of samples: {}"
+            logger.info("Pre-processing: number of samples: {}"
                               .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
@@ -583,21 +582,21 @@ class OptimalBinning2D(OptimalBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            self._logger.info("Pre-processing: number of clean samples: {}"
+            logger.info("Pre-processing: number of clean samples: {}"
                               .format(n_clean))
 
-            self._logger.info("Pre-processing: number of missing samples: {}"
+            logger.info("Pre-processing: number of missing samples: {}"
                               .format(n_missing))
 
-            self._logger.info("Pre-processing: number of special samples: {}"
+            logger.info("Pre-processing: number of special samples: {}"
                               .format(n_special))
         if self.verbose:
-            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+            logger.info("Pre-processing terminated. Time: {:.4f}s"
                               .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
-            self._logger.info("Pre-binning started.")
+            logger.info("Pre-binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -616,7 +615,7 @@ class OptimalBinning2D(OptimalBinning):
         if self.strategy == "cart":
 
             if self.verbose:
-                self._logger.info("Prebinning: applying strategy cart...")
+                logger.info("Prebinning: applying strategy cart...")
 
             n_splits_x = len(splits_x)
             n_splits_y = len(splits_y)
@@ -654,10 +653,10 @@ class OptimalBinning2D(OptimalBinning):
         self._n_prebins = E.size
 
         if self.verbose:
-            self._logger.info("Pre-binning: number of prebins: {}"
+            logger.info("Pre-binning: number of prebins: {}"
                               .format(self._n_prebins))
 
-            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+            logger.info("Pre-binning terminated. Time: {:.4f}s"
                               .format(self._time_prebinning))
 
         # Optimization
@@ -666,8 +665,8 @@ class OptimalBinning2D(OptimalBinning):
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
-            self._logger.info("Post-processing: compute binning information.")
+            logger.info("Post-processing started.")
+            logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -745,18 +744,17 @@ class OptimalBinning2D(OptimalBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimal binning terminated. Status: {}. "
+            logger.info("Optimal binning terminated. Status: {}. "
                               "Time: {:.4f}s"
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self
@@ -812,7 +810,7 @@ class OptimalBinning2D(OptimalBinning):
 
     def _fit_optimizer(self, splits_x, splits_y, NE, E):
         if self.verbose:
-            self._logger.info("Optimizer started.")
+            logger.info("Optimizer started.")
 
         time_init = time.perf_counter()
 
@@ -831,20 +829,20 @@ class OptimalBinning2D(OptimalBinning):
         n_jobs = effective_n_jobs(self.n_jobs)
 
         if self.verbose:
-            self._logger.info("Optimizer: {} jobs.".format(n_jobs))
+            logger.info("Optimizer: {} jobs.".format(n_jobs))
 
             if self.monotonic_trend_x is None:
-                self._logger.info(
+                logger.info(
                     "Optimizer: monotonic trend x not set.")
             else:
-                self._logger.info("Optimizer: monotonic trend x set to "
+                logger.info("Optimizer: monotonic trend x set to "
                                   "{}.".format(self.monotonic_trend_x))
 
             if self.monotonic_trend_y is None:
-                self._logger.info(
+                logger.info(
                     "Optimizer: monotonic trend y not set.")
             else:
-                self._logger.info("Optimizer: monotonic trend y set to "
+                logger.info("Optimizer: monotonic trend y set to "
                                   "{}.".format(self.monotonic_trend_x))
 
         if self.solver == "cp":
@@ -866,7 +864,7 @@ class OptimalBinning2D(OptimalBinning):
                 self.time_limit)
 
         if self.verbose:
-            self._logger.info("Optimizer: model data...")
+            logger.info("Optimizer: model data...")
 
         time_model_data = time.perf_counter()
 
@@ -888,17 +886,17 @@ class OptimalBinning2D(OptimalBinning):
         self._time_model_data = time.perf_counter() - time_model_data
 
         if self.verbose:
-            self._logger.info("Optimizer: model data terminated. Time {:.4f}s"
+            logger.info("Optimizer: model data terminated. Time {:.4f}s"
                               .format(self._time_model_data))
 
         if self.verbose:
-            self._logger.info("Optimizer: build model...")
+            logger.info("Optimizer: build model...")
 
         optimizer.build_model(n_grid, n_rectangles, cols, c, d_connected_x,
                               d_connected_y, event_rate, n_records)
 
         if self.verbose:
-            self._logger.info("Optimizer: solve...")
+            logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
@@ -911,7 +909,7 @@ class OptimalBinning2D(OptimalBinning):
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+            logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
 
         self._cols = cols

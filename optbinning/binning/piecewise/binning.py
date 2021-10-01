@@ -10,11 +10,15 @@ import time
 from sklearn.linear_model import LogisticRegression
 
 from ...binning.binning_statistics import target_info
+from ...logging import Logger
 from .base import _check_parameters
 from .base import BasePWBinning
 from .binning_statistics import PWBinningTable
 from .metrics import binary_metrics
 from .transformations import transform_binary_target
+
+
+logger = Logger(__name__).logger
 
 
 class OptimalPWBinning(BasePWBinning):
@@ -290,20 +294,20 @@ class OptimalPWBinning(BasePWBinning):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Optimal piecewise binning started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Optimal piecewise binning started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params(deep=False),
                           problem_type=self._problem_type)
 
         # Pre-processing
         if self.verbose:
-            self._logger.info("Pre-processing started.")
+            logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
 
         if self.verbose:
-            self._logger.info("Pre-processing: number of samples: {}"
+            logger.info("Pre-processing: number of samples: {}"
                               .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
@@ -318,21 +322,21 @@ class OptimalPWBinning(BasePWBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            self._logger.info("Pre-processing: number of clean samples: {}"
+            logger.info("Pre-processing: number of clean samples: {}"
                               .format(n_clean))
 
-            self._logger.info("Pre-processing: number of missing samples: {}"
+            logger.info("Pre-processing: number of missing samples: {}"
                               .format(n_missing))
 
-            self._logger.info("Pre-processing: number of special samples: {}"
+            logger.info("Pre-processing: number of special samples: {}"
                               .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                self._logger.info("Pre-processing: number of outlier samples: "
+                logger.info("Pre-processing: number of outlier samples: "
                                   "{}".format(n_outlier))
 
-            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+            logger.info("Pre-processing terminated. Time: {:.4f}s"
                               .format(self._time_preprocessing))
 
         # Pre-binning
@@ -343,11 +347,11 @@ class OptimalPWBinning(BasePWBinning):
             self.estimator = LogisticRegression()
 
             if self.verbose:
-                self._logger.info("Pre-binning: set logistic regression as an "
+                logger.info("Pre-binning: set logistic regression as an "
                                   "estimator.")
 
         if self.verbose:
-            self._logger.info("Pre-binning: estimator fitting started.")
+            logger.info("Pre-binning: estimator fitting started.")
 
         self.estimator.fit(x_clean.reshape(-1, 1), y_clean)
         event_rate = self.estimator.predict_proba(x_clean.reshape(-1, 1))[:, 1]
@@ -355,7 +359,7 @@ class OptimalPWBinning(BasePWBinning):
         self._time_estimator = time.perf_counter() - time_estimator
 
         if self.verbose:
-            self._logger.info("Pre-binning: estimator terminated. Time "
+            logger.info("Pre-binning: estimator terminated. Time "
                               "{:.4f}s.".format(self._time_estimator))
 
         # Fit optimal binning algorithm for continuous target. Use optimal
@@ -364,8 +368,8 @@ class OptimalPWBinning(BasePWBinning):
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
-            self._logger.info("Post-processing: compute binning information.")
+            logger.info("Post-processing started.")
+            logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -391,7 +395,7 @@ class OptimalPWBinning(BasePWBinning):
 
         # Compute metrics
         if self.verbose:
-            self._logger.info("Post-processing: compute performance metrics.")
+            logger.info("Post-processing: compute performance metrics.")
 
         d_metrics = binary_metrics(
             x_clean, y_clean, self._optb.splits, self._c, self._t_n_nonevent,
@@ -407,18 +411,17 @@ class OptimalPWBinning(BasePWBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimal piecewise binning terminated. "
+            logger.info("Optimal piecewise binning terminated. "
                               "Status: {}. Time: {:.4f}s"
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self

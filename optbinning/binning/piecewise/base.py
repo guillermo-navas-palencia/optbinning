@@ -24,6 +24,9 @@ from .binning_information import print_binning_information
 from .binning_information import retrieve_status
 
 
+logger = Logger(__name__).logger
+
+
 def _check_parameters(name, estimator, objective, degree, continuous,
                       prebinning_method, max_n_prebins, min_prebin_size,
                       min_n_bins, max_n_bins, min_bin_size, max_bin_size,
@@ -269,10 +272,6 @@ class BasePWBinning(Base, BaseEstimator):
         self._time_solver = None
         self._time_postprocessing = None
 
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
-
         self._is_fitted = False
 
     def fit(self, x, y, lb=None, ub=None, check_input=False):
@@ -341,7 +340,7 @@ class BasePWBinning(Base, BaseEstimator):
 
     def _fit_binning(self, x, y, prediction, lb, ub):
         if self.verbose:
-            self._logger.info("Pre-binning: optimal binning started.")
+            logger.info("Pre-binning: optimal binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -394,7 +393,7 @@ class BasePWBinning(Base, BaseEstimator):
         n_splits = len(splits)
 
         if self.verbose:
-            self._logger.info("Pre-binning: number of splits: {}."
+            logger.info("Pre-binning: number of splits: {}."
                               .format(n_splits))
 
         # Prepare optimization model data
@@ -406,7 +405,7 @@ class BasePWBinning(Base, BaseEstimator):
             pred_subsamples = prediction
 
             if self.verbose:
-                self._logger.info("Pre-binning: no need for subsamples.")
+                logger.info("Pre-binning: no need for subsamples.")
         else:
             indices = np.digitize(x, splits, right=False)
             [_, x_subsamples, _, pred_subsamples,
@@ -415,18 +414,18 @@ class BasePWBinning(Base, BaseEstimator):
                 random_state=self.random_state)
 
             if self.verbose:
-                self._logger.info("Pre-binning: number of subsamples: {}."
+                logger.info("Pre-binning: number of subsamples: {}."
                                   .format(self.n_subsamples))
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            self._logger.info("Pre-binning: optimal binning terminated. "
+            logger.info("Pre-binning: optimal binning terminated. "
                               "Time {:.4}s.".format(self._time_prebinning))
 
         # LP problem
         if self.verbose:
-            self._logger.info("Optimizer started.")
+            logger.info("Optimizer started.")
 
         if self.monotonic_trend == "auto":
             indices = np.digitize(x, splits, right=False)
@@ -441,7 +440,7 @@ class BasePWBinning(Base, BaseEstimator):
                 monotonic = "valley"
 
             if self.verbose:
-                self._logger.info("Optimizer: {} monotonic trend."
+                logger.info("Optimizer: {} monotonic trend."
                                   .format(monotonic))
         else:
             monotonic = self.monotonic_trend
@@ -464,7 +463,7 @@ class BasePWBinning(Base, BaseEstimator):
         self._time_solver = time.perf_counter() - time_solver
 
         if self.verbose:
-            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+            logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
 
     @property

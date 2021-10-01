@@ -9,11 +9,15 @@ import time
 
 import numpy as np
 
+from ...logging import Logger
 from .base import _check_parameters
 from .base import BasePWBinning
 from .binning_statistics import PWContinuousBinningTable
 from .metrics import continuous_metrics
 from .transformations import transform_continuous_target
+
+
+logger = Logger(__name__).logger
 
 
 class ContinuousOptimalPWBinning(BasePWBinning):
@@ -276,20 +280,20 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Optimal piecewise binning started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Optimal piecewise binning started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params(deep=False), estimator=None,
                           problem_type=self._problem_type)
 
         # Pre-processing
         if self.verbose:
-            self._logger.info("Pre-processing started.")
+            logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
 
         if self.verbose:
-            self._logger.info("Pre-processing: number of samples: {}"
+            logger.info("Pre-processing: number of samples: {}"
                               .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
@@ -304,21 +308,21 @@ class ContinuousOptimalPWBinning(BasePWBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            self._logger.info("Pre-processing: number of clean samples: {}"
+            logger.info("Pre-processing: number of clean samples: {}"
                               .format(n_clean))
 
-            self._logger.info("Pre-processing: number of missing samples: {}"
+            logger.info("Pre-processing: number of missing samples: {}"
                               .format(n_missing))
 
-            self._logger.info("Pre-processing: number of special samples: {}"
+            logger.info("Pre-processing: number of special samples: {}"
                               .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                self._logger.info("Pre-processing: number of outlier samples: "
+                logger.info("Pre-processing: number of outlier samples: "
                                   "{}".format(n_outlier))
 
-            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+            logger.info("Pre-processing terminated. Time: {:.4f}s"
                               .format(self._time_preprocessing))
 
         # Pre-binning
@@ -330,8 +334,8 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
-            self._logger.info("Post-processing: compute binning information.")
+            logger.info("Post-processing started.")
+            logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -375,7 +379,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
         # Compute metrics
         if self.verbose:
-            self._logger.info("Post-processing: compute performance metrics.")
+            logger.info("Post-processing: compute performance metrics.")
 
         d_metrics = continuous_metrics(
             x_clean, y_clean, self._optb.splits, self._c, lb, ub,
@@ -391,18 +395,17 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimal piecewise binning terminated. "
+            logger.info("Optimal piecewise binning terminated. "
                               "Status: {}. Time: {:.4f}s"
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self

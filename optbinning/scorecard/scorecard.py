@@ -24,6 +24,9 @@ from .rounding import RoundingMIP
 from .scorecard_information import print_scorecard_information
 
 
+logger = Logger(__name__).logger
+
+
 def _check_parameters(binning_process, estimator, scaling_method,
                       scaling_method_params, intercept_based,
                       reverse_scorecard, rounding, verbose):
@@ -241,10 +244,6 @@ class Scorecard(Base, BaseEstimator):
         self._time_estimator = None
         self._time_build_scorecard = None
         self._time_rounding = None
-
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
@@ -466,8 +465,8 @@ class Scorecard(Base, BaseEstimator):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Scorecard building process started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Scorecard building process started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params(deep=False))
 
@@ -499,11 +498,11 @@ class Scorecard(Base, BaseEstimator):
             bt_metric = "Mean"
 
         if self.verbose:
-            self._logger.info("Dataset: {} target.".format(self._target_dtype))
+            logger.info("Dataset: {} target.".format(self._target_dtype))
 
         # Fit binning process
         if self.verbose:
-            self._logger.info("Binning process started.")
+            logger.info("Binning process started.")
 
         time_binning_process = time.perf_counter()
         self.binning_process_ = clone(self.binning_process)
@@ -517,13 +516,13 @@ class Scorecard(Base, BaseEstimator):
         self._time_binning_process = time.perf_counter() - time_binning_process
 
         if self.verbose:
-            self._logger.info("Binning process terminated. Time: {:.4f}s"
+            logger.info("Binning process terminated. Time: {:.4f}s"
                               .format(self._time_binning_process))
 
         # Fit estimator
         time_estimator = time.perf_counter()
         if self.verbose:
-            self._logger.info("Fitting estimator.")
+            logger.info("Fitting estimator.")
 
         self.estimator_ = clone(self.estimator)
         self.estimator_.fit(X_t, y, sample_weight)
@@ -531,7 +530,7 @@ class Scorecard(Base, BaseEstimator):
         self._time_estimator = time.perf_counter() - time_estimator
 
         if self.verbose:
-            self._logger.info("Fitting terminated. Time {:.4f}s"
+            logger.info("Fitting terminated. Time {:.4f}s"
                               .format(self._time_estimator))
 
         # Get coefs
@@ -548,7 +547,7 @@ class Scorecard(Base, BaseEstimator):
         time_build_scorecard = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Scorecard table building started.")
+            logger.info("Scorecard table building started.")
 
         selected_variables = self.binning_process_.get_support(names=True)
         binning_tables = []
@@ -599,7 +598,7 @@ class Scorecard(Base, BaseEstimator):
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
                     if self.verbose:
-                        self._logger.warning("MIP rounding failed, method "
+                        logger.warning("MIP rounding failed, method "
                                              "nearest integer used instead.")
                     # Back-up method
                     round_points = np.rint(points)
@@ -613,13 +612,12 @@ class Scorecard(Base, BaseEstimator):
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Scorecard table terminated. Time: {:.4f}s"
+            logger.info("Scorecard table terminated. Time: {:.4f}s"
                               .format(self._time_build_scorecard))
-            self._logger.info("Scorecard building process terminated. Time: "
+            logger.info("Scorecard building process terminated. Time: "
                               "{:.4f}s".format(self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self

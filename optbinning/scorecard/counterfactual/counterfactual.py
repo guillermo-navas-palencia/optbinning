@@ -11,6 +11,7 @@ import time
 import numpy as np
 import pandas as pd
 
+from ...information import solver_statistics
 from ...logging import Logger
 from ..scorecard import Scorecard
 from .base import BaseCounterfactual
@@ -316,7 +317,7 @@ class Counterfactual(BaseCounterfactual):
                              .format(print_level))
 
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver, _ = solver_statistics("mip", self._optimizer.solver_)
             objectives = self._optimizer._objectives
             time_solver = self._time_solver
         else:

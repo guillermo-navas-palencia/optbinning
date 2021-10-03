@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+Version 0.12.2 (2021-10-03)
+---------------------------
+
+Improvements:
+
+   - Do not store optimization solver instance as class attribute.
+   - Do not store logger as a class attribute.
+
+
 Version 0.12.1 (2021-09-12)
 ---------------------------
 

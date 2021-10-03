@@ -12,6 +12,7 @@ from sklearn.utils import check_array
 
 import numpy as np
 
+from ..information import solver_statistics
 from ..logging import Logger
 from .auto_monotonic import auto_monotonic_continuous
 from .auto_monotonic import peak_valley_trend_change_heuristic
@@ -22,6 +23,9 @@ from .continuous_cp import ContinuousBinningCP
 from .preprocessing import preprocessing_user_splits_categorical
 from .preprocessing import split_data
 from .transformations import transform_continuous_target
+
+
+logger = Logger(__name__).logger
 
 
 def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
@@ -371,11 +375,8 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._time_preprocessing = None
         self._time_prebinning = None
         self._time_solver = None
+        self._time_optimizer = None
         self._time_postprocessing = None
-
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
 
         self._is_fitted = False
 
@@ -502,19 +503,19 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Optimal binning started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Optimal binning started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
 
         # Pre-processing
         if self.verbose:
-            self._logger.info("Pre-processing started.")
+            logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
 
         if self.verbose:
-            self._logger.info("Pre-processing: number of samples: {}"
+            logger.info("Pre-processing: number of samples: {}"
                               .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
@@ -532,18 +533,18 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_missing = len(x_missing)
             n_special = len(x_special)
 
-            self._logger.info("Pre-processing: number of clean samples: {}"
+            logger.info("Pre-processing: number of clean samples: {}"
                               .format(n_clean))
 
-            self._logger.info("Pre-processing: number of missing samples: {}"
+            logger.info("Pre-processing: number of missing samples: {}"
                               .format(n_missing))
 
-            self._logger.info("Pre-processing: number of special samples: {}"
+            logger.info("Pre-processing: number of special samples: {}"
                               .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                self._logger.info("Pre-processing: number of outlier samples: "
+                logger.info("Pre-processing: number of outlier samples: "
                                   "{}".format(n_outlier))
 
             if self.dtype == "categorical":
@@ -551,21 +552,21 @@ class ContinuousOptimalBinning(OptimalBinning):
                 n_categories_others = len(cat_others)
                 n_others = len(y_others)
 
-                self._logger.info("Pre-processing: number of others samples: "
+                logger.info("Pre-processing: number of others samples: "
                                   "{}".format(n_others))
 
-                self._logger.info("Pre-processing: number of categories: {}"
+                logger.info("Pre-processing: number of categories: {}"
                                   .format(n_categories))
 
-                self._logger.info("Pre-processing: number of categories "
+                logger.info("Pre-processing: number of categories "
                                   "others: {}".format(n_categories_others))
 
-            self._logger.info("Pre-processing terminated. Time: {:.4f}s"
+            logger.info("Pre-processing terminated. Time: {:.4f}s"
                               .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
-            self._logger.info("Pre-binning started.")
+            logger.info("Pre-binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -573,7 +574,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_splits = len(self.user_splits)
 
             if self.verbose:
-                self._logger.info("Pre-binning: user splits supplied: {}"
+                logger.info("Pre-binning: user splits supplied: {}"
                                   .format(n_splits))
 
             if not n_splits:
@@ -619,10 +620,10 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            self._logger.info("Pre-binning: number of prebins: {}"
+            logger.info("Pre-binning: number of prebins: {}"
                               .format(self._n_prebins))
 
-            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+            logger.info("Pre-binning terminated. Time: {:.4f}s"
                               .format(self._time_prebinning))
 
         # Optimization
@@ -630,8 +631,8 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
-            self._logger.info("Post-processing: compute binning information.")
+            logger.info("Post-processing started.")
+            logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -668,25 +669,24 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimal binning terminated. Status: {}. "
+            logger.info("Optimal binning terminated. Status: {}. "
                               "Time: {:.4f}s"
                               .format(self._status, self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self
 
     def _fit_optimizer(self, splits, n_records, sums, ssums, stds):
         if self.verbose:
-            self._logger.info("Optimizer started.")
+            logger.info("Optimizer started.")
 
         time_init = time.perf_counter()
 
@@ -696,11 +696,11 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
-                self._logger.warning("Optimizer: {} bins after pre-binning."
+                logger.warning("Optimizer: {} bins after pre-binning."
                                      .format(len(n_records)))
-                self._logger.warning("Optimizer: solver not run.")
+                logger.warning("Optimizer: solver not run.")
 
-                self._logger.info("Optimizer terminated. Time: 0s")
+                logger.info("Optimizer terminated. Time: 0s")
             return
 
         if self.min_bin_size is not None:
@@ -734,7 +734,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                             mean, monotonic)
 
                 if self.verbose:
-                    self._logger.info("Optimizer: classifier predicts {} "
+                    logger.info("Optimizer: classifier predicts {} "
                                       "monotonic trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
@@ -751,10 +751,10 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if self.verbose:
             if monotonic is None:
-                self._logger.info(
+                logger.info(
                     "Optimizer: monotonic trend not set.")
             else:
-                self._logger.info("Optimizer: monotonic trend set to "
+                logger.info("Optimizer: monotonic trend set to "
                                   "{}.".format(monotonic))
 
         optimizer = ContinuousBinningCP(monotonic, self.min_n_bins,
@@ -766,18 +766,19 @@ class ContinuousOptimalBinning(OptimalBinning):
                                         self.time_limit)
 
         if self.verbose:
-            self._logger.info("Optimizer: build model...")
+            logger.info("Optimizer: build model...")
 
         optimizer.build_model(n_records, sums, ssums, trend_change)
 
         if self.verbose:
-            self._logger.info("Optimizer: solve...")
+            logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
         self._solution = solution
 
-        self._optimizer = optimizer
+        self._optimizer, self._time_optimizer = solver_statistics(
+            self.solver, optimizer.solver_)
         self._status = status
 
         if self.dtype == "categorical" and self.user_splits is not None:
@@ -788,7 +789,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+            logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,

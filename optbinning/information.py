@@ -51,14 +51,45 @@ def print_optional_parameters(dict_default_options, dict_user_options):
     print(str_options)
 
 
-def print_solver_statistics(solver_type, solver):
-    if solver_type == "cp":
-        n_booleans = solver.NumBooleans()
-        n_branches = solver.NumBranches()
-        n_conflicts = solver.NumConflicts()
-        objective = int(solver.ObjectiveValue())
-        best_objective_bound = int(solver.BestObjectiveBound())
+def solver_statistics(solver_type, solver):
+    time_optimizer = None
+    d_solver = {}
 
+    if solver_type == "cp":
+        d_solver["n_booleans"] = solver.NumBooleans()
+        d_solver["n_branches"] = solver.NumBranches()
+        d_solver["n_conflicts"] = solver.NumConflicts()
+        d_solver["objective"] = int(solver.ObjectiveValue())
+        d_solver["best_objective_bound"] = int(solver.BestObjectiveBound())
+
+        time_optimizer = solver.WallTime()
+
+    elif solver_type == "mip":
+        d_solver["n_constraints"] = solver.NumConstraints()
+        d_solver["n_variables"] = solver.NumVariables()
+        d_solver["objective"] = solver.Objective().Value()
+        d_solver["best_bound"] = solver.Objective().BestBound()
+
+    elif solver_type == "ls":
+        if not LOCALSOLVER_AVAILABLE:
+            raise ImportError('Cannot import localsolver. Install LocalSolver '
+                              'or choose another solver, options are "cp" and '
+                              '"mip".')
+
+        d_solver["n_iterations"] = LSStatistics.get_nb_iterations(
+            solver.statistics)
+
+    elif solver_type == "lp":
+        d_solver["n_variables"] = solver.n_variables
+        d_solver["n_constraints"] = solver.n_constraints
+        d_solver["n_iterations"] = solver.n_iterations
+        d_solver["objective"] = solver.objective
+
+    return d_solver, time_optimizer
+
+
+def print_solver_statistics(solver_type, d_solver):
+    if solver_type == "cp":
         solver_stats = (
             "  Solver statistics\n"
             "    Type                          {:>10}\n"
@@ -67,14 +98,9 @@ def print_solver_statistics(solver_type, solver):
             "    Number of conflicts           {:>10}\n"
             "    Objective value               {:>10}\n"
             "    Best objective bound          {:>10}\n"
-            ).format(solver_type, n_booleans, n_branches, n_conflicts,
-                     objective, best_objective_bound)
-    elif solver_type == "mip":
-        n_constraints = solver.NumConstraints()
-        n_variables = solver.NumVariables()
-        objective = solver.Objective().Value()
-        best_bound = solver.Objective().BestBound()
+            ).format(solver_type, *d_solver.values())
 
+    elif solver_type == "mip":
         solver_stats = (
             "  Solver statistics\n"
             "    Type                          {:>10}\n"
@@ -82,27 +108,16 @@ def print_solver_statistics(solver_type, solver):
             "    Number of constraints         {:>10}\n"
             "    Objective value               {:>10.4f}\n"
             "    Best objective bound          {:>10.4f}\n"
-            ).format(solver_type, n_variables, n_constraints, objective,
-                     best_bound)
-    elif solver_type == "ls":
-        if not LOCALSOLVER_AVAILABLE:
-            raise ImportError('Cannot import localsolver. Install LocalSolver '
-                              'or choose another solver, options are "cp" and '
-                              '"mip".')
+            ).format(solver_type, *d_solver.values())
 
-        n_iterations = LSStatistics.get_nb_iterations(solver.statistics)
+    elif solver_type == "ls":
         solver_stats = (
             "  Solver statistics\n"
             "    Type                          {:>10}\n"
             "    Number of iterations          {:>10}\n"
-            ).format(solver_type, n_iterations)
+            ).format(solver_type, *d_solver.values())
 
     elif solver_type == "lp":
-        n_variables = solver.n_variables
-        n_constraints = solver.n_constraints
-        n_iterations = solver.n_iterations
-        objective = solver.objective
-
         solver_stats = (
             "  Solver statistics\n"
             "    Type                          {:>10}\n"
@@ -110,7 +125,6 @@ def print_solver_statistics(solver_type, solver):
             "    Number of constraints         {:>10}\n"
             "    Number of iterations          {:>10}\n"
             "    Objective value               {:>10.4f}\n"
-            ).format(solver_type, n_variables, n_constraints, n_iterations,
-                     objective)
+            ).format(solver_type, *d_solver.values())
 
     print(solver_stats)

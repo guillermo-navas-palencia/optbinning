@@ -23,11 +23,15 @@ from ...binning.binning_statistics import BinningTable
 from ...binning.cp import BinningCP
 from ...binning.mip import BinningMIP
 from ...binning.transformations import transform_binary_target
+from ...information import solver_statistics
 from ...logging import Logger
 from .base import BaseSketch
 from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
+
+
+logger = Logger(__name__).logger
 
 
 def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
@@ -427,11 +431,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_total = None
         self._time_prebinning = None
         self._time_solver = None
+        self._time_optimizer = None
         self._time_postprocessing = None
-
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
 
         self._is_solved = False
 
@@ -468,7 +469,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_streaming_add += time.perf_counter() - time_add
 
         if self.verbose:
-            self._logger.info("Sketch: added new data.")
+            logger.info("Sketch: added new data.")
 
     def information(self, print_level=1):
         """Print overview information about the options settings, problem
@@ -489,7 +490,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         # Optimizer
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver = self._optimizer
             time_solver = self._time_solver
         else:
             solver = None
@@ -503,12 +504,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         print_binning_information(binning_type, print_level, self.name,
                                   self._status, self.solver, solver,
                                   self._time_total, self._time_prebinning,
-                                  time_solver, self._time_postprocessing,
-                                  self._n_prebins, self._n_refinements,
-                                  self._bsketch.n, self._n_add,
-                                  self._time_streaming_add, self._n_solve,
-                                  self._time_streaming_solve, memory_usage,
-                                  dict_user_options)
+                                  time_solver, self._time_optimizer,
+                                  self._time_postprocessing, self._n_prebins,
+                                  self._n_refinements, self._bsketch.n,
+                                  self._n_add, self._time_streaming_add,
+                                  self._n_solve, self._time_streaming_solve,
+                                  memory_usage, dict_user_options)
 
     def merge(self, optbsketch):
         """Merge current instance with another OptimalBinningSketch instance.
@@ -524,7 +525,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._bsketch.merge(optbsketch._bsketch)
 
         if self.verbose:
-            self._logger.info("Sketch: current sketch was merged.")
+            logger.info("Sketch: current sketch was merged.")
 
     def mergeable(self, optbsketch):
         """Check whether two OptimalBinningSketch instances can be merged.
@@ -563,7 +564,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         # Pre-binning
         if self.verbose:
-            self._logger.info("Pre-binning started.")
+            logger.info("Pre-binning started.")
 
         time_prebinning = time.perf_counter()
 
@@ -573,12 +574,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            self._logger.info("Pre-binning: number of prebins: {}"
+            logger.info("Pre-binning: number of prebins: {}"
                               .format(self._n_prebins))
-            self._logger.info("Pre-binning: number of refinements: {}"
+            logger.info("Pre-binning: number of refinements: {}"
                               .format(self._n_refinements))
 
-            self._logger.info("Pre-binning terminated. Time: {:.4f}s"
+            logger.info("Pre-binning terminated. Time: {:.4f}s"
                               .format(self._time_prebinning))
 
         # Optimization
@@ -586,8 +587,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
-            self._logger.info("Post-processing: compute binning information.")
+            logger.info("Post-processing started.")
+            logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
 
@@ -609,7 +610,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
@@ -617,7 +618,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._n_solve += 1
 
         if self.verbose:
-            self._logger.info("Optimal binning terminated. Status: {}. "
+            logger.info("Optimal binning terminated. Status: {}. "
                               "Time: {:.4f}s"
                               .format(self._status, self._time_total))
 
@@ -788,7 +789,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
     def _fit_optimizer(self, splits, n_nonevent, n_event):
         if self.verbose:
-            self._logger.info("Optimizer started.")
+            logger.info("Optimizer started.")
 
         time_init = time.perf_counter()
 
@@ -798,11 +799,11 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
             self._solution = np.zeros(len(splits)).astype(bool)
 
             if self.verbose:
-                self._logger.warning("Optimizer: {} bins after pre-binning."
+                logger.warning("Optimizer: {} bins after pre-binning."
                                      .format(len(n_nonevent)))
-                self._logger.warning("Optimizer: solver not run.")
+                logger.warning("Optimizer: solver not run.")
 
-                self._logger.info("Optimizer terminated. Time: 0s")
+                logger.info("Optimizer terminated. Time: 0s")
             return
 
         # Min/max number of bins
@@ -853,7 +854,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                             event_rate, monotonic)
 
                 if self.verbose:
-                    self._logger.info("Optimizer: classifier predicts {} "
+                    logger.info("Optimizer: classifier predicts {} "
                                       "monotonic trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
@@ -864,7 +865,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                         event_rate, monotonic)
 
                     if self.verbose:
-                        self._logger.info("Optimizer: trend change position "
+                        logger.info("Optimizer: trend change position "
                                           "{}.".format(trend_change))
 
         else:
@@ -874,10 +875,10 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         if self.verbose:
             if monotonic is None:
-                self._logger.info(
+                logger.info(
                     "Optimizer: monotonic trend not set.")
             else:
-                self._logger.info("Optimizer: monotonic trend set to "
+                logger.info("Optimizer: monotonic trend set to "
                                   "{}.".format(monotonic))
 
         if self.solver == "cp":
@@ -898,19 +899,20 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                                    None, self.mip_solver, self.time_limit)
 
         if self.verbose:
-            self._logger.info("Optimizer: build model...")
+            logger.info("Optimizer: build model...")
 
         optimizer.build_model(self.divergence, n_nonevent, n_event,
                               trend_change)
 
         if self.verbose:
-            self._logger.info("Optimizer: solve...")
+            logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
         self._solution = solution
 
-        self._optimizer = optimizer
+        self._optimizer, self._time_optimizer = solver_statistics(
+            self.solver, optimizer.solver_)
         self._status = status
 
         self._splits_optimal = splits[solution[:-1]]
@@ -918,7 +920,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._time_solver = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+            logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
 
     def _update_streaming_stats(self):

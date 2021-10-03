@@ -30,6 +30,9 @@ from .monitoring_information import print_monitoring_information
 from .scorecard import Scorecard
 
 
+logger = Logger(__name__).logger
+
+
 PSI_VERDICT_MSG = {0: "No significant change",
                    1: "Requires investigation",
                    2: "Significance change"}
@@ -216,10 +219,6 @@ class ScorecardMonitoring(BaseEstimator):
         self._time_system = None
         self._time_variables = None
 
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
-
         # flags
         self._is_fitted = False
 
@@ -248,8 +247,8 @@ class ScorecardMonitoring(BaseEstimator):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Monitoring started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Monitoring started.")
+            logger.info("Options: check parameters.")
 
         # Check parameters
         _check_parameters(**self.get_params(deep=False))
@@ -281,36 +280,35 @@ class ScorecardMonitoring(BaseEstimator):
 
         # Statistics at system level
         if self.verbose:
-            self._logger.info("System stability analysis started.")
+            logger.info("System stability analysis started.")
 
         time_system = time.perf_counter()
         self._fit_system(X_actual, y_actual, X_expected, y_expected)
         self._time_system = time.perf_counter() - time_system
 
         if self.verbose:
-            self._logger.info("System stability analysis terminated. Time: "
+            logger.info("System stability analysis terminated. Time: "
                               "{:.4f}s".format(self._time_system))
 
         # Statistics at variable level
         if self.verbose:
-            self._logger.info("Variable analysis started.")
+            logger.info("Variable analysis started.")
 
         time_variable = time.perf_counter()
         self._fit_variables(X_actual, X_expected)
         self._time_variable = time.perf_counter() - time_variable
 
         if self.verbose:
-            self._logger.info("Variable analysis terminated. Time: "
+            logger.info("Variable analysis terminated. Time: "
                               "{:.4f}s".format(self._time_variable))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Monitoring terminated. Time: {:.4f}s"
+            logger.info("Monitoring terminated. Time: {:.4f}s"
                               .format(self._time_total))
 
         # Completed successfully
-        self._class_logger.close()
         self._is_fitted = True
 
         return self

@@ -26,7 +26,8 @@ def print_prebinning_statistics(n_prebins, n_refinement):
 
 
 def print_timing(solver_type, solver, time_total, time_preprocessing,
-                 time_prebinning, time_solver, time_postprocessing):
+                 time_prebinning, time_solver, time_optimizer,
+                 time_postprocessing):
 
     p_preprocessing = time_preprocessing / time_total
     p_prebinning = time_prebinning / time_total
@@ -34,7 +35,6 @@ def print_timing(solver_type, solver, time_total, time_preprocessing,
     p_postprocessing = time_postprocessing / time_total
 
     if solver_type == "cp" and solver is not None:
-        time_optimizer = solver.WallTime()
         time_model_generation = time_solver - time_optimizer
         p_model_generation = time_model_generation / time_solver
         p_optimizer = time_optimizer / time_solver
@@ -84,8 +84,8 @@ def print_main_info(name, status, time_total):
 def print_binning_information(binning_type, print_level, name, status,
                               solver_type, solver, time_total,
                               time_preprocessing, time_prebinning, time_solver,
-                              time_postprocessing, n_prebins, n_refinements,
-                              dict_user_options):
+                              time_optimizer, time_postprocessing, n_prebins,
+                              n_refinements, dict_user_options):
 
     print_header()
 
@@ -115,4 +115,5 @@ def print_binning_information(binning_type, print_level, name, status,
                 print_solver_statistics(solver_type, solver)
 
             print_timing(solver_type, solver, time_total, time_preprocessing,
-                         time_prebinning, time_solver, time_postprocessing)
+                         time_prebinning, time_solver, time_optimizer,
+                         time_postprocessing)

@@ -11,6 +11,7 @@ import time
 import numpy as np
 import pandas as pd
 
+from ...information import solver_statistics
 from ...logging import Logger
 from ..scorecard import Scorecard
 from .base import BaseCounterfactual
@@ -19,6 +20,9 @@ from .mip import CFMIP
 from .model_data import model_data
 from .multi_mip import MCFMIP
 from .problem_data import problem_data
+
+
+logger = Logger(__name__).logger
 
 
 OBJECTIVES = ("proximity", "closeness")
@@ -232,10 +236,6 @@ class Counterfactual(BaseCounterfactual):
         self._time_solver = None
         self._time_postprocessing = None
 
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
-
         # flags
         self._is_fitted = False
         self._is_generated = False
@@ -257,8 +257,8 @@ class Counterfactual(BaseCounterfactual):
         time_init = time.perf_counter()
 
         if self.verbose:
-            self._logger.info("Counterfactual fit started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Counterfactual fit started.")
+            logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params(deep=False))
 
@@ -275,7 +275,7 @@ class Counterfactual(BaseCounterfactual):
                                  .format(v, self._variable_names))
 
         if self.verbose:
-            self._logger.info("Compute optimization problem data.")
+            logger.info("Compute optimization problem data.")
 
         # Problem data
         intercept, coef, min_p, max_p, wrange, F, mu = problem_data(
@@ -292,7 +292,7 @@ class Counterfactual(BaseCounterfactual):
         self._time_fit = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Counterfactual fit terminated. Time: {:.4f}s"
+            logger.info("Counterfactual fit terminated. Time: {:.4f}s"
                               .format(self._time_fit))
 
         self._is_fitted = True
@@ -316,7 +316,7 @@ class Counterfactual(BaseCounterfactual):
                              .format(print_level))
 
         if self._optimizer is not None:
-            solver = self._optimizer.solver_
+            solver, _ = solver_statistics("mip", self._optimizer.solver_)
             objectives = self._optimizer._objectives
             time_solver = self._time_solver
         else:
@@ -397,8 +397,8 @@ class Counterfactual(BaseCounterfactual):
         self._check_is_fitted()
 
         if self.verbose:
-            self._logger.info("Counterfactual generation started.")
-            self._logger.info("Options: check parameters.")
+            logger.info("Counterfactual generation started.")
+            logger.info("Options: check parameters.")
 
         # Check parameters
         _check_generate_params(
@@ -421,7 +421,7 @@ class Counterfactual(BaseCounterfactual):
         x, query = self._transform_query(query)
 
         if self.verbose:
-            self._logger.info("Options: check objectives and constraints.")
+            logger.info("Options: check objectives and constraints.")
 
         # Set default objectives
         if objectives is None:
@@ -447,7 +447,7 @@ class Counterfactual(BaseCounterfactual):
 
         # Optimization problem
         if self.verbose:
-            self._logger.info("Optimizer started.")
+            logger.info("Optimizer started.")
 
         time_solver = time.perf_counter()
 
@@ -464,7 +464,7 @@ class Counterfactual(BaseCounterfactual):
 
         # Problem data. Indices is required to construct counterfactual
         if self.verbose:
-            self._logger.info("Optimizer: build model...")
+            logger.info("Optimizer: build model...")
 
         nbins, metric, indices = model_data(
             self.scorecard, x, self.special_missing)
@@ -476,7 +476,7 @@ class Counterfactual(BaseCounterfactual):
 
         # Optimization
         if self.verbose:
-            self._logger.info("Optimizer: solve...")
+            logger.info("Optimizer: solve...")
 
         status, solution = optimizer.solve()
 
@@ -486,12 +486,12 @@ class Counterfactual(BaseCounterfactual):
         self._time_solver = time.perf_counter() - time_solver
 
         if self.verbose:
-            self._logger.info("Optimizer terminated. Time: {:.4f}s"
+            logger.info("Optimizer terminated. Time: {:.4f}s"
                               .format(self._time_solver))
 
         # Post-processing
         if self.verbose:
-            self._logger.info("Post-processing started.")
+            logger.info("Post-processing started.")
 
         time_postprocessing = time.perf_counter()
 
@@ -524,13 +524,13 @@ class Counterfactual(BaseCounterfactual):
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
-            self._logger.info("Post-processing terminated. Time: {:.4f}s"
+            logger.info("Post-processing terminated. Time: {:.4f}s"
                               .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            self._logger.info("Counterfactual generation terminated. Status: "
+            logger.info("Counterfactual generation terminated. Status: "
                               "{}. Time: {:.4f}s"
                               .format(self._status, self._time_total))
 

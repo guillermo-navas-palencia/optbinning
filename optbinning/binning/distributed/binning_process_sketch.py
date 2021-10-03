@@ -26,6 +26,9 @@ from .binning_process_sketch_information import (
 from .binning_sketch import OptimalBinningSketch
 
 
+logger = Logger(__name__).logger
+
+
 def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
                       min_bin_size, max_bin_size, max_pvalue,
                       max_pvalue_policy, selection_criteria,
@@ -265,10 +268,6 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         self._time_streaming_add = 0
         self._time_streaming_solve = 0
 
-        # logger
-        self._class_logger = Logger(__name__)
-        self._logger = self._class_logger.logger
-
         # flags
         self._is_started = False
         self._is_solved = False
@@ -352,7 +351,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         for name in X.columns:
             if name in self.variable_names:
                 if self.verbose:
-                    self._logger.info("Add variable: {}.".format(name))
+                    logger.info("Add variable: {}.".format(name))
 
                 self._binned_variables[name].add(X[name], y, check_input)
 
@@ -363,7 +362,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         self._time_streaming_add += time.perf_counter() - time_add
 
         if self.verbose:
-            self._logger.info("Sketch: added new data.")
+            logger.info("Sketch: added new data.")
 
         return self
 
@@ -429,7 +428,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
                 bpsketch._binned_variables[name])
 
         if self.verbose:
-            self._logger.info("Sketch: current sketch was merged.")
+            logger.info("Sketch: current sketch was merged.")
 
     def mergeable(self, bpsketch):
         """Check whether two BinningProcessSketch instances can be merged.
@@ -462,12 +461,12 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         for i, name in enumerate(self.variable_names):
             if self.verbose:
-                self._logger.info("Binning variable ({} / {}): {}."
+                logger.info("Binning variable ({} / {}): {}."
                                   .format(i, self._n_variables, name))
             self._binned_variables[name].solve()
 
         if self.verbose:
-            self._logger.info("Binning process variable selection...")
+            logger.info("Binning process variable selection...")
 
         # Compute binning statistics and decide whether a variable is selected
         self._binning_selection_criteria()

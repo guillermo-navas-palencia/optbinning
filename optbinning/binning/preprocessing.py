@@ -60,7 +60,7 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     y : array-like, shape = (n_samples)
         Target vector relative to x.
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : dict, array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
@@ -186,6 +186,16 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     else:
         missing_mask = pd.isnull(x) | pd.isnull(y)
 
+    if isinstance(special_codes, dict):
+        _special_codes = []
+        for s in special_codes.values():
+            if isinstance(s, (list, np.ndarray)):
+                _special_codes.extend(s)
+            else:
+                _special_codes.append(s)
+    else:
+        _special_codes = special_codes
+
     if special_codes is None:
         clean_mask = ~missing_mask
 
@@ -199,7 +209,7 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
         sw_missing = sample_weight[missing_mask]
         sw_special = []
     else:
-        special_mask = pd.Series(x).isin(special_codes).values
+        special_mask = pd.Series(x).isin(_special_codes).values
 
         clean_mask = ~missing_mask & ~special_mask
 

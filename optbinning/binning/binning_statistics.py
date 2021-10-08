@@ -133,6 +133,23 @@ def target_info_samples(y, sw, cl=0):
         return n_nonevent, n_event
 
 
+def target_info_special(special_codes, x, y, sw, cl=0):
+    if isinstance(special_codes, dict):
+        n_nonevent = []
+        n_event = []
+        xt = pd.Series(x)
+        for s in special_codes.values():
+            sl = s if isinstance(s, (list, np.ndarray)) else [s]
+            mask = xt.isin(sl).values
+            n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            n_nonevent.append(n_nev)
+            n_event.append(n_ev)
+
+        return n_nonevent, n_event
+    else:
+        return target_info_samples(y, sw, cl)
+
+
 def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
              n_event_missing, n_nonevent_special, n_event_special,
              n_nonevent_cat_others, n_event_cat_others, cat_others):
@@ -159,8 +176,12 @@ def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
         n_nev.append(n_nonevent_cat_others)
         n_ev.append(n_event_cat_others)
 
-    n_nev.append(n_nonevent_special)
-    n_ev.append(n_event_special)
+    if isinstance(n_nonevent_special, list):
+        n_nev.extend(n_nonevent_special)
+        n_ev.extend(n_event_special)
+    else:
+        n_nev.append(n_nonevent_special)
+        n_ev.append(n_event_special)
 
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
@@ -342,12 +363,13 @@ class BinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_nonevent, n_event, min_x=None,
-                 max_x=None, categories=None, cat_others=None,
+    def __init__(self, name, dtype, special_codes, splits, n_nonevent, n_event,
+                 min_x=None, max_x=None, categories=None, cat_others=None,
                  user_splits=None):
 
         self.name = name
         self.dtype = dtype
+        self.special_codes = special_codes
         self.splits = splits
         self.n_nonevent = n_nonevent
         self.n_event = n_event
@@ -448,7 +470,10 @@ class BinningTable:
             bin_str = bin_categorical(self.splits, self.categories,
                                       self.cat_others, self.user_splits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,

@@ -381,7 +381,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         .. versionadded:: 0.5.0
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : array-like, dict or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 

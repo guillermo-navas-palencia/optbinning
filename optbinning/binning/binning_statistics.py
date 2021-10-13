@@ -150,6 +150,56 @@ def target_info_special(special_codes, x, y, sw, cl=0):
         return target_info_samples(y, sw, cl)
 
 
+def target_info_special_continuous(special_codes, x, y):
+    if isinstance(special_codes, dict):
+        n_records_special = []
+        sum_special = []
+        n_zeros_special = []
+
+        if len(y):
+            std_special = []
+            min_target_special = []
+            max_target_special = []
+        else:
+            std_special = None
+            min_target_special = None
+            max_target_special = None
+
+        xt = pd.Series(x)
+        for s in special_codes.values():
+            sl = s if isinstance(s, (list, np.ndarray)) else [s]
+            mask = xt.isin(sl).values
+
+            n_records = np.count_nonzero(mask)
+            n_records_special.append(n_records)
+            sum_special.append(np.sum(y[mask]))
+            n_zeros_special.append(np.count_nonzero(y[mask] == 0))
+
+            if n_records:
+                std_special.append(np.std(y[mask]))
+                min_target_special.append(np.min(y[mask]))
+                max_target_special.append(np.max(y[mask]))
+            else:
+                std_special.append(0)
+                min_target_special.append(0)
+                max_target_special.append(0)
+    else:
+        n_records_special = len(y)
+        sum_special = np.sum(y)
+        n_zeros_special = np.count_nonzero(y == 0)
+        if len(y):
+            std_special = np.std(y)
+            min_target_special = np.min(y)
+            max_target_special = np.max(y)
+        else:
+            std_special = None
+            min_target_special = None
+            max_target_special = None
+
+    return (n_records_special, sum_special, n_zeros_special, std_special,
+            min_target_special, max_target_special)
+
+
 def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
              n_event_missing, n_nonevent_special, n_event_special,
              n_nonevent_cat_others, n_event_cat_others, cat_others):
@@ -274,19 +324,27 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
         min_t.append(min_target_others)
         max_t.append(max_target_others)
 
-    r.append(n_records_special)
-    s.append(sum_special)
-    st.append(std_special)
-    z.append(n_zeros_special)
-    min_t.append(min_target_special)
-    max_t.append(max_target_special)
+    if isinstance(n_records_special, list):
+        r.extend(n_records_special)
+        s.extend(sum_special)
+        st.extend(std_special)
+        z.extend(n_zeros_special)
+        min_t.extend(min_target_special)
+        max_t.extend(max_target_special)
+    else:
+        r.append(n_records_special)
+        s.append(sum_special)
+        st.append(std_special)
+        z.append(n_zeros_special)
+        min_t.append(min_target_special)
+        max_t.append(max_target_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
     st.append(std_missing)
     z.append(n_zeros_missing)
     min_t.append(min_target_missing)
-    max_t.append(max_target_special)
+    max_t.append(max_target_missing)
 
     return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
             np.array(st).astype(np.float64),
@@ -332,6 +390,10 @@ class BinningTable:
         The variable data type. Supported data types are "numerical" for
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables.
+
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
 
     splits : numpy.ndarray
         List of split points.
@@ -1290,6 +1352,10 @@ class ContinuousBinningTable:
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables.
 
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
     splits : numpy.ndarray
         List of split points.
 
@@ -1332,12 +1398,13 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_records, sums, stds, min_target,
-                 max_target, n_zeros, min_x=None, max_x=None, categories=None,
-                 cat_others=None, user_splits=None):
+    def __init__(self, name, dtype, special_codes, splits, n_records, sums,
+                 stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
+                 categories=None, cat_others=None, user_splits=None):
 
         self.name = name
         self.dtype = dtype
+        self.special_codes = special_codes
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
@@ -1405,7 +1472,10 @@ class ContinuousBinningTable:
             bin_str = bin_categorical(self.splits, self.categories,
                                       self.cat_others, self.user_splits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,

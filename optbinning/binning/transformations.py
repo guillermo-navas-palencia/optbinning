@@ -395,19 +395,10 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
 
     x = np.asarray(x)
 
-    if np.issubdtype(x.dtype, np.number):
-        missing_mask = np.isnan(x)
-    else:
-        missing_mask = pd.isnull(x)
-
-    if special_codes is None:
-        clean_mask = ~missing_mask
-    else:
-        special_mask = pd.Series(x).isin(special_codes).values
-        clean_mask = ~missing_mask & ~special_mask
+    special_mask, missing_mask, clean_mask, n_special = _mask_special_missing(
+        x, special_codes)
 
     x_clean = x[clean_mask]
-
     if dtype == "numerical":
         if len(splits):
             indices = np.digitize(x_clean, splits, right=False)
@@ -432,44 +423,12 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
         x_transform = np.zeros(x.shape)
     else:
         # Assign corresponding indices or bin intervals
-        if metric == "indices":
-            metric_value = np.arange(n_bins + 2)
-            x_transform = np.full(x.shape, -1, dtype=int)
-        elif metric == "bins":
-            bins_str.extend(["Special", "Missing"])
-            metric_value = bins_str
-            x_transform = np.full(x.shape, "", dtype=object)
+        metric_value, x_transform = _transform_metric_indices_bins(
+            x, special_codes, metric, n_bins, n_special, bins_str)
 
-    if dtype == "numerical":
-        if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, "").astype(object)
-        else:
-            x_clean_transform = np.zeros(x_clean.shape)
-
-        for i in range(n_bins):
-            mask = (indices == i)
-            x_clean_transform[mask] = metric_value[i]
-
-        x_transform[clean_mask] = x_clean_transform
-    else:
-        x_p = pd.Series(x)
-        for i in range(n_bins):
-            mask = x_p.isin(bins[i])
-            x_transform[mask] = metric_value[i]
-
-    if special_codes:
-        if (metric_special == "empirical" or
-            (metric == "indices" and not isinstance(metric_special, int)) or
-                metric == "bins"):
-            x_transform[special_mask] = metric_value[n_bins]
-        else:
-            x_transform[special_mask] = metric_special
-
-    if (metric_missing == "empirical" or
-        (metric == "indices" and not isinstance(metric_missing, int)) or
-            metric == "bins"):
-        x_transform[missing_mask] = metric_value[n_bins + 1]
-    else:
-        x_transform[missing_mask] = metric_missing
+    x_transform = _apply_transform(
+        x, dtype, special_codes, metric, metric_special, metric_missing,
+        metric_value, clean_mask, special_mask, missing_mask, indices,
+        x_transform, x_clean, bins, n_bins, n_special)
 
     return x_transform

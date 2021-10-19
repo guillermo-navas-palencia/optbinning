@@ -298,8 +298,8 @@ Import and instantiate an ``OptimalBinning2D`` object class. We pass the variabl
 .. code-block:: python
 
    from optbinning import OptimalBinning2D
-   optb = OptimalBinning2D(name_x=variable1, name_y=variable2, monotonic_trend_x="ascending",
-                           monotonic_trend_y="ascending", min_bin_size=0.05)
+   optb = OptimalBinning2D(name_x=variable1, name_y=variable2, monotonic_trend_x="descending",
+                           monotonic_trend_y="descending", min_bin_size=0.05)
    optb.fit(x, y, z)
 
 
@@ -311,17 +311,17 @@ Show binning table:
 
 .. code-block:: text
 
-                    Bin x         Bin y  Count  Count (%)  Non-event  Event  Event rate       WoE        IV        JS
-   0        (-inf, 13.70)  (-inf, 0.21)    219   0.384886        218      1    0.004566  4.863346  2.946834  0.199430
-   1         [13.70, inf)  (-inf, 0.21)     48   0.084359         43      5    0.104167  1.630613  0.157946  0.017811
-   2        (-inf, 13.09)  [0.21, 0.38)     48   0.084359         47      1    0.020833  3.328998  0.422569  0.037010
-   3       [13.09, 15.05)  [0.21, 0.38)     46   0.080844         29     17    0.369565  0.012933  0.000013  0.000002
-   4         [15.05, inf)  [0.21, 0.32)     32   0.056239          3     29    0.906250 -2.789833  0.358184  0.034271
-   5         [15.05, inf)   [0.32, inf)    129   0.226714          1    128    0.992248 -5.373180  3.229133  0.201294
-   6        (-inf, 15.05)   [0.38, inf)     47   0.082601         16     31    0.659574 -1.182548  0.119920  0.014173
+                   Bin x         Bin y  Count  Count (%)  Non-event  Event  Event rate       WoE        IV        JS
+   0        (-inf, 13.70)  (-inf, 0.21)    219   0.384886          1    218    0.995434 -4.863346  2.946834  0.199430
+   1         [13.70, inf)  (-inf, 0.21)     48   0.084359          5     43    0.895833 -1.630613  0.157946  0.017811
+   2        (-inf, 13.09)  [0.21, 0.38)     48   0.084359          1     47    0.979167 -3.328998  0.422569  0.037010
+   3       [13.09, 15.05)  [0.21, 0.38)     46   0.080844         17     29    0.630435 -0.012933  0.000013  0.000002
+   4         [15.05, inf)  [0.21, 0.32)     32   0.056239         29      3    0.093750  2.789833  0.358184  0.034271
+   5         [15.05, inf)   [0.32, inf)    129   0.226714        128      1    0.007752  5.373180  3.229133  0.201294
+   6        (-inf, 15.05)   [0.38, inf)     47   0.082601         31     16    0.340426  1.182548  0.119920  0.014173
    7              Special       Special      0   0.000000          0      0    0.000000  0.000000  0.000000  0.000000
    8              Missing       Missing      0   0.000000          0      0    0.000000  0.000000  0.000000  0.000000
-   Totals                                  569   1.000000        357    212    0.372583            7.234600  0.503991
+   Totals                                  569   1.000000        212    357    0.627417            7.234600  0.503991
 
 Similar to the optimal binning, you can generate a histogram 2D to visualize WoE and event rate.
 

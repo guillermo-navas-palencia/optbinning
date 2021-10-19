@@ -608,7 +608,7 @@ class OptimalBinning2D(OptimalBinning):
                                         self.max_n_prebins_y,
                                         self.min_prebin_size_y)
 
-        E, NE = self._prebinning_matrices(
+        NE, E = self._prebinning_matrices(
             splits_x, splits_y, x_clean, y_clean, z_clean, x_missing,
             y_missing, z_missing, x_special, y_special, z_special)
 

@@ -529,8 +529,9 @@ class SBOptimalBinning(OptimalBinning):
             self._n_event += s_n_event
 
             binning_table = BinningTable(
-                self.name, self.dtype, self._splits_optimal, s_n_nonevent,
-                s_n_event, None, None, None, None, self.user_splits)
+                self.name, self.dtype, self.special_codes,
+                self._splits_optimal, s_n_nonevent, s_n_event, None, None,
+                None, None, self.user_splits)
 
             self._binning_tables.append(binning_table)
 

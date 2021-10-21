@@ -177,7 +177,12 @@ def _apply_transform(x, dtype, special_codes, metric, metric_special,
             for i, (k, s) in enumerate(special_codes.items()):
                 sl = s if isinstance(s, (list, np.ndarray)) else [s]
                 mask = xt.isin(sl).values
-                x_transform[mask] = metric_value[n_bins + i]
+                if (metric_special == "empirical" or (metric == "indices" and
+                    not isinstance(metric_special, int)) or
+                        metric == "bins"):
+                    x_transform[mask] = metric_value[n_bins + i]
+                else:
+                    x_transform[mask] = metric_special
         else:
             if (metric_special == "empirical" or
                 (metric == "indices" and
@@ -292,16 +297,8 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
 
     x = np.asarray(x)
 
-    if np.issubdtype(x.dtype, np.number):
-        missing_mask = np.isnan(x)
-    else:
-        missing_mask = pd.isnull(x)
-
-    if special_codes is None:
-        clean_mask = ~missing_mask
-    else:
-        special_mask = pd.Series(x).isin(special_codes).values
-        clean_mask = ~missing_mask & ~special_mask
+    special_mask, missing_mask, clean_mask, n_special = _mask_special_missing(
+        x, special_codes)
 
     x_clean = x[clean_mask]
 
@@ -322,17 +319,15 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
         t_n_nonevent = n_nonevent.sum(axis=0)
         t_n_event = n_event.sum(axis=0)
 
-        if "empirical" not in (metric_special, metric_missing):
-            n_event = n_event[:n_bins, :]
-            n_nonevent = n_nonevent[:n_bins, :]
-            n_records = n_records[:n_bins, :]
-
-        event_rate = n_event / n_records
+        mask = (n_event > 0) & (n_nonevent > 0)
+        event_rate = np.zeros(n_event.shape)
         woe = np.zeros(n_event.shape)
 
+        event_rate[mask] = n_event[mask] / n_records[mask]
+
         for i in range(n_classes):
-            woe[:,  i] = transform_event_rate_to_woe(
-                event_rate[:, i], t_n_nonevent[i], t_n_event[i])
+            woe[mask[:, i],  i] = transform_event_rate_to_woe(
+                event_rate[mask[:, i], i], t_n_nonevent[i], t_n_event[i])
 
         if metric == "mean_woe":
             metric_value = woe.mean(axis=1)
@@ -340,39 +335,15 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
             metric_value = np.average(woe, weights=t_n_event, axis=1)
 
         x_transform = np.zeros(x.shape)
-        x_clean_transform = np.zeros(x_clean.shape)
     else:
         # Assign corresponding indices or bin intervals
-        if metric == "indices":
-            metric_value = np.arange(n_bins + 2)
-            x_transform = np.full(x.shape, -1, dtype=int)
-        elif metric == "bins":
-            bins_str.extend(["Special", "Missing"])
-            metric_value = bins_str
-            x_transform = np.full(x.shape, "", dtype=object)
+        metric_value, x_transform = _transform_metric_indices_bins(
+            x, special_codes, metric, n_bins, n_special, bins_str)
 
-        x_clean_transform = np.full(x_clean.shape, "").astype(object)
-
-    for i in range(n_bins):
-        mask = (indices == i)
-        x_clean_transform[mask] = metric_value[i]
-
-    x_transform[clean_mask] = x_clean_transform
-
-    if special_codes:
-        if (metric_special == "empirical" or
-            (metric == "indices" and not isinstance(metric_special, int)) or
-                metric == "bins"):
-            x_transform[special_mask] = metric_value[n_bins]
-        else:
-            x_transform[special_mask] = metric_special
-
-    if (metric_missing == "empirical" or
-        (metric == "indices" and not isinstance(metric_missing, int)) or
-            metric == "bins"):
-        x_transform[missing_mask] = metric_value[n_bins + 1]
-    else:
-        x_transform[missing_mask] = metric_missing
+    x_transform = _apply_transform(
+        x, "numerical", special_codes, metric, metric_special, metric_missing,
+        metric_value, clean_mask, special_mask, missing_mask, indices,
+        x_transform, x_clean, bins, n_bins, n_special)
 
     return x_transform
 

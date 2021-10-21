@@ -14,11 +14,11 @@ from contextlib import redirect_stdout
 
 from optbinning import BinningProcess
 from optbinning import Scorecard
-from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
+from tests.datasets import load_boston
 
 
 def test_params():

@@ -20,10 +20,10 @@ from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
-from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
+from tests.datasets import load_boston
 
 
 data = load_breast_cancer()

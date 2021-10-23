@@ -561,7 +561,11 @@ class Scorecard(Base, BaseEstimator):
 
             nt = len(binning_table)
             if metric_special != 'empirical':
-                n_specials = len(optb.special_codes)
+                if isinstance(optb.special_codes, dict):
+                    n_specials = len(optb.special_codes)
+                else:
+                    n_specials = 1
+
                 binning_table.at[nt-1-n_specials:nt-2,
                                  "Points"] = metric_special * c
             elif metric_missing != 'empirical':

@@ -462,7 +462,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         for i, name in enumerate(self.variable_names):
             if self.verbose:
                 logger.info("Binning variable ({} / {}): {}."
-                                  .format(i, self._n_variables, name))
+                            .format(i, self._n_variables, name))
             self._binned_variables[name].solve()
 
         if self.verbose:

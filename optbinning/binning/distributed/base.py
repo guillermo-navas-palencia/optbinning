@@ -6,7 +6,6 @@ Base optimal binning sketch algorithm class.
 # Copyright (C) 2021
 
 from ...exceptions import NotSolvedError
-from ...logging import Logger
 
 
 class BaseSketch:

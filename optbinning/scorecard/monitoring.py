@@ -287,8 +287,8 @@ class ScorecardMonitoring(BaseEstimator):
         self._time_system = time.perf_counter() - time_system
 
         if self.verbose:
-            logger.info("System stability analysis terminated. Time: "
-                              "{:.4f}s".format(self._time_system))
+            logger.info("System stability analysis terminated. Time: {:.4f}s"
+                        .format(self._time_system))
 
         # Statistics at variable level
         if self.verbose:
@@ -299,14 +299,14 @@ class ScorecardMonitoring(BaseEstimator):
         self._time_variable = time.perf_counter() - time_variable
 
         if self.verbose:
-            logger.info("Variable analysis terminated. Time: "
-                              "{:.4f}s".format(self._time_variable))
+            logger.info("Variable analysis terminated. Time: {:.4f}s"
+                        .format(self._time_variable))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
             logger.info("Monitoring terminated. Time: {:.4f}s"
-                              .format(self._time_total))
+                        .format(self._time_total))
 
         # Completed successfully
         self._is_fitted = True

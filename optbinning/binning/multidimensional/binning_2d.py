@@ -566,7 +566,7 @@ class OptimalBinning2D(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-processing: number of samples: {}"
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
 
@@ -583,16 +583,16 @@ class OptimalBinning2D(OptimalBinning):
             n_special = len(x_special)
 
             logger.info("Pre-processing: number of clean samples: {}"
-                              .format(n_clean))
+                        .format(n_clean))
 
             logger.info("Pre-processing: number of missing samples: {}"
-                              .format(n_missing))
+                        .format(n_missing))
 
             logger.info("Pre-processing: number of special samples: {}"
-                              .format(n_special))
+                        .format(n_special))
         if self.verbose:
             logger.info("Pre-processing terminated. Time: {:.4f}s"
-                              .format(self._time_preprocessing))
+                        .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
@@ -654,10 +654,10 @@ class OptimalBinning2D(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-binning: number of prebins: {}"
-                              .format(self._n_prebins))
+                        .format(self._n_prebins))
 
             logger.info("Pre-binning terminated. Time: {:.4f}s"
-                              .format(self._time_prebinning))
+                        .format(self._time_prebinning))
 
         # Optimization
         rows, n_nonevent, n_event = self._fit_optimizer(
@@ -745,14 +745,13 @@ class OptimalBinning2D(OptimalBinning):
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logger.info("Optimal binning terminated. Status: {}. "
-                              "Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Optimal binning terminated. Status: {}. Time: {:.4f}s"
+                        .format(self._status, self._time_total))
 
         # Completed successfully
         self._is_fitted = True
@@ -835,15 +834,15 @@ class OptimalBinning2D(OptimalBinning):
                 logger.info(
                     "Optimizer: monotonic trend x not set.")
             else:
-                logger.info("Optimizer: monotonic trend x set to "
-                                  "{}.".format(self.monotonic_trend_x))
+                logger.info("Optimizer: monotonic trend x set to {}."
+                            .format(self.monotonic_trend_x))
 
             if self.monotonic_trend_y is None:
                 logger.info(
                     "Optimizer: monotonic trend y not set.")
             else:
-                logger.info("Optimizer: monotonic trend y set to "
-                                  "{}.".format(self.monotonic_trend_x))
+                logger.info("Optimizer: monotonic trend y set to {}."
+                            .format(self.monotonic_trend_x))
 
         if self.solver == "cp":
             scale = int(1e6)
@@ -887,7 +886,7 @@ class OptimalBinning2D(OptimalBinning):
 
         if self.verbose:
             logger.info("Optimizer: model data terminated. Time {:.4f}s"
-                              .format(self._time_model_data))
+                        .format(self._time_model_data))
 
         if self.verbose:
             logger.info("Optimizer: build model...")
@@ -910,7 +909,7 @@ class OptimalBinning2D(OptimalBinning):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
         self._cols = cols
         self._rows = rows

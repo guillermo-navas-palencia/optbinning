@@ -536,8 +536,9 @@ class SBOptimalBinning(OptimalBinning):
             self._binning_tables.append(binning_table)
 
         self._binning_table = BinningTable(
-            self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, None, None, None, None, self.user_splits)
+            self.name, self.dtype, self.special_codes, self._splits_optimal,
+            self._n_nonevent, self._n_event, None, None, None, None,
+            self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

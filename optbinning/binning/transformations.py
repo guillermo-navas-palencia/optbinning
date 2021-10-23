@@ -380,6 +380,7 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
         bins_str = bin_str_format(bins, show_digits)
         n_bins = len(splits) + 1
     else:
+        indices = None
         bins = bin_categorical(splits, categories, cat_others, user_splits)
         bins_str = [str(b) for b in bins]
         n_bins = len(bins)

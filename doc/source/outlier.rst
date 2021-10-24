@@ -1,19 +1,19 @@
 Outlier detection
 =================
 
-.. autoclass:: optbinning.outlier.OutlierDetector
+.. autoclass:: optbinning.binning.outlier.OutlierDetector
    :members:
    :inherited-members:
    :show-inheritance:
 
 
-.. autoclass:: optbinning.outlier.RangeDetector
+.. autoclass:: optbinning.binning.outlier.RangeDetector
    :members:
    :inherited-members:
    :show-inheritance:
 
 
-.. autoclass:: optbinning.outlier.ModifiedZScoreDetector
+.. autoclass:: optbinning.binning.outlier.ModifiedZScoreDetector
    :members:
    :inherited-members:
    :show-inheritance:

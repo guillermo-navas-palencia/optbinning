@@ -15,12 +15,12 @@ from contextlib import redirect_stdout
 from optbinning import BinningProcess
 from optbinning import Scorecard
 from optbinning.scorecard import ScorecardMonitoring
-from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from tests.datasets import load_boston
 
 
 def _data(target_dtype):

@@ -133,6 +133,88 @@ def target_info_samples(y, sw, cl=0):
         return n_nonevent, n_event
 
 
+def target_info_special(special_codes, x, y, sw, cl=0):
+    if isinstance(special_codes, dict):
+        n_nonevent = []
+        n_event = []
+        xt = pd.Series(x)
+        for s in special_codes.values():
+            sl = s if isinstance(s, (list, np.ndarray)) else [s]
+            mask = xt.isin(sl).values
+            n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            n_nonevent.append(n_nev)
+            n_event.append(n_ev)
+
+        return n_nonevent, n_event
+    else:
+        return target_info_samples(y, sw, cl)
+
+
+def target_info_special_multiclass(special_codes, x, y, classes):
+    if isinstance(special_codes, dict):
+        n_event = []
+        xt = pd.Series(x)
+        for s in special_codes.values():
+            sl = s if isinstance(s, (list, np.ndarray)) else [s]
+            mask = xt.isin(sl).values
+            n_ev = [target_info(y[mask], cl)[0] for cl in classes]
+            n_event.append(n_ev)
+    else:
+        n_event = [target_info(y, cl)[0] for cl in classes]
+
+    return n_event
+
+
+def target_info_special_continuous(special_codes, x, y):
+    if isinstance(special_codes, dict):
+        n_records_special = []
+        sum_special = []
+        n_zeros_special = []
+
+        if len(y):
+            std_special = []
+            min_target_special = []
+            max_target_special = []
+        else:
+            std_special = None
+            min_target_special = None
+            max_target_special = None
+
+        xt = pd.Series(x)
+        for s in special_codes.values():
+            sl = s if isinstance(s, (list, np.ndarray)) else [s]
+            mask = xt.isin(sl).values
+
+            n_records = np.count_nonzero(mask)
+            n_records_special.append(n_records)
+            sum_special.append(np.sum(y[mask]))
+            n_zeros_special.append(np.count_nonzero(y[mask] == 0))
+
+            if n_records:
+                std_special.append(np.std(y[mask]))
+                min_target_special.append(np.min(y[mask]))
+                max_target_special.append(np.max(y[mask]))
+            else:
+                std_special.append(0)
+                min_target_special.append(0)
+                max_target_special.append(0)
+    else:
+        n_records_special = len(y)
+        sum_special = np.sum(y)
+        n_zeros_special = np.count_nonzero(y == 0)
+        if len(y):
+            std_special = np.std(y)
+            min_target_special = np.min(y)
+            max_target_special = np.max(y)
+        else:
+            std_special = None
+            min_target_special = None
+            max_target_special = None
+
+    return (n_records_special, sum_special, n_zeros_special, std_special,
+            min_target_special, max_target_special)
+
+
 def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
              n_event_missing, n_nonevent_special, n_event_special,
              n_nonevent_cat_others, n_event_cat_others, cat_others):
@@ -159,8 +241,12 @@ def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
         n_nev.append(n_nonevent_cat_others)
         n_ev.append(n_event_cat_others)
 
-    n_nev.append(n_nonevent_special)
-    n_ev.append(n_event_special)
+    if isinstance(n_nonevent_special, list):
+        n_nev.extend(n_nonevent_special)
+        n_ev.extend(n_event_special)
+    else:
+        n_nev.append(n_nonevent_special)
+        n_ev.append(n_event_special)
 
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
@@ -182,7 +268,11 @@ def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
     if not len(solution):
         n_ev.append(n_event)
 
-    n_ev.append(n_event_special)
+    if isinstance(n_event_special[0], list):
+        n_ev.extend(n_event_special)
+    else:
+        n_ev.append(n_event_special)
+
     n_ev.append(n_event_missing)
 
     return np.array(n_ev).astype(np.int64)
@@ -253,19 +343,27 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
         min_t.append(min_target_others)
         max_t.append(max_target_others)
 
-    r.append(n_records_special)
-    s.append(sum_special)
-    st.append(std_special)
-    z.append(n_zeros_special)
-    min_t.append(min_target_special)
-    max_t.append(max_target_special)
+    if isinstance(n_records_special, list):
+        r.extend(n_records_special)
+        s.extend(sum_special)
+        st.extend(std_special)
+        z.extend(n_zeros_special)
+        min_t.extend(min_target_special)
+        max_t.extend(max_target_special)
+    else:
+        r.append(n_records_special)
+        s.append(sum_special)
+        st.append(std_special)
+        z.append(n_zeros_special)
+        min_t.append(min_target_special)
+        max_t.append(max_target_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
     st.append(std_missing)
     z.append(n_zeros_missing)
     min_t.append(min_target_missing)
-    max_t.append(max_target_special)
+    max_t.append(max_target_missing)
 
     return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
             np.array(st).astype(np.float64),
@@ -312,6 +410,10 @@ class BinningTable:
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables.
 
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
     splits : numpy.ndarray
         List of split points.
 
@@ -342,12 +444,13 @@ class BinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_nonevent, n_event, min_x=None,
-                 max_x=None, categories=None, cat_others=None,
+    def __init__(self, name, dtype, special_codes, splits, n_nonevent, n_event,
+                 min_x=None, max_x=None, categories=None, cat_others=None,
                  user_splits=None):
 
         self.name = name
         self.dtype = dtype
+        self.special_codes = special_codes
         self.splits = splits
         self.n_nonevent = n_nonevent
         self.n_event = n_event
@@ -365,6 +468,7 @@ class BinningTable:
         self._iv = None
         self._js = None
         self._gini = None
+        self._n_specials = None
         self._quality_score = None
         self._ks = None
 
@@ -441,6 +545,12 @@ class BinningTable:
         self._event_rate = event_rate
         self._woe = woe
 
+        # special codes info
+        if isinstance(self.special_codes, dict):
+            self._n_specials = len(self.special_codes)
+        else:
+            self._n_specials = 1
+
         if self.dtype == "numerical":
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
@@ -448,7 +558,10 @@ class BinningTable:
             bin_str = bin_categorical(self.splits, self.categories,
                                       self.cat_others, self.user_splits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,
@@ -539,7 +652,7 @@ class BinningTable:
 
         if style == "bin":
             n_bins = len(self._n_records)
-            n_metric = n_bins - 2
+            n_metric = n_bins - 1 - self._n_specials
 
             if len(self.cat_others):
                 n_metric -= 1
@@ -548,9 +661,10 @@ class BinningTable:
             _n_nonevent = list(self.n_nonevent)
 
             if not add_special:
-                _n_event.pop(-2)
-                _n_nonevent.pop(-2)
-                n_bins -= 1
+                n_bins -= self._n_specials
+                for _ in range(self._n_specials):
+                    _n_event.pop(-2)
+                    _n_nonevent.pop(-2)
 
             if not add_missing:
                 _n_event.pop(-1)
@@ -573,10 +687,13 @@ class BinningTable:
                      linestyle="solid", marker="o", color="black")
 
             # Positions special and missing bars
+            pos_special = 0
+            pos_missing = 0
+
             if add_special:
                 pos_special = n_metric
                 if add_missing:
-                    pos_missing = n_metric + 1
+                    pos_missing = n_metric + self._n_specials
             elif add_missing:
                 pos_missing = n_metric
 
@@ -593,8 +710,10 @@ class BinningTable:
                          color="black")
 
             if add_special:
-                p1[pos_special].set_hatch("/")
-                p2[pos_special].set_hatch("/")
+                for i in range(self._n_specials):
+                    p1[pos_special + i].set_hatch("/")
+                    p2[pos_special + i].set_hatch("/")
+
                 handle_special = mpatches.Patch(hatch="/", alpha=0.1)
                 label_special = "Bin special"
 
@@ -624,8 +743,8 @@ class BinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
         elif style == "actual":
-            _n_nonevent = self.n_nonevent[:-2]
-            _n_event = self.n_event[:-2]
+            _n_nonevent = self.n_nonevent[:-(self._n_specials + 1)]
+            _n_event = self.n_event[:-(self._n_specials + 1)]
 
             n_splits = len(self.splits)
 
@@ -654,7 +773,8 @@ class BinningTable:
                 ax2.plot([y_pos[i], y_pos[i+1]], [metric_values[i]] * 2,
                          linestyle="solid", color="black")
 
-            ax2.plot(width / 2 + y_pos2, metric_values[:-2],
+            ax2.plot(width / 2 + y_pos2,
+                     metric_values[:-(self._n_specials + 1)],
                      linewidth=0.75, marker="o", color="black")
 
             for split in self.splits:
@@ -721,7 +841,7 @@ class BinningTable:
 
         # Significance tests
         n_bins = len(self._n_records)
-        n_metric = n_bins - 2
+        n_metric = n_bins - 1 - self._n_specials
 
         if len(self.cat_others):
             n_metric -= 1
@@ -924,8 +1044,9 @@ class MulticlassBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, splits, n_event, classes):
+    def __init__(self, name, special_codes, splits, n_event, classes):
         self.name = name
+        self.special_codes = special_codes
         self.splits = splits
         self.n_event = n_event
         self.classes = classes
@@ -935,6 +1056,7 @@ class MulticlassBinningTable:
         self._js = None
         self._hhi = None
         self._hhi_norm = None
+        self._n_specials = None
         self._quality_score = None
 
         self._is_built = False
@@ -981,9 +1103,19 @@ class MulticlassBinningTable:
         self._n_records = n_records
         self._event_rate = event_rate
 
+        # special codes info
+        if isinstance(self.special_codes, dict):
+            self._n_specials = len(self.special_codes)
+        else:
+            self._n_specials = 1
+
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
-        bin_str.extend(["Special", "Missing"])
+
+        if isinstance(self.special_codes, dict):
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            bin_str.extend(["Special", "Missing"])
 
         dict_event = {"Event_{0}".format(cl): n_event[:, i]
                       for i, cl in enumerate(self.classes)}
@@ -1028,7 +1160,7 @@ class MulticlassBinningTable:
         _check_is_built(self)
 
         n_bins = len(self._n_records)
-        n_metric = n_bins - 2
+        n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
         fig, ax1 = plt.subplots()
@@ -1037,7 +1169,7 @@ class MulticlassBinningTable:
         colors = [tuple(c / 255. for c in color) for color in colors]
 
         if not add_special:
-            n_bins -= 1
+            n_bins -= self._n_specials
 
         if not add_missing:
             n_bins -= 1
@@ -1046,7 +1178,8 @@ class MulticlassBinningTable:
         for i in range(n_classes):
             _n_event_c = list(self.n_event[:, i])
             if not add_special:
-                _n_event_c.pop(-2)
+                for _ in range(self._n_specials):
+                    _n_event_c.pop(-2)
             if not add_missing:
                 _n_event_c.pop(-1)
             _n_event.append(np.array(_n_event_c))
@@ -1080,13 +1213,14 @@ class MulticlassBinningTable:
         if add_special:
             pos_special = n_metric
             if add_missing:
-                pos_missing = n_metric + 1
+                pos_missing = n_metric + self._n_specials
         elif add_missing:
             pos_missing = n_metric
 
         if add_special:
             for _p in p:
-                _p[pos_special].set_hatch("/")
+                for i in range(self._n_specials):
+                    _p[pos_special + i].set_hatch("/")
 
             handle_special = mpatches.Patch(hatch="/", alpha=0.1)
             label_special = "Bin special"
@@ -1155,7 +1289,7 @@ class MulticlassBinningTable:
 
         # Significance tests
         n_bins = len(self._n_records)
-        n_metric = n_bins - 2
+        n_metric = n_bins - 1 - self._n_specials
 
         n_ev = self.n_event[:n_metric, :]
         if len(n_ev) >= 2:
@@ -1265,6 +1399,10 @@ class ContinuousBinningTable:
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables.
 
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
     splits : numpy.ndarray
         List of split points.
 
@@ -1307,12 +1445,13 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, splits, n_records, sums, stds, min_target,
-                 max_target, n_zeros, min_x=None, max_x=None, categories=None,
-                 cat_others=None, user_splits=None):
+    def __init__(self, name, dtype, special_codes, splits, n_records, sums,
+                 stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
+                 categories=None, cat_others=None, user_splits=None):
 
         self.name = name
         self.dtype = dtype
+        self.special_codes = special_codes
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
@@ -1330,6 +1469,7 @@ class ContinuousBinningTable:
         self._iv = None
         self._hhi = None
         self._hhi_norm = None
+        self._n_specials = None
 
         self._is_built = False
 
@@ -1373,6 +1513,12 @@ class ContinuousBinningTable:
         self._hhi = hhi(p_records)
         self._hhi_norm = hhi(p_records, normalized=True)
 
+        # special codes info
+        if isinstance(self.special_codes, dict):
+            self._n_specials = len(self.special_codes)
+        else:
+            self._n_specials = 1
+
         if self.dtype == "numerical":
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
@@ -1380,7 +1526,10 @@ class ContinuousBinningTable:
             bin_str = bin_categorical(self.splits, self.categories,
                                       self.cat_others, self.user_splits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,
@@ -1463,7 +1612,7 @@ class ContinuousBinningTable:
 
         if style == "bin":
             n_bins = len(self.n_records)
-            n_metric = n_bins - 2
+            n_metric = n_bins - 1 - self._n_specials
 
             if len(self.cat_others):
                 n_metric -= 1
@@ -1471,8 +1620,9 @@ class ContinuousBinningTable:
             _n_records = list(self.n_records)
 
             if not add_special:
-                _n_records.pop(-2)
-                n_bins -= 1
+                n_bins -= self._n_specials
+                for _ in range(self._n_specials):
+                    _n_records.pop(-2)
 
             if not add_missing:
                 _n_records.pop(-1)
@@ -1498,7 +1648,7 @@ class ContinuousBinningTable:
             if add_special:
                 pos_special = n_metric
                 if add_missing:
-                    pos_missing = n_metric + 1
+                    pos_missing = n_metric + self._n_specials
             elif add_missing:
                 pos_missing = n_metric
 
@@ -1514,7 +1664,9 @@ class ContinuousBinningTable:
                          color="black")
 
             if add_special:
-                p1[pos_special].set_hatch("/")
+                for i in range(self._n_specials):
+                    p1[pos_special + i].set_hatch("/")
+
                 handle_special = mpatches.Patch(hatch="/", alpha=0.1)
                 label_special = "Bin special"
 
@@ -1543,7 +1695,7 @@ class ContinuousBinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
         elif style == "actual":
-            _n_records = self.n_records[:-2]
+            _n_records = self.n_records[:-(self._n_specials + 1)]
 
             n_splits = len(self.splits)
 
@@ -1571,7 +1723,8 @@ class ContinuousBinningTable:
                 ax2.plot([y_pos[i], y_pos[i+1]], [metric_values[i]] * 2,
                          linestyle="solid", color="black")
 
-            ax2.plot(width / 2 + y_pos2, metric_values[:-2],
+            ax2.plot(width / 2 + y_pos2,
+                     metric_values[:-(self._n_specials + 1)],
                      linewidth=0.75, marker="o", color="black")
 
             for split in self.splits:
@@ -1620,7 +1773,7 @@ class ContinuousBinningTable:
 
         # Significance tests
         n_bins = len(self.n_records)
-        n_metric = n_bins - 2
+        n_metric = n_bins - 1 - self._n_specials
 
         if len(self.cat_others):
             n_metric -= 1

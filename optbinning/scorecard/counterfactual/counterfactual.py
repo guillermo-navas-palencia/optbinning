@@ -293,7 +293,7 @@ class Counterfactual(BaseCounterfactual):
 
         if self.verbose:
             logger.info("Counterfactual fit terminated. Time: {:.4f}s"
-                              .format(self._time_fit))
+                        .format(self._time_fit))
 
         self._is_fitted = True
         self._is_generated = False
@@ -487,7 +487,7 @@ class Counterfactual(BaseCounterfactual):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
         # Post-processing
         if self.verbose:
@@ -525,14 +525,13 @@ class Counterfactual(BaseCounterfactual):
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logger.info("Counterfactual generation terminated. Status: "
-                              "{}. Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Counterfactual generation terminated. Status: {}. "
+                        "Time: {:.4f}s".format(self._status, self._time_total))
 
         # Completed successfully
         self._is_generated = True

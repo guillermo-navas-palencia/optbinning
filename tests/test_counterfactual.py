@@ -15,11 +15,11 @@ from optbinning.exceptions import NotGeneratedError
 from optbinning.exceptions import CounterfactualsFoundWarning
 from optbinning.scorecard import Counterfactual
 
-from sklearn.datasets import load_boston
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
+from tests.datasets import load_boston
 
 
 data = load_breast_cancer()

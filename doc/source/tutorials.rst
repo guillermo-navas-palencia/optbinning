@@ -69,3 +69,12 @@ Optimal binning under uncertainty
    :maxdepth: 1
 
    tutorials/tutorial_binary_under_uncertainty
+
+
+Optimal binning 2D
+------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/tutorial_binning_2d

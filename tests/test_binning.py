@@ -346,7 +346,8 @@ def test_categorical_user_splits():
     y += list(np.zeros(n))
     y += list(np.random.binomial(1, 0.025641, n))
 
-    user_splits = [[2., 7., 9., 3., 10., 4.], [8], [-1]]
+    user_splits = np.array([[2., 7., 9., 3., 10., 4.], [8], [-1]],
+                           dtype=object)
     user_splits_fixed = [True, True, True]
 
     optb1 = OptimalBinning(dtype="categorical", user_splits=user_splits)

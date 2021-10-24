@@ -20,6 +20,7 @@ from .binning import OptimalBinning
 from .binning_statistics import multiclass_bin_info
 from .binning_statistics import MulticlassBinningTable
 from .binning_statistics import target_info
+from .binning_statistics import target_info_special_multiclass
 from .multiclass_cp import MulticlassBinningCP
 from .multiclass_mip import MulticlassBinningMIP
 from .preprocessing import split_data
@@ -149,8 +150,13 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                                                    len(user_splits_fixed)))
 
     if special_codes is not None:
-        if not isinstance(special_codes, (np.ndarray, list)):
-            raise TypeError("special_codes must be a list or numpy.ndarray.")
+        if not isinstance(special_codes, (np.ndarray, list, dict)):
+            raise TypeError("special_codes must be a dit, list or "
+                            "numpy.ndarray.")
+
+        if isinstance(special_codes, dict) and not len(special_codes):
+            raise ValueError("special_codes empty. special_codes dict must "
+                             "contain at least one special.")
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
@@ -251,7 +257,7 @@ class MulticlassOptimalBinning(OptimalBinning):
     user_splits_fixed : array-like or None (default=None)
         The list of pre-binning split points that must be fixed.
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : array-like, dict or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
@@ -487,7 +493,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-processing: number of samples: {}"
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
 
@@ -510,21 +516,21 @@ class MulticlassOptimalBinning(OptimalBinning):
             n_special = len(x_special)
 
             logger.info("Pre-processing: number of clean samples: {}"
-                              .format(n_clean))
+                        .format(n_clean))
 
             logger.info("Pre-processing: number of missing samples: {}"
-                              .format(n_missing))
+                        .format(n_missing))
 
             logger.info("Pre-processing: number of special samples: {}"
-                              .format(n_special))
+                        .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                logger.info("Pre-processing: number of outlier samples: "
-                                  "{}".format(n_outlier))
+                logger.info("Pre-processing: number of outlier samples: {}"
+                            .format(n_outlier))
 
             logger.info("Pre-processing terminated. Time: {:.4f}s"
-                              .format(self._time_preprocessing))
+                        .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
@@ -537,7 +543,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.info("Pre-binning: user splits supplied: {}"
-                                  .format(n_splits))
+                            .format(n_splits))
 
             user_splits = check_array(self.user_splits, ensure_2d=False,
                                       dtype=None, force_all_finite=True)
@@ -553,10 +559,11 @@ class MulticlassOptimalBinning(OptimalBinning):
                     self.user_splits_fixed)[sorted_idx]
 
             splits, n_nonevent, n_event = self._prebinning_refinement(
-                user_splits, x_clean, y_clean, y_missing, y_special, None)
+                user_splits, x_clean, y_clean, y_missing, x_special, y_special,
+                None)
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
-                x_clean, y_clean, y_missing, y_special, None)
+                x_clean, y_clean, y_missing, x_special, y_special, None)
 
         self._n_prebins = len(n_nonevent)
 
@@ -564,12 +571,12 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-binning: number of prebins: {}"
-                              .format(self._n_prebins))
+                        .format(self._n_prebins))
             logger.info("Pre-binning: number of refinements: {}"
-                              .format(self._n_refinements))
+                        .format(self._n_refinements))
 
             logger.info("Pre-binning terminated. Time: {:.4f}s"
-                              .format(self._time_prebinning))
+                        .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event)
@@ -592,20 +599,20 @@ class MulticlassOptimalBinning(OptimalBinning):
             self._n_event_special)
 
         self._binning_table = MulticlassBinningTable(
-            self.name, self._splits_optimal, self._n_event, self._classes)
+            self.name, self.special_codes, self._splits_optimal, self._n_event,
+            self._classes)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logger.info("Optimal binning terminated. Status: {}. "
-                              "Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Optimal binning terminated. Status: {}. Time: {:.4f}s"
+                        .format(self._status, self._time_total))
 
         # Completed successfully
         self._is_fitted = True
@@ -613,8 +620,8 @@ class MulticlassOptimalBinning(OptimalBinning):
         return self
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others=None, sw_clean=None,
-                               sw_missing=None, sw_special=None,
+                               x_special, y_special, y_others=None,
+                               sw_clean=None, sw_missing=None, sw_special=None,
                                sw_others=None):
 
         self._classes = np.unique(y)
@@ -624,14 +631,10 @@ class MulticlassOptimalBinning(OptimalBinning):
             raise ValueError("Maximum number of classes exceeded; got {}."
                              .format(self._n_classes))
 
-        special_target_info = []
-        missing_target_info = []
-        for idx, cl in enumerate(self._classes):
-            special_target_info.append(target_info(y_special, cl)[0])
-            missing_target_info.append(target_info(y_missing, cl)[0])
-
-        self._n_event_special = special_target_info
-        self._n_event_missing = missing_target_info
+        self._n_event_special = target_info_special_multiclass(
+            self.special_codes, x_special, y_special, self._classes)
+        self._n_event_missing = [target_info(y_missing, cl)[0]
+                                 for cl in self._classes]
 
         n_splits = len(splits_prebinning)
 
@@ -685,7 +688,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.info("Optimizer: classifier predicts {} "
-                                  "monotonic trends.".format(monotonic))
+                            "monotonic trends.".format(monotonic))
         elif isinstance(self.monotonic_trend, list):
             if len(self.monotonic_trend) != self._n_classes:
                 raise ValueError("List of monotonic trends must be of size "
@@ -714,7 +717,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
                     if self.verbose:
                         logger.info("Optimizer: classifier predicts {} "
-                                          "monotonic trend.".format(trend))
+                                    "monotonic trend.".format(trend))
                 else:
                     monotonic.append(m_trend)
         elif self.monotonic_trend is None:
@@ -759,7 +762,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
     def _compute_prebins(self, splits_prebinning, x, y):
         n_splits = len(splits_prebinning)
@@ -810,7 +813,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.info("Pre-binning: number prebins removed: {}"
-                                  .format(np.count_nonzero(mask_remove)))
+                            .format(np.count_nonzero(mask_remove)))
 
             [splits_prebinning, n_nonevent, n_event] = self._compute_prebins(
                 splits, x, y)

@@ -275,8 +275,13 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                             "strings.")
 
     if special_codes is not None:
-        if not isinstance(special_codes, (np.ndarray, list)):
-            raise TypeError("special_codes must be a list or numpy.ndarray.")
+        if not isinstance(special_codes, (np.ndarray, list, dict)):
+            raise TypeError("special_codes must be a dit, list or "
+                            "numpy.ndarray.")
+
+        if isinstance(special_codes, dict) and not len(special_codes):
+            raise ValueError("special_codes empty. special_codes dict must "
+                             "contain at least one special.")
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
@@ -1078,23 +1083,23 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             logger.info("Dataset: number of samples: {}."
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
             logger.info("Dataset: number of variables: {}."
-                              .format(self._n_variables))
+                        .format(self._n_variables))
 
         # Number of jobs
         n_jobs = effective_n_jobs(self.n_jobs)
 
         if self.verbose:
             logger.info("Options: number of jobs (cores): {}."
-                              .format(n_jobs))
+                        .format(n_jobs))
 
         if n_jobs == 1:
             for i, name in enumerate(self.variable_names):
                 if self.verbose:
                     logger.info("Binning variable ({} / {}): {}."
-                                      .format(i, self._n_variables, name))
+                                .format(i, self._n_variables, name))
 
                 if isinstance(X, np.ndarray):
                     dtype, optb = _fit_variable(
@@ -1159,7 +1164,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             logger.info("Binning process terminated. Time: {:.4f}s"
-                              .format(self._time_total))
+                        .format(self._time_total))
 
         # Completed successfully
         self._is_fitted = True
@@ -1210,10 +1215,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             logger.info("Dataset: number of samples: {}."
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
             logger.info("Dataset: number of variables: {}."
-                              .format(self._n_variables))
+                        .format(self._n_variables))
 
         for name in self.variable_names:
             x = _read_column(input_path, extension, name, **kwargs)
@@ -1238,7 +1243,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             logger.info("Binning process terminated. Time: {:.4f}s"
-                              .format(self._time_total))
+                        .format(self._time_total))
 
         # Completed successfully
         self._is_fitted = True
@@ -1317,7 +1322,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.verbose:
             logger.info("Binning process terminated. Time: {:.4f}s"
-                              .format(self._time_total))
+                        .format(self._time_total))
 
         # Completed successfully
         self._is_fitted = True

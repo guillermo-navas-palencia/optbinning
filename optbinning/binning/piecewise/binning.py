@@ -308,7 +308,7 @@ class OptimalPWBinning(BasePWBinning):
 
         if self.verbose:
             logger.info("Pre-processing: number of samples: {}"
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
 
@@ -323,21 +323,21 @@ class OptimalPWBinning(BasePWBinning):
             n_special = len(x_special)
 
             logger.info("Pre-processing: number of clean samples: {}"
-                              .format(n_clean))
+                        .format(n_clean))
 
             logger.info("Pre-processing: number of missing samples: {}"
-                              .format(n_missing))
+                        .format(n_missing))
 
             logger.info("Pre-processing: number of special samples: {}"
-                              .format(n_special))
+                        .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                logger.info("Pre-processing: number of outlier samples: "
-                                  "{}".format(n_outlier))
+                logger.info("Pre-processing: number of outlier samples: {}"
+                            .format(n_outlier))
 
             logger.info("Pre-processing terminated. Time: {:.4f}s"
-                              .format(self._time_preprocessing))
+                        .format(self._time_preprocessing))
 
         # Pre-binning
         # Fit estimator and compute event_rate = P[Y=1, X=x]
@@ -348,7 +348,7 @@ class OptimalPWBinning(BasePWBinning):
 
             if self.verbose:
                 logger.info("Pre-binning: set logistic regression as an "
-                                  "estimator.")
+                            "estimator.")
 
         if self.verbose:
             logger.info("Pre-binning: estimator fitting started.")
@@ -359,8 +359,8 @@ class OptimalPWBinning(BasePWBinning):
         self._time_estimator = time.perf_counter() - time_estimator
 
         if self.verbose:
-            logger.info("Pre-binning: estimator terminated. Time "
-                              "{:.4f}s.".format(self._time_estimator))
+            logger.info("Pre-binning: estimator terminated. Time {:.4f}s."
+                        .format(self._time_estimator))
 
         # Fit optimal binning algorithm for continuous target. Use optimal
         # split points to compute optimal piecewise functions
@@ -412,14 +412,13 @@ class OptimalPWBinning(BasePWBinning):
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logger.info("Optimal piecewise binning terminated. "
-                              "Status: {}. Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Optimal piecewise binning terminated. Status: {}. "
+                        "Time: {:.4f}s".format(self._status, self._time_total))
 
         # Completed successfully
         self._is_fitted = True

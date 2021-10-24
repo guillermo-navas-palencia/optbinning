@@ -394,7 +394,7 @@ class BasePWBinning(Base, BaseEstimator):
 
         if self.verbose:
             logger.info("Pre-binning: number of splits: {}."
-                              .format(n_splits))
+                        .format(n_splits))
 
         # Prepare optimization model data
         n_bins = n_splits + 1
@@ -415,13 +415,13 @@ class BasePWBinning(Base, BaseEstimator):
 
             if self.verbose:
                 logger.info("Pre-binning: number of subsamples: {}."
-                                  .format(self.n_subsamples))
+                            .format(self.n_subsamples))
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
         if self.verbose:
-            logger.info("Pre-binning: optimal binning terminated. "
-                              "Time {:.4}s.".format(self._time_prebinning))
+            logger.info("Pre-binning: optimal binning terminated. Time {:.4}s."
+                        .format(self._time_prebinning))
 
         # LP problem
         if self.verbose:
@@ -441,7 +441,7 @@ class BasePWBinning(Base, BaseEstimator):
 
             if self.verbose:
                 logger.info("Optimizer: {} monotonic trend."
-                                  .format(monotonic))
+                            .format(monotonic))
         else:
             monotonic = self.monotonic_trend
 
@@ -464,7 +464,7 @@ class BasePWBinning(Base, BaseEstimator):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
     @property
     def binning_table(self):

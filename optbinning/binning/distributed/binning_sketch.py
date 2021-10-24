@@ -575,12 +575,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         if self.verbose:
             logger.info("Pre-binning: number of prebins: {}"
-                              .format(self._n_prebins))
+                        .format(self._n_prebins))
             logger.info("Pre-binning: number of refinements: {}"
-                              .format(self._n_refinements))
+                        .format(self._n_refinements))
 
             logger.info("Pre-binning terminated. Time: {:.4f}s"
-                              .format(self._time_prebinning))
+                        .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_nonevent, n_event)
@@ -603,24 +603,23 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
             self._n_event_cat_others, self._cat_others)
 
         self._binning_table = BinningTable(
-            self.name, self.dtype, self._splits_optimal, self._n_nonevent,
-            self._n_event, None, None, self._categories, self._cat_others,
-            None)
+            self.name, self.dtype, self.special_codes, self._splits_optimal,
+            self._n_nonevent, self._n_event, None, None, self._categories,
+            self._cat_others, None)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
         self._time_streaming_solve += self._time_total
         self._n_solve += 1
 
         if self.verbose:
-            logger.info("Optimal binning terminated. Status: {}. "
-                              "Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Optimal binning terminated. Status: {}. Time: {:.4f}s"
+                        .format(self._status, self._time_total))
 
         # Completed successfully
         self._is_solved = True
@@ -800,7 +799,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
-                                     .format(len(n_nonevent)))
+                               .format(len(n_nonevent)))
                 logger.warning("Optimizer: solver not run.")
 
                 logger.info("Optimizer terminated. Time: 0s")
@@ -855,7 +854,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
                 if self.verbose:
                     logger.info("Optimizer: classifier predicts {} "
-                                      "monotonic trend.".format(monotonic))
+                                "monotonic trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
 
@@ -865,8 +864,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                         event_rate, monotonic)
 
                     if self.verbose:
-                        logger.info("Optimizer: trend change position "
-                                          "{}.".format(trend_change))
+                        logger.info("Optimizer: trend change position {}."
+                                    .format(trend_change))
 
         else:
             monotonic = self.monotonic_trend
@@ -878,8 +877,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                 logger.info(
                     "Optimizer: monotonic trend not set.")
             else:
-                logger.info("Optimizer: monotonic trend set to "
-                                  "{}.".format(monotonic))
+                logger.info("Optimizer: monotonic trend set to {}."
+                            .format(monotonic))
 
         if self.solver == "cp":
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
@@ -921,7 +920,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
     def _update_streaming_stats(self):
         self._binning_table.build()

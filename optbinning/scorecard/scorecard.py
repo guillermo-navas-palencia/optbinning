@@ -517,7 +517,7 @@ class Scorecard(Base, BaseEstimator):
 
         if self.verbose:
             logger.info("Binning process terminated. Time: {:.4f}s"
-                              .format(self._time_binning_process))
+                        .format(self._time_binning_process))
 
         # Fit estimator
         time_estimator = time.perf_counter()
@@ -531,7 +531,7 @@ class Scorecard(Base, BaseEstimator):
 
         if self.verbose:
             logger.info("Fitting terminated. Time {:.4f}s"
-                              .format(self._time_estimator))
+                        .format(self._time_estimator))
 
         # Get coefs
         intercept = 0
@@ -558,12 +558,18 @@ class Scorecard(Base, BaseEstimator):
             binning_table["Variable"] = variable
             binning_table["Coefficient"] = c
             binning_table["Points"] = binning_table[bt_metric] * c
+
+            nt = len(binning_table)
             if metric_special != 'empirical':
-                binning_table.at[len(binning_table)-2,
+                if isinstance(optb.special_codes, dict):
+                    n_specials = len(optb.special_codes)
+                else:
+                    n_specials = 1
+
+                binning_table.at[nt-1-n_specials:nt-2,
                                  "Points"] = metric_special * c
             elif metric_missing != 'empirical':
-                binning_table.at[len(binning_table)-1,
-                                 "Points"] = metric_missing * c
+                binning_table.at[nt-1, "Points"] = metric_missing * c
 
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)
@@ -598,8 +604,8 @@ class Scorecard(Base, BaseEstimator):
 
                 if status not in ("OPTIMAL", "FEASIBLE"):
                     if self.verbose:
-                        logger.warning("MIP rounding failed, method "
-                                             "nearest integer used instead.")
+                        logger.warning("MIP rounding failed, method nearest "
+                                       "integer used instead.")
                     # Back-up method
                     round_points = np.rint(points)
 
@@ -613,9 +619,9 @@ class Scorecard(Base, BaseEstimator):
 
         if self.verbose:
             logger.info("Scorecard table terminated. Time: {:.4f}s"
-                              .format(self._time_build_scorecard))
-            logger.info("Scorecard building process terminated. Time: "
-                              "{:.4f}s".format(self._time_total))
+                        .format(self._time_build_scorecard))
+            logger.info("Scorecard building process terminated. Time: {:.4f}s"
+                        .format(self._time_total))
 
         # Completed successfully
         self._is_fitted = True

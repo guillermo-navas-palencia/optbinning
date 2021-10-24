@@ -19,6 +19,7 @@ from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning
 from .binning_statistics import continuous_bin_info
 from .binning_statistics import ContinuousBinningTable
+from .binning_statistics import target_info_special_continuous
 from .continuous_cp import ContinuousBinningCP
 from .preprocessing import preprocessing_user_splits_categorical
 from .preprocessing import split_data
@@ -148,8 +149,13 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                                                    len(user_splits_fixed)))
 
     if special_codes is not None:
-        if not isinstance(special_codes, (np.ndarray, list)):
-            raise TypeError("special_codes must be a list or numpy.ndarray.")
+        if not isinstance(special_codes, (np.ndarray, list, dict)):
+            raise TypeError("special_codes must be a dit, list or "
+                            "numpy.ndarray.")
+
+        if isinstance(special_codes, dict) and not len(special_codes):
+            raise ValueError("special_codes empty. special_codes dict must "
+                             "contain at least one special.")
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
@@ -257,7 +263,7 @@ class ContinuousOptimalBinning(OptimalBinning):
     user_splits_fixed : array-like or None (default=None)
         The list of pre-binning split points that must be fixed.
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : array-like, dict or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
@@ -516,7 +522,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-processing: number of samples: {}"
-                              .format(self._n_samples))
+                        .format(self._n_samples))
 
         time_preprocessing = time.perf_counter()
 
@@ -534,35 +540,35 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_special = len(x_special)
 
             logger.info("Pre-processing: number of clean samples: {}"
-                              .format(n_clean))
+                        .format(n_clean))
 
             logger.info("Pre-processing: number of missing samples: {}"
-                              .format(n_missing))
+                        .format(n_missing))
 
             logger.info("Pre-processing: number of special samples: {}"
-                              .format(n_special))
+                        .format(n_special))
 
             if self.outlier_detector is not None:
                 n_outlier = self._n_samples-(n_clean + n_missing + n_special)
-                logger.info("Pre-processing: number of outlier samples: "
-                                  "{}".format(n_outlier))
+                logger.info("Pre-processing: number of outlier samples: {}"
+                            .format(n_outlier))
 
             if self.dtype == "categorical":
                 n_categories = len(categories)
                 n_categories_others = len(cat_others)
                 n_others = len(y_others)
 
-                logger.info("Pre-processing: number of others samples: "
-                                  "{}".format(n_others))
+                logger.info("Pre-processing: number of others samples: {}"
+                            .format(n_others))
 
                 logger.info("Pre-processing: number of categories: {}"
-                                  .format(n_categories))
+                            .format(n_categories))
 
-                logger.info("Pre-processing: number of categories "
-                                  "others: {}".format(n_categories_others))
+                logger.info("Pre-processing: number of categories others: {}"
+                            .format(n_categories_others))
 
             logger.info("Pre-processing terminated. Time: {:.4f}s"
-                              .format(self._time_preprocessing))
+                        .format(self._time_preprocessing))
 
         # Pre-binning
         if self.verbose:
@@ -575,7 +581,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.info("Pre-binning: user splits supplied: {}"
-                                  .format(n_splits))
+                            .format(n_splits))
 
             if not n_splits:
                 splits = self.user_splits
@@ -605,12 +611,12 @@ class ContinuousOptimalBinning(OptimalBinning):
 
                 [splits, n_records, sums, ssums, stds, min_t, max_t,
                  n_zeros] = self._prebinning_refinement(
-                    user_splits, x_clean, y_clean, y_missing, y_special,
-                    y_others)
+                    user_splits, x_clean, y_clean, y_missing, x_special,
+                    y_special, y_others)
         else:
             [splits, n_records, sums, ssums, stds, min_t, max_t,
              n_zeros] = self._fit_prebinning(
-                x_clean, y_clean, y_missing, y_special, y_others)
+                x_clean, y_clean, y_missing, x_special, y_special, y_others)
 
         self._n_prebins = len(n_records)
 
@@ -621,10 +627,10 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Pre-binning: number of prebins: {}"
-                              .format(self._n_prebins))
+                        .format(self._n_prebins))
 
             logger.info("Pre-binning terminated. Time: {:.4f}s"
-                              .format(self._time_prebinning))
+                        .format(self._time_prebinning))
 
         # Optimization
         self._fit_optimizer(splits, n_records, sums, ssums, stds)
@@ -661,23 +667,22 @@ class ContinuousOptimalBinning(OptimalBinning):
             max_x = None
 
         self._binning_table = ContinuousBinningTable(
-            self.name, self.dtype, self._splits_optimal, self._n_records,
-            self._sums, self._stds, self._min_target, self._max_target,
-            self._n_zeros, min_x, max_x, self._categories, self._cat_others,
-            self.user_splits)
+            self.name, self.dtype, self.special_codes, self._splits_optimal,
+            self._n_records, self._sums, self._stds, self._min_target,
+            self._max_target, self._n_zeros, min_x, max_x, self._categories,
+            self._cat_others, self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
         if self.verbose:
             logger.info("Post-processing terminated. Time: {:.4f}s"
-                              .format(self._time_postprocessing))
+                        .format(self._time_postprocessing))
 
         self._time_total = time.perf_counter() - time_init
 
         if self.verbose:
-            logger.info("Optimal binning terminated. Status: {}. "
-                              "Time: {:.4f}s"
-                              .format(self._status, self._time_total))
+            logger.info("Optimal binning terminated. Status: {}. Time: {:.4f}s"
+                        .format(self._status, self._time_total))
 
         # Completed successfully
         self._is_fitted = True
@@ -697,9 +702,8 @@ class ContinuousOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
-                                     .format(len(n_records)))
+                               .format(len(n_records)))
                 logger.warning("Optimizer: solver not run.")
-
                 logger.info("Optimizer terminated. Time: 0s")
             return
 
@@ -719,8 +723,8 @@ class ContinuousOptimalBinning(OptimalBinning):
         if self.dtype == "numerical":
             auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
             if self.monotonic_trend in auto_monotonic_modes:
-                monotonic = auto_monotonic_continuous(n_records, sums,
-                                                      self.monotonic_trend)
+                monotonic = auto_monotonic_continuous(
+                    n_records, sums, self.monotonic_trend)
 
                 if self.monotonic_trend == "auto_heuristic":
                     if monotonic in ("peak", "valley"):
@@ -735,7 +739,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
                 if self.verbose:
                     logger.info("Optimizer: classifier predicts {} "
-                                      "monotonic trend.".format(monotonic))
+                                "monotonic trend.".format(monotonic))
             else:
                 monotonic = self.monotonic_trend
 
@@ -754,8 +758,8 @@ class ContinuousOptimalBinning(OptimalBinning):
                 logger.info(
                     "Optimizer: monotonic trend not set.")
             else:
-                logger.info("Optimizer: monotonic trend set to "
-                                  "{}.".format(monotonic))
+                logger.info("Optimizer: monotonic trend set to {}."
+                            .format(monotonic))
 
         optimizer = ContinuousBinningCP(monotonic, self.min_n_bins,
                                         self.max_n_bins, min_bin_size,
@@ -790,10 +794,10 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if self.verbose:
             logger.info("Optimizer terminated. Time: {:.4f}s"
-                              .format(self._time_solver))
+                        .format(self._time_solver))
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               y_special, y_others, sw_clean=None,
+                               x_special, y_special, y_others, sw_clean=None,
                                sw_missing=None, sw_special=None,
                                sw_others=None):
         n_splits = len(splits_prebinning)
@@ -812,13 +816,18 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_bins = n_splits + 1
 
         # Compute n_records, sum and std for special, missing and others
-        self._n_records_special = len(y_special)
-        self._sum_special = np.sum(y_special)
-        self._n_zeros_special = np.count_nonzero(y_special == 0)
-        if len(y_special):
-            self._std_special = np.std(y_special)
-            self._min_target_special = np.min(y_special)
-            self._max_target_special = np.max(y_special)
+        # self._n_records_special = len(y_special)
+        # self._sum_special = np.sum(y_special)
+        # self._n_zeros_special = np.count_nonzero(y_special == 0)
+        # if len(y_special):
+        #     self._std_special = np.std(y_special)
+        #     self._min_target_special = np.min(y_special)
+        #     self._max_target_special = np.max(y_special)
+
+        [self._n_records_special, self._sum_special, self._n_zeros_special,
+         self._std_special, self._min_target_special,
+         self._max_target_special] = target_info_special_continuous(
+            self.special_codes, x_special, y_special)
 
         self._n_records_missing = len(y_missing)
         self._sum_missing = np.sum(y_missing)

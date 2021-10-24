@@ -644,7 +644,7 @@ class OptimalBinning2D(OptimalBinning):
 
             clf = DecisionTreeClassifier(min_samples_leaf=min_prebin_size,
                                          max_leaf_nodes=clf_nodes)
-            clf.fit(xyt, z)
+            clf.fit(xyt, z_clean)
 
             self._clf = clf
 

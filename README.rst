@@ -86,6 +86,7 @@ Tutorials
 * `Optimal piecewise binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-piecewise-binning-tutorials>`_
 * `Batch and stream optimal binning tutorials <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-for-batch-and-streaming-data-processing>`_
 * `Optimal binning under uncertainty <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-under-uncertainty>`_
+* `Optimal binning 2D <http://gnpalencia.org/optbinning/tutorials.html#optimal-binning-2d>`_
 
 
 Example: Optimal binning with binary target

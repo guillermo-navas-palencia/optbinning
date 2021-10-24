@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+
+Version 0.13.0 (2021-11-24)
+---------------------------
+
+New features:
+
+   - Treatment of special codes separately for optbinning classes (`Issue 115 <https://github.com/guillermo-navas-palencia/optbinning/issues/115>`_).
+
+Bugfixes:
+
+   - Various bug fixes for the ``OptimalBinning2D`` class. See `Issue 138 <https://github.com/guillermo-navas-palencia/optbinning/issues/138>`_, for instance.
+
+
 Version 0.12.2 (2021-10-03)
 ---------------------------
 

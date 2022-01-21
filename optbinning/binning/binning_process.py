@@ -538,7 +538,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
     .. warning::
 
         If the binning process instance is going to be saved, do not pass the
-        option ``"solver": "mip"`` via the binning_fit_params parameter.
+        option ``"solver": "mip"`` via the ``binning_fit_params`` parameter.
 
     """
     def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,

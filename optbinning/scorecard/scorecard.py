@@ -566,10 +566,10 @@ class Scorecard(Base, BaseEstimator):
                 else:
                     n_specials = 1
 
-                binning_table.at[nt-1-n_specials:nt-2,
+                binning_table.loc[nt-1-n_specials:nt-2].at[
                                  "Points"] = metric_special * c
             elif metric_missing != 'empirical':
-                binning_table.at[nt-1, "Points"] = metric_missing * c
+                binning_table.loc[nt-1].at["Points"] = metric_missing * c
 
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)

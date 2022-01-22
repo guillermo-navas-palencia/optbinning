@@ -632,7 +632,8 @@ Currently **officially** using OptBinning:
 3. `Aplazame <https://www.aplazame.com/>`_
 4. `Praelexis Credit <https://www.praelexis.com/praelexis-credit/>`_
 5. `ING <www.ing.com>`_ 
-6. `Loginom <https://loginom.ru/>`_
+6. `DBRS Morningstar <https://www.dbrsmorningstar.com/>`_
+7. `Loginom <https://loginom.ru/>`_
 
 
 Citation

@@ -261,7 +261,7 @@ class OptimalBinning(BaseOptimalBinning):
         decision tree, "mdlp" for Minimum Description Length Principle (MDLP),
         "quantile" to generate prebins with approximately same frequency and
         "uniform" to generate prebins with equal width. Method "cart" uses
-        `sklearn.tree.DecistionTreeClassifier
+        `sklearn.tree.DecisionTreeClassifier
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
         DecisionTreeClassifier.html>`_.
 
@@ -363,7 +363,7 @@ class OptimalBinning(BaseOptimalBinning):
     class_weight : dict, "balanced" or None, optional (default=None)
         Weights associated with classes in the form ``{class_label: weight}``.
         If None, all classes are supposed to have weight one. Check
-        `sklearn.tree.DecistionTreeClassifier
+        `sklearn.tree.DecisionTreeClassifier
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
         DecisionTreeClassifier.html>`_.
 
@@ -402,7 +402,7 @@ class OptimalBinning(BaseOptimalBinning):
         Enable verbose output.
 
     **prebinning_kwargs : keyword arguments
-        The pre-binning keywrord arguments.
+        The pre-binning keyword arguments.
 
         .. versionadded:: 0.6.1
 
@@ -419,7 +419,7 @@ class OptimalBinning(BaseOptimalBinning):
     produce infinity WoE and IV measures.
 
     The mathematical formulation when ``solver="ls"`` does **not** currently
-    support the max-pvalue constraint.
+    support the ``max_pvalue`` constraint.
     """
     def __init__(self, name="", dtype="numerical", prebinning_method="cart",
                  solver="cp", divergence="iv", max_n_prebins=20,

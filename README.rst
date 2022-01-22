@@ -17,6 +17,10 @@ OptBinning
 .. image:: https://pepy.tech/badge/optbinning
    :target: https://pepy.tech/project/optbinning
 
+.. image:: https://pepy.tech/badge/optbinning/month
+   :target: https://pepy.tech/project/optbinning/month
+
+
 **OptBinning** is a library written in Python implementing a rigorous and flexible mathematical programming formulation
 to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
 not previously addressed.
@@ -628,6 +632,7 @@ Currently **officially** using OptBinning:
 3. `Aplazame <https://www.aplazame.com/>`_
 4. `Praelexis Credit <https://www.praelexis.com/praelexis-credit/>`_
 5. `ING <www.ing.com>`_ 
+6. `Loginom <https://loginom.ru/>`_
 
 
 Citation

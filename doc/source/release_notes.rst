@@ -2,6 +2,19 @@ Release Notes
 =============
 
 
+Version 0.13.1 (2022-02-18)
+---------------------------
+
+Bugfixes:
+
+   - Fix binning process summary update (`Issue 151 <https://github.com/guillermo-navas-palencia/optbinning/issues/151>`_).
+
+   - Fix pandas 1.4.0 (python > 3.8) slicing issue with method at (`Pull 148 <https://github.com/guillermo-navas-palencia/optbinning/pull/148>`_).
+
+   - Fix minor typos (`Pull 147 <https://github.com/guillermo-navas-palencia/optbinning/pull/147>`_).
+
+   - Fix binning plot for multiple special values.
+
 Version 0.13.0 (2021-11-24)
 ---------------------------
 

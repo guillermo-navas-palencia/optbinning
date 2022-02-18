@@ -717,8 +717,9 @@ class BinningTable:
                 handle_special = mpatches.Patch(hatch="/", alpha=0.1)
                 label_special = "Bin special"
 
-                ax2.plot(pos_special, metric_values[pos_special], marker="o",
-                         color="black")
+                for s in range(self._n_specials):
+                    ax2.plot(pos_special+s, metric_values[pos_special+s],
+                             marker="o", color="black")
 
             if add_missing:
                 p1[pos_missing].set_hatch("\\")
@@ -1226,8 +1227,9 @@ class MulticlassBinningTable:
             label_special = "Bin special"
 
             for i, cl in enumerate(self.classes):
-                ax2.plot(pos_special, metric_values[pos_special, i],
-                         marker="o", color=colors[i])
+                for s in range(self._n_specials):
+                    ax2.plot(pos_special+s, metric_values[pos_special+s, i],
+                             marker="o", color=colors[i])
 
         if add_missing:
             for _p in p:
@@ -1670,8 +1672,9 @@ class ContinuousBinningTable:
                 handle_special = mpatches.Patch(hatch="/", alpha=0.1)
                 label_special = "Bin special"
 
-                ax2.plot(pos_special, metric_values[pos_special], marker="o",
-                         color="black")
+                for s in range(self._n_specials):
+                    ax2.plot(pos_special+s, metric_values[pos_special+s],
+                             marker="o", color="black")
 
             if add_missing:
                 p1[pos_missing].set_hatch("\\")

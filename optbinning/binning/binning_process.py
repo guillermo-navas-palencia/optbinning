@@ -589,6 +589,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         # timing
         self._time_total = None
 
+        self._is_updated = False
         self._is_fitted = False
 
     def fit(self, X, y, sample_weight=None, check_input=False):
@@ -915,6 +916,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         """
         self._check_is_fitted()
 
+        if self._is_updated:
+            self._binning_selection_criteria()
+            self._is_updated = False
+
         df_summary = pd.DataFrame.from_dict(self._variable_stats).T
         df_summary.reset_index(inplace=True)
         df_summary.rename(columns={"index": "name"}, inplace=True)
@@ -997,6 +1002,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             raise ValueError("name and object name must coincide.")
 
         self._binned_variables[name] = optb
+        self._is_updated = True
 
     def get_support(self, indices=False, names=False):
         """Get a mask, or integer index, or names of the variables selected.

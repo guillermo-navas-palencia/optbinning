@@ -634,6 +634,7 @@ Currently **officially** using OptBinning:
 5. `ING <www.ing.com>`_ 
 6. `DBRS Morningstar <https://www.dbrsmorningstar.com/>`_
 7. `Loginom <https://loginom.ru/>`_
+8. `Risika <https://risika.com/>`_
 
 
 Citation

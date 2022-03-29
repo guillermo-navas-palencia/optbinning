@@ -810,14 +810,6 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_bins = n_splits + 1
 
         # Compute n_records, sum and std for special, missing and others
-        # self._n_records_special = len(y_special)
-        # self._sum_special = np.sum(y_special)
-        # self._n_zeros_special = np.count_nonzero(y_special == 0)
-        # if len(y_special):
-        #     self._std_special = np.std(y_special)
-        #     self._min_target_special = np.min(y_special)
-        #     self._max_target_special = np.max(y_special)
-
         [self._n_records_special, self._sum_special, self._n_zeros_special,
          self._std_special, self._min_target_special,
          self._max_target_special] = target_info_special_continuous(

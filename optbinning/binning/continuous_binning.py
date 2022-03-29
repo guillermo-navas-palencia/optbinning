@@ -289,12 +289,6 @@ class ContinuousOptimalBinning(OptimalBinning):
     complexity and memory usage. The default values generally produce quality
     results, however, some improvement can be achieved by increasing
     ``max_n_prebins`` and/or decreasing ``min_prebin_size``.
-
-    The T-test uses an estimate of the standard deviation of the contingency
-    table to speed up the model generation and reduce memory usage. Therefore,
-    it is not guaranteed to obtain bins satisfying the p-value constraint,
-    although it may work reasonably well in most cases. To avoid having bins
-    with similar bins the parameter ``min_mean_diff`` is recommended.
     """
     def __init__(self, name="", dtype="numerical", prebinning_method="cart",
                  max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,

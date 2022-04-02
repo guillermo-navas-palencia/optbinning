@@ -6,6 +6,8 @@ problem. Constraint programming implementation.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
+import numpy as np
+
 from ortools.sat.python import cp_model
 
 from .cp import BinningCP
@@ -15,7 +17,7 @@ from .model_data import continuous_model_data
 class ContinuousBinningCP(BinningCP):
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
                  max_bin_size, min_mean_diff, max_pvalue, max_pvalue_policy,
-                 user_splits_fixed, time_limit):
+                 gamma, user_splits_fixed, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -27,6 +29,7 @@ class ContinuousBinningCP(BinningCP):
         self.min_mean_diff = min_mean_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.gamma = gamma
         self.user_splits_fixed = user_splits_fixed
         self.time_limit = time_limit
 
@@ -50,10 +53,20 @@ class ContinuousBinningCP(BinningCP):
         # Decision variables
         x, y, t, d, u, bin_size_diff = self.decision_variables(model, n)
 
-        # Objective function
-        model.Minimize(sum([(V[i][i] * x[i, i]) +
-                       sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                            for j in range(i)]) for i in range(n)]))
+        if self.gamma:
+            total_records = int(n_records.sum())
+            regularization = int(np.ceil(M * self.gamma / total_records))
+            pmax = model.NewIntVar(0, total_records, "pmax")
+            pmin = model.NewIntVar(0, total_records, "pmin")
+
+            model.Maximize(sum([(V[i][i] * x[i, i]) +
+                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                for j in range(i)]) for i in range(n)]) -
+                           regularization * (pmax - pmin))
+        else:
+            model.Maximize(sum([(V[i][i] * x[i, i]) +
+                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                for j in range(i)]) for i in range(n)]))
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)

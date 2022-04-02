@@ -76,6 +76,7 @@ continuous_optimal_binning_default_options = {
     "min_mean_diff": 0,
     "max_pvalue": None,
     "max_pvalue_policy": "consecutive",
+    "gamma": 0,
     "cat_cutoff": None,
     "user_splits": None,
     "user_splits_fixed": None,

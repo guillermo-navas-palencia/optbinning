@@ -32,9 +32,10 @@ logger = Logger(__name__).logger
 def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
                       max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
-                      max_pvalue_policy, outlier_detector, outlier_params,
-                      cat_cutoff, user_splits, user_splits_fixed,
-                      special_codes, split_digits, time_limit, verbose):
+                      max_pvalue_policy, gamma, outlier_detector,
+                      outlier_params, cat_cutoff, user_splits,
+                      user_splits_fixed, special_codes, split_digits,
+                      time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -112,6 +113,9 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
     if max_pvalue_policy not in ("all", "consecutive"):
         raise ValueError('Invalid value for max_pvalue_policy. Allowed string '
                          'values are "all" and "consecutive".')
+
+    if not isinstance(gamma, numbers.Number) or gamma < 0:
+        raise ValueError("gamma must be >= 0; got {}.".format(gamma))
 
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore"):
@@ -243,6 +247,12 @@ class ContinuousOptimalBinning(OptimalBinning):
         Supported methods are "consecutive" to compare consecutive bins and
         "all" to compare all bins.
 
+    gamma : float, optional (default=0)
+        Regularization strength to reduce the number of dominating bins. Larger
+        values specify stronger regularization.
+
+        .. versionadded:: 0.14.0
+
     outlier_detector : str or None, optional (default=None)
         The outlier detection method. Supported methods are "range" to use
         the interquartile range based method or "zcore" to use the modified
@@ -289,15 +299,19 @@ class ContinuousOptimalBinning(OptimalBinning):
     complexity and memory usage. The default values generally produce quality
     results, however, some improvement can be achieved by increasing
     ``max_n_prebins`` and/or decreasing ``min_prebin_size``.
+
+    The pre-binning refinement phase guarantee that no prebin has zero number
+    of records by merging those pure prebins. Pure bins produce infinity mean.
     """
     def __init__(self, name="", dtype="numerical", prebinning_method="cart",
                  max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
                  max_n_bins=None, min_bin_size=None, max_bin_size=None,
                  monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", outlier_detector=None,
-                 outlier_params=None, cat_cutoff=None, user_splits=None,
-                 user_splits_fixed=None, special_codes=None, split_digits=None,
-                 time_limit=100, verbose=False, **prebinning_kwargs):
+                 max_pvalue_policy="consecutive", gamma=0,
+                 outlier_detector=None, outlier_params=None, cat_cutoff=None,
+                 user_splits=None, user_splits_fixed=None, special_codes=None,
+                 split_digits=None, time_limit=100, verbose=False,
+                 **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -316,6 +330,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.min_mean_diff = min_mean_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
+        self.gamma = gamma
 
         self.outlier_detector = outlier_detector
         self.outlier_params = outlier_params
@@ -759,7 +774,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                                         self.max_n_bins, min_bin_size,
                                         max_bin_size, self.min_mean_diff,
                                         self.max_pvalue,
-                                        self.max_pvalue_policy,
+                                        self.max_pvalue_policy, self.gamma,
                                         self.user_splits_fixed,
                                         self.time_limit)
 
@@ -802,13 +817,6 @@ class ContinuousOptimalBinning(OptimalBinning):
         if self.split_digits is not None:
             splits_prebinning = np.round(splits_prebinning, self.split_digits)
 
-        if self.dtype == "categorical" and self.user_splits is not None:
-            indices = np.digitize(x, splits_prebinning, right=True)
-            n_bins = n_splits
-        else:
-            indices = np.digitize(x, splits_prebinning, right=False)
-            n_bins = n_splits + 1
-
         # Compute n_records, sum and std for special, missing and others
         [self._n_records_special, self._sum_special, self._n_zeros_special,
          self._std_special, self._min_target_special,
@@ -831,10 +839,28 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._max_target_others = np.max(y_others)
             self._n_zeros_others = np.count_nonzero(y_others == 0)
 
+        (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
+         n_zeros) = self._compute_prebins(splits_prebinning, x, y)
+
+        return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
+                n_zeros)
+
+    def _compute_prebins(self, splits_prebinning, x, y):
+        n_splits = len(splits_prebinning)
+        if not n_splits:
+            return splits_prebinning, np.array([]), np.array([])
+
+        if self.dtype == "categorical" and self.user_splits is not None:
+            indices = np.digitize(x, splits_prebinning, right=True)
+            n_bins = n_splits
+        else:
+            indices = np.digitize(x, splits_prebinning, right=False)
+            n_bins = n_splits + 1
+
         n_records = np.empty(n_bins).astype(np.int64)
         sums = np.empty(n_bins)
         ssums = np.empty(n_bins)
-        stds = np.empty(n_bins)
+        stds = np.zeros(n_bins)
         n_zeros = np.empty(n_bins).astype(np.int64)
         min_t = np.full(n_bins, -np.inf)
         max_t = np.full(n_bins, np.inf)
@@ -846,11 +872,47 @@ class ContinuousOptimalBinning(OptimalBinning):
             ymask = y[mask]
             sums[i] = np.sum(ymask)
             ssums[i] = np.sum(ymask ** 2)
-            stds[i] = np.std(ymask)
             n_zeros[i] = np.count_nonzero(ymask == 0)
             if len(ymask):
+                stds[i] = np.std(ymask)
                 min_t[i] = np.min(ymask)
                 max_t[i] = np.max(ymask)
+
+        mask_remove = (n_records == 0)
+
+        if np.any(mask_remove):
+            self._n_refinements += 1
+
+            if (self.dtype == "categorical" and
+                    self.user_splits is not None):
+                mask_splits = mask_remove
+            else:
+                mask_splits = np.concatenate([
+                    mask_remove[:-2], [mask_remove[-2] | mask_remove[-1]]])
+
+            if self.user_splits_fixed is not None:
+                user_splits_fixed = np.asarray(self.user_splits_fixed)
+                user_splits = np.asarray(self.user_splits)
+                fixed_remove = user_splits_fixed & mask_splits
+
+                if any(fixed_remove):
+                    raise ValueError(
+                        "Fixed user_splits {} are removed "
+                        "because produce pure prebins. Provide "
+                        "different splits to be fixed."
+                        .format(user_splits[fixed_remove]))
+
+                # Update boolean array of fixed user splits.
+                self.user_splits_fixed = user_splits_fixed[~mask_splits]
+                self.user_splits = user_splits[~mask_splits]
+
+            splits = splits_prebinning[~mask_splits]
+            if self.verbose:
+                logger.info("Pre-binning: number prebins removed: {}"
+                            .format(np.count_nonzero(mask_remove)))
+
+            (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
+             n_zeros) = self._compute_prebins(splits, x, y)
 
         return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
                 n_zeros)

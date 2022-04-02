@@ -48,7 +48,9 @@ _METRICS = {
         "quality_score": {"min": 0, "max": 1}
     },
     "continuous": {
-        "metrics": []
+        "metrics": ["woe", "quality_score"],
+        "woe": {"min": 0, "max": np.inf},
+        "quality_score": {"min": 0, "max": 1}
     }
 }
 
@@ -405,21 +407,22 @@ class BaseBinningProcess:
                     "status": optb.status,
                     "n_bins": n_bins}
 
-            if self._target_dtype in ("binary", "multiclass"):
-                optb.binning_table.analysis(print_output=False)
+            optb.binning_table.analysis(print_output=False)
 
-                if self._target_dtype == "binary":
-                    metrics = {
-                        "iv": optb.binning_table.iv,
-                        "gini": optb.binning_table.gini,
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
-                else:
-                    metrics = {
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
+            if self._target_dtype == "binary":
+                metrics = {
+                    "iv": optb.binning_table.iv,
+                    "gini": optb.binning_table.gini,
+                    "js": optb.binning_table.js,
+                    "quality_score": optb.binning_table.quality_score}
+            elif self._target_dtype == "multiclass":
+                metrics = {
+                    "js": optb.binning_table.js,
+                    "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
-                metrics = {}
+                metrics = {
+                    "woe": optb.binning_table.woe,
+                    "quality_score": optb.binning_table.quality_score}
 
             info = {**info, **metrics}
             self._variable_stats[name] = info

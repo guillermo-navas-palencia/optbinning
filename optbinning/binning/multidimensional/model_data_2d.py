@@ -164,3 +164,107 @@ def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
 
     return (n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
             event_rate, n_event, n_nonevent, n_records)
+
+
+def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
+                          min_bin_size, max_bin_size):
+    # Compute all rectangles and event and non-event records
+    m, n = R.shape
+    n_grid = m * n
+
+    fr = np.ravel(R)
+    fs = np.ravel(S)
+    fss = np.ravel(SS)
+
+    n_fr = []
+    n_fs = []
+    n_fss = []
+
+    rows = []
+    cols = {c: [] for c in range(n_grid)}
+    outer_x = []
+    outer_y = []
+
+    # Auxiliary checks
+    is_min_bin_size = min_bin_size is not None
+    is_max_bin_size = max_bin_size is not None
+
+    # Cached rectangle shapes
+    cached_rectangles = {}
+
+    for k in range(1, m + 1):
+        for l in range(1, n + 1):
+            row = [n * ik + jl for ik in range(k) for jl in range(l)]
+            cached_rectangles[(k, l)] = row
+
+    n_rectangles = 0
+    for i in range(m):
+        for j in range(n):
+            w = n - j
+            h = m - i
+            p = i * n + j
+            for k in range(1, h + 1):
+                for l in range(1, w + 1):
+                    row = [p + r for r in cached_rectangles[(k, l)]]
+
+                    sfr = fr[row].sum()
+                    sfs = fs[row].sum()
+                    sfss = fss[row].sum()
+
+                    if sfr == 0:
+                        continue
+
+                    if is_min_bin_size and sn < min_bin_size:
+                        continue
+                    elif is_max_bin_size and sn > max_bin_size:
+                        continue
+
+                    for r in row:
+                        cols[r].append(n_rectangles)
+
+                    if monotonicity_x is not None:
+                        outer_x.append(
+                            [row[_i * l + (l - 1)] for _i in range(k)])
+
+                    if monotonicity_y is not None:
+                        outer_y.append(
+                            [row[(k - 1) * l + _j] for _j in range(l)])
+
+                    rows.append(row)
+                    n_fr.append(sfr)
+                    n_fs.append(sfs)
+                    n_fss.append(sfss)
+
+                    n_rectangles += 1
+
+    n_records = np.array(n_fr)
+    sums = np.array(n_fs)
+    ssums = np.array(n_fss)
+
+    # Connected rectangles
+    if monotonicity_x is not None or monotonicity_y is not None:
+        d_connected_x, d_connected_y = _connected_rectangles(
+            m, n, n_rectangles, monotonicity_x, monotonicity_y, rows, cols,
+            outer_x, outer_y)
+    else:
+        d_connected_x = None
+        d_connected_y = None
+
+    # Mean and norm
+    t_mean = S.sum() / R.sum()
+    mean = sums / n_records
+    stds = np.sqrt(ssums / n_records - mean ** 2)
+
+    print(ssums)
+    print(n_records)
+    print(mean)
+
+    norm = np.absolute(mean - t_mean)
+    
+    if scale is not None:
+        c = (norm * scale).astype(int)
+    else:
+        c = norm
+
+    return (n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
+            mean, n_records, sums, ssums, stds)

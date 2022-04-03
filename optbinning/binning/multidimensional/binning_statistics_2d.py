@@ -15,6 +15,7 @@ from ...formatting import dataframe_to_string
 from ..binning_statistics import _check_build_parameters
 from ..binning_statistics import _check_is_built
 from ..binning_statistics import BinningTable
+from ..binning_statistics import ContinuousBinningTable
 from ..metrics import bayesian_probability
 from ..metrics import binning_quality_score
 from ..metrics import chi2_cramer_v
@@ -273,8 +274,8 @@ class BinningTable2D(BinningTable):
     def plot(self, metric="woe", savefig=None):
         """Plot the binning table.
 
-        Visualize the non-event and event count, and the Weight of Evidence or
-        the event rate for each bin.
+        Visualize the Weight of Evidence or the event rate for each bin as a
+        matrix, and the x and y trend.
 
         Parameters
         ----------
@@ -495,3 +496,209 @@ class BinningTable2D(BinningTable):
             print(report)
 
         self._is_analyzed = True
+
+
+class ContinuousBinningTable2D(ContinuousBinningTable):
+    def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
+                 m, n, n_records, sums, stds, D, P):
+
+        self.name_x = name_x
+        self.name_y = name_y
+        self.dtype_x = dtype_x
+        self.dtype_y = dtype_y
+        self.splits_x = splits_x
+        self.splits_y = splits_y
+        self.m = m
+        self.n = n
+        self.n_records = n_records
+        self.sums = sums
+        self.stds = stds
+        self.D = D
+        self.P = P
+
+        self._is_built = False
+        self._is_analyzed = False
+
+    def build(self, show_digits=2, show_bin_xy=False, add_totals=True):
+        _check_build_parameters(show_digits, add_totals)
+
+        if not isinstance(show_bin_xy, bool):
+            raise TypeError("show_bin_xy must be a boolean; got {}."
+                            .format(show_bin_xy))
+
+        t_n_records = np.nansum(self.n_records)
+        t_sum = np.nansum(self.sums)
+        t_mean = t_sum / t_n_records
+        p_records = self.n_records / t_n_records
+
+        mask = (self.n_records > 0)
+        self._mean = np.zeros(len(self.n_records))
+        self._mean[mask] = self.sums[mask] / self.n_records[mask]
+        if self.n_records[-1] > 0:
+            self._mean[-1] = 0
+
+        # Compute divergence measure (continuous adaptation)
+        woe = self._mean - t_mean
+        iv = np.absolute(woe) * p_records
+        t_iv = iv.sum()
+        t_woe = np.absolute(woe).sum()
+
+        self._iv = t_iv
+        self._woe = t_woe
+        self._t_mean = t_mean
+
+        # Compute HHI
+        self._hhi = hhi(p_records)
+        self._hhi_norm = hhi(p_records, normalized=True)        
+
+        # Keep data for plotting
+
+        # Compute paths. This is required for both plot and analysis
+        # paths x: horizontal
+        self._paths_x = []
+        for i in range(self.m):
+            path = tuple(dict.fromkeys(self.P[i, :]))
+            if path not in self._paths_x:
+                self._paths_x.append(path)
+
+        # paths y: vertical
+        self._paths_y = []
+        for j in range(self.n):
+            path = tuple(dict.fromkeys(self.P[:, j]))
+            if path not in self._paths_y:
+                self._paths_y.append(path)
+
+        if show_bin_xy:
+            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
+                                           show_digits)
+
+            bin_xy_str.extend(["Special", "Missing"])
+
+            df = pd.DataFrame({
+                "Bin": bin_xy_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Mean": self._mean,
+                "WoE": woe,
+                "IV": iv
+                })
+
+        else:
+            bin_x_str = bin_str_format(self.splits_x, show_digits)
+            bin_y_str = bin_str_format(self.splits_y, show_digits)
+
+            bin_x_str.extend(["Special", "Missing"])
+            bin_y_str.extend(["Special", "Missing"])
+
+            df = pd.DataFrame({
+                "Bin x": bin_x_str,
+                "Bin y": bin_y_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Mean": self._mean,
+                "WoE": woe,
+                "IV": iv
+                })
+
+        if add_totals:
+            if show_bin_xy:
+                totals = ["", t_n_records, 1, t_sum, "", t_mean, t_woe, t_iv]
+            else:
+                totals = ["", "", t_n_records, 1, t_sum, "", t_mean, t_woe, t_iv]
+            df.loc["Totals"] = totals
+
+        self._is_built = True
+
+        return df
+
+    def plot(self, savefig=None):
+        """Plot the binning table.
+
+        Visualize the mean for each bin as a matrix, and the x and y trend.
+
+        Parameters
+        ----------
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+        """
+        _check_is_built(self)
+
+        metric_values = self._mean
+        metric_matrix = self.D
+        metric_label = "Mean"
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+
+        divider = make_axes_locatable(ax)
+        axtop = divider.append_axes("top", size=2.5, pad=0.1, sharex=ax)
+        axright = divider.append_axes("right", size=2.5, pad=0.1, sharey=ax)
+        # Hide x labels and tick labels for top plots and y ticks for
+        # right plots.
+
+        # Position [0, 0]
+        for path in self._paths_x:
+            er = sum([
+                [metric_values[p]] * np.count_nonzero(
+                    self.P == p, axis=1).max() for p in path], [])
+
+            er = er + [er[-1]]
+            axtop.step(np.arange(self.n + 1) - 0.5, er,
+                       label=path, where="post")
+
+        for i in range(self.n):
+            axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
+
+        axtop.get_xaxis().set_visible(False)
+        axtop.set_ylabel(metric_label, fontsize=12)
+
+        # Position [1, 0]
+        pos = ax.matshow(metric_matrix, cmap=plt.cm.Blues)
+        for j in range(self.n):
+            for i in range(self.m):
+                c = int(self.P[i, j])
+                ax.text(j, i, str(c), va='center', ha='center')
+
+        fig.colorbar(pos, ax=ax, orientation="horizontal",
+                     fraction=0.025, pad=0.125)
+
+        ax.xaxis.set_label_position("bottom")
+        ax.xaxis.tick_bottom()
+        ax.set_ylabel("Bin ID - y ({})".format(self.name_x), fontsize=12)
+        ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
+
+        # Position [1, 1]
+        for path in self._paths_y:
+            er = sum([
+                [metric_values[p]] * (np.count_nonzero(
+                    self.P == p, axis=0).max()) for p in path], [])
+
+            er = er + [er[-1]]
+            axright.step(er, np.arange(self.m + 1) - 0.5, label=path,
+                         where="pre")
+
+        for j in range(self.m):
+            axright.axhline(j - 0.5, color="grey", linestyle="--", alpha=0.5)
+
+        axright.get_yaxis().set_visible(False)
+        axright.set_xlabel(metric_label, fontsize=12)
+
+        # adjust margins
+        axright.margins(y=0)
+        axtop.margins(x=0)
+        plt.tight_layout()
+
+        axtop.legend(bbox_to_anchor=(1, 1))
+        axright.legend(bbox_to_anchor=(1, 1))
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()

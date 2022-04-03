@@ -26,7 +26,9 @@ def _check_parameters(sketch, eps, K, special_codes):
 
     if sketch == "t-digest" and not TDIGEST_AVAILABLE:
         raise ImportError('Cannot import tdigest. Install tdigest via '
-                          'pip install tdigest or choose "gk".')
+                          'pip install tdigest or choose "gk". Alternatively, '
+                          'install optbinning using pip install '
+                          'optbinning[distributed]')
 
     if not isinstance(eps, numbers.Number) and not 0 <= eps <= 1:
         raise ValueError("eps must be a value in [0, 1]; got {}."

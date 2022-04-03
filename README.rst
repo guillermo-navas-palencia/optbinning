@@ -54,6 +54,12 @@ To install the current release of OptBinning from PyPI:
 
    pip install optbinning
 
+To include batch and stream binning algorithms (this option is not required for most users):
+
+.. code-block:: text
+
+  pip install optbinning[distributed]
+
 To install from source, download or clone the git repository
 
 .. code-block:: text
@@ -66,15 +72,18 @@ Dependencies
 ------------
 OptBinning requires
 
-* dill
 * matplotlib
 * numpy (>=1.16.1)
 * ortools (>=7.2)
 * pandas
-* ropwr
+* ropwr (>=0.2.0)
 * scikit-learn (>=0.22.0)
-* scipy
+* scipy (>=1.6.0)
+
+OptBinning[distributed] requires additional packages
+* pympler
 * tdigest
+
 
 Getting started
 ===============

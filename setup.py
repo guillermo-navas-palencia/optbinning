@@ -50,16 +50,13 @@ class PyTest(TestCommand):
 
 # install requirements
 install_requires = [
-    'dill',
     'matplotlib',
     'numpy>=1.16.1',
     'ortools>=7.2',
-    'pympler',
     'pandas',
     'ropwr>=0.2.0',
-    'scipy>=1.6.0',
     'scikit-learn>=0.22.0',
-    'tdigest'
+    'scipy>=1.6.0',
 ]
 
 # test requirements
@@ -67,6 +64,11 @@ tests_require = [
     'pytest',
     'coverage'
 ]
+
+# extra requirements
+extras_require = {
+    'distributed': ['pympler', 'tdigest'],
+}
 
 
 # Read version file
@@ -91,6 +93,7 @@ setup(
     python_requires='>=3.7',
     install_requires=install_requires,
     tests_require=tests_require,
+    extras_require=extras_require,
     classifiers=[
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Software Development :: Libraries',

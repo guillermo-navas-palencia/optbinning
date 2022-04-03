@@ -11,7 +11,6 @@ import time
 import numpy as np
 import pandas as pd
 
-from pympler import asizeof
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 
@@ -29,6 +28,13 @@ from .base import BaseSketch
 from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
+
+try:
+    from pympler import asizeof
+except ImportError:
+    raise ImportError('Cannot import pympler. Install pympler via '
+                      'pip install pympler or install optbinning using pip '
+                      'install optbinning[distributed]')
 
 
 logger = Logger(__name__).logger

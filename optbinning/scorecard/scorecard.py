@@ -7,9 +7,9 @@ Scorecard development.
 # Copyright (C) 2020
 
 import numbers
+import pickle
 import time
 
-import dill
 import numpy as np
 import pandas as pd
 
@@ -439,7 +439,7 @@ class Scorecard(Base, BaseEstimator):
             raise TypeError("path must be a string.")
 
         with open(path, "rb") as f:
-            return dill.load(f)
+            return pickle.load(f)
 
     def save(self, path):
         """Save scorecard to pickle file.
@@ -453,7 +453,7 @@ class Scorecard(Base, BaseEstimator):
             raise TypeError("path must be a string.")
 
         with open(path, "wb") as f:
-            dill.dump(self, f)
+            pickle.dump(self, f)
 
     def _fit(self, X, y, sample_weight, metric_special, metric_missing,
              show_digits, check_input):

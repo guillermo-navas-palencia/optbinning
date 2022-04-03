@@ -6,11 +6,11 @@ Binning process.
 # Copyright (C) 2020
 
 import numbers
+import pickle
 import time
 
 from warnings import warn
 
-import dill
 import numpy as np
 import pandas as pd
 
@@ -331,7 +331,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "rb") as f:
-            return dill.load(f)
+            return pickle.load(f)
 
     def save(self, path):
         """Save binning process to pickle file.
@@ -345,7 +345,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "wb") as f:
-            dill.dump(self, f)
+            pickle.dump(self, f)
 
     def _support_selection_criteria(self):
         self._support = np.full(self._n_variables, True, dtype=bool)

@@ -31,10 +31,9 @@ from .plots import plot_progress_divergence
 
 try:
     from pympler import asizeof
+    PYMPLER_AVAILABLE = True
 except ImportError:
-    raise ImportError('Cannot import pympler. Install pympler via '
-                      'pip install pympler or install optbinning using pip '
-                      'install optbinning[distributed]')
+    PYMPLER_AVAILABLE = False
 
 
 logger = Logger(__name__).logger
@@ -47,7 +46,14 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
                       gamma, cat_cutoff, cat_heuristic, special_codes,
                       split_digits, mip_solver, time_limit, verbose):
+    
+    # Check pympler
+    if not PYMPLER_AVAILABLE:
+        raise ImportError('Cannot import pympler. Install pympler via '
+                      'pip install pympler or install optbinning using pip '
+                      'install optbinning[distributed]')
 
+    # Check parameters
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
 

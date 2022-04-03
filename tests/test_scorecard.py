@@ -186,8 +186,8 @@ def test_default_continuous():
     sc_min, sc_max = sct.groupby("Variable").agg(
         {'Points': [np.min, np.max]}).sum()
 
-    assert sc_min == approx(-15.813545796848476, rel=1e-6)
-    assert sc_max == approx(85.08156623609487, rel=1e-6)
+    assert sc_min == approx(-43.261900687199045, rel=1e-6)
+    assert sc_max == approx(100.28829019286185, rel=1e-6)
 
 
 def test_scaling_method_pdo_odd():

@@ -145,10 +145,10 @@ class Binning2DCP:
                 ind_y = []
                 for j in d_connected_x[i]:
                     if self.monotonic_trend_x == "ascending":
-                        if er[i] >= min_diff_x + er[j]:
+                        if er[i] + min_diff_x >= er[j]:
                             ind_x.append(j)
                     elif self.monotonic_trend_x == "descending":
-                        if er[i] + min_diff_x <= er[j]:
+                        if er[i] <= er[j] + min_diff_x:
                             ind_x.append(j)
 
                 if ind_x:
@@ -157,10 +157,10 @@ class Binning2DCP:
 
                 for j in d_connected_y[i]:
                     if self.monotonic_trend_y == "ascending":
-                        if er[i] >= min_diff_y + er[j]:
+                        if er[i] + min_diff_y >= er[j]:
                             ind_y.append(j)
                     elif self.monotonic_trend_y == "descending":
-                        if er[i] + min_diff_y <= er[j]:
+                        if er[i] <= er[j] + min_diff_y:
                             ind_y.append(j)
 
                 if ind_y:
@@ -172,10 +172,10 @@ class Binning2DCP:
                 ind_x = []
                 for j in d_connected_x[i]:
                     if self.monotonic_trend_x == "ascending":
-                        if er[i] >= min_diff_x + er[j]:
+                        if er[i] + min_diff_x >= er[j]:
                             ind_x.append(j)
                     elif self.monotonic_trend_x == "descending":
-                        if er[i] + min_diff_x <= er[j]:
+                        if er[i] <= er[j] + min_diff_x:
                             ind_x.append(j)
 
                 if ind_x:
@@ -187,10 +187,10 @@ class Binning2DCP:
                 ind_y = []
                 for j in d_connected_y[i]:
                     if self.monotonic_trend_y == "ascending":
-                        if er[i] >= min_diff_y + er[j]:
+                        if er[i] + min_diff_y >= er[j]:
                             ind_y.append(j)
                     elif self.monotonic_trend_y == "descending":
-                        if er[i] + min_diff_y <= er[j]:
+                        if er[i] <= er[j] + min_diff_y:
                             ind_y.append(j)
 
                 if ind_y:

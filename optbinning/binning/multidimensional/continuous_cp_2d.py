@@ -54,7 +54,7 @@ class ContinuousBinning2DCP(Binning2DCP):
             pmax = model.NewIntVar(0, total_records, "pmax")
             pmin = model.NewIntVar(0, total_records, "pmin")
 
-            model.Maximize(sum([c[i] * x[i] for i in range(n_rectangles)]) +
+            model.Maximize(sum([c[i] * x[i] for i in range(n_rectangles)]) -
                            regularization * (pmax - pmin))
         else:
             model.Maximize(sum([c[i] * x[i] for i in range(n_rectangles)]))
@@ -82,4 +82,4 @@ class ContinuousBinning2DCP(Binning2DCP):
         # Save data for post-processing
         self._model = model
         self._x = x
-        self._n_rectangles = n_rectangles            
+        self._n_rectangles = n_rectangles

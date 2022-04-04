@@ -214,9 +214,9 @@ def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
                     if sfr == 0:
                         continue
 
-                    if is_min_bin_size and sn < min_bin_size:
+                    if is_min_bin_size and sfr < min_bin_size:
                         continue
-                    elif is_max_bin_size and sn > max_bin_size:
+                    elif is_max_bin_size and sfr > max_bin_size:
                         continue
 
                     for r in row:
@@ -254,11 +254,6 @@ def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
     t_mean = S.sum() / R.sum()
     mean = sums / n_records
     stds = np.sqrt(ssums / n_records - mean ** 2)
-
-    print(ssums)
-    print(n_records)
-    print(mean)
-
     norm = np.absolute(mean - t_mean)
     
     if scale is not None:
@@ -267,4 +262,4 @@ def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
         c = norm
 
     return (n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
-            mean, n_records, sums, ssums, stds)
+            mean, n_records, sums, stds)

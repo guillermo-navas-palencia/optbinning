@@ -13,15 +13,15 @@ from ortools.sat.python import cp_model
 
 class Binning2DCP:
     def __init__(self, monotonic_trend_x, monotonic_trend_y, min_n_bins,
-                 max_n_bins, min_event_rate_diff_x, min_event_rate_diff_y,
-                 gamma, n_jobs, time_limit):
+                 max_n_bins, min_diff_x, min_diff_y, gamma, n_jobs,
+                 time_limit):
 
         self.monotonic_trend_x = monotonic_trend_x
         self.monotonic_trend_y = monotonic_trend_y
         self.min_n_bins = min_n_bins
         self.max_n_bins = max_n_bins
-        self.min_event_rate_diff_x = min_event_rate_diff_x
-        self.min_event_rate_diff_y = min_event_rate_diff_y
+        self.min_diff_x = min_diff_x
+        self.min_diff_y = min_diff_y
         self.gamma = gamma
 
         self.n_jobs = n_jobs
@@ -67,7 +67,7 @@ class Binning2DCP:
         # Constraint: monotonicity
         self.add_constraint_monotonic(
             model, n_rectangles, x, er, d_connected_x, d_connected_y,
-            self.min_event_rate_diff_x, self.min_event_rate_diff_y)
+            self.min_diff_x, self.min_diff_y)
 
         # Constraint: reduction of dominating bins
         if self.gamma:

@@ -12,6 +12,7 @@ from ..options import continuous_optimal_binning_default_options
 from ..options import multiclass_optimal_binning_default_options
 from ..options import optimal_binning_default_options
 from ..options import sboptimal_binning_default_options
+from ..options import continuous_optimal_binning_2d_default_options
 from ..options import optimal_binning_2d_default_options
 
 
@@ -91,17 +92,19 @@ def print_binning_information(binning_type, print_level, name, status,
 
     if print_level == 2:
         if binning_type == "optimalbinning":
-            dict_default_options = optimal_binning_default_options
+            d_default_options = optimal_binning_default_options
         elif binning_type == "multiclassoptimalbinning":
-            dict_default_options = multiclass_optimal_binning_default_options
+            d_default_options = multiclass_optimal_binning_default_options
         elif binning_type == "continuousoptimalbinning":
-            dict_default_options = continuous_optimal_binning_default_options
+            d_default_options = continuous_optimal_binning_default_options
         elif binning_type == "sboptimalbinning":
-            dict_default_options = sboptimal_binning_default_options
+            d_default_options = sboptimal_binning_default_options
         elif binning_type == "optimalbinning2d":
-            dict_default_options = optimal_binning_2d_default_options
+            d_default_options = optimal_binning_2d_default_options
+        elif binning_type == "continuousoptimalbinning2d":
+            d_default_options = continuous_optimal_binning_2d_default_options
 
-        print_optional_parameters(dict_default_options, dict_user_options)
+        print_optional_parameters(d_default_options, dict_user_options)
 
     if print_level == 0:
         print_main_info(name, status, time_total)

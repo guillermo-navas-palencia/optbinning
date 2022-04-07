@@ -15,6 +15,82 @@ from ..transformations import _check_show_digits
 from .binning_statistics_2d import bin_xy_str_format
 
 
+def _mask_special_missing(x, special_codes):
+    if np.issubdtype(x.dtype, np.number):
+        missing_mask = np.isnan(x)
+    else:
+        missing_mask = pd.isnull(x)
+
+    if special_codes is None:
+        special_mask = np.zeros(len(x), dtype=bool)
+    else:
+        special_mask = pd.Series(x).isin(special_codes).values
+
+    return special_mask, missing_mask
+
+
+def _mask_special_missing_xy(x, y, special_codes_x, special_codes_y):
+    special_mask_x, missing_mask_x = _mask_special_missing(x, special_codes_x)
+    special_mask_y, missing_mask_y = _mask_special_missing(y, special_codes_y)
+
+    missing_mask = missing_mask_x | missing_mask_y
+    special_mask = special_mask_x | special_mask_y
+
+    clean_mask = ~missing_mask & ~special_mask
+
+    return special_mask, missing_mask, clean_mask
+
+
+def _transform_metric_indices_bins(x, metric, n_bins, bins_str):
+    # Assign corresponding indices or bin intervals
+    if metric == "indices":
+        metric_value = np.arange(n_bins + 2)
+        z_transform = np.full(x.shape, -1, dtype=int)
+    elif metric == "bins":
+        bins_str.extend(["Special", "Missing"])
+        metric_value = bins_str
+        z_transform = np.full(x.shape, "", dtype=object)
+
+    return metric_value, z_transform
+
+
+def _apply_transform(splits_x, splits_y, special_codes_x, special_codes_y,
+                     metric, metric_special, metric_missing, metric_value,
+                     clean_mask, special_mask, missing_mask, z_transform,
+                     x_clean, y_clean, n_bins):
+
+    if metric == "bins":
+        z_clean_transform = np.full(x_clean.shape, "", dtype=object)
+    else:
+        z_clean_transform = np.zeros(x_clean.shape)
+
+    for i in range(n_bins):
+        mask_x = (splits_x[i][0] <= x_clean) & (x_clean < splits_x[i][1])
+        mask_y = (splits_y[i][0] <= y_clean) & (y_clean < splits_y[i][1])
+        mask = mask_x & mask_y
+
+        z_clean_transform[mask] = metric_value[i]
+
+    z_transform[clean_mask] = z_clean_transform
+
+    if special_codes_x or special_codes_y:
+        if (metric_special == "empirical" or
+            (metric == "indices" and not isinstance(metric_special, int)) or
+                metric == "bins"):
+            z_transform[special_mask] = metric_value[n_bins]
+        else:
+            z_transform[special_mask] = metric_special
+
+    if (metric_missing == "empirical" or
+        (metric == "indices" and not isinstance(metric_missing, int)) or
+            metric == "bins"):
+        z_transform[missing_mask] = metric_value[n_bins + 1]
+    else:
+        z_transform[missing_mask] = metric_missing
+
+    return z_transform
+
+
 def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
                             special_codes_x, special_codes_y, metric,
                             metric_special, metric_missing, show_digits,
@@ -38,30 +114,8 @@ def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
     x = np.asarray(x)
     y = np.asarray(y)
 
-    if isinstance(x.dtype, object):
-        missing_mask_x = pd.isnull(x)
-    else:
-        missing_mask_x = np.isnan(x)
-
-    if isinstance(x.dtype, object):
-        missing_mask_y = pd.isnull(y)
-    else:
-        missing_mask_y = np.isnan(y)
-
-    if special_codes_x is not None:
-        special_mask_x = pd.Series(x).isin(special_codes_x).values
-    else:
-        special_mask_x = np.zeros(len(x), dtype=bool)
-
-    if special_codes_y is not None:
-        special_mask_y = pd.Series(x).isin(special_codes_y).values
-    else:
-        special_mask_y = np.zeros(len(y), dtype=bool)
-
-    missing_mask = missing_mask_x | missing_mask_y
-    special_mask = special_mask_x | special_mask_y
-
-    clean_mask = ~missing_mask & ~special_mask
+    special_mask, missing_mask, clean_mask = _mask_special_missing_xy(
+        x, y, special_codes_x, special_codes_y)
 
     x_clean = x[clean_mask]
     y_clean = y[clean_mask]
@@ -96,41 +150,64 @@ def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
         z_transform = np.zeros(x.shape)
     else:
         # Assign corresponding indices or bin intervals
-        if metric == "indices":
-            metric_value = np.arange(n_bins + 2)
-            z_transform = np.full(x.shape, -1, dtype=int)
-        elif metric == "bins":
-            bins_str.extend(["Special", "Missing"])
-            metric_value = bins_str
-            z_transform = np.full(x.shape, "", dtype=object)
+        metric_value, z_transform = _transform_metric_indices_bins(
+            x, metric, n_bins, bins_str)
 
-    if metric == "bins":
-        z_clean_transform = np.full(x_clean.shape, "", dtype=object)
+    z_transform = _apply_transform(
+        splits_x, splits_y, special_codes_x, special_codes_y, metric,
+        metric_special, metric_missing, metric_value, clean_mask, special_mask,
+        missing_mask, z_transform, x_clean, y_clean, n_bins)
+
+    return z_transform
+
+
+def transform_continuous_target(splits_x, splits_y, x, y, n_records, sums,
+                                special_codes_x, special_codes_y, metric,
+                                metric_special, metric_missing, show_digits,
+                                check_input=False):
+
+    if metric not in ("mean", "indices", "bins"):
+        raise ValueError('Invalid value for metric. Allowed string '
+                         'values are "mean", "indices" and "bins".')
+
+    _check_metric_special_missing(metric_special, metric_missing)
+    _check_show_digits(show_digits)
+
+    if check_input:
+        x = check_array(x, ensure_2d=False, dtype=None,
+                        force_all_finite='allow-nan')
+
+        y = check_array(y, ensure_2d=False, dtype=None,
+                        force_all_finite='allow-nan')
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    special_mask, missing_mask, clean_mask = _mask_special_missing_xy(
+        x, y, special_codes_x, special_codes_y)
+
+    x_clean = x[clean_mask]
+    y_clean = y[clean_mask]
+
+    bins_str = bin_xy_str_format(splits_x, splits_y, show_digits)
+    n_bins = len(splits_x)
+
+    if "empirical" not in (metric_special, metric_missing):
+        n_records = n_records[:n_bins]
+        sums = sums[:n_bins]
+
+    if metric == "mean":
+        # Compute mean
+        metric_value = sums / n_records
+        z_transform = np.zeros(x.shape)
     else:
-        z_clean_transform = np.zeros(x_clean.shape)
+        # Assign corresponding indices or bin intervals
+        metric_value, z_transform = _transform_metric_indices_bins(
+            x, metric, n_bins, bins_str)
 
-    for i in range(n_bins):
-        mask_x = (splits_x[i][0] <= x_clean) & (x_clean < splits_x[i][1])
-        mask_y = (splits_y[i][0] <= y_clean) & (y_clean < splits_y[i][1])
-        mask = mask_x & mask_y
-
-        z_clean_transform[mask] = metric_value[i]
-
-    z_transform[clean_mask] = z_clean_transform
-
-    if special_codes_x or special_codes_y:
-        if (metric_special == "empirical" or
-            (metric == "indices" and not isinstance(metric_special, int)) or
-                metric == "bins"):
-            z_transform[special_mask] = metric_value[n_bins]
-        else:
-            z_transform[special_mask] = metric_special
-
-    if (metric_missing == "empirical" or
-        (metric == "indices" and not isinstance(metric_missing, int)) or
-            metric == "bins"):
-        z_transform[missing_mask] = metric_value[n_bins + 1]
-    else:
-        z_transform[missing_mask] = metric_missing
+    z_transform = _apply_transform(
+        splits_x, splits_y, special_codes_x, special_codes_y, metric,
+        metric_special, metric_missing, metric_value, clean_mask, special_mask,
+        missing_mask, z_transform, x_clean, y_clean, n_bins)
 
     return z_transform

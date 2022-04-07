@@ -11,21 +11,154 @@ import time
 import numpy as np
 
 from joblib import effective_n_jobs
+from sklearn.tree import DecisionTreeRegressor
 
 from ...information import solver_statistics
 from ...logging import Logger
 from .binning_2d import OptimalBinning2D
 from .binning_statistics_2d import ContinuousBinningTable2D
-from .continuous_cp_2d import ContinuousBinning2DCP
+from .cp_2d import Binning2DCP
+from .mip_2d import Binning2DMIP
 from .model_data_2d import continuous_model_data
+from .model_data_cart_2d import continuous_model_data_cart
 from .preprocessing_2d import split_data_2d
+from .transformations_2d import transform_continuous_target
 
 
 logger = Logger(__name__).logger
 
 
-def _check_parameters():
-    pass
+def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
+                      strategy, solver, max_n_prebins_x, max_n_prebins_y,
+                      min_prebin_size_x, min_prebin_size_y, min_n_bins,
+                      max_n_bins, min_bin_size, max_bin_size,
+                      monotonic_trend_x, monotonic_trend_y, min_mean_diff_x,
+                      min_mean_diff_y, gamma, special_codes_x, special_codes_y,
+                      split_digits, n_jobs, time_limit, verbose):
+
+    if not isinstance(name_x, str):
+        raise TypeError("name_x must be a string.")
+
+    if not isinstance(name_y, str):
+        raise TypeError("name_y must be a string.")
+
+    if dtype_x not in ("numerical",):
+        raise ValueError('Invalid value for dtype_x. Allowed string '
+                         'values is "numerical".')
+
+    if dtype_y not in ("numerical",):
+        raise ValueError('Invalid value for dtype_y. Allowed string '
+                         'values is "numerical".')
+
+    if prebinning_method not in ("cart", "mdlp", "quantile", "uniform"):
+        raise ValueError('Invalid value for prebinning_method. Allowed string '
+                         'values are "cart", "mdlp", "quantile" '
+                         'and "uniform".')
+
+    if strategy not in ("grid", "cart"):
+        raise ValueError('Invalid value for strategy. Allowed string '
+                         'values are "grid" and "cart".')
+
+    if solver not in ("cp", "mip"):
+        raise ValueError('Invalid value for solver. Allowed string '
+                         'values are "cp" and "mip".')
+
+    if (not isinstance(max_n_prebins_x, numbers.Integral) or
+            max_n_prebins_x <= 1):
+        raise ValueError("max_prebins_x must be an integer greater than 1; "
+                         "got {}.".format(max_n_prebins_x))
+
+    if (not isinstance(max_n_prebins_y, numbers.Integral) or
+            max_n_prebins_y <= 1):
+        raise ValueError("max_prebins_y must be an integer greater than 1; "
+                         "got {}.".format(max_n_prebins_y))
+
+    if not 0. < min_prebin_size_x <= 0.5:
+        raise ValueError("min_prebin_size_x must be in (0, 0.5]; got {}."
+                         .format(min_prebin_size_x))
+
+    if not 0. < min_prebin_size_y <= 0.5:
+        raise ValueError("min_prebin_size_y must be in (0, 0.5]; got {}."
+                         .format(min_prebin_size_y))
+
+    if min_n_bins is not None:
+        if not isinstance(min_n_bins, numbers.Integral) or min_n_bins <= 0:
+            raise ValueError("min_n_bins must be a positive integer; got {}."
+                             .format(min_n_bins))
+
+    if max_n_bins is not None:
+        if not isinstance(max_n_bins, numbers.Integral) or max_n_bins <= 0:
+            raise ValueError("max_n_bins must be a positive integer; got {}."
+                             .format(max_n_bins))
+
+    if min_n_bins is not None and max_n_bins is not None:
+        if min_n_bins > max_n_bins:
+            raise ValueError("min_n_bins must be <= max_n_bins; got {} <= {}."
+                             .format(min_n_bins, max_n_bins))
+
+    if min_bin_size is not None:
+        if (not isinstance(min_bin_size, numbers.Number) or
+                not 0. < min_bin_size <= 0.5):
+            raise ValueError("min_bin_size must be in (0, 0.5]; got {}."
+                             .format(min_bin_size))
+
+    if max_bin_size is not None:
+        if (not isinstance(max_bin_size, numbers.Number) or
+                not 0. < max_bin_size <= 1.0):
+            raise ValueError("max_bin_size must be in (0, 1.0]; got {}."
+                             .format(max_bin_size))
+
+    if min_bin_size is not None and max_bin_size is not None:
+        if min_bin_size > max_bin_size:
+            raise ValueError("min_bin_size must be <= max_bin_size; "
+                             "got {} <= {}.".format(min_bin_size,
+                                                    max_bin_size))
+
+    if monotonic_trend_x is not None:
+        if monotonic_trend_x not in ("ascending", "descending"):
+            raise ValueError('Invalid value for monotonic trend x. Allowed '
+                             'string values are "ascending" and "descending".')
+
+    if monotonic_trend_y is not None:
+        if monotonic_trend_y not in ("ascending", "descending"):
+            raise ValueError('Invalid value for monotonic trend y. Allowed '
+                             'string values are "ascending" and "descending".')
+
+    if not isinstance(min_mean_diff_x, numbers.Number):
+        raise ValueError("min_mean_diff_x must be numeric; got {}."
+                         .format(min_mean_diff_x))
+
+    if not isinstance(min_mean_diff_y, numbers.Number):
+        raise ValueError("min_mean_diff_y must be numeric; got {}."
+                         .format(min_mean_diff_y))
+
+    if not isinstance(gamma, numbers.Number) or gamma < 0:
+        raise ValueError("gamma must be >= 0; got {}.".format(gamma))
+
+    if special_codes_x is not None:
+        if not isinstance(special_codes_x, (np.ndarray, list)):
+            raise TypeError("special_codes_x must be a list or numpy.ndarray.")
+
+    if special_codes_y is not None:
+        if not isinstance(special_codes_y, (np.ndarray, list)):
+            raise TypeError("special_codes_y must be a list or numpy.ndarray.")
+
+    if split_digits is not None:
+        if (not isinstance(split_digits, numbers.Integral) or
+                not 0 <= split_digits <= 8):
+            raise ValueError("split_digits must be an integer in [0, 8]; "
+                             "got {}.".format(split_digits))
+    if n_jobs is not None:
+        if not isinstance(n_jobs, numbers.Integral):
+            raise ValueError("n_jobs must be an integer or None; got {}."
+                             .format(n_jobs))
+
+    if not isinstance(time_limit, numbers.Number) or time_limit < 0:
+        raise ValueError("time_limit must be a positive value in seconds; "
+                         "got {}.".format(time_limit))
+
+    if not isinstance(verbose, bool):
+        raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
 class ContinuousOptimalBinning2D(OptimalBinning2D):
@@ -97,15 +230,125 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._is_fitted = False
 
     def fit(self, x, y, z, check_input=False):
-        return self._fit(x ,y, z, check_input)
+        """Fit the optimal binning 2D according to the given training data.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        z : array-like, shape = (n_samples,)
+            Target vector relative to x and y.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        self : ContinuousOptimalBinning2D
+            Fitted optimal binning 2D.
+        """
+        return self._fit(x, y, z, check_input)
 
     def fit_transform(self, x, y, z, metric="mean", metric_special=0,
                       metric_missing=0, show_digits=2, check_input=False):
-        pass
+        """Fit the optimal binning 2D according to the given training data,
+        then transform it.
 
-    def transform(self, x, y, metric="mean", metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
-        pass
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        z : array-like, shape = (n_samples,)
+            Target vector relative to x and y.
+
+        metric : str (default="mean")
+            The metric used to transform the input vector. Supported metrics
+            are "mean" to choose the mean, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate, and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        z_new : numpy array, shape = (n_samples,)
+            Transformed array.
+        """
+        return self.fit(x, y, z, check_input).transform(
+            x, y, metric, metric_special, metric_missing, show_digits,
+            check_input)
+
+    def transform(self, x, y, metric="mean", metric_special=0,
+                  metric_missing=0, show_digits=2, check_input=False):
+        """Transform given data to mean using bins from the fitted optimal
+        binning 2D.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector x, where n_samples is the number of samples.
+
+        y : array-like, shape = (n_samples,)
+            Training vector y, where n_samples is the number of samples.
+
+        metric : str (default="mean")
+            The metric used to transform the input vector. Supported metrics
+            are "mean" to choose the mean, "indices" to assign the
+            corresponding indices of the bins and "bins" to assign the
+            corresponding bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        z_new : numpy array, shape = (n_samples,)
+            Transformed array.
+        """
+        self._check_is_fitted()
+
+        return transform_continuous_target(
+            self._splits_x_optimal, self._splits_y_optimal, x, y,
+            self._n_records, self._sums, self.special_codes_x,
+            self.special_codes_y, metric, metric_special, metric_missing,
+            show_digits, check_input)
 
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()
@@ -114,7 +357,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             logger.info("Optimal binning started.")
             logger.info("Options: check parameters.")
 
-        # _check_parameters(**self.get_params())
+        _check_parameters(**self.get_params())
 
         # Pre-processing
         if self.verbose:
@@ -126,7 +369,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             logger.info("Pre-processing: number of samples: {}"
                         .format(self._n_samples))
 
-        time_preprocessing = time.perf_counter()         
+        time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
          x_special, y_special, z_special] = split_data_2d(
@@ -166,12 +409,45 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
                                         self.max_n_prebins_y,
                                         self.min_prebin_size_y)
 
-        R, S, SS, SD = self._prebinning_matrices(
+        R, S, SS = self._prebinning_matrices(
             splits_x, splits_y, x_clean, y_clean, z_clean, x_missing,
             y_missing, z_missing, x_special, y_special, z_special)
 
         if self.strategy == "cart":
-            pass
+
+            if self.verbose:
+                logger.info("Prebinning: applying strategy cart...")
+
+            n_splits_x = len(splits_x)
+            n_splits_y = len(splits_y)
+
+            clf_nodes = n_splits_x * n_splits_y
+
+            indices_x = np.digitize(x_clean, splits_x, right=False)
+            n_bins_x = n_splits_x + 1
+
+            indices_y = np.digitize(y_clean, splits_y, right=False)
+            n_bins_y = n_splits_y + 1
+
+            xt = np.empty(len(x_clean), dtype=int)
+            yt = np.empty(len(y_clean), dtype=int)
+
+            for i in range(n_bins_x):
+                xt[(indices_x == i)] = i
+
+            for i in range(n_bins_y):
+                yt[(indices_y == i)] = i
+
+            xyt = np.c_[xt, yt]
+
+            min_prebin_size = min(self.min_prebin_size_x,
+                                  self.min_prebin_size_y) * 0.25
+
+            clf = DecisionTreeRegressor(min_samples_leaf=min_prebin_size,
+                                        max_leaf_nodes=clf_nodes)
+            clf.fit(xyt, z_clean)
+
+            self._clf = clf
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
@@ -185,7 +461,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
                         .format(self._time_prebinning))
 
         # Optimization
-        rows, n_records, sums, ssums, stds = self._fit_optimizer(
+        rows, n_records, sums, stds = self._fit_optimizer(
             splits_x, splits_y, R, S, SS)
 
         # Post-processing
@@ -208,7 +484,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._selected_rows = selected_rows
         self._m, self._n = m, n
 
-        n_selected_rows = selected_rows.shape[0] + 2        
+        n_selected_rows = selected_rows.shape[0] + 2
 
         opt_sums = np.empty(n_selected_rows, dtype=float)
         opt_n_records = np.empty(n_selected_rows, dtype=int)
@@ -239,29 +515,13 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         P = P.reshape((m, n))
 
         # optimal bins
-        bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])
-        bins_y = np.concatenate([[-np.inf], splits_y, [np.inf]])
-
-        bins_str_x = np.array([[bins_x[i], bins_x[i+1]]
-                               for i in range(len(bins_x) - 1)])
-        bins_str_y = np.array([[bins_y[i], bins_y[i+1]]
-                               for i in range(len(bins_y) - 1)])
-
-        splits_x_optimal = []
-        splits_y_optimal = []
-        for i in range(len(selected_rows)):
-            pos_y, pos_x = np.where(P == i)
-            mask_x = np.arange(pos_x.min(), pos_x.max() + 1)
-            mask_y = np.arange(pos_y.min(), pos_y.max() + 1)
-            bin_x = bins_str_x[mask_x]
-            bin_y = bins_str_y[mask_y]
-
-            splits_x_optimal.append([bin_x[0][0], bin_x[-1][1]])
-            splits_y_optimal.append([bin_y[0][0], bin_y[-1][1]])
+        splits_x_optimal, splits_y_optimal = self._splits_xy_optimal(
+            selected_rows, splits_x, splits_y, P)
 
         self._splits_x_optimal = splits_x_optimal
         self._splits_y_optimal = splits_y_optimal
 
+        # instatiate binning table
         self._binning_table = ContinuousBinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_records,
@@ -289,7 +549,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
     def _prebinning_matrices(self, splits_x, splits_y, x_clean, y_clean,
                              z_clean, x_missing, y_missing, z_missing,
                              x_special, y_special, z_special):
-        
+
         self._n_records_missing = len(z_missing)
         self._n_records_special = len(z_special)
         self._sum_missing = np.sum(z_missing)
@@ -307,7 +567,6 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         R = np.empty((n_bins_x, n_bins_y), dtype=float)
         S = np.empty((n_bins_x, n_bins_y), dtype=float)
         SS = np.empty((n_bins_x, n_bins_y), dtype=float)
-        SD = np.empty((n_bins_x, n_bins_y), dtype=float)
 
         for i in range(n_bins_y):
             mask_y = (indices_y == i)
@@ -320,10 +579,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
                 S[i, j] = np.sum(zmask)
                 SS[i, j] = np.sum(zmask ** 2)
 
-                if len(zmask):
-                    SD[i, j] = np.std(zmask)
-
-        return R, S, SS, SD
+        return R, S, SS
 
     def _fit_optimizer(self, splits_x, splits_y, R, S, SS):
         if self.verbose:
@@ -365,7 +621,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         if self.solver == "cp":
             scale = int(1e6)
 
-            optimizer = ContinuousBinning2DCP(
+            optimizer = Binning2DCP(
                 self.monotonic_trend_x, self.monotonic_trend_y,
                 self.min_n_bins, self.max_n_bins, self.min_mean_diff_x,
                 self.min_mean_diff_y, self.gamma, n_jobs, self.time_limit)
@@ -373,11 +629,10 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         elif self.solver == "mip":
             scale = None
 
-            # optimizer = Binning2DMIP(
-            #     self.monotonic_trend_x, self.monotonic_trend_y,
-            #     self.min_n_bins, self.max_n_bins, self.min_event_rate_diff_x,
-            #     self.min_event_rate_diff_y, self.gamma, n_jobs,
-            #     self.time_limit)
+            optimizer = Binning2DMIP(
+                self.monotonic_trend_x, self.monotonic_trend_y,
+                self.min_n_bins, self.max_n_bins, self.min_mean_diff_x,
+                self.min_mean_diff_y, self.gamma, n_jobs, self.time_limit)
 
         if self.verbose:
             logger.info("Optimizer: model data...")
@@ -385,12 +640,15 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         time_model_data = time.perf_counter()
 
         if self.strategy == "cart":
-            pass
+            [n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
+             mean, n_records, sums, stds] = continuous_model_data_cart(
+                self._clf, R, S, SS, self.monotonic_trend_x,
+                self.monotonic_trend_y, scale, min_bin_size, max_bin_size)
         else:
             [n_grid, n_rectangles, rows, cols, c, d_connected_x, d_connected_y,
-             mean, n_records, sums, ssums, stds] = continuous_model_data(
-                R, S, SS, self.monotonic_trend_x, self.monotonic_trend_y, scale,
-                min_bin_size, max_bin_size)
+             mean, n_records, sums, stds] = continuous_model_data(
+                R, S, SS, self.monotonic_trend_x, self.monotonic_trend_y,
+                scale, min_bin_size, max_bin_size)
 
         self._time_model_data = time.perf_counter() - time_model_data
 
@@ -425,4 +683,4 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._rows = rows
         self._c = c
 
-        return rows, n_records, sums, ssums, stds
+        return rows, n_records, sums, stds

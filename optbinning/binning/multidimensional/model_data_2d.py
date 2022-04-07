@@ -255,7 +255,7 @@ def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
     mean = sums / n_records
     stds = np.sqrt(ssums / n_records - mean ** 2)
     norm = np.absolute(mean - t_mean)
-    
+
     if scale is not None:
         c = (norm * scale).astype(int)
     else:

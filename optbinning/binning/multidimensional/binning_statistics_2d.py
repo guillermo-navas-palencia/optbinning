@@ -19,6 +19,7 @@ from ..binning_statistics import ContinuousBinningTable
 from ..metrics import bayesian_probability
 from ..metrics import binning_quality_score
 from ..metrics import chi2_cramer_v
+from ..metrics import continuous_binning_quality_score
 from ..metrics import frequentist_pvalue
 from ..metrics import hhi
 from ..metrics import gini
@@ -26,6 +27,8 @@ from ..metrics import hellinger
 from ..metrics import jeffrey
 from ..metrics import jensen_shannon
 from ..metrics import triangular
+
+from scipy import stats
 
 
 def _bin_fmt(bin, show_digits):
@@ -55,6 +58,23 @@ def bin_str_format(bins, show_digits):
         bin_str.append(_bin_fmt(bin, show_digits))
 
     return bin_str
+
+
+def get_pairs(paths_x, paths_y):
+    pairs = set()
+
+    for path in paths_x:
+        tpairs = tuple(zip(path[:-1], path[1:]))
+        for tp in tpairs:
+            pairs.add(tp)
+
+    for path in paths_y:
+        tpairs = tuple(zip(path[:-1], path[1:]))
+        for tp in tpairs:
+            pairs.add(tp)
+
+    pairs = sorted(pairs)
+    return pairs
 
 
 class BinningTable2D(BinningTable):
@@ -406,19 +426,8 @@ class BinningTable2D(BinningTable):
         `scipy.stats.fisher_exact <https://docs.scipy.org/doc/scipy/reference/
         generated/scipy.stats.fisher_exact.html>`_.
         """
-        pairs = set()
-
-        for path in self._paths_x:
-            tpairs = tuple(zip(path[:-1], path[1:]))
-            for tp in tpairs:
-                pairs.add(tp)
-
-        for path in self._paths_y:
-            tpairs = tuple(zip(path[:-1], path[1:]))
-            for tp in tpairs:
-                pairs.add(tp)
-
-        pairs = sorted(pairs)
+        # Pairs
+        pairs = get_pairs(self._paths_x, self._paths_y)
 
         # Significance tests
         n_bins = len(self._n_records)
@@ -499,6 +508,58 @@ class BinningTable2D(BinningTable):
 
 
 class ContinuousBinningTable2D(ContinuousBinningTable):
+    """Binning table to summarize optimal binning of two numerical variables
+    with respect to a binary target.
+
+    Parameters
+    ----------
+    name_x : str, optional (default="")
+        The name of variable x.
+
+    name_y : str, optional (default="")
+        The name of variable y.
+
+    dtype_x : str, optional (default="numerical")
+        The data type of variable x. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    dtype_y : str, optional (default="numerical")
+        The data type of variable y. Supported data type is "numerical" for
+        continuous and ordinal variables.
+
+    splits_x : numpy.ndarray
+        List of split points for variable x.
+
+    splits_y : numpy.ndarray
+        List of split points for variable y.
+
+    m : int
+        Number of rows of the 2D array.
+
+    n : int
+        Number of columns of the 2D array.
+
+    n_records : numpy.ndarray
+        Number of records.
+
+    sums : numpy.ndarray
+        Target sums.
+
+    stds : numpy.ndarray
+        Target stds.
+
+    D : numpy.ndarray
+        Mean 2D array.
+
+    P : numpy-ndarray
+        Records 2D array.
+
+    Warning
+    -------
+    This class is not intended to be instantiated by the user. It is
+    preferable to use the class returned by the property ``binning_table``
+    available in all optimal binning classes.
+    """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
                  m, n, n_records, sums, stds, D, P):
 
@@ -520,6 +581,23 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._is_analyzed = False
 
     def build(self, show_digits=2, show_bin_xy=False, add_totals=True):
+        """Build the binning table.
+
+        Parameters
+        ----------
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column.
+
+        show_bin_xy: bool (default=False)
+            Whether to show a single bin column with x and y.
+
+        add_totals : bool (default=True)
+            Whether to add a last row with totals.
+
+        Returns
+        -------
+        binning_table : pandas.DataFrame
+        """
         _check_build_parameters(show_digits, add_totals)
 
         if not isinstance(show_bin_xy, bool):
@@ -549,9 +627,7 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
 
         # Compute HHI
         self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)        
-
-        # Keep data for plotting
+        self._hhi_norm = hhi(p_records, normalized=True)
 
         # Compute paths. This is required for both plot and analysis
         # paths x: horizontal
@@ -608,7 +684,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
             if show_bin_xy:
                 totals = ["", t_n_records, 1, t_sum, "", t_mean, t_woe, t_iv]
             else:
-                totals = ["", "", t_n_records, 1, t_sum, "", t_mean, t_woe, t_iv]
+                totals = ["", "", t_n_records, 1, t_sum, "", t_mean, t_woe,
+                          t_iv]
             df.loc["Totals"] = totals
 
         self._is_built = True
@@ -702,3 +779,96 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                                 .format(savefig))
             plt.savefig(savefig)
             plt.close()
+
+    def analysis(self, print_output=True):
+        r"""Binning table analysis.
+
+        Statistical analysis of the binning table, computing the Information
+        Value (IV) and Herfindahl-Hirschman Index (HHI).
+
+        Parameters
+        ----------
+        print_output : bool (default=True)
+            Whether to print analysis information.
+
+        Notes
+        -----
+        The IV for a continuous target is computed as follows:
+
+        .. math::
+
+            IV = \sum_{i=1}^n |U_i - \mu| \frac{r_i}{r_T},
+
+        where :math:`U_i` is the target mean value for each bin, :math:`\mu` is
+        the total target mean, :math:`r_i` is the number of records for each
+        bin, and :math:`r_T` is the total number of records.
+        """
+        # Pairs
+        pairs = get_pairs(self._paths_x, self._paths_y)
+
+        # Significance tests
+        n_bins = len(self.n_records)
+        n_metric = n_bins - 2
+
+        n_records = self.n_records[:n_metric]
+        mean = self._mean[:n_metric]
+        std = self.stds[:n_metric]
+
+        t_statistics = []
+        p_values = []
+
+        for pair in pairs:
+            u, u2 = mean[pair[0]], mean[pair[1]]
+            s, s2 = std[pair[0]], std[pair[1]]
+            r, r2 = n_records[pair[0]], n_records[pair[1]]
+
+            t_statistic, p_value = stats.ttest_ind_from_stats(
+                u, s, r, u2, s2, r2, False)
+
+            t_statistics.append(t_statistic)
+            p_values.append(p_value)
+
+        df_tests = pd.DataFrame({
+                "Bin A": np.array([p[0] for p in pairs]),
+                "Bin B": np.array([p[1] for p in pairs]),
+                "t-statistic": t_statistics,
+                "p-value": p_values
+            })
+
+        tab = 4
+        if len(df_tests):
+            df_tests_string = dataframe_to_string(df_tests, tab)
+        else:
+            df_tests_string = " " * tab + "None"
+
+        # Quality score
+        if self._t_mean == 0:
+            rwoe = self._woe
+        else:
+            rwoe = self._woe / abs(self._t_mean)
+
+        self._quality_score = continuous_binning_quality_score(
+            rwoe, p_values, self._hhi_norm)
+
+        report = (
+            "-------------------------------------------------\n"
+            "OptimalBinning: Continuous Binning Table Analysis\n"
+            "-------------------------------------------------\n"
+            "\n"
+            "  General metrics"
+            "\n\n"
+            "    IV                  {:>15.8f}\n"
+            "    WoE                 {:>15.8f}\n"
+            "    WoE (normalized)    {:>15.8f}\n"
+            "    HHI                 {:>15.8f}\n"
+            "    HHI (normalized)    {:>15.8f}\n"
+            "    Quality score       {:>15.8f}\n"
+            "\n"
+            "  Significance tests\n\n{}\n"
+            ).format(self._iv, self._woe, rwoe, self._hhi, self._hhi_norm,
+                     self._quality_score, df_tests_string)
+
+        if print_output:
+            print(report)
+
+        self._is_analyzed = True

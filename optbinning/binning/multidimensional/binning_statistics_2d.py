@@ -60,6 +60,24 @@ def bin_str_format(bins, show_digits):
     return bin_str
 
 
+def get_paths(m, n, P):
+    # paths x: horizontal
+    paths_x = []
+    for i in range(m):
+        path = tuple(dict.fromkeys(P[i, :]))
+        if path not in paths_x:
+            paths_x.append(path)
+
+    # paths y: vertical
+    paths_y = []
+    for j in range(n):
+        path = tuple(dict.fromkeys(P[:, j]))
+        if path not in paths_y:
+            paths_y.append(path)
+
+    return paths_x, paths_y
+
+
 def get_pairs(paths_x, paths_y):
     pairs = set()
 
@@ -226,19 +244,7 @@ class BinningTable2D(BinningTable):
         self._hhi_norm = hhi(p_records, normalized=True)
 
         # Compute paths. This is required for both plot and analysis
-        # paths x: horizontal
-        self._paths_x = []
-        for i in range(self.m):
-            path = tuple(dict.fromkeys(self.P[i, :]))
-            if path not in self._paths_x:
-                self._paths_x.append(path)
-
-        # paths y: vertical
-        self._paths_y = []
-        for j in range(self.n):
-            path = tuple(dict.fromkeys(self.P[:, j]))
-            if path not in self._paths_y:
-                self._paths_y.append(path)
+        self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
             bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
@@ -612,8 +618,6 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
-        if self.n_records[-1] > 0:
-            self._mean[-1] = 0
 
         # Compute divergence measure (continuous adaptation)
         woe = self._mean - t_mean
@@ -630,19 +634,7 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._hhi_norm = hhi(p_records, normalized=True)
 
         # Compute paths. This is required for both plot and analysis
-        # paths x: horizontal
-        self._paths_x = []
-        for i in range(self.m):
-            path = tuple(dict.fromkeys(self.P[i, :]))
-            if path not in self._paths_x:
-                self._paths_x.append(path)
-
-        # paths y: vertical
-        self._paths_y = []
-        for j in range(self.n):
-            path = tuple(dict.fromkeys(self.P[:, j]))
-            if path not in self._paths_y:
-                self._paths_y.append(path)
+        self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
             bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,

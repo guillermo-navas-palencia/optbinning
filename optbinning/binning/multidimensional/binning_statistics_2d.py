@@ -137,7 +137,7 @@ class BinningTable2D(BinningTable):
         Event rate 2D array.
 
     P : numpy-ndarray
-        Records 2D array.
+        Bin indices 2D array.
 
     Warning
     -------
@@ -558,7 +558,7 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         Mean 2D array.
 
     P : numpy-ndarray
-        Records 2D array.
+        Bin indices 2D array.
 
     Warning
     -------

@@ -62,6 +62,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
 
    binning_2d_binary
    binning_2d_continuous
+   binning_2d_tables
 
 .. toctree::
    :maxdepth: 1

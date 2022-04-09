@@ -1,0 +1,45 @@
+-----------------------------------
+Monitoring: System Stability Report
+-----------------------------------
+
+  Population Stability Index (PSI)
+
+
+    PSI total:      0.1630 (Requires investigation)
+
+         PSI bin  Count  Count (%)
+    [0.00, 0.10)     14   0.933333
+    [0.10, 0.25)      1   0.066667
+    [0.25, Inf+)      0   0.000000
+
+  Significance tests (H0: actual == expected)
+
+     p-value bin  Count  Count (%)
+    [0.00, 0.05)      1   0.066667
+    [0.05, 0.10)      0   0.000000
+    [0.10, 0.50)      5   0.333333
+    [0.50, 1.00)      9   0.600000
+
+  Target analysis
+
+    Metric    Actual  Expected
+      Mean 21.407895 23.015819
+       Std  8.632097  9.375315
+       p25 16.325000 17.400000
+    Median 20.000000 21.750000
+       p75 24.125000 26.600000
+
+  Performance metrics
+
+                   Metric    Actual  Expected  Diff A - E
+      Mean absolute error  2.482286  2.546775   -0.064488
+       Mean squared error 12.583966 12.187764    0.396202
+    Median absolute error  2.059913  1.947342    0.112571
+       Explained variance  0.831908  0.861340   -0.029432
+                      R^2  0.831117  0.861340   -0.030222
+                      MPE -0.032197 -0.024922   -0.007275
+                     MAPE  0.125897  0.125992   -0.000095
+                    SMAPE  0.061339  0.060410    0.000929
+                    MdAPE  0.097021  0.091783    0.005238
+                   SMdAPE  0.049889  0.046868    0.003021
+

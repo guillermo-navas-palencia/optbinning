@@ -1,0 +1,56 @@
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Number of records   : 569
+  Number of variables : 30
+  Time                : 4.5854  sec
+
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Statistics
+    Number of records                    569
+    Number of variables                   30
+    Target type                       binary
+
+    Number of numerical                   30
+    Number of categorical                  0
+    Number of selected                    30
+
+  Timing
+    Total time                          4.59 sec
+    Binning process                     4.11 sec   ( 89.66%)
+    Estimator                           0.04 sec   (  0.95%)
+    Build scorecard                     0.43 sec   (  9.39%)
+      rounding                          0.00 sec   (  0.00%)
+
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Begin options
+    binning_process                      yes   * U
+    estimator                            yes   * U
+    scaling_method                        no   * d
+    scaling_method_params                 no   * d
+    intercept_based                    False   * d
+    reverse_scorecard                  False   * d
+    rounding                           False   * d
+    verbose                            False   * d
+  End options
+
+  Statistics
+    Number of records                    569
+    Number of variables                   30
+    Target type                       binary
+
+    Number of numerical                   30
+    Number of categorical                  0
+    Number of selected                    30
+
+  Timing
+    Total time                          4.59 sec
+    Binning process                     4.11 sec   ( 89.66%)
+    Estimator                           0.04 sec   (  0.95%)
+    Build scorecard                     0.43 sec   (  9.39%)
+      rounding                          0.00 sec   (  0.00%)
+

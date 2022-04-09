@@ -198,7 +198,9 @@ def transform_continuous_target(splits_x, splits_y, x, y, n_records, sums,
 
     if metric == "mean":
         # Compute mean
-        metric_value = sums / n_records
+        mask = n_records > 0
+        metric_value = np.zeros(len(n_records))
+        metric_value[mask] = sums[mask] / n_records[mask]
         z_transform = np.zeros(x.shape)
     else:
         # Assign corresponding indices or bin intervals

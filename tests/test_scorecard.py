@@ -409,7 +409,7 @@ def test_information():
     with raises(ValueError):
         scorecard.information(print_level=-1)
 
-    with open("tests/test_scorecard_information.txt", "w") as f:
+    with open("tests/results/test_scorecard_information.txt", "w") as f:
         with redirect_stdout(f):
             scorecard.information(print_level=0)
             scorecard.information(print_level=1)
@@ -427,6 +427,6 @@ def test_verbose():
     scorecard = Scorecard(binning_process=binning_process, estimator=estimator,
                           verbose=True)
 
-    with open("tests/test_scorecard_verbose.txt", "w") as f:
+    with open("tests/results/test_scorecard_verbose.txt", "w") as f:
         with redirect_stdout(f):
             scorecard.fit(X, y)

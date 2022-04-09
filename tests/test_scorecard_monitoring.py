@@ -137,7 +137,7 @@ def test_default_binary():
         [0.00077184, 0.51953576], rel=1e-4)
 
     # Check system stability report
-    with open("tests/test_scorecard_monitoring_default.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_default.txt", "w") as f:
         with redirect_stdout(f):
             monitoring.system_stability_report()
 
@@ -179,7 +179,7 @@ def test_default_continuous():
         [0.78558541, 0.29332423], rel=1e-4)
 
     # Check system stability report
-    with open("tests/test_scorecard_monitoring_default_continuous.txt",
+    with open("tests/results/test_scorecard_monitoring_default_continuous.txt",
               "w") as f:
         with redirect_stdout(f):
             monitoring.system_stability_report()
@@ -202,7 +202,8 @@ def test_information():
     with raises(ValueError):
         monitoring.information(print_level=-1)
 
-    with open("tests/test_scorecard_monitoring_information.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_information.txt",
+              "w") as f:
         with redirect_stdout(f):
             monitoring.information(print_level=0)
             monitoring.information(print_level=1)
@@ -215,7 +216,7 @@ def test_verbose():
 
     monitoring = ScorecardMonitoring(scorecard=scorecard, verbose=True)
 
-    with open("tests/test_scorecard_monitoring_verbose.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_verbose.txt", "w") as f:
         with redirect_stdout(f):
             monitoring.fit(X_test, y_test, X_train, y_train)
 
@@ -230,7 +231,7 @@ def test_plot_binary():
     with raises(TypeError):
         monitoring.psi_plot(savefig=1)
 
-    monitoring.psi_plot(savefig="psi_plot_binary.png")
+    monitoring.psi_plot(savefig="tests/results/psi_plot_binary.png")
 
 
 def test_plot_continuous():
@@ -239,4 +240,4 @@ def test_plot_continuous():
 
     monitoring = ScorecardMonitoring(scorecard=scorecard)
     monitoring.fit(X_test, y_test, X_train, y_train)
-    monitoring.psi_plot(savefig="psi_plot_continuous.png")
+    monitoring.psi_plot(savefig="tests/results/psi_plot_continuous.png")

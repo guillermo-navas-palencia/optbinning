@@ -186,9 +186,13 @@ def test_numerical_default():
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
 
-    optb.binning_table.plot(metric="woe", savefig="test_binning_2d_woe.png")
-    optb.binning_table.plot(metric="event_rate",
-                            savefig="test_binning_2d_event_rate.png")
+    optb.binning_table.plot(
+        metric="woe",
+        savefig="tests/results/test_binning_2d_woe.png")
+
+    optb.binning_table.plot(
+        metric="event_rate",
+        savefig="tests/results/test_binning_2d_event_rate.png")
 
 
 def test_numerical_default_solvers():
@@ -281,7 +285,7 @@ def test_numerical_default_transform():
                                       0.00775194], rel=1e-6)
 
     z_transform = optb.transform(x, y, metric="indices")
-    assert z_transform[:5] == approx([12, 3, 12, 13, 12], rel=1e-6)
+    assert z_transform[:5] == approx([12, 3, 12, 13, 12])
 
     z_transform = optb.transform(x, y, metric="bins")
     assert z_transform[0] == '[15.05, inf) $\\cup$ [0.32, inf)'

@@ -119,11 +119,16 @@ def test_numerical_default():
 
     optb.binning_table.build()
     optb.binning_table.analysis()
-    optb.binning_table.plot(savefig="test_continuous_binning.png")
-    optb.binning_table.plot(add_special=False,
-                            savefig="test_continuous_binning_no_special.png")
-    optb.binning_table.plot(add_missing=False,
-                            savefig="test_continuous_binning_no_missing.png")
+    optb.binning_table.plot(
+        savefig="tests/results/test_continuous_binning.png")
+
+    optb.binning_table.plot(
+        add_special=False,
+        savefig="tests/results/test_continuous_binning_no_special.png")
+
+    optb.binning_table.plot(
+        add_missing=False,
+        savefig="tests/results/test_continuous_binning_no_missing.png")
 
 
 def test_numerical_user_splits_fixed():

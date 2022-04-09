@@ -530,7 +530,7 @@ def test_information():
     with raises(ValueError):
         process.information(print_level=-1)
 
-    with open("tests/test_binning_process_information.txt", "w") as f:
+    with open("tests/results/test_binning_process_information.txt", "w") as f:
         with redirect_stdout(f):
             process.information(print_level=0)
             process.information(print_level=1)
@@ -577,6 +577,6 @@ def test_summary_get_support():
 def test_verbose():
     process = BinningProcess(variable_names, verbose=True)
 
-    with open("tests/test_binning_process_verbose.txt", "w") as f:
+    with open("tests/results/test_binning_process_verbose.txt", "w") as f:
         with redirect_stdout(f):
             process.fit(X, y, check_input=True)

@@ -206,6 +206,12 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self.verbose = verbose
 
         # auxiliary
+        self._n_records_special = None
+        self._n_records_missing = None
+        self._sum_special = None
+        self._sum_missing = None
+        self._std_special = None
+        self._std_missing = None
         self._problem_type = "regression"
 
         # info
@@ -504,9 +510,11 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
         opt_n_records[-2] = self._n_records_special
         opt_sums[-2] = self._sum_special
+        opt_stds[-2] = self._std_special
 
         opt_n_records[-1] = self._n_records_missing
         opt_sums[-1] = self._sum_missing
+        opt_stds[-1] = self._std_missing
 
         self._sums = opt_sums
         self._n_records = opt_n_records
@@ -554,6 +562,16 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._n_records_special = len(z_special)
         self._sum_missing = np.sum(z_missing)
         self._sum_special = np.sum(z_special)
+
+        if len(z_missing):
+            self._std_missing = np.std(z_missing)
+        else:
+            self._std_missing = 0
+
+        if len(z_special):
+            self._std_special = np.std(z_special)
+        else:
+            self._std_special = 0
 
         n_splits_x = len(splits_x)
         n_splits_y = len(splits_y)

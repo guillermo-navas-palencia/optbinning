@@ -61,6 +61,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    :caption: Optimal binning 2D
 
    binning_2d_binary
+   binning_2d_continuous
 
 .. toctree::
    :maxdepth: 1

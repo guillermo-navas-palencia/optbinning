@@ -3,7 +3,7 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
   Number of records   : 569
   Number of variables : 30
-  Time                : 4.0545     sec
+  Time                : 4.2282     sec
 
 optbinning (Version 0.14.0)
 Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
@@ -17,7 +17,7 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
     Number of categorical                  0
     Number of selected                    30
 
-  Time                                4.0545 sec
+  Time                                4.2282 sec
 
 optbinning (Version 0.14.0)
 Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
@@ -50,5 +50,5 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
     Number of categorical                  0
     Number of selected                    30
 
-  Time                                4.0545 sec
+  Time                                4.2282 sec
 

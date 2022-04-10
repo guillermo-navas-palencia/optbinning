@@ -1505,8 +1505,6 @@ class ContinuousBinningTable:
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
-        if self.n_records[-1] > 0:
-            self._mean[-1] = 0
 
         # Compute divergence measure (continuous adaptation)
         woe = self._mean - t_mean

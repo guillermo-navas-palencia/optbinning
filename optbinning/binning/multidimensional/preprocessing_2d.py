@@ -64,7 +64,7 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     x = np.asarray(x)
     y = np.asarray(y)
     z = np.asarray(z)
-    
+
     if np.issubdtype(x.dtype, np.number) and np.issubdtype(z.dtype, np.number):
         missing_mask_x = np.isnan(x) | np.isnan(z)
     else:

@@ -280,7 +280,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
     verbose : bool (default=False)
         Enable verbose output.
-    """    
+    """
     def __init__(self, name_x="", name_y="", dtype_x="numerical",
                  dtype_y="numerical", prebinning_method="cart",
                  strategy="grid", solver="cp", max_n_prebins_x=5,

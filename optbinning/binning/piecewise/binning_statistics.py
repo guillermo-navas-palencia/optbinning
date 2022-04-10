@@ -494,8 +494,6 @@ class PWContinuousBinningTable:
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
-        if self.n_records[-1] > 0:
-            self._mean[-1] = 0
 
         # Compute HHI
         self._hhi = hhi(p_records)
@@ -676,7 +674,7 @@ class PWContinuousBinningTable:
 
         # Quality score
         self._quality_score = continuous_binning_quality_score(
-            p_values, self._hhi_norm)
+            1e6, p_values, self._hhi_norm)
 
         # Metrics
         metrics_string = ""

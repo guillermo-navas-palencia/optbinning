@@ -65,15 +65,15 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     y = np.asarray(y)
     z = np.asarray(z)
 
-    if isinstance(x.dtype, object) or isinstance(z.dtype, object):
+    if np.issubdtype(x.dtype, np.number) and np.issubdtype(z.dtype, np.number):
+        missing_mask_x = np.isnan(x) | np.isnan(z)
+    else:
         missing_mask_x = pd.isnull(x) | pd.isnull(z)
-    else:
-        missing_mask_x = np.isnan(x) | pd.isnull(z)
 
-    if isinstance(x.dtype, object) or isinstance(z.dtype, object):
-        missing_mask_y = pd.isnull(y) | pd.isnull(z)
+    if np.issubdtype(y.dtype, np.number) and np.issubdtype(z.dtype, np.number):
+        missing_mask_y = np.isnan(y) | np.isnan(z)
     else:
-        missing_mask_y = np.isnan(y) | pd.isnull(z)
+        missing_mask_y = pd.isnull(y) | pd.isnull(z)
 
     if special_codes_x is not None:
         special_mask_x = pd.Series(x).isin(special_codes_x).values

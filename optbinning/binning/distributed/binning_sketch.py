@@ -11,7 +11,6 @@ import time
 import numpy as np
 import pandas as pd
 
-from pympler import asizeof
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 
@@ -30,6 +29,12 @@ from .bsketch import BSketch, BCatSketch
 from .bsketch_information import print_binning_information
 from .plots import plot_progress_divergence
 
+try:
+    from pympler import asizeof
+    PYMPLER_AVAILABLE = True
+except ImportError:
+    PYMPLER_AVAILABLE = False
+
 
 logger = Logger(__name__).logger
 
@@ -42,6 +47,13 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
                       gamma, cat_cutoff, cat_heuristic, special_codes,
                       split_digits, mip_solver, time_limit, verbose):
 
+    # Check pympler
+    if not PYMPLER_AVAILABLE:
+        raise ImportError('Cannot import pympler. Install pympler via '
+                          'pip install pympler or install optbinning using '
+                          'pip install optbinning[distributed]')
+
+    # Check parameters
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
 

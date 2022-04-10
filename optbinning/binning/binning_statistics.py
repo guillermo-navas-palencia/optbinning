@@ -1061,6 +1061,7 @@ class MulticlassBinningTable:
         self._quality_score = None
 
         self._is_built = False
+        self._is_analyzed = False
 
     def build(self, show_digits=2, add_totals=True):
         """Build the binning table.
@@ -1469,11 +1470,14 @@ class ContinuousBinningTable:
 
         self._mean = None
         self._iv = None
+        self._woe = None
+        self._t_mean = None
         self._hhi = None
         self._hhi_norm = None
         self._n_specials = None
 
         self._is_built = False
+        self._is_analyzed = False
 
     def build(self, show_digits=2, add_totals=True):
         """
@@ -1501,15 +1505,16 @@ class ContinuousBinningTable:
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
-        if self.n_records[-1] > 0:
-            self._mean[-1] = 0
 
         # Compute divergence measure (continuous adaptation)
         woe = self._mean - t_mean
         iv = np.absolute(woe) * p_records
         t_iv = iv.sum()
+        t_woe = np.absolute(woe).sum()
 
         self._iv = t_iv
+        self._woe = t_woe
+        self._t_mean = t_mean
 
         # Compute HHI
         self._hhi = hhi(p_records)
@@ -1552,7 +1557,7 @@ class ContinuousBinningTable:
             t_max = np.nanmax(self.max_target)
             t_n_zeros = self.n_zeros.sum()
             totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
-                      t_n_zeros, "", t_iv]
+                      t_n_zeros, t_woe, t_iv]
             df.loc["Totals"] = totals
 
         self._is_built = True
@@ -1813,8 +1818,13 @@ class ContinuousBinningTable:
             df_tests_string = " " * tab + "None"
 
         # Quality score
+        if self._t_mean == 0:
+            rwoe = self._woe
+        else:
+            rwoe = self._woe / abs(self._t_mean)
+
         self._quality_score = continuous_binning_quality_score(
-            p_values, self._hhi_norm)
+            rwoe, p_values, self._hhi_norm)
 
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._mean[:-2])
@@ -1827,6 +1837,8 @@ class ContinuousBinningTable:
             "  General metrics"
             "\n\n"
             "    IV                  {:>15.8f}\n"
+            "    WoE                 {:>15.8f}\n"
+            "    WoE (normalized)    {:>15.8f}\n"
             "    HHI                 {:>15.8f}\n"
             "    HHI (normalized)    {:>15.8f}\n"
             "    Quality score       {:>15.8f}\n"
@@ -1834,11 +1846,13 @@ class ContinuousBinningTable:
             "  Monotonic trend       {:>15}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._iv, self._hhi, self._hhi_norm, self._quality_score,
-                     type_mono, df_tests_string)
+            ).format(self._iv, self._woe, rwoe, self._hhi, self._hhi_norm,
+                     self._quality_score, type_mono, df_tests_string)
 
         if print_output:
             print(report)
+
+        self._is_analyzed = True
 
     @property
     def iv(self):
@@ -1853,6 +1867,27 @@ class ContinuousBinningTable:
         _check_is_built(self)
 
         return self._iv
+
+    @property
+    def woe(self):
+        r"""The sum of absolute WoEs.
+
+        This metric is computed as follows:
+
+        .. math::
+
+            WoE = \sum_{i=1}^n |U_i - \mu|,
+
+        where :math:`U_i` is the target mean value for each bin, :math:`\mu` is
+        the total target mean.
+
+        Returns
+        -------
+        woe : float
+        """
+        _check_is_built(self)
+
+        return self._woe
 
     @property
     def quality_score(self):

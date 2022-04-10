@@ -78,3 +78,4 @@ Optimal binning 2D
    :maxdepth: 1
 
    tutorials/tutorial_binning_2d
+   tutorials/tutorial_continuous_2d

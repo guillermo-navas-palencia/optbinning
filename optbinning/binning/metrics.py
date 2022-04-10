@@ -350,12 +350,18 @@ def multiclass_binning_quality_score(js, n_classes, p_values, hhi_norm):
     return binning_quality_score(js_norm, p_values, hhi_norm)
 
 
-def continuous_binning_quality_score(p_values, hhi_norm):
-    # Score 1: statistical significance (pairwise p-values)
+def continuous_binning_quality_score(rwoe, p_values, hhi_norm):
+    # Score 1: ratio sum absolute WoEs / mean
+    if rwoe == 0:
+        score_1 = 0
+    else:
+        score_1 = max(1 - 1 / rwoe, 0)
+
+    # Score 2: statistical significance (pairwise p-values)
     p_values = np.asarray(p_values)
-    score_1 = np.prod(1 - p_values)
+    score_2 = np.prod(1 - p_values)
 
     # Score 2: homogeneity
-    score_2 = 1. - hhi_norm
+    score_3 = 1. - hhi_norm
 
-    return score_1 * score_2
+    return score_1 * score_2 * score_3

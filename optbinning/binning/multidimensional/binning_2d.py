@@ -63,9 +63,9 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
         raise ValueError('Invalid value for strategy. Allowed string '
                          'values are "grid" and "cart".')
 
-    if solver not in ("cp", "ls", "mip"):
+    if solver not in ("cp", "mip"):
         raise ValueError('Invalid value for solver. Allowed string '
-                         'values are "cp", "ls" and "mip".')
+                         'values are "cp" and "mip".')
 
     if divergence not in ("iv", "js", "hellinger", "triangular"):
         raise ValueError('Invalid value for divergence. Allowed string '
@@ -711,29 +711,13 @@ class OptimalBinning2D(OptimalBinning):
         P = P.reshape((m, n))
 
         # optimal bins
-        bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])
-        bins_y = np.concatenate([[-np.inf], splits_y, [np.inf]])
-
-        bins_str_x = np.array([[bins_x[i], bins_x[i+1]]
-                               for i in range(len(bins_x) - 1)])
-        bins_str_y = np.array([[bins_y[i], bins_y[i+1]]
-                               for i in range(len(bins_y) - 1)])
-
-        splits_x_optimal = []
-        splits_y_optimal = []
-        for i in range(len(selected_rows)):
-            pos_y, pos_x = np.where(P == i)
-            mask_x = np.arange(pos_x.min(), pos_x.max() + 1)
-            mask_y = np.arange(pos_y.min(), pos_y.max() + 1)
-            bin_x = bins_str_x[mask_x]
-            bin_y = bins_str_y[mask_y]
-
-            splits_x_optimal.append([bin_x[0][0], bin_x[-1][1]])
-            splits_y_optimal.append([bin_y[0][0], bin_y[-1][1]])
+        splits_x_optimal, splits_y_optimal = self._splits_xy_optimal(
+            selected_rows, splits_x, splits_y, P)
 
         self._splits_x_optimal = splits_x_optimal
         self._splits_y_optimal = splits_y_optimal
 
+        # instatiate binning table
         self._binning_table = BinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_nonevent,
@@ -916,6 +900,29 @@ class OptimalBinning2D(OptimalBinning):
         self._c = c
 
         return rows, n_nonevent, n_event
+
+    def _splits_xy_optimal(self, selected_rows, splits_x, splits_y, P):
+        bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])
+        bins_y = np.concatenate([[-np.inf], splits_y, [np.inf]])
+
+        bins_str_x = np.array([[bins_x[i], bins_x[i+1]]
+                               for i in range(len(bins_x) - 1)])
+        bins_str_y = np.array([[bins_y[i], bins_y[i+1]]
+                               for i in range(len(bins_y) - 1)])
+
+        splits_x_optimal = []
+        splits_y_optimal = []
+        for i in range(len(selected_rows)):
+            pos_y, pos_x = np.where(P == i)
+            mask_x = np.arange(pos_x.min(), pos_x.max() + 1)
+            mask_y = np.arange(pos_y.min(), pos_y.max() + 1)
+            bin_x = bins_str_x[mask_x]
+            bin_y = bins_str_y[mask_y]
+
+            splits_x_optimal.append([bin_x[0][0], bin_x[-1][1]])
+            splits_y_optimal.append([bin_y[0][0], bin_y[-1][1]])
+
+        return splits_x_optimal, splits_y_optimal
 
     @property
     def splits(self):

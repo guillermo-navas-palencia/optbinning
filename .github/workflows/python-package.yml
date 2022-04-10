@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
         os: [ubuntu-latest, windows-latest]
 
     steps:
@@ -29,9 +29,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r test_requirements.txt
         pip install -r requirements.txt
+        pip install pympler tdigest
     - name: Install package
       run: |
-        pip install -e .[test]
+        pip install -e .[distributed,test]
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names

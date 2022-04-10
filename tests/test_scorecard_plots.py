@@ -45,4 +45,5 @@ def test_params():
 
 def test_savefig():
     for plot in (plot_auc_roc, plot_cap, plot_ks):
-        plot(y, y_pred, savefig=True, fname="{}.png".format(plot.__name__))
+        plot(y, y_pred, savefig=True,
+             fname="tests/results/{}.png".format(plot.__name__))

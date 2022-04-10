@@ -8,8 +8,8 @@ OptBinning
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 
-.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9-blue
-   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9-blue
+.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue
+   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue
 
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blueviolet
    :target: https://img.shields.io/pypi/v/optbinning?color=blueviolet
@@ -54,6 +54,12 @@ To install the current release of OptBinning from PyPI:
 
    pip install optbinning
 
+To include batch and stream binning algorithms (this option is not required for most users):
+
+.. code-block:: text
+
+  pip install optbinning[distributed]
+
 To install from source, download or clone the git repository
 
 .. code-block:: text
@@ -66,15 +72,19 @@ Dependencies
 ------------
 OptBinning requires
 
-* dill
 * matplotlib
 * numpy (>=1.16.1)
 * ortools (>=7.2)
 * pandas
-* ropwr
+* ropwr (>=0.2.0)
 * scikit-learn (>=0.22.0)
-* scipy
+* scipy (>=1.6.0)
+
+OptBinning[distributed] requires additional packages
+
+* pympler
 * tdigest
+
 
 Getting started
 ===============
@@ -219,7 +229,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.13.1)
+   optbinning (Version 0.14.0)
    Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -387,7 +397,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.13.1)
+   optbinning (Version 0.14.0)
    Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

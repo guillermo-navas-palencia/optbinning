@@ -191,25 +191,6 @@ def test_default():
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
 
 
-def test_default_parallel():
-    process = BinningProcess(variable_names, n_jobs=2)
-
-    with raises(ValueError):
-        process.fit(X[:, :2], y, check_input=True)
-
-    process.fit(X, y, check_input=True)
-
-    optb = process.get_binned_variable("mean radius")
-
-    assert optb.status == "OPTIMAL"
-    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
-                                  13.70499992, 15.04500008, 16.92500019],
-                                 rel=1e-6)
-
-    optb.binning_table.build()
-    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
-
-
 def test_default_pandas():
     df = pd.DataFrame(data.data, columns=data.feature_names)
 
@@ -218,23 +199,6 @@ def test_default_pandas():
     with raises(TypeError):
         process.fit(df.to_dict(), y, check_input=True)
 
-    process.fit(df, y, check_input=True)
-
-    optb = process.get_binned_variable("mean radius")
-
-    assert optb.status == "OPTIMAL"
-    assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
-                                  13.70499992, 15.04500008, 16.92500019],
-                                 rel=1e-6)
-
-    optb.binning_table.build()
-    assert optb.binning_table.iv == approx(5.04392547, rel=1e-6)
-
-
-def test_default_pandas_parallel():
-    df = pd.DataFrame(data.data, columns=data.feature_names)
-
-    process = BinningProcess(variable_names, n_jobs=2)
     process.fit(df, y, check_input=True)
 
     optb = process.get_binned_variable("mean radius")
@@ -566,7 +530,7 @@ def test_information():
     with raises(ValueError):
         process.information(print_level=-1)
 
-    with open("tests/test_binning_process_information.txt", "w") as f:
+    with open("tests/results/test_binning_process_information.txt", "w") as f:
         with redirect_stdout(f):
             process.information(print_level=0)
             process.information(print_level=1)
@@ -613,6 +577,6 @@ def test_summary_get_support():
 def test_verbose():
     process = BinningProcess(variable_names, verbose=True)
 
-    with open("tests/test_binning_process_verbose.txt", "w") as f:
+    with open("tests/results/test_binning_process_verbose.txt", "w") as f:
         with redirect_stdout(f):
             process.fit(X, y, check_input=True)

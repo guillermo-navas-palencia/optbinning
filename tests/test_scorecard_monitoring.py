@@ -137,7 +137,7 @@ def test_default_binary():
         [0.00077184, 0.51953576], rel=1e-4)
 
     # Check system stability report
-    with open("tests/test_scorecard_monitoring_default.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_default.txt", "w") as f:
         with redirect_stdout(f):
             monitoring.system_stability_report()
 
@@ -151,14 +151,14 @@ def test_default_continuous():
 
     # Check psi_table
     psi_table = monitoring.psi_table()
-    assert psi_table.PSI.sum() == approx(0.39483122757230243)
+    assert psi_table.PSI.sum() == approx(0.32608491143830726)
 
     # Check psi_variable_table
     assert monitoring.psi_variable_table(
-        name="CRIM", style="summary").values == approx(0.02469948)
+        name="CRIM", style="summary").values == approx(0.01065983)
 
     assert monitoring.psi_variable_table(
-        name="CRIM", style="detailed")["PSI"].sum() == approx(0.02469948)
+        name="CRIM", style="detailed")["PSI"].sum() == approx(0.01065983)
 
     psi_variable_table_s = monitoring.psi_variable_table(style="summary")
     psi_variable_table_d = monitoring.psi_variable_table(style="detailed")
@@ -166,20 +166,20 @@ def test_default_continuous():
     psis = psi_variable_table_s[psi_variable_table_s.Variable == "CRIM"]["PSI"]
     psid = psi_variable_table_d[psi_variable_table_d.Variable == "CRIM"]["PSI"]
 
-    assert psis.sum() == approx(0.02469948)
-    assert psid.sum() == approx(0.02469948)
+    assert psis.sum() == approx(0.01065983)
+    assert psid.sum() == approx(0.01065983)
 
     # Check psi splits
     assert monitoring.psi_splits[:4] == approx(
-        [27.18795586, 29.80329227, 31.72756577, 33.10686493], rel=1e-4)
+        [16.63161373, 18.33728027, 20.07739162, 21.29977036], rel=1e-4)
 
     # Check tests table
     tests_table = monitoring.tests_table()
     assert tests_table["p-value"].values[:2] == approx(
-        [0.595254, 0.006365], rel=1e-4)
+        [0.78558541, 0.29332423], rel=1e-4)
 
     # Check system stability report
-    with open("tests/test_scorecard_monitoring_default_continuous.txt",
+    with open("tests/results/test_scorecard_monitoring_default_continuous.txt",
               "w") as f:
         with redirect_stdout(f):
             monitoring.system_stability_report()
@@ -202,7 +202,8 @@ def test_information():
     with raises(ValueError):
         monitoring.information(print_level=-1)
 
-    with open("tests/test_scorecard_monitoring_information.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_information.txt",
+              "w") as f:
         with redirect_stdout(f):
             monitoring.information(print_level=0)
             monitoring.information(print_level=1)
@@ -215,7 +216,7 @@ def test_verbose():
 
     monitoring = ScorecardMonitoring(scorecard=scorecard, verbose=True)
 
-    with open("tests/test_scorecard_monitoring_verbose.txt", "w") as f:
+    with open("tests/results/test_scorecard_monitoring_verbose.txt", "w") as f:
         with redirect_stdout(f):
             monitoring.fit(X_test, y_test, X_train, y_train)
 
@@ -230,7 +231,7 @@ def test_plot_binary():
     with raises(TypeError):
         monitoring.psi_plot(savefig=1)
 
-    monitoring.psi_plot(savefig="psi_plot_binary.png")
+    monitoring.psi_plot(savefig="tests/results/psi_plot_binary.png")
 
 
 def test_plot_continuous():
@@ -239,4 +240,4 @@ def test_plot_continuous():
 
     monitoring = ScorecardMonitoring(scorecard=scorecard)
     monitoring.fit(X_test, y_test, X_train, y_train)
-    monitoring.psi_plot(savefig="psi_plot_continuous.png")
+    monitoring.psi_plot(savefig="tests/results/psi_plot_continuous.png")

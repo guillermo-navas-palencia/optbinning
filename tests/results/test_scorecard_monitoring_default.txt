@@ -1,0 +1,40 @@
+-----------------------------------
+Monitoring: System Stability Report
+-----------------------------------
+
+  Population Stability Index (PSI)
+
+
+    PSI total:      0.0018 (No significant change)
+
+         PSI bin  Count  Count (%)
+    [0.00, 0.10)      3        1.0
+    [0.10, 0.25)      0        0.0
+    [0.25, Inf+)      0        0.0
+
+  Significance tests (H0: actual == expected)
+
+     p-value bin  Count  Count (%)
+    [0.00, 0.05)      1   0.333333
+    [0.05, 0.10)      0   0.000000
+    [0.10, 0.50)      1   0.333333
+    [0.50, 1.00)      1   0.333333
+
+  Target analysis
+
+               Metric  Actual Actual (%)  Expected Expected (%)
+    Number of records     171          -       398            -
+        Event records     108   0.631579       249     0.625628
+    Non-event records      63   0.368421       149     0.374372
+
+  Performance metrics
+
+                 Metric   Actual  Expected  Diff A - E
+     True positive rate 0.990741  1.000000   -0.009259
+     True negative rate 0.968254  0.979866   -0.011612
+    False positive rate 0.031746  0.020134    0.011612
+    False negative rate 0.009259  0.000000    0.009259
+      Balanced accuracy 0.979497  0.989933   -0.010436
+     Discriminant power 4.460557       inf        -inf
+                   Gini 0.986185  0.999838   -0.013654
+

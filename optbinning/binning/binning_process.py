@@ -6,11 +6,11 @@ Binning process.
 # Copyright (C) 2020
 
 import numbers
+import pickle
 import time
 
 from warnings import warn
 
-import dill
 import numpy as np
 import pandas as pd
 
@@ -48,7 +48,9 @@ _METRICS = {
         "quality_score": {"min": 0, "max": 1}
     },
     "continuous": {
-        "metrics": []
+        "metrics": ["woe", "quality_score"],
+        "woe": {"min": 0, "max": np.inf},
+        "quality_score": {"min": 0, "max": 1}
     }
 }
 
@@ -329,7 +331,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "rb") as f:
-            return dill.load(f)
+            return pickle.load(f)
 
     def save(self, path):
         """Save binning process to pickle file.
@@ -343,7 +345,7 @@ class BaseBinningProcess:
             raise TypeError("path must be a string.")
 
         with open(path, "wb") as f:
-            dill.dump(self, f)
+            pickle.dump(self, f)
 
     def _support_selection_criteria(self):
         self._support = np.full(self._n_variables, True, dtype=bool)
@@ -405,21 +407,22 @@ class BaseBinningProcess:
                     "status": optb.status,
                     "n_bins": n_bins}
 
-            if self._target_dtype in ("binary", "multiclass"):
-                optb.binning_table.analysis(print_output=False)
+            optb.binning_table.analysis(print_output=False)
 
-                if self._target_dtype == "binary":
-                    metrics = {
-                        "iv": optb.binning_table.iv,
-                        "gini": optb.binning_table.gini,
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
-                else:
-                    metrics = {
-                        "js": optb.binning_table.js,
-                        "quality_score": optb.binning_table.quality_score}
+            if self._target_dtype == "binary":
+                metrics = {
+                    "iv": optb.binning_table.iv,
+                    "gini": optb.binning_table.gini,
+                    "js": optb.binning_table.js,
+                    "quality_score": optb.binning_table.quality_score}
+            elif self._target_dtype == "multiclass":
+                metrics = {
+                    "js": optb.binning_table.js,
+                    "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
-                metrics = {}
+                metrics = {
+                    "woe": optb.binning_table.woe,
+                    "quality_score": optb.binning_table.quality_score}
 
             info = {**info, **metrics}
             self._variable_stats[name] = info

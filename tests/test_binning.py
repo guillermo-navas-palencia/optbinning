@@ -177,11 +177,14 @@ def test_numerical_default():
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
 
-    optb.binning_table.plot(metric="woe", savefig="test_binning.png")
-    optb.binning_table.plot(metric="woe", add_special=False,
-                            savefig="test_binning_no_special.png")
-    optb.binning_table.plot(metric="woe", add_missing=False,
-                            savefig="test_binning_no_missing.png")
+    optb.binning_table.plot(
+        metric="woe", savefig="tests/results/test_binning.png")
+    optb.binning_table.plot(
+        metric="woe", add_special=False,
+        savefig="tests/results/test_binning_no_special.png")
+    optb.binning_table.plot(
+        metric="woe", add_missing=False,
+        savefig="tests/results/test_binning_no_missing.png")
 
 
 def test_numerical_default_solvers():

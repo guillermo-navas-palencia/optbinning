@@ -120,11 +120,14 @@ def test_numerical_default():
     optb.binning_table.analysis()
     assert optb.binning_table.js == approx(0.10989515, rel=1e-6)
     assert optb.binning_table.quality_score == approx(0.05279822, rel=1e-6)
-    optb.binning_table.plot(savefig="test_multiclass_binning.png")
-    optb.binning_table.plot(add_special=False,
-                            savefig="test_multiclass_binning_no_special.png")
-    optb.binning_table.plot(add_missing=False,
-                            savefig="test_multiclass_binning_no_missing.png")
+    optb.binning_table.plot(
+        savefig="tests/results/test_multiclass_binning.png")
+    optb.binning_table.plot(
+        add_special=False,
+        savefig="tests/results/test_multiclass_binning_no_special.png")
+    optb.binning_table.plot(
+        add_missing=False,
+        savefig="tests/results/test_multiclass_binning_no_missing.png")
 
 
 def test_numerical_default_solvers():

@@ -1,6 +1,27 @@
 Release Notes
 =============
 
+Version 0.14.0 (2022-04-10)
+---------------------------
+
+New features:
+
+   - Optimal binning 2D with continuous target.
+
+Improvements:
+
+   - Set tdigest and pympler dependencies as optional. This change avoids accumulation-tree issues faced by several users. Remove dill dependency.
+   - New continuous binning objective function leading to improvements in regression metrics.
+
+Bugfixes:
+
+   - Fix binning 2D minimum difference constraints.
+
+
+Tutorials:
+
+   - Tutorial: optimal binning 2D with continuous target
+
 
 Version 0.13.1 (2022-02-18)
 ---------------------------

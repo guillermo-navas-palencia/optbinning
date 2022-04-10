@@ -114,17 +114,21 @@ def test_numerical_default():
 
     assert optb.status == "OPTIMAL"
     assert optb.splits == approx([4.6500001, 5.49499989, 6.86500001, 9.7249999,
-                                  11.67499971, 13.0999999, 16.08500004,
-                                  19.89999962, 23.31500053],
-                                 rel=1e-6)
+                                  13.0999999, 14.4000001, 17.23999977,
+                                  19.89999962, 23.31500053], rel=1e-6)
 
     optb.binning_table.build()
     optb.binning_table.analysis()
-    optb.binning_table.plot(savefig="test_continuous_binning.png")
-    optb.binning_table.plot(add_special=False,
-                            savefig="test_continuous_binning_no_special.png")
-    optb.binning_table.plot(add_missing=False,
-                            savefig="test_continuous_binning_no_missing.png")
+    optb.binning_table.plot(
+        savefig="tests/results/test_continuous_binning.png")
+
+    optb.binning_table.plot(
+        add_special=False,
+        savefig="tests/results/test_continuous_binning_no_special.png")
+
+    optb.binning_table.plot(
+        add_missing=False,
+        savefig="tests/results/test_continuous_binning_no_missing.png")
 
 
 def test_numerical_user_splits_fixed():
@@ -212,8 +216,8 @@ def test_numerical_max_pvalue():
                                    9.7249999, 11.67499971, 14.4000001,
                                    16.08500004, 19.89999962], rel=1e-6)
 
-    assert optb1.splits == approx([4.6500001, 5.49499989, 6.86500001,
-                                   11.67499971, 13.0999999, 19.89999962],
+    assert optb1.splits == approx([4.6500001, 5.49499989, 9.7249999,
+                                   14.4000001, 16.08500004, 17.23999977],
                                   rel=1e-6)
 
 
@@ -229,7 +233,10 @@ def test_auto_modes():
         optb.fit(x, y)
         assert optb.status == "OPTIMAL"
 
-    assert optb0.splits == approx(optb1.splits, rel=1e-6)
+        optb.binning_table.build()
+        optb.binning_table.analysis()
+
+    assert optb0.binning_table.woe >= optb1.binning_table.woe
     assert optb2.splits == approx(optb3.splits, rel=1e-6)
 
 

@@ -1,0 +1,54 @@
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Number of records   : 569
+  Number of variables : 30
+  Time                : 4.2282     sec
+
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Statistics
+    Number of records                    569
+    Number of variables                   30
+    Target type                       binary
+
+    Number of numerical                   30
+    Number of categorical                  0
+    Number of selected                    30
+
+  Time                                4.2282 sec
+
+optbinning (Version 0.14.0)
+Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+
+  Begin options
+    max_n_prebins                         20   * d
+    min_prebin_size                     0.05   * d
+    min_n_bins                            no   * d
+    max_n_bins                            no   * d
+    min_bin_size                          no   * d
+    max_bin_size                          no   * d
+    max_pvalue                            no   * d
+    max_pvalue_policy            consecutive   * d
+    selection_criteria                    no   * d
+    fixed_variables                       no   * d
+    categorical_variables                 no   * d
+    special_codes                         no   * d
+    split_digits                          no   * d
+    binning_fit_params                    no   * d
+    binning_transform_params              no   * d
+    verbose                            False   * d
+  End options
+
+  Statistics
+    Number of records                    569
+    Number of variables                   30
+    Target type                       binary
+
+    Number of numerical                   30
+    Number of categorical                  0
+    Number of selected                    30
+
+  Time                                4.2282 sec
+

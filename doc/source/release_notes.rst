@@ -10,10 +10,8 @@ New features:
 
 Improvements:
 
-   - Set tdigest and pympler dependencies as optional. This change avoids
-   accumulation-tree issues faced by several users.
-   - New continuous binning objective function leading to improvements
-   in regression metrics.
+   - Set tdigest and pympler dependencies as optional. This change avoids accumulation-tree issues faced by several users. Remove dill dependency.
+   - New continuous binning objective function leading to improvements in regression metrics.
 
 Bugfixes:
 

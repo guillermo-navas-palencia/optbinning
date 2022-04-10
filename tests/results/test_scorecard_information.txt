@@ -3,7 +3,7 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
   Number of records   : 569
   Number of variables : 30
-  Time                : 4.5854  sec
+  Time                : 4.5382  sec
 
 optbinning (Version 0.14.0)
 Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
@@ -18,10 +18,10 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
     Number of selected                    30
 
   Timing
-    Total time                          4.59 sec
-    Binning process                     4.11 sec   ( 89.66%)
-    Estimator                           0.04 sec   (  0.95%)
-    Build scorecard                     0.43 sec   (  9.39%)
+    Total time                          4.54 sec
+    Binning process                     4.17 sec   ( 91.96%)
+    Estimator                           0.04 sec   (  0.93%)
+    Build scorecard                     0.32 sec   (  7.10%)
       rounding                          0.00 sec   (  0.00%)
 
 optbinning (Version 0.14.0)
@@ -48,9 +48,9 @@ Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
     Number of selected                    30
 
   Timing
-    Total time                          4.59 sec
-    Binning process                     4.11 sec   ( 89.66%)
-    Estimator                           0.04 sec   (  0.95%)
-    Build scorecard                     0.43 sec   (  9.39%)
+    Total time                          4.54 sec
+    Binning process                     4.17 sec   ( 91.96%)
+    Estimator                           0.04 sec   (  0.93%)
+    Build scorecard                     0.32 sec   (  7.10%)
       rounding                          0.00 sec   (  0.00%)
 

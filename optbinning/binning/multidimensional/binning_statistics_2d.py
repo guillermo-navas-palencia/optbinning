@@ -843,9 +843,9 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
             rwoe, p_values, self._hhi_norm)
 
         report = (
-            "-------------------------------------------------\n"
-            "OptimalBinning: Continuous Binning Table Analysis\n"
-            "-------------------------------------------------\n"
+            "----------------------------------------------------\n"
+            "OptimalBinning: Continuous Binning Table 2D Analysis\n"
+            "----------------------------------------------------\n"
             "\n"
             "  General metrics"
             "\n\n"

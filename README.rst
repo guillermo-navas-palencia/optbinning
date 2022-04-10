@@ -81,6 +81,7 @@ OptBinning requires
 * scipy (>=1.6.0)
 
 OptBinning[distributed] requires additional packages
+
 * pympler
 * tdigest
 
@@ -228,7 +229,7 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.13.1)
+   optbinning (Version 0.14.0)
    Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
@@ -396,7 +397,7 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.13.1)
+   optbinning (Version 0.14.0)
    Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options

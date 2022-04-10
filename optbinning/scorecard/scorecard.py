@@ -555,9 +555,9 @@ class Scorecard(Base, BaseEstimator):
             optb = self.binning_process_.get_binned_variable(variable)
             binning_table = optb.binning_table.build(add_totals=False)
             c = coefs.ravel()[i]
-            binning_table["Variable"] = variable
-            binning_table["Coefficient"] = c
-            binning_table["Points"] = binning_table[bt_metric] * c
+            binning_table.loc[:, "Variable"] = variable
+            binning_table.loc[:, "Coefficient"] = c
+            binning_table.loc[:, "Points"] = binning_table[bt_metric] * c
 
             nt = len(binning_table)
             if metric_special != 'empirical':
@@ -566,10 +566,10 @@ class Scorecard(Base, BaseEstimator):
                 else:
                     n_specials = 1
 
-                binning_table.loc[nt-1-n_specials:nt-2].at[
-                                 "Points"] = metric_special * c
+                binning_table.loc[
+                    nt-1-n_specials:nt-2, "Points"] = metric_special * c
             elif metric_missing != 'empirical':
-                binning_table.loc[nt-1].at["Points"] = metric_missing * c
+                binning_table.loc[nt-1, "Points"] = metric_missing * c
 
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)
@@ -585,12 +585,12 @@ class Scorecard(Base, BaseEstimator):
                 points, binning_tables, self.scaling_method,
                 self.scaling_method_params, intercept, self.reverse_scorecard)
 
-            df_scorecard["Points"] = scaled_points
+            df_scorecard.loc[:, "Points"] = scaled_points
 
         if self.intercept_based:
             scaled_points, self.intercept_ = _compute_intercept_based(
                 df_scorecard)
-            df_scorecard["Points"] = scaled_points
+            df_scorecard.loc[:, "Points"] = scaled_points
 
         time_rounding = time.perf_counter()
         if self.rounding:
@@ -609,7 +609,7 @@ class Scorecard(Base, BaseEstimator):
                     # Back-up method
                     round_points = np.rint(points)
 
-            df_scorecard["Points"] = round_points
+            df_scorecard.loc[:, "Points"] = round_points
         self._time_rounding = time.perf_counter() - time_rounding
 
         self._df_scorecard = df_scorecard

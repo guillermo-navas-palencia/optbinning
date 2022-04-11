@@ -84,7 +84,7 @@ setup(
     long_description=long_description,
     author="Guillermo Navas-Palencia",
     author_email="g.navas.palencia@gmail.com",
-    packages=['optbinning'],
+    packages=find_packages(exclude=['tests', 'tests.*']),
     platforms="any",
     include_package_data=True,
     license="Apache Licence 2.0",

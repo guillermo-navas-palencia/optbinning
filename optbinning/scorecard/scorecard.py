@@ -569,7 +569,8 @@ class Scorecard(Base, BaseEstimator):
         binning_tables = []
         for i, variable in enumerate(selected_variables):
             optb = self.binning_process_.get_binned_variable(variable)
-            binning_table = optb.binning_table.build(add_totals=False)
+            binning_table = optb.binning_table.build(
+                show_digits=show_digits, add_totals=False)
             c = coefs.ravel()[i]
             binning_table.loc[:, "Variable"] = variable
             binning_table.loc[:, "Coefficient"] = c

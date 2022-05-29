@@ -60,6 +60,17 @@ def bin_str_format(bins, show_digits):
     return bin_str
 
 
+def bin_categorical(bins, categories):
+    n_categories = len(categories)
+    bin_str = []
+    for b in bins:
+        indices = np.digitize(np.arange(n_categories), b, right=False)
+        mask = (indices == 1)
+        bin_str.append(categories[mask])
+            
+    return bin_str
+
+
 def get_paths(m, n, P):
     # paths x: horizontal
     paths_x = []
@@ -146,7 +157,8 @@ class BinningTable2D(BinningTable):
     available in all optimal binning classes.
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_nonevent, n_event, D, P):
+                 m, n, n_nonevent, n_event, D, P, categories_x=None,
+                 categories_y=None):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -160,6 +172,8 @@ class BinningTable2D(BinningTable):
         self.n_event = n_event
         self.D = D
         self.P = P
+        self.categories_x = categories_x
+        self.categories_y = categories_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -264,8 +278,15 @@ class BinningTable2D(BinningTable):
                 "JS": js
                 })
         else:
-            bin_x_str = bin_str_format(self.splits_x, show_digits)
-            bin_y_str = bin_str_format(self.splits_y, show_digits)
+            if self.dtype_x == "numerical":
+                bin_x_str = bin_str_format(self.splits_x, show_digits)
+            else:
+                bin_x_str = bin_categorical(self.splits_x, self.categories_x)
+
+            if self.dtype_y == "numerical":
+                bin_y_str = bin_str_format(self.splits_y, show_digits)
+            else:
+                bin_y_str = bin_categorical(self.splits_y, self.categories_y)
 
             bin_x_str.extend(["Special", "Missing"])
             bin_y_str.extend(["Special", "Missing"])

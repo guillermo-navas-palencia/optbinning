@@ -11,7 +11,6 @@ import pandas as pd
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
-from ..preprocessing import categorical_cutoff
 from ..preprocessing import categorical_transform
 
 

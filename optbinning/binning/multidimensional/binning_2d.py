@@ -953,7 +953,7 @@ class OptimalBinning2D(OptimalBinning):
                 mask = (indices == i)
                 bins.append(categories[mask])
 
-            return bins            
+            return bins
 
     def _splits_xy_optimal(self, selected_rows, splits_x, splits_y, P):
         bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])

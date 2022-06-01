@@ -38,36 +38,54 @@ def _bin_fmt(bin, show_digits):
         return "[{0:.{2}f}, {1:.{2}f})".format(bin[0], bin[1], show_digits)
 
 
-def bin_xy_str_format(bins_x, bins_y, show_digits):
+def _bin_fmt_categorical(bin, categories):
+    n_categories = len(categories)
+    indices = np.digitize(np.arange(n_categories), bin, right=False)
+    mask = (indices == 1)
+
+    return categories[mask]
+
+
+def bin_categorical(bins, categories):
+    bins_cat = []
+    for bin in bins:
+        bins_cat.append(_bin_fmt_categorical(bin, categories))
+
+    return bins_cat
+
+
+def bin_xy_str_format(dtype_x, dtype_y, bins_x, bins_y, show_digits,
+                      categories_x=None, categories_y=None):
+
     show_digits = 2 if show_digits is None else show_digits
 
     bins_xy = []
     for bx, by in zip(bins_x, bins_y):
-        _bx = _bin_fmt(bx, show_digits)
-        _by = _bin_fmt(by, show_digits)
+        if dtype_x == "numerical":
+            _bx = _bin_fmt(bx, show_digits)
+        else:
+            _bx = _bin_fmt_categorical(bx, categories_x)
+
+        if dtype_y == "numerical":
+            _by = _bin_fmt(by, show_digits)
+        else:
+            _by = _bin_fmt_categorical(by, categories_y)
+
         bins_xy.append(r"{} $\cup$ {}".format(_bx, _by))
 
     return bins_xy
 
 
-def bin_str_format(bins, show_digits):
+def bin_str_format(dtype, bins, show_digits, categories=None):
     show_digits = 2 if show_digits is None else show_digits
 
     bin_str = []
     for bin in bins:
-        bin_str.append(_bin_fmt(bin, show_digits))
+        if dtype == "numerical":
+            bin_str.append(_bin_fmt(bin, show_digits))
+        else:
+            bin_str.append(_bin_fmt_categorical(bin, categories))
 
-    return bin_str
-
-
-def bin_categorical(bins, categories):
-    n_categories = len(categories)
-    bin_str = []
-    for b in bins:
-        indices = np.digitize(np.arange(n_categories), b, right=False)
-        mask = (indices == 1)
-        bin_str.append(categories[mask])
-            
     return bin_str
 
 
@@ -147,8 +165,14 @@ class BinningTable2D(BinningTable):
     D : numpy.ndarray
         Event rate 2D array.
 
-    P : numpy-ndarray
+    P : numpy.ndarray
         Bin indices 2D array.
+
+    categories_x : numpy.ndarray or None (default=None)
+        List of categories in variable x.
+
+    categories_y : numpy.ndarray or None (default=None)
+        List of categories in variable y.
 
     Warning
     -------
@@ -261,8 +285,9 @@ class BinningTable2D(BinningTable):
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
-            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
-                                           show_digits)
+            bin_xy_str = bin_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
+                show_digits, self.categories_x, self.categories_y)
 
             bin_xy_str.extend(["Special", "Missing"])
 
@@ -278,15 +303,10 @@ class BinningTable2D(BinningTable):
                 "JS": js
                 })
         else:
-            if self.dtype_x == "numerical":
-                bin_x_str = bin_str_format(self.splits_x, show_digits)
-            else:
-                bin_x_str = bin_categorical(self.splits_x, self.categories_x)
-
-            if self.dtype_y == "numerical":
-                bin_y_str = bin_str_format(self.splits_y, show_digits)
-            else:
-                bin_y_str = bin_categorical(self.splits_y, self.categories_y)
+            bin_x_str = bin_str_format(
+                self.dtype_x, self.splits_x, show_digits, self.categories_x)
+            bin_y_str = bin_str_format(
+                self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
             bin_x_str.extend(["Special", "Missing"])
             bin_y_str.extend(["Special", "Missing"])

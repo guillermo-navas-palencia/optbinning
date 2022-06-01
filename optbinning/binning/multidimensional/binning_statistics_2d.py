@@ -404,8 +404,8 @@ class BinningTable2D(BinningTable):
 
         ax.xaxis.set_label_position("bottom")
         ax.xaxis.tick_bottom()
-        ax.set_ylabel("Bin ID - y ({})".format(self.name_x), fontsize=12)
-        ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
+        ax.set_xlabel("Bin ID - x ({})".format(self.name_x), fontsize=12)
+        ax.set_ylabel("Bin ID - y ({})".format(self.name_y), fontsize=12)
 
         # Position [1, 1]
         for path in self._paths_y:
@@ -777,8 +777,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
 
         ax.xaxis.set_label_position("bottom")
         ax.xaxis.tick_bottom()
-        ax.set_ylabel("Bin ID - y ({})".format(self.name_x), fontsize=12)
-        ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
+        ax.set_xlabel("Bin ID - x ({})".format(self.name_x), fontsize=12)
+        ax.set_ylabel("Bin ID - y ({})".format(self.name_y), fontsize=12)
 
         # Position [1, 1]
         for path in self._paths_y:

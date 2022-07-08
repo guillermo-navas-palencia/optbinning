@@ -377,7 +377,7 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         X_t = X[self.binning_process_.variable_names]
-        X_t = self.binning_process_.transform(X_t, metric="indices")
+        X_t = self.binning_process_.transform(X_t, metric="indices", metric_special=self._metric_special, metric_missing=self._metric_missing)
 
         score_ = np.zeros(X_t.shape[0])
         selected_variables = self.binning_process_.get_support(names=True)

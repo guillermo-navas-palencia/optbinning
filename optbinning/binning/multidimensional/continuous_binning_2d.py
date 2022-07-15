@@ -42,11 +42,11 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
     if not isinstance(name_y, str):
         raise TypeError("name_y must be a string.")
 
-    if dtype_x not in ("numerical",):
+    if dtype_x not in ("categorical", "numerical",):
         raise ValueError('Invalid value for dtype_x. Allowed string '
                          'values is "numerical".')
 
-    if dtype_y not in ("numerical",):
+    if dtype_y not in ("categorical", "numerical",):
         raise ValueError('Invalid value for dtype_y. Allowed string '
                          'values is "numerical".')
 
@@ -174,12 +174,14 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         The name of variable y.
 
     dtype_x : str, optional (default="numerical")
-        The data type of variable x. Supported data type is "numerical" for
-        continuous and ordinal variables.
+        The data type of variable x. Supported data types are "numerical" for
+        continuous and ordinal variables and "categorical" for categorical
+        and nominal variables.
 
     dtype_y : str, optional (default="numerical")
-        The data type of variable y. Supported data type is "numerical" for
-        continuous and ordinal variables.
+        The data type of variable y. Supported data types are "numerical" for
+        continuous and ordinal variables and "categorical" for categorical
+        and nominal variables.
 
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
@@ -325,6 +327,8 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self.verbose = verbose
 
         # auxiliary
+        self._categories_x = None
+        self._categories_y = None
         self._n_records_special = None
         self._n_records_missing = None
         self._sum_special = None
@@ -497,7 +501,8 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
-         x_special, y_special, z_special] = split_data_2d(
+         x_special, y_special, z_special,
+         categories_x, categories_y] = split_data_2d(
             self.dtype_x, self.dtype_y, x, y, z, self.special_codes_x,
             self.special_codes_y, check_input)
 
@@ -516,6 +521,15 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
             logger.info("Pre-processing: number of special samples: {}"
                         .format(n_special))
+
+            if self.dtype_x == "categorical":
+                logger.info("Pre-processing: number of categories in x: {}"
+                            .format(len(categories_x)))
+
+            if self.dtype_y == "categorical":
+                logger.info("Pre-processing: number of categories in y: {}"
+                            .format(len(categories_y)))
+
         if self.verbose:
             logger.info("Pre-processing terminated. Time: {:.4f}s"
                         .format(self._time_preprocessing))
@@ -573,6 +587,9 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             clf.fit(xyt, z_clean)
 
             self._clf = clf
+
+        self._categories_x = categories_x
+        self._categories_y = categories_y
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
@@ -652,7 +669,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._binning_table = ContinuousBinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_records,
-            opt_sums, opt_stds, D, P)
+            opt_sums, opt_stds, D, P, self._categories_x, self._categories_y)
 
         self.name = "-".join((self.name_x, self.name_y))
 
@@ -701,9 +718,9 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         indices_y = np.digitize(y_clean, splits_y, right=False)
         n_bins_y = n_splits_y + 1
 
-        R = np.empty((n_bins_x, n_bins_y), dtype=float)
-        S = np.empty((n_bins_x, n_bins_y), dtype=float)
-        SS = np.empty((n_bins_x, n_bins_y), dtype=float)
+        R = np.empty((n_bins_y, n_bins_x), dtype=float)
+        S = np.empty((n_bins_y, n_bins_x), dtype=float)
+        SS = np.empty((n_bins_y, n_bins_x), dtype=float)
 
         for i in range(n_bins_y):
             mask_y = (indices_y == i)

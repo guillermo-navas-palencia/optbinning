@@ -608,7 +608,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
     available in all optimal binning classes.
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_records, sums, stds, D, P):
+                 m, n, n_records, sums, stds, D, P, categories_x=None,
+                 categories_y=None):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -623,6 +624,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self.stds = stds
         self.D = D
         self.P = P
+        self.categories_x = categories_x
+        self.categories_y = categories_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -678,8 +681,9 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
-            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
-                                           show_digits)
+            bin_xy_str = bin_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
+                show_digits, self.categories_x, self.categories_y)
 
             bin_xy_str.extend(["Special", "Missing"])
 
@@ -695,8 +699,10 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                 })
 
         else:
-            bin_x_str = bin_str_format(self.splits_x, show_digits)
-            bin_y_str = bin_str_format(self.splits_y, show_digits)
+            bin_x_str = bin_str_format(
+                self.dtype_x, self.splits_x, show_digits, self.categories_x)
+            bin_y_str = bin_str_format(
+                self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
             bin_x_str.extend(["Special", "Missing"])
             bin_y_str.extend(["Special", "Missing"])

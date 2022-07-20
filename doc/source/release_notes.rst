@@ -1,6 +1,33 @@
 Release Notes
 =============
 
+Version 0.15.0 (2022-07-20)
+---------------------------
+
+New features:
+
+   - Optimal binning 2D support to categorical variables for binary and continuous target.
+
+Improvements
+
+   - Integer intercept if ``rounding=True`` (`Issue 165 <https://github.com/guillermo-navas-palencia/optbinning/issues/165>`_).
+   - Parameter ``show_digits`` applies to scorecard table bin column (`Issue 170 <https://github.com/guillermo-navas-palencia/optbinning/issues/170>`_).
+
+Bugfixes
+
+   - Fix ``Scorecard.score`` method when there are special and missing bins. (`Issue 179 <https://github.com/guillermo-navas-palencia/optbinning/pull/179>`_).
+
+   - Fix x and y axis labels in ``OptimalBinning2D`` plots, x and y were interchanged.
+
+
+Version 0.14.1 (2022-04-11)
+---------------------------
+
+Bugfixes
+
+   - Fix new setup function.
+
+
 Version 0.14.0 (2022-04-10)
 ---------------------------
 

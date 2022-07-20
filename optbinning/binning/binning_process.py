@@ -400,10 +400,15 @@ class BaseBinningProcess:
             optb.binning_table.build()
 
             n_bins = len(optb.splits)
-            if optb.dtype == "numerical":
+            if isinstance(optb, OptimalPWBinning) or optb.dtype == "numerical":
                 n_bins += 1
 
-            info = {"dtype": optb.dtype,
+            if isinstance(optb, OptimalPWBinning):
+                dtype = "numerical"
+            else:
+                dtype = optb.dtype
+
+            info = {"dtype": dtype,
                     "status": optb.status,
                     "n_bins": n_bins}
 

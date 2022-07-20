@@ -91,10 +91,10 @@ def _apply_transform(splits_x, splits_y, special_codes_x, special_codes_y,
     return z_transform
 
 
-def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
-                            special_codes_x, special_codes_y, metric,
-                            metric_special, metric_missing, show_digits,
-                            check_input=False):
+def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
+                            n_nonevent, n_event, special_codes_x,
+                            special_codes_y, metric, metric_special,
+                            metric_missing, show_digits, check_input=False):
 
     if metric not in ("event_rate", "woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -120,7 +120,8 @@ def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
     x_clean = x[clean_mask]
     y_clean = y[clean_mask]
 
-    bins_str = bin_xy_str_format(splits_x, splits_y, show_digits)
+    bins_str = bin_xy_str_format(dtype_x, dtype_y, splits_x, splits_y,
+                                 show_digits)
     n_bins = len(splits_x)
 
     if metric in ("woe", "event_rate"):
@@ -161,9 +162,10 @@ def transform_binary_target(splits_x, splits_y, x, y, n_nonevent, n_event,
     return z_transform
 
 
-def transform_continuous_target(splits_x, splits_y, x, y, n_records, sums,
-                                special_codes_x, special_codes_y, metric,
-                                metric_special, metric_missing, show_digits,
+def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
+                                n_records, sums, special_codes_x,
+                                special_codes_y, metric, metric_special,
+                                metric_missing, show_digits,
                                 check_input=False):
 
     if metric not in ("mean", "indices", "bins"):
@@ -189,7 +191,8 @@ def transform_continuous_target(splits_x, splits_y, x, y, n_records, sums,
     x_clean = x[clean_mask]
     y_clean = y[clean_mask]
 
-    bins_str = bin_xy_str_format(splits_x, splits_y, show_digits)
+    bins_str = bin_xy_str_format(dtype_x, dtype_y, splits_x, splits_y,
+                                 show_digits)
     n_bins = len(splits_x)
 
     if "empirical" not in (metric_special, metric_missing):

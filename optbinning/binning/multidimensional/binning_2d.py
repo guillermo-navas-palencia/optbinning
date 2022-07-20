@@ -19,6 +19,7 @@ from ..binning import OptimalBinning
 from ..binning_statistics import target_info
 from ..prebinning import PreBinning
 from .binning_statistics_2d import BinningTable2D
+from .binning_statistics_2d import bin_categorical
 from .cp_2d import Binning2DCP
 from .mip_2d import Binning2DMIP
 from .model_data_2d import model_data
@@ -46,13 +47,13 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
     if not isinstance(name_y, str):
         raise TypeError("name_y must be a string.")
 
-    if dtype_x not in ("numerical",):
+    if dtype_x not in ("categorical", "numerical"):
         raise ValueError('Invalid value for dtype_x. Allowed string '
-                         'values is "numerical".')
+                         'values are "categorical" and "numerical" .')
 
-    if dtype_y not in ("numerical",):
+    if dtype_y not in ("categorical", "numerical",):
         raise ValueError('Invalid value for dtype_y. Allowed string '
-                         'values is "numerical".')
+                         'values are "categorical" and "numerical" .')
 
     if prebinning_method not in ("cart", "mdlp", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
@@ -220,12 +221,14 @@ class OptimalBinning2D(OptimalBinning):
         The name of variable y.
 
     dtype_x : str, optional (default="numerical")
-        The data type of variable x. Supported data type is "numerical" for
-        continuous and ordinal variables.
+        The data type of variable x. Supported data types are "numerical" for
+        continuous and ordinal variables and "categorical" for categorical
+        and nominal variables.
 
     dtype_y : str, optional (default="numerical")
-        The data type of variable y. Supported data type is "numerical" for
-        continuous and ordinal variables.
+        The data type of variable y. Supported data types are "numerical" for
+        continuous and ordinal variables and "categorical" for categorical
+        and nominal variables.
 
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
@@ -397,6 +400,8 @@ class OptimalBinning2D(OptimalBinning):
         self.verbose = verbose
 
         # auxiliary
+        self._categories_x = None
+        self._categories_y = None
         self._n_event = None
         self._n_nonevent = None
         self._n_event_special = None
@@ -544,10 +549,10 @@ class OptimalBinning2D(OptimalBinning):
         self._check_is_fitted()
 
         return transform_binary_target(
-            self._splits_x_optimal, self._splits_y_optimal, x, y,
-            self._n_nonevent, self._n_event, self.special_codes_x,
-            self.special_codes_y, metric, metric_special, metric_missing,
-            show_digits, check_input)
+            self.dtype_x, self.dtype_y, self._splits_x_optimal,
+            self._splits_y_optimal, x, y, self._n_nonevent, self._n_event,
+            self.special_codes_x, self.special_codes_y, metric, metric_special,
+            metric_missing, show_digits, check_input)
 
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()
@@ -571,7 +576,8 @@ class OptimalBinning2D(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
-         x_special, y_special, z_special] = split_data_2d(
+         x_special, y_special, z_special,
+         categories_x, categories_y] = split_data_2d(
             self.dtype_x, self.dtype_y, x, y, z, self.special_codes_x,
             self.special_codes_y, check_input)
 
@@ -590,6 +596,15 @@ class OptimalBinning2D(OptimalBinning):
 
             logger.info("Pre-processing: number of special samples: {}"
                         .format(n_special))
+
+            if self.dtype_x == "categorical":
+                logger.info("Pre-processing: number of categories in x: {}"
+                            .format(len(categories_x)))
+
+            if self.dtype_y == "categorical":
+                logger.info("Pre-processing: number of categories in y: {}"
+                            .format(len(categories_y)))
+
         if self.verbose:
             logger.info("Pre-processing terminated. Time: {:.4f}s"
                         .format(self._time_preprocessing))
@@ -647,6 +662,9 @@ class OptimalBinning2D(OptimalBinning):
             clf.fit(xyt, z_clean)
 
             self._clf = clf
+
+        self._categories_x = categories_x
+        self._categories_y = categories_y
 
         self._time_prebinning = time.perf_counter() - time_prebinning
 
@@ -721,7 +739,7 @@ class OptimalBinning2D(OptimalBinning):
         self._binning_table = BinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_nonevent,
-            opt_n_event, D, P)
+            opt_n_event, D, P, self._categories_x, self._categories_y)
 
         self.name = "-".join((self.name_x, self.name_y))
 
@@ -901,6 +919,42 @@ class OptimalBinning2D(OptimalBinning):
 
         return rows, n_nonevent, n_event
 
+    def _splits_optimal(self, dtype, selected_rows, splits, P, axis,
+                        categories=None):
+
+        if dtype == "numerical":
+            bins = np.concatenate([[-np.inf], splits, [np.inf]])
+            bins_str = np.array([[bins[i], bins[i+1]]
+                                 for i in range(len(bins) - 1)])
+
+            splits_optimal = []
+            for i in range(len(selected_rows)):
+                if axis == "x":
+                    _, pos = np.where(P == i)
+                else:
+                    pos, _ = np.where(P == i)
+
+                mask = np.arange(pos.min(), pos.max() + 1)
+                bin = bins_str[mask]
+
+                splits_optimal.append([bin[0][0], bin[-1][1]])
+
+            return splits_optimal
+
+        else:
+            splits = np.ceil(splits).astype(int)
+            n_categories = len(categories)
+
+            indices = np.digitize(np.arange(n_categories), splits, right=False)
+            n_bins = len(splits) + 1
+
+            bins = []
+            for i in range(n_bins):
+                mask = (indices == i)
+                bins.append(categories[mask])
+
+            return bins
+
     def _splits_xy_optimal(self, selected_rows, splits_x, splits_y, P):
         bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])
         bins_y = np.concatenate([[-np.inf], splits_y, [np.inf]])
@@ -934,4 +988,16 @@ class OptimalBinning2D(OptimalBinning):
         """
         self._check_is_fitted()
 
-        return (self._splits_x_optimal, self._splits_y_optimal)
+        if self.dtype_x == "categorical":
+            splits_x_optimal = bin_categorical(
+                self._splits_x_optimal, self._categories_x)
+        else:
+            splits_x_optimal = self._splits_x_optimal
+
+        if self.dtype_y == "categorical":
+            splits_y_optimal = bin_categorical(
+                self._splits_y_optimal, self._categories_y)
+        else:
+            splits_y_optimal = self._splits_y_optimal
+
+        return (splits_x_optimal, splits_y_optimal)

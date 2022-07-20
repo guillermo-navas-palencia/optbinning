@@ -38,24 +38,53 @@ def _bin_fmt(bin, show_digits):
         return "[{0:.{2}f}, {1:.{2}f})".format(bin[0], bin[1], show_digits)
 
 
-def bin_xy_str_format(bins_x, bins_y, show_digits):
+def _bin_fmt_categorical(bin, categories):
+    n_categories = len(categories)
+    indices = np.digitize(np.arange(n_categories), bin, right=False)
+    mask = (indices == 1)
+
+    return categories[mask]
+
+
+def bin_categorical(bins, categories):
+    bins_cat = []
+    for bin in bins:
+        bins_cat.append(_bin_fmt_categorical(bin, categories))
+
+    return bins_cat
+
+
+def bin_xy_str_format(dtype_x, dtype_y, bins_x, bins_y, show_digits,
+                      categories_x=None, categories_y=None):
+
     show_digits = 2 if show_digits is None else show_digits
 
     bins_xy = []
     for bx, by in zip(bins_x, bins_y):
-        _bx = _bin_fmt(bx, show_digits)
-        _by = _bin_fmt(by, show_digits)
+        if dtype_x == "numerical":
+            _bx = _bin_fmt(bx, show_digits)
+        else:
+            _bx = _bin_fmt_categorical(bx, categories_x)
+
+        if dtype_y == "numerical":
+            _by = _bin_fmt(by, show_digits)
+        else:
+            _by = _bin_fmt_categorical(by, categories_y)
+
         bins_xy.append(r"{} $\cup$ {}".format(_bx, _by))
 
     return bins_xy
 
 
-def bin_str_format(bins, show_digits):
+def bin_str_format(dtype, bins, show_digits, categories=None):
     show_digits = 2 if show_digits is None else show_digits
 
     bin_str = []
     for bin in bins:
-        bin_str.append(_bin_fmt(bin, show_digits))
+        if dtype == "numerical":
+            bin_str.append(_bin_fmt(bin, show_digits))
+        else:
+            bin_str.append(_bin_fmt_categorical(bin, categories))
 
     return bin_str
 
@@ -136,8 +165,14 @@ class BinningTable2D(BinningTable):
     D : numpy.ndarray
         Event rate 2D array.
 
-    P : numpy-ndarray
+    P : numpy.ndarray
         Bin indices 2D array.
+
+    categories_x : numpy.ndarray or None (default=None)
+        List of categories in variable x.
+
+    categories_y : numpy.ndarray or None (default=None)
+        List of categories in variable y.
 
     Warning
     -------
@@ -146,7 +181,8 @@ class BinningTable2D(BinningTable):
     available in all optimal binning classes.
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_nonevent, n_event, D, P):
+                 m, n, n_nonevent, n_event, D, P, categories_x=None,
+                 categories_y=None):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -160,6 +196,8 @@ class BinningTable2D(BinningTable):
         self.n_event = n_event
         self.D = D
         self.P = P
+        self.categories_x = categories_x
+        self.categories_y = categories_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -247,8 +285,9 @@ class BinningTable2D(BinningTable):
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
-            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
-                                           show_digits)
+            bin_xy_str = bin_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
+                show_digits, self.categories_x, self.categories_y)
 
             bin_xy_str.extend(["Special", "Missing"])
 
@@ -264,8 +303,10 @@ class BinningTable2D(BinningTable):
                 "JS": js
                 })
         else:
-            bin_x_str = bin_str_format(self.splits_x, show_digits)
-            bin_y_str = bin_str_format(self.splits_y, show_digits)
+            bin_x_str = bin_str_format(
+                self.dtype_x, self.splits_x, show_digits, self.categories_x)
+            bin_y_str = bin_str_format(
+                self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
             bin_x_str.extend(["Special", "Missing"])
             bin_y_str.extend(["Special", "Missing"])
@@ -363,8 +404,8 @@ class BinningTable2D(BinningTable):
 
         ax.xaxis.set_label_position("bottom")
         ax.xaxis.tick_bottom()
-        ax.set_ylabel("Bin ID - y ({})".format(self.name_x), fontsize=12)
-        ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
+        ax.set_xlabel("Bin ID - x ({})".format(self.name_x), fontsize=12)
+        ax.set_ylabel("Bin ID - y ({})".format(self.name_y), fontsize=12)
 
         # Position [1, 1]
         for path in self._paths_y:
@@ -567,7 +608,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
     available in all optimal binning classes.
     """
     def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_records, sums, stds, D, P):
+                 m, n, n_records, sums, stds, D, P, categories_x=None,
+                 categories_y=None):
 
         self.name_x = name_x
         self.name_y = name_y
@@ -582,6 +624,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self.stds = stds
         self.D = D
         self.P = P
+        self.categories_x = categories_x
+        self.categories_y = categories_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -637,8 +681,9 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
 
         if show_bin_xy:
-            bin_xy_str = bin_xy_str_format(self.splits_x, self.splits_y,
-                                           show_digits)
+            bin_xy_str = bin_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
+                show_digits, self.categories_x, self.categories_y)
 
             bin_xy_str.extend(["Special", "Missing"])
 
@@ -654,8 +699,10 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                 })
 
         else:
-            bin_x_str = bin_str_format(self.splits_x, show_digits)
-            bin_y_str = bin_str_format(self.splits_y, show_digits)
+            bin_x_str = bin_str_format(
+                self.dtype_x, self.splits_x, show_digits, self.categories_x)
+            bin_y_str = bin_str_format(
+                self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
             bin_x_str.extend(["Special", "Missing"])
             bin_y_str.extend(["Special", "Missing"])
@@ -736,8 +783,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
 
         ax.xaxis.set_label_position("bottom")
         ax.xaxis.tick_bottom()
-        ax.set_ylabel("Bin ID - y ({})".format(self.name_x), fontsize=12)
-        ax.set_xlabel("Bin ID - x ({})".format(self.name_y), fontsize=12)
+        ax.set_xlabel("Bin ID - x ({})".format(self.name_x), fontsize=12)
+        ax.set_ylabel("Bin ID - y ({})".format(self.name_y), fontsize=12)
 
         # Position [1, 1]
         for path in self._paths_y:

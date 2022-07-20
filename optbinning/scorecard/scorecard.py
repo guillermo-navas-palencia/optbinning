@@ -61,22 +61,26 @@ def _check_parameters(binning_process, estimator, scaling_method,
     if not isinstance(rounding, bool):
         raise TypeError("rounding must be a boolean; got {}.".format(rounding))
 
+    if rounding and scaling_method is None:
+        raise ValueError("rounding is only applied if scaling method is "
+                         "not None.")
+
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
 def _check_scorecard_scaling(scaling_method, scaling_method_params,
-                             target_type):
+                             rounding, target_type):
     if scaling_method is not None:
         if scaling_method == "pdo_odds":
-            default_keys = ["pdo", "odds", "scorecard_points"]
+            default_keys = ("pdo", "odds", "scorecard_points")
 
             if target_type != "binary":
                 raise ValueError('scaling_method "pd_odds" is not supported '
                                  'for a continuous target.')
 
         elif scaling_method == "min_max":
-            default_keys = ["min", "max"]
+            default_keys = ("min", "max")
 
         if set(scaling_method_params.keys()) != set(default_keys):
             raise ValueError("scaling_method_params must be {} given "
@@ -101,6 +105,17 @@ def _check_scorecard_scaling(scaling_method, scaling_method_params,
                 raise ValueError("min must be <= max; got {} <= {}."
                                  .format(scaling_method_params["min"],
                                          scaling_method_params["max"]))
+
+            if rounding:
+                score_min = scaling_method_params['min']
+                if int(score_min) != score_min:
+                    raise ValueError("min must be an integer if rounding=True"
+                                     "; got {}.".format(score_min))
+
+                score_max = scaling_method_params['max']
+                if int(score_max) != score_max:
+                    raise ValueError("max must be an integer if rounding=True"
+                                     "; got {}.".format(score_max))
 
 
 def _compute_scorecard_points(points, binning_tables, method, method_data,
@@ -377,7 +392,9 @@ class Scorecard(Base, BaseEstimator):
         self._check_is_fitted()
 
         X_t = X[self.binning_process_.variable_names]
-        X_t = self.binning_process_.transform(X_t, metric="indices")
+        X_t = self.binning_process_.transform(
+            X_t, metric="indices", metric_special="empirical",
+            metric_missing="empirical")
 
         score_ = np.zeros(X_t.shape[0])
         selected_variables = self.binning_process_.get_support(names=True)
@@ -483,6 +500,7 @@ class Scorecard(Base, BaseEstimator):
 
         _check_scorecard_scaling(self.scaling_method,
                                  self.scaling_method_params,
+                                 self.rounding,
                                  self._target_dtype)
 
         # Check sample weight
@@ -553,7 +571,8 @@ class Scorecard(Base, BaseEstimator):
         binning_tables = []
         for i, variable in enumerate(selected_variables):
             optb = self.binning_process_.get_binned_variable(variable)
-            binning_table = optb.binning_table.build(add_totals=False)
+            binning_table = optb.binning_table.build(
+                show_digits=show_digits, add_totals=False)
             c = coefs.ravel()[i]
             binning_table.loc[:, "Variable"] = variable
             binning_table.loc[:, "Coefficient"] = c
@@ -595,8 +614,11 @@ class Scorecard(Base, BaseEstimator):
         time_rounding = time.perf_counter()
         if self.rounding:
             points = df_scorecard["Points"]
-            if self.scaling_method == "pdo_odds":
+            if self.scaling_method in ("pdo_odds", None):
                 round_points = np.rint(points)
+
+                if self.intercept_based:
+                    self.intercept_ = np.rint(self.intercept_)
             elif self.scaling_method == "min_max":
                 round_mip = RoundingMIP()
                 round_mip.build_model(df_scorecard)
@@ -608,6 +630,9 @@ class Scorecard(Base, BaseEstimator):
                                        "integer used instead.")
                     # Back-up method
                     round_points = np.rint(points)
+
+                if self.intercept_based:
+                    self.intercept_ = np.rint(self.intercept_)
 
             df_scorecard.loc[:, "Points"] = round_points
         self._time_rounding = time.perf_counter() - time_rounding

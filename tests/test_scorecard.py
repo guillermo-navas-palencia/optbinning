@@ -63,6 +63,26 @@ def test_params():
                               estimator=estimator, intercept_based=1)
         scorecard.fit(X, y)
 
+    with raises(ValueError):
+        scorecard = Scorecard(binning_process=binning_process,
+                              estimator=estimator,
+                              scaling_method=None, rounding=True)
+        scorecard.fit(X, y)
+
+    with raises(ValueError):
+        scorecard = Scorecard(binning_process=binning_process,
+                              estimator=estimator, scaling_method="min_max",
+                              scaling_method_params={'min': 1.1, 'max': 10},
+                              rounding=True)
+        scorecard.fit(X, y)
+
+    with raises(ValueError):
+        scorecard = Scorecard(binning_process=binning_process,
+                              estimator=estimator, scaling_method="min_max",
+                              scaling_method_params={'min': 1, 'max': 10.1},
+                              rounding=True)
+        scorecard.fit(X, y)
+
     with raises(TypeError):
         scorecard = Scorecard(binning_process=binning_process,
                               estimator=estimator, reverse_scorecard=1)
@@ -296,7 +316,7 @@ def test_rounding():
     binning_process = BinningProcess(variable_names)
     estimator = LogisticRegression()
 
-    scaling_method_params = {"min": 200.52, "max": 850.66}
+    scaling_method_params = {"min": 200, "max": 851}
 
     scorecard = Scorecard(binning_process=binning_process,
                           estimator=estimator, scaling_method="min_max",

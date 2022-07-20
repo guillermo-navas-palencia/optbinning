@@ -11,6 +11,8 @@ import pandas as pd
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
+from ..preprocessing import categorical_transform
+
 
 def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
                   special_codes_y=None, check_input=True):
@@ -102,5 +104,15 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     y_special = y[special_mask]
     z_special = z[special_mask]
 
+    if dtype_x == "categorical":
+        x_categories, x_clean = categorical_transform(x_clean, z_clean)
+    else:
+        x_categories = []
+
+    if dtype_y == "categorical":
+        y_categories, y_clean = categorical_transform(y_clean, z_clean)
+    else:
+        y_categories = []
+
     return (x_clean, y_clean, z_clean, x_missing, y_missing, z_missing,
-            x_special, y_special, z_special)
+            x_special, y_special, z_special, x_categories, y_categories)

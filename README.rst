@@ -645,6 +645,7 @@ Currently **officially** using OptBinning:
 6. `DBRS Morningstar <https://www.dbrsmorningstar.com/>`_
 7. `Loginom <https://loginom.ru/>`_
 8. `Risika <https://risika.com/>`_
+9. `Tamara <https://tamara.co/>`_
 
 
 Citation

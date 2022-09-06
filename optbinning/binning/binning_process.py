@@ -1148,7 +1148,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
                     for id_block in id_blocks)
 
             else:
@@ -1160,7 +1160,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
                     for id_block in id_blocks)
 
             for b in blocks:

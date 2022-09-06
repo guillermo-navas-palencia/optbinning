@@ -396,12 +396,12 @@ def _check_is_analyzed(table):
                              .format(table.__class__.__name__))
 
 
-def _bin_str_label_format(bin_str):
+def _bin_str_label_format(bin_str, max_length=27):
     _bin_str = []
     for bs in bin_str:
         label = str(bs)
-        if len(label) > 27:
-            label = label[:27] + '...'
+        if len(label) > max_length:
+            label = label[:max_length] + '...'
         _bin_str.append(label)
 
     return _bin_str

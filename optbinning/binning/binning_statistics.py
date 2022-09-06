@@ -396,6 +396,17 @@ def _check_is_analyzed(table):
                              .format(table.__class__.__name__))
 
 
+def _bin_str_label_format(bin_str, max_length=27):
+    _bin_str = []
+    for bs in bin_str:
+        label = str(bs)
+        if len(label) > max_length:
+            label = label[:max_length] + '...'
+        _bin_str.append(label)
+
+    return _bin_str
+
+
 class BinningTable:
     """Binning table to summarize optimal binning of a numerical or categorical
     variable with respect to a binary target.
@@ -472,6 +483,7 @@ class BinningTable:
         self._quality_score = None
         self._ks = None
 
+        self._bin_str = False
         self._is_built = False
         self._is_analyzed = False
 
@@ -563,6 +575,8 @@ class BinningTable:
         else:
             bin_str.extend(["Special", "Missing"])
 
+        self._bin_str = bin_str
+
         df = pd.DataFrame({
             "Bin": bin_str,
             "Count": n_records,
@@ -585,7 +599,7 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", savefig=None):
+             style="bin", show_bin_labels=False, savefig=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -608,6 +622,10 @@ class BinningTable:
             style="actual", show the plot with the actual scale, i.e, actual
             bin widths.
 
+        show_bin_labels: bool (default=False)
+            Whether to show the bin label instead of the bin id on the x-axis.
+            For long labels (length > 27), labels are truncated.
+
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
@@ -628,6 +646,14 @@ class BinningTable:
         if style not in ("bin", "actual"):
             raise ValueError('Invalid value for style. Allowed string '
                              'values are "bin" and "actual".')
+
+        if not isinstance(show_bin_labels, bool):
+            raise TypeError("show_bin_labels must be a boolean; got {}."
+                            .format(show_bin_labels))
+
+        if show_bin_labels and style == "actual":
+            raise ValueError('show_bin_labels only supported when '
+                             'style="actual".')
 
         if style == "actual":
             # Hide special and missing bin
@@ -743,6 +769,16 @@ class BinningTable:
             ax2.set_ylabel(metric_label, fontsize=13)
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
+            if show_bin_labels:
+                ax1.set_xticks(np.arange(len(self._bin_str)))
+
+                if self.dtype == "categorical":
+                    bin_str = _bin_str_label_format(self._bin_str)
+                else:
+                    bin_str = self._bin_str
+
+                ax1.set_xticklabels(bin_str, rotation=45, ha="right")
+
         elif style == "actual":
             _n_nonevent = self.n_nonevent[:-(self._n_specials + 1)]
             _n_event = self.n_event[:-(self._n_specials + 1)]
@@ -785,8 +821,14 @@ class BinningTable:
             ax2.set_ylabel(metric_label, fontsize=13)
 
         plt.title(self.name, fontsize=14)
-        plt.legend(handles, labels, loc="upper center",
-                   bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+
+        if show_bin_labels:
+            legend_high = max(map(len, bin_str)) / 70 + 0.2
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+        else:
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
             plt.show()
@@ -1060,6 +1102,7 @@ class MulticlassBinningTable:
         self._n_specials = None
         self._quality_score = None
 
+        self._bin_str = False
         self._is_built = False
         self._is_analyzed = False
 
@@ -1119,6 +1162,8 @@ class MulticlassBinningTable:
         else:
             bin_str.extend(["Special", "Missing"])
 
+        self._bin_str = bin_str
+
         dict_event = {"Event_{0}".format(cl): n_event[:, i]
                       for i, cl in enumerate(self.classes)}
 
@@ -1143,7 +1188,8 @@ class MulticlassBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, savefig=None):
+    def plot(self, add_special=True, add_missing=True, show_bin_labels=False,
+             savefig=None):
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1156,10 +1202,26 @@ class MulticlassBinningTable:
         add_missing : bool (default=True)
             Whether to add the special values bin.
 
+        show_bin_labels: bool (default=False)
+            Whether to show the bin label instead of the bin id on the x-axis.
+            For long labels (length > 27), labels are truncated.
+
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
         _check_is_built(self)
+
+        if not isinstance(add_special, bool):
+            raise TypeError("add_special must be a boolean; got {}."
+                            .format(add_special))
+
+        if not isinstance(add_missing, bool):
+            raise TypeError("add_missing must be a boolean; got {}."
+                            .format(add_missing))
+
+        if not isinstance(show_bin_labels, bool):
+            raise TypeError("show_bin_labels must be a boolean; got {}."
+                            .format(show_bin_labels))
 
         n_bins = len(self._n_records)
         n_metric = n_bins - 1 - self._n_specials
@@ -1256,9 +1318,19 @@ class MulticlassBinningTable:
         ax2.set_ylabel(metric_label, fontsize=13)
         ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
+        if show_bin_labels:
+            ax1.set_xticks(np.arange(len(self._bin_str)))
+            ax1.set_xticklabels(self._bin_str, rotation=45, ha="right")
+
         plt.title(self.name, fontsize=14)
-        plt.legend(handles, labels, loc="upper center",
-                   bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+
+        if show_bin_labels:
+            legend_high = max(map(len, self._bin_str)) / 70 + 0.2
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+        else:
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
             plt.show()
@@ -1476,6 +1548,7 @@ class ContinuousBinningTable:
         self._hhi_norm = None
         self._n_specials = None
 
+        self._bin_str = None
         self._is_built = False
         self._is_analyzed = False
 
@@ -1538,6 +1611,8 @@ class ContinuousBinningTable:
         else:
             bin_str.extend(["Special", "Missing"])
 
+        self._bin_str = bin_str
+
         df = pd.DataFrame({
             "Bin": bin_str,
             "Count": self.n_records,
@@ -1565,7 +1640,7 @@ class ContinuousBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, style="bin",
-             savefig=None):
+             show_bin_labels=False, savefig=None):
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -1583,6 +1658,10 @@ class ContinuousBinningTable:
             style="actual", show the plot with the actual scale, i.e, actual
             bin widths.
 
+        show_bin_labels: bool (default=False)
+            Whether to show the bin label instead of the bin id on the x-axis.
+            For long labels (length > 27), labels are truncated.
+
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
@@ -1599,6 +1678,14 @@ class ContinuousBinningTable:
         if style not in ("bin", "actual"):
             raise ValueError('Invalid value for style. Allowed string '
                              'values are "bin" and "actual".')
+
+        if not isinstance(show_bin_labels, bool):
+            raise TypeError("show_bin_labels must be a boolean; got {}."
+                            .format(show_bin_labels))
+
+        if show_bin_labels and style == "actual":
+            raise ValueError('show_bin_labels only supported when '
+                             'style="actual".')
 
         if style == "actual":
             # Hide special and missing bin
@@ -1702,6 +1789,16 @@ class ContinuousBinningTable:
             ax2.set_ylabel(metric_label, fontsize=13)
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
+            if show_bin_labels:
+                ax1.set_xticks(np.arange(len(self._bin_str)))
+
+                if self.dtype == "categorical":
+                    bin_str = _bin_str_label_format(self._bin_str)
+                else:
+                    bin_str = self._bin_str
+
+                ax1.set_xticklabels(bin_str, rotation=45, ha="right")
+
         elif style == "actual":
             _n_records = self.n_records[:-(self._n_specials + 1)]
 
@@ -1742,8 +1839,14 @@ class ContinuousBinningTable:
             ax2.set_ylabel(metric_label, fontsize=13)
 
         plt.title(self.name, fontsize=14)
-        plt.legend(handles, labels, loc="upper center",
-                   bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=12)
+
+        if show_bin_labels:
+            legend_high = max(map(len, bin_str)) / 70 + 0.2
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+        else:
+            plt.legend(handles, labels, loc="upper center",
+                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
             plt.show()

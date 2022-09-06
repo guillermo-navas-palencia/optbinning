@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 0.15.1 (2022-09-06)
+---------------------------
+
+New features:
+
+   - New parameter ``show_bin_labels`` for binning tables (`Issue 180 <https://github.com/guillermo-navas-palencia/optbinning/issues/180>`_).
+
+
 Version 0.15.0 (2022-07-20)
 ---------------------------
 

@@ -8,7 +8,7 @@ OptBinning: The Python Optimal Binning library
 ==============================================
 
 The optimal binning is the optimal discretization of a variable into bins given a discrete or continuous numeric target. **OptBinning** is a library
-written in Python implementing a **rigorous** and **flexible** mathematical programming formulation to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints not previously addressed.
+written in Python implementing a **rigorous** and **flexible** mathematical programming formulation to solve the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints not previously addressed.
 
 .. toctree::
    :maxdepth: 1

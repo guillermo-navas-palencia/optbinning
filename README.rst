@@ -21,9 +21,7 @@ OptBinning
    :target: https://pepy.tech/project/optbinning/month
 
 
-**OptBinning** is a library written in Python implementing a rigorous and flexible mathematical programming formulation
-to solving the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints
-not previously addressed.
+**OptBinning** is a library written in Python implementing a rigorous and flexible mathematical programming formulation to solve the optimal binning problem for a binary, continuous and multiclass target type, incorporating constraints not previously addressed.
 
 * **Papers**:
    * Optimal binning: mathematical programming formulation. http://arxiv.org/abs/2001.08025
@@ -646,7 +644,7 @@ Currently **officially** using OptBinning:
 7. `Loginom <https://loginom.ru/>`_
 8. `Risika <https://risika.com/>`_
 9. `Tamara <https://tamara.co/>`_
-
+10. `BBVA AI Factory <https://www.bbvaaifactory.com/>`_
 
 Citation
 ========

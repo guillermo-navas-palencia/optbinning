@@ -217,7 +217,7 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
 
     if special_codes is not None:
         if not isinstance(special_codes, (np.ndarray, list, dict)):
-            raise TypeError("special_codes must be a dit, list or "
+            raise TypeError("special_codes must be a dict, list or "
                             "numpy.ndarray.")
 
         if isinstance(special_codes, dict) and not len(special_codes):

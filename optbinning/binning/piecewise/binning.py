@@ -7,9 +7,12 @@ Optimal piecewise binning algorithm for binary target.
 
 import time
 
+import numpy as np
+
 from sklearn.linear_model import LogisticRegression
 
 from ...binning.binning_statistics import target_info
+from ...binning.binning_statistics import target_info_special
 from ...logging import Logger
 from .base import _check_parameters
 from .base import BasePWBinning
@@ -124,7 +127,7 @@ class OptimalPWBinning(BasePWBinning):
     user_splits_fixed : array-like or None (default=None)
         The list of pre-binning split points that must be fixed.
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : array-like, dict or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
@@ -313,7 +316,8 @@ class OptimalPWBinning(BasePWBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         _, _, _, _, _, _, _] = self._fit_preprocessing(x, y, check_input)
+         _, _, _, _, _, sw_special, _] = self._fit_preprocessing(
+            x, y, check_input)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -374,21 +378,21 @@ class OptimalPWBinning(BasePWBinning):
         time_postprocessing = time.perf_counter()
 
         # Compute n_nonevent and n_event for special and missing
-        special_target_info = target_info(y_special)
-        self._n_nonevent_special = special_target_info[0]
-        self._n_event_special = special_target_info[1]
+        self._n_nonevent_special, self._n_event_special = target_info_special(
+            self.special_codes, x_special, y_special, sw_special)
 
         missing_target_info = target_info(y_missing)
         self._n_nonevent_missing = missing_target_info[0]
         self._n_event_missing = missing_target_info[1]
 
         bt = self._optb.binning_table.build(add_totals=False)
-        n_nonevent = bt["Non-event"].values
-        n_event = bt["Event"].values
-        n_nonevent[self._n_bins] = self._n_nonevent_special
-        n_nonevent[self._n_bins + 1] = self._n_nonevent_missing
-        n_event[self._n_bins] = self._n_event_special
-        n_event[self._n_bins + 1] = self._n_event_missing
+        n_nonevent = bt["Non-event"].values[:-2]
+        n_event = bt["Event"].values[:-2]
+        n_nonevent = np.r_[n_nonevent, self._n_nonevent_special]
+        n_event = np.r_[n_event, self._n_event_special]
+
+        n_nonevent = np.r_[n_nonevent, self._n_nonevent_missing]
+        n_event = np.r_[n_event, self._n_event_missing]
 
         self._t_n_nonevent = n_nonevent.sum()
         self._t_n_event = n_event.sum()
@@ -405,8 +409,8 @@ class OptimalPWBinning(BasePWBinning):
 
         # Binning table
         self._binning_table = PWBinningTable(
-            self.name, self._optb.splits, self._c, n_nonevent, n_event,
-            x_clean.min(), x_clean.max(), d_metrics)
+            self.name, self.special_codes, self._optb.splits, self._c,
+            n_nonevent, n_event, x_clean.min(), x_clean.max(), d_metrics)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

@@ -161,8 +161,9 @@ def _check_parameters(name, estimator, objective, degree, continuous,
                                                    len(user_splits_fixed)))
 
     if special_codes is not None:
-        if not isinstance(special_codes, (np.ndarray, list)):
-            raise TypeError("special_codes must be a list or numpy.ndarray.")
+        if not isinstance(special_codes, (np.ndarray, list, dict)):
+            raise TypeError("special_codes must be a dict, list or "
+                            "numpy.ndarray.")
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or

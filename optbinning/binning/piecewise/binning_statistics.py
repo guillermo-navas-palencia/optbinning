@@ -37,6 +37,10 @@ class PWBinningTable(BinningTable):
     name : str, optional (default="")
         The variable name.
 
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
     splits : numpy.ndarray
         List of split points.
 
@@ -64,9 +68,10 @@ class PWBinningTable(BinningTable):
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, splits, coef, n_nonevent, n_event, min_x, max_x,
-                 d_metrics):
+    def __init__(self, name, special_codes, splits, coef, n_nonevent, n_event,
+                 min_x, max_x, d_metrics):
         self.name = name
+        self.special_codes = special_codes
         self.splits = splits
         self.coef = coef
         self.n_nonevent = n_nonevent
@@ -83,6 +88,7 @@ class PWBinningTable(BinningTable):
         self._iv = None
         self._js = None
         self._gini = None
+        self._n_specials = None
         self._quality_score = None
         self._ks = None
 
@@ -106,8 +112,8 @@ class PWBinningTable(BinningTable):
         """
         _check_build_parameters(show_digits, add_totals)
 
-        n_nonevent = self.n_nonevent
-        n_event = self.n_event
+        n_nonevent = self.n_nonevent.astype(int)
+        n_event = self.n_event.astype(int)
 
         self._t_n_nonevent = n_nonevent.sum()
         self._t_n_event = n_event.sum()
@@ -136,7 +142,12 @@ class PWBinningTable(BinningTable):
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            self._n_specials = len(self.special_codes)
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            self._n_specials = 1
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,
@@ -148,29 +159,14 @@ class PWBinningTable(BinningTable):
 
         n_coefs = self.coef.shape[1]
 
+        n_bins_extra = self._n_specials + 1
         for i in range(n_coefs):
             if i == 0:
-                n_nonevent_special = n_nonevent[-2]
-                n_event_special = n_event[-2]
-
-                if (n_event_special > 0) & (n_nonevent_special > 0):
-                    event_rate_special = n_event_special / n_records[-2]
-                else:
-                    event_rate_special = 0
-
-                n_nonevent_missing = n_nonevent[-1]
-                n_event_missing = n_event[-1]
-
-                if (n_event_missing > 0) & (n_nonevent_missing > 0):
-                    event_rate_missing = n_event_missing / n_records[-1]
-                else:
-                    event_rate_missing = 0
-
-                c_s_m = [event_rate_special, event_rate_missing]
-
-                df["c{}".format(i)] = list(self.coef[:, i]) + c_s_m
+                extra_bins = list(event_rate[-n_bins_extra:])
             else:
-                df["c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
+                extra_bins = [0] * n_bins_extra
+
+            df["c{}".format(i)] = list(self.coef[:, i]) + extra_bins
 
         if add_totals:
             totals = ["", t_n_records, 1, self._t_n_nonevent, self._t_n_event]
@@ -218,8 +214,9 @@ class PWBinningTable(BinningTable):
             raise TypeError("add_missing must be a boolean; got {}."
                             .format(add_missing))
 
-        _n_nonevent = self.n_nonevent[:-2]
-        _n_event = self.n_event[:-2]
+        n_bins_extra = self._n_specials + 1
+        _n_nonevent = self.n_nonevent[:-n_bins_extra]
+        _n_event = self.n_event[:-n_bins_extra]
 
         n_splits = len(self.splits)
 
@@ -405,6 +402,10 @@ class PWContinuousBinningTable:
     name : str, optional (default="")
         The variable name.
 
+    special_codes : array-like, dict or None, optional (default=None)
+        List of special codes. Use special codes to specify the data values
+        that must be treated separately.
+
     splits : numpy.ndarray
         List of split points.
 
@@ -444,10 +445,12 @@ class PWContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, splits, coef, n_records, sums, stds, min_target,
-                 max_target, n_zeros, lb, ub, min_x, max_x, d_metrics):
+    def __init__(self, name, special_codes, splits, coef, n_records, sums,
+                 stds, min_target, max_target, n_zeros, lb, ub, min_x, max_x,
+                 d_metrics):
 
         self.name = name
+        self.special_codes = special_codes
         self.splits = splits
         self.coef = coef
         self.n_records = n_records
@@ -466,6 +469,7 @@ class PWContinuousBinningTable:
         self._mean = None
         self._hhi = None
         self._hhi_norm = None
+        self._n_specials = None
 
         self._is_built = False
         self._is_analyzed = False
@@ -502,7 +506,12 @@ class PWContinuousBinningTable:
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
 
-        bin_str.extend(["Special", "Missing"])
+        if isinstance(self.special_codes, dict):
+            self._n_specials = len(self.special_codes)
+            bin_str.extend(list(self.special_codes) + ["Missing"])
+        else:
+            self._n_specials = 1
+            bin_str.extend(["Special", "Missing"])
 
         df = pd.DataFrame({
             "Bin": bin_str,
@@ -517,31 +526,18 @@ class PWContinuousBinningTable:
 
         n_coefs = self.coef.shape[1]
 
+        n_bins_extra = self._n_specials + 1
         for i in range(n_coefs):
             if i == 0:
-                n_records_special = self.n_records[-2]
-
-                if n_records_special > 0:
-                    meam_special = self.sums[-2] / self.n_records[-2]
-                else:
-                    meam_special = 0
-
-                n_records_missing = self.n_records[-1]
-
-                if n_records_missing > 0:
-                    mean_missing = self.sums[-1] / self.n_records[-1]
-                else:
-                    mean_missing = 0
-
-                c_s_m = [meam_special, mean_missing]
-
-                df["c{}".format(i)] = list(self.coef[:, i]) + c_s_m
+                extra_bins = list(self._mean[-n_bins_extra:])
             else:
-                df["c{}".format(i)] = list(self.coef[:, i]) + [0, 0]
+                extra_bins = [0] * n_bins_extra
+
+            df["c{}".format(i)] = list(self.coef[:, i]) + extra_bins
 
         if add_totals:
-            t_min = np.nanmin(self.min_target)
-            t_max = np.nanmax(self.max_target)
+            t_min = np.nanmin(self.min_target[:-n_bins_extra])
+            t_max = np.nanmax(self.max_target[:-n_bins_extra])
             t_n_zeros = self.n_zeros.sum()
             totals = ["", t_n_records, 1, t_sum, "", t_min, t_max, t_n_zeros]
             totals += ["-"] * n_coefs
@@ -571,7 +567,9 @@ class PWContinuousBinningTable:
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
-        _n_records = self.n_records[:-2]
+
+        n_bins_extra = self._n_specials + 1
+        _n_records = self.n_records[:-n_bins_extra]
 
         n_splits = len(self.splits)
 

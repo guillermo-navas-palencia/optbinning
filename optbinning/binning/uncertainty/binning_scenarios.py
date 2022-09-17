@@ -518,7 +518,19 @@ class SBOptimalBinning(OptimalBinning):
         self._n_event = 0
         self._binning_tables = []
 
+        min_x = np.inf
+        max_x = -np.inf
+
         for s in range(self._n_scenarios):
+            min_xs = x_clean[s].min()
+            max_xs = x_clean[s].max()
+
+            if min_xs < min_x:
+                min_x = min_xs
+
+            if max_xs > max_x:
+                max_x = max_xs
+
             s_n_nonevent, s_n_event = bin_info(
                 self._solution, n_nonevent[:, s], n_event[:, s],
                 self._n_nonevent_missing[s], self._n_event_missing[s],
@@ -530,14 +542,14 @@ class SBOptimalBinning(OptimalBinning):
 
             binning_table = BinningTable(
                 self.name, self.dtype, self.special_codes,
-                self._splits_optimal, s_n_nonevent, s_n_event, None, None,
+                self._splits_optimal, s_n_nonevent, s_n_event, min_xs, max_xs,
                 None, None, self.user_splits)
 
             self._binning_tables.append(binning_table)
 
         self._binning_table = BinningTable(
             self.name, self.dtype, self.special_codes, self._splits_optimal,
-            self._n_nonevent, self._n_event, None, None, None, None,
+            self._n_nonevent, self._n_event, min_x, max_x, None, None,
             self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing

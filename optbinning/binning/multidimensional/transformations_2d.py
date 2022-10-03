@@ -12,6 +12,7 @@ from sklearn.utils import check_array
 
 from ..transformations import _check_metric_special_missing
 from ..transformations import _check_show_digits
+from .binning_statistics_2d import bin_categorical
 from .binning_statistics_2d import bin_xy_str_format
 
 
@@ -54,21 +55,34 @@ def _transform_metric_indices_bins(x, metric, n_bins, bins_str):
     return metric_value, z_transform
 
 
-def _apply_transform(splits_x, splits_y, special_codes_x, special_codes_y,
-                     metric, metric_special, metric_missing, metric_value,
-                     clean_mask, special_mask, missing_mask, z_transform,
-                     x_clean, y_clean, n_bins):
+def _apply_transform(dtype_x, dtype_y, splits_x, splits_y, special_codes_x,
+                     special_codes_y, metric, metric_special, metric_missing,
+                     metric_value, clean_mask, special_mask, missing_mask,
+                     z_transform, x_clean, y_clean, n_bins):
 
     if metric == "bins":
         z_clean_transform = np.full(x_clean.shape, "", dtype=object)
     else:
         z_clean_transform = np.zeros(x_clean.shape)
 
-    for i in range(n_bins):
-        mask_x = (splits_x[i][0] <= x_clean) & (x_clean < splits_x[i][1])
-        mask_y = (splits_y[i][0] <= y_clean) & (y_clean < splits_y[i][1])
-        mask = mask_x & mask_y
+    if dtype_x == "categorical":
+        x_p = pd.Series(x_clean)
 
+    if dtype_y == "categorical":
+        y_p = pd.Series(y_clean)
+
+    for i in range(n_bins):
+        if dtype_x == "numerical":
+            mask_x = (splits_x[i][0] <= x_clean) & (x_clean < splits_x[i][1])
+        else:
+            mask_x = x_p.isin(splits_x[i])
+
+        if dtype_y == "numerical":
+            mask_y = (splits_y[i][0] <= y_clean) & (y_clean < splits_y[i][1])
+        else:
+            mask_y = y_p.isin(splits_y[i])
+
+        mask = mask_x & mask_y
         z_clean_transform[mask] = metric_value[i]
 
     z_transform[clean_mask] = z_clean_transform
@@ -93,8 +107,9 @@ def _apply_transform(splits_x, splits_y, special_codes_x, special_codes_y,
 
 def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
                             n_nonevent, n_event, special_codes_x,
-                            special_codes_y, metric, metric_special,
-                            metric_missing, show_digits, check_input=False):
+                            special_codes_y, categories_x, categories_y,
+                            metric, metric_special, metric_missing,
+                            show_digits, check_input=False):
 
     if metric not in ("event_rate", "woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -121,8 +136,14 @@ def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
     y_clean = y[clean_mask]
 
     bins_str = bin_xy_str_format(dtype_x, dtype_y, splits_x, splits_y,
-                                 show_digits)
+                                 show_digits, categories_x, categories_y)
     n_bins = len(splits_x)
+
+    if dtype_x == "categorical":
+        splits_x = bin_categorical(splits_x, categories_x)
+
+    if dtype_y == "categorical":
+        splits_y = bin_categorical(splits_y, categories_y)
 
     if metric in ("woe", "event_rate"):
         # Compute event rate and WoE
@@ -155,18 +176,18 @@ def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
             x, metric, n_bins, bins_str)
 
     z_transform = _apply_transform(
-        splits_x, splits_y, special_codes_x, special_codes_y, metric,
-        metric_special, metric_missing, metric_value, clean_mask, special_mask,
-        missing_mask, z_transform, x_clean, y_clean, n_bins)
+        dtype_x, dtype_y, splits_x, splits_y, special_codes_x, special_codes_y,
+        metric, metric_special, metric_missing, metric_value, clean_mask,
+        special_mask, missing_mask, z_transform, x_clean, y_clean, n_bins)
 
     return z_transform
 
 
 def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
                                 n_records, sums, special_codes_x,
-                                special_codes_y, metric, metric_special,
-                                metric_missing, show_digits,
-                                check_input=False):
+                                special_codes_y, categories_x, categories_y,
+                                metric, metric_special, metric_missing,
+                                show_digits, check_input=False):
 
     if metric not in ("mean", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -192,8 +213,14 @@ def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
     y_clean = y[clean_mask]
 
     bins_str = bin_xy_str_format(dtype_x, dtype_y, splits_x, splits_y,
-                                 show_digits)
+                                 show_digits, categories_x, categories_y)
     n_bins = len(splits_x)
+
+    if dtype_x == "categorical":
+        splits_x = bin_categorical(splits_x, categories_x)
+
+    if dtype_y == "categorical":
+        splits_y = bin_categorical(splits_y, categories_y)
 
     if "empirical" not in (metric_special, metric_missing):
         n_records = n_records[:n_bins]
@@ -211,8 +238,8 @@ def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
             x, metric, n_bins, bins_str)
 
     z_transform = _apply_transform(
-        splits_x, splits_y, special_codes_x, special_codes_y, metric,
-        metric_special, metric_missing, metric_value, clean_mask, special_mask,
-        missing_mask, z_transform, x_clean, y_clean, n_bins)
+        dtype_x, dtype_y, splits_x, splits_y, special_codes_x, special_codes_y,
+        metric, metric_special, metric_missing, metric_value, clean_mask,
+        special_mask, missing_mask, z_transform, x_clean, y_clean, n_bins)
 
     return z_transform

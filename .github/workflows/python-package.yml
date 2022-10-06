@@ -5,9 +5,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master, develop]
   pull_request:
-    branches: [ master ]
+    branches: [master, develop]
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.7', '3.8', '3.9', '3.10']
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-12]
 
     steps:
     - uses: actions/checkout@v2

@@ -920,42 +920,6 @@ class OptimalBinning2D(OptimalBinning):
 
         return rows, n_nonevent, n_event
 
-    def _splits_optimal(self, dtype, selected_rows, splits, P, axis,
-                        categories=None):
-
-        if dtype == "numerical":
-            bins = np.concatenate([[-np.inf], splits, [np.inf]])
-            bins_str = np.array([[bins[i], bins[i+1]]
-                                 for i in range(len(bins) - 1)])
-
-            splits_optimal = []
-            for i in range(len(selected_rows)):
-                if axis == "x":
-                    _, pos = np.where(P == i)
-                else:
-                    pos, _ = np.where(P == i)
-
-                mask = np.arange(pos.min(), pos.max() + 1)
-                bin = bins_str[mask]
-
-                splits_optimal.append([bin[0][0], bin[-1][1]])
-
-            return splits_optimal
-
-        else:
-            splits = np.ceil(splits).astype(int)
-            n_categories = len(categories)
-
-            indices = np.digitize(np.arange(n_categories), splits, right=False)
-            n_bins = len(splits) + 1
-
-            bins = []
-            for i in range(n_bins):
-                mask = (indices == i)
-                bins.append(categories[mask])
-
-            return bins
-
     def _splits_xy_optimal(self, selected_rows, splits_x, splits_y, P):
         bins_x = np.concatenate([[-np.inf], splits_x, [np.inf]])
         bins_y = np.concatenate([[-np.inf], splits_y, [np.inf]])

@@ -257,6 +257,27 @@ def test_numerical_default_fit_transform():
                                       31.86], rel=1e-6)
 
 
+def test_numerical_categorical_transform():
+    optb = ContinuousOptimalBinning2D(
+        dtype_x="numerical", dtype_y="categorical")
+    optb.fit(x, y, z)
+    z_transform = optb.fit_transform(x, y, z, metric="mean")
+
+    assert z_transform[:5] == approx([23.45581395, 31.67272727, 31.50344828,
+                                      31.50344828, 31.50344828], rel=1e-6)
+
+
+def test_categorical_categorical_transform():
+    optb = ContinuousOptimalBinning2D(
+        dtype_x="categorical", dtype_y="categorical")
+    optb.fit(x, y, z)
+    z_transform = optb.fit_transform(x, y, z, metric="mean")
+
+    assert z_transform[:5] == approx([21.88918919, 24.04285714, 32.93571429,
+                                      29.3, 32.93571429], rel=1e-6)
+
+
+
 def test_information():
     optb = ContinuousOptimalBinning2D(solver="cp")
 

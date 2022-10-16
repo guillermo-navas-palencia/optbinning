@@ -92,7 +92,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         Number of subsamples to fit the piecewise regression algorithm. If
         None, all values are considered.
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint. Option supported by solvers
         "cp" and "mip".

@@ -148,7 +148,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         The fraction of maximum number of records for each bin. If None,
         ``max_bin_size = 1.0``.
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins.
 
     max_pvalue_policy : str, optional (default="consecutive")

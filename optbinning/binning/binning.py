@@ -335,7 +335,7 @@ class OptimalBinning(BaseOptimalBinning):
         option currently only applies when ``monotonic_trend`` is "ascending",
         "descending", "peak_heuristic" or "valley_heuristic".
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint. Option supported by solvers
         "cp" and "mip".

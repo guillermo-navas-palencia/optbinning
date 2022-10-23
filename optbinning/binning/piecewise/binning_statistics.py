@@ -177,8 +177,7 @@ class PWBinningTable(BinningTable):
 
         return df
 
-    def plot(self, metric="woe", add_special=True, add_missing=True,
-             n_samples=10000, savefig=None):
+    def plot(self, metric="woe", n_samples=10000, savefig=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the predicted Weight of
@@ -190,29 +189,17 @@ class PWBinningTable(BinningTable):
             Supported metrics are "woe" to show the Weight of Evidence (WoE)
             measure and "event_rate" to show the event rate.
 
-        add_special : bool (default=True)
-            Whether to add the special codes bin.
-
-        add_missing : bool (default=True)
-            Whether to add the special values bin.
-
         n_samples : int (default=10000)
             Number of samples to be represented.
 
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
+        _check_is_built(self)
+
         if metric not in ("event_rate", "woe"):
             raise ValueError('Invalid value for metric. Allowed string '
                              'values are "event_rate" and "woe".')
-
-        if not isinstance(add_special, bool):
-            raise TypeError("add_special must be a boolean; got {}."
-                            .format(add_special))
-
-        if not isinstance(add_missing, bool):
-            raise TypeError("add_missing must be a boolean; got {}."
-                            .format(add_missing))
 
         n_bins_extra = self._n_specials + 1
         _n_nonevent = self.n_nonevent[:-n_bins_extra]
@@ -547,26 +534,20 @@ class PWContinuousBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, n_samples=10000,
-             savefig=None):
+    def plot(self, n_samples=10000, savefig=None):
         """Plot the binning table.
 
         Visualize records count and the prediction for each bin.
 
         Parameters
         ----------
-        add_special : bool (default=True)
-            Whether to add the special codes bin.
-
-        add_missing : bool (default=True)
-            Whether to add the special values bin.
-
         n_samples : int (default=10000)
             Number of samples to be represented.
 
         savefig : str or None (default=None)
             Path to save the plot figure.
         """
+        _check_is_built(self)
 
         n_bins_extra = self._n_specials + 1
         _n_records = self.n_records[:-n_bins_extra]

@@ -232,7 +232,6 @@ def test_solvers():
 def test_user_splits():
     variable = "mean texture"
     x = df[variable].values
-    y = data.target
 
     user_splits = [14, 15, 16, 17, 20, 21, 22, 27]
     user_splits_fixed = [False, True, True, False, False, False, False, False]

@@ -770,6 +770,7 @@ class BinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
             if show_bin_labels:
+                ax1.set_xlabel("Bin", fontsize=12)
                 ax1.set_xticks(np.arange(len(self._bin_str)))
 
                 if self.dtype == "categorical":
@@ -1319,6 +1320,7 @@ class MulticlassBinningTable:
         ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
         if show_bin_labels:
+            ax1.set_xlabel("Bin", fontsize=12)
             ax1.set_xticks(np.arange(len(self._bin_str)))
             ax1.set_xticklabels(self._bin_str, rotation=45, ha="right")
 
@@ -1790,6 +1792,7 @@ class ContinuousBinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
             if show_bin_labels:
+                ax1.set_xlabel("Bin", fontsize=12)
                 ax1.set_xticks(np.arange(len(self._bin_str)))
 
                 if self.dtype == "categorical":

@@ -238,7 +238,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         option currently only applies when ``monotonic_trend`` is "ascending"
         or "descending".
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The T-test is used to detect bins
         not satisfying the p-value constraint.
 

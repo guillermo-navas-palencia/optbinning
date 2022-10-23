@@ -1,6 +1,34 @@
 Release Notes
 =============
 
+Version 0.16.0 (2022-10-24)
+---------------------------
+
+New features:
+
+   - Treatment of special codes separately for optimal piecewise binning classes (`Issue 191 <https://github.com/guillermo-navas-palencia/optbinning/issues/191>`_).
+
+Improvements
+
+   - Allow plot ``style="actual"`` for stochastic optimal binning.
+   - Unit testing optimal piecewise binning classes (`Issue 93 <https://github.com/guillermo-navas-palencia/optbinning/issues/93>`_).
+   - Unit testing add macOS Monterey 12.
+
+Bugfixes
+
+   - Fix sample weight for ``BinningProcess`` when ``n_jobs != 1`` (`Issue 190 <https://github.com/guillermo-navas-palencia/optbinning/issues/190>`_).
+   - Fix transform method for optimal binning 2D when dtype is categorical (`Issue 197 <https://github.com/guillermo-navas-palencia/optbinning/issues/197>`_).
+   - Fix ``max_pvalue`` default value in documentation (`Issue 199 <https://github.com/guillermo-navas-palencia/optbinning/issues/199>`_).
+
+
+Version 0.15.1 (2022-09-06)
+---------------------------
+
+New features:
+
+   - New parameter ``show_bin_labels`` for binning tables (`Issue 180 <https://github.com/guillermo-navas-palencia/optbinning/issues/180>`_).
+
+
 Version 0.15.0 (2022-07-20)
 ---------------------------
 
@@ -16,7 +44,6 @@ Improvements
 Bugfixes
 
    - Fix ``Scorecard.score`` method when there are special and missing bins. (`Issue 179 <https://github.com/guillermo-navas-palencia/optbinning/pull/179>`_).
-
    - Fix x and y axis labels in ``OptimalBinning2D`` plots, x and y were interchanged.
 
 
@@ -43,7 +70,6 @@ Improvements:
 Bugfixes:
 
    - Fix binning 2D minimum difference constraints.
-
 
 Tutorials:
 

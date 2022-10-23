@@ -476,8 +476,9 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         return transform_continuous_target(
             self.dtype_x, self.dtype_y, self._splits_x_optimal,
             self._splits_y_optimal, x, y, self._n_records, self._sums,
-            self.special_codes_x, self.special_codes_y, metric, metric_special,
-            metric_missing, show_digits, check_input)
+            self.special_codes_x, self.special_codes_y, self._categories_x,
+            self._categories_y, metric, metric_special, metric_missing,
+            show_digits, check_input)
 
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()

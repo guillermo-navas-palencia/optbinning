@@ -299,6 +299,23 @@ def test_numerical_default_fit_transform():
                                       0.52114951, 5.37317977], rel=1e-6)
 
 
+def test_numerical_categorical_transform():
+    optb = OptimalBinning2D(dtype_x="numerical", dtype_y="categorical")
+    optb.fit(x, y, z)
+    z_transform = optb.fit_transform(x, y, z, metric="woe")
+
+    assert z_transform[:5] == approx([5.28332344, 5.28332344, 5.28332344,
+                                      -2.44333022,  5.28332344], rel=1e-6)
+
+
+def test_categorical_categorical_transform():
+    optb = OptimalBinning2D(dtype_x="categorical", dtype_y="categorical")
+    optb.fit(x, y, z)
+    z_transform = optb.fit_transform(x, y, z, metric="woe")
+
+    assert z_transform[:5] == approx([2.86295531] * 5, rel=1e-6)
+
+
 def test_information():
     optb = OptimalBinning2D(solver="cp")
 

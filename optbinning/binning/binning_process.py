@@ -466,7 +466,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         The fraction of maximum number of records for each bin. If None,
         ``max_bin_size = 1.0``.
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins.
 
     max_pvalue_policy : str, optional (default="consecutive")
@@ -1148,7 +1148,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
                     for id_block in id_blocks)
 
             else:
@@ -1160,7 +1160,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         self.min_prebin_size, self.min_n_bins,
                         self.max_n_bins, self.min_bin_size,
                         self.max_pvalue, self.max_pvalue_policy,
-                        self.special_codes, self.split_digits)
+                        self.special_codes, self.split_digits, sample_weight)
                     for id_block in id_blocks)
 
             for b in blocks:

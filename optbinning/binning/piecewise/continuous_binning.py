@@ -9,6 +9,7 @@ import time
 
 import numpy as np
 
+from ...binning.binning_statistics import target_info_special_continuous
 from ...logging import Logger
 from .base import _check_parameters
 from .base import BasePWBinning
@@ -91,7 +92,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         Number of subsamples to fit the piecewise regression algorithm. If
         None, all values are considered.
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint. Option supported by solvers
         "cp" and "mip".
@@ -116,7 +117,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
     user_splits_fixed : array-like or None (default=None)
         The list of pre-binning split points that must be fixed.
 
-    special_codes : array-like or None, optional (default=None)
+    special_codes : array-like, dict or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
@@ -340,13 +341,18 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         time_postprocessing = time.perf_counter()
 
         # Compute n_records and sum for special and missing
-        self._n_records_special = len(y_special)
-        self._sum_special = np.sum(y_special)
-        self._n_zeros_special = np.count_nonzero(y_special == 0)
-        if len(y_special):
-            self._std_special = np.std(y_special)
-            self._min_target_special = np.min(y_special)
-            self._max_target_special = np.max(y_special)
+        # self._n_records_special = len(y_special)
+        # self._sum_special = np.sum(y_special)
+        # self._n_zeros_special = np.count_nonzero(y_special == 0)
+        # if len(y_special):
+        #     self._std_special = np.std(y_special)
+        #     self._min_target_special = np.min(y_special)
+        #     self._max_target_special = np.max(y_special)
+
+        [self._n_records_special, self._sum_special, self._n_zeros_special,
+         self._std_special, self._min_target_special,
+         self._max_target_special] = target_info_special_continuous(
+            self.special_codes, x_special, y_special)
 
         self._n_records_missing = len(y_missing)
         self._sum_missing = np.sum(y_missing)
@@ -357,25 +363,26 @@ class ContinuousOptimalPWBinning(BasePWBinning):
             self._max_target_missing = np.max(y_missing)
 
         bt = self._optb.binning_table.build(add_totals=False)
-        n_records = bt["Count"].values
-        sums = bt["Sum"].values
-        stds = bt["Std"].values
-        min_target = bt["Min"].values
-        max_target = bt["Max"].values
-        n_zeros = bt["Zeros count"].values
+        n_records = bt["Count"].values[:-2]
+        sums = bt["Sum"].values[:-2]
+        stds = bt["Std"].values[:-2]
+        min_target = bt["Min"].values[:-2]
+        max_target = bt["Max"].values[:-2]
+        n_zeros = bt["Zeros count"].values[:-2]
 
-        n_records[self._n_bins] = self._n_records_special
-        n_records[self._n_bins + 1] = self._n_records_missing
-        sums[self._n_bins] = self._sum_special
-        sums[self._n_bins + 1] = self._sum_missing
-        stds[self._n_bins] = self._std_special
-        stds[self._n_bins + 1] = self._std_missing
-        min_target[self._n_bins] = self._min_target_special
-        min_target[self._n_bins + 1] = self._min_target_missing
-        max_target[self._n_bins] = self._max_target_special
-        max_target[self._n_bins + 1] = self._max_target_missing
-        n_zeros[self._n_bins] = self._n_zeros_special
-        n_zeros[self._n_bins + 1] = self._n_zeros_missing
+        n_records = np.r_[n_records, self._n_records_special]
+        sums = np.r_[sums, self._sum_special]
+        stds = np.r_[stds, self._std_special]
+        min_target = np.r_[min_target, self._min_target_special]
+        max_target = np.r_[max_target, self._max_target_special]
+        n_zeros = np.r_[n_zeros, self._n_zeros_special]
+
+        n_records = np.r_[n_records, self._n_records_missing]
+        sums = np.r_[sums, self._sum_missing]
+        stds = np.r_[stds, self._std_missing]
+        min_target = np.r_[min_target, self._min_target_missing]
+        max_target = np.r_[max_target, self._max_target_missing]
+        n_zeros = np.r_[n_zeros, self._n_zeros_missing]
 
         # Compute metrics
         if self.verbose:
@@ -388,9 +395,9 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
         # Binning table
         self._binning_table = PWContinuousBinningTable(
-            self.name, self._optb.splits, self._c, n_records, sums, stds,
-            min_target, max_target, n_zeros, lb, ub, x_clean.min(),
-            x_clean.max(), d_metrics)
+            self.name, self.special_codes, self._optb.splits, self._c,
+            n_records, sums, stds, min_target, max_target, n_zeros, lb, ub,
+            x_clean.min(), x_clean.max(), d_metrics)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

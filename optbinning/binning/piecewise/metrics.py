@@ -5,6 +5,8 @@ Optimal piecewise binning metrics.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import numpy as np
+
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import brier_score_loss
 
@@ -20,12 +22,12 @@ from .transformations import transform_continuous_target
 
 
 def _fun_divergence(fun, n, pi, qi, pi_special, qi_special, pi_missing,
-                    qi_missing, flag_special, flag_missing):
+                    qi_missing, flag_special, flag_missing, n_special):
 
     div_value = fun(pi, qi, return_sum=True) / n
 
     if flag_special:
-        div_value += fun([pi_special], [qi_special])
+        div_value += fun(pi_special, qi_special, return_sum=True) / n_special
 
     if flag_missing:
         div_value += fun([pi_missing], [qi_missing])
@@ -43,12 +45,20 @@ def divergences_asymptotic(event_rate, n_nonevent_special, n_event_special,
     pi = (1.0 - event_rate) / (1.0 - p)
     qi = event_rate / p
 
-    flag_special = (n_event_special > 0 and n_nonevent_special > 0)
+    if isinstance(n_event_special, (np.ndarray, list)):
+        n_special = n_event_special.size
+        mask = (n_event_special > 0) & (n_nonevent_special > 0)
+        flag_special = np.any(mask)
+
+        pi_special = n_nonevent_special[mask] / t_n_nonevent
+        qi_special = n_event_special[mask] / t_n_event
+    else:
+        n_special = 1
+        flag_special = (n_event_special > 0 and n_nonevent_special > 0)
+        pi_special = n_nonevent_special / t_n_nonevent
+        qi_special = n_event_special / t_n_event
+
     flag_missing = (n_event_missing > 0 and n_nonevent_missing > 0)
-
-    pi_special = n_nonevent_special / t_n_nonevent
-    qi_special = n_event_special / t_n_event
-
     pi_missing = n_nonevent_missing / t_n_nonevent
     qi_missing = n_event_missing / t_n_event
 
@@ -56,19 +66,19 @@ def divergences_asymptotic(event_rate, n_nonevent_special, n_event_special,
 
     d_divergences["IV (Jeffrey)"] = _fun_divergence(
         jeffrey, n, pi, qi, pi_special, qi_special, pi_missing, qi_missing,
-        flag_special, flag_missing)
+        flag_special, flag_missing, n_special)
 
     d_divergences["JS (Jensen-Shannon)"] = _fun_divergence(
         jensen_shannon, n, pi, qi, pi_special, qi_special, pi_missing,
-        qi_missing, flag_special, flag_missing)
+        qi_missing, flag_special, flag_missing, n_special)
 
     d_divergences["Hellinger"] = _fun_divergence(
         hellinger, n, pi, qi, pi_special, qi_special, pi_missing, qi_missing,
-        flag_special, flag_missing)
+        flag_special, flag_missing, n_special)
 
     d_divergences["Triangular"] = _fun_divergence(
         triangular, n, pi, qi, pi_special, qi_special, pi_missing, qi_missing,
-        flag_special, flag_missing)
+        flag_special, flag_missing, n_special)
 
     return d_divergences
 
@@ -78,6 +88,9 @@ def binary_metrics(x, y, splits, c, t_n_nonevent, t_n_event,
                    n_event_missing, special_codes):
 
     d_metrics = {}
+
+    n_nonevent_special = np.asarray(n_nonevent_special)
+    n_event_special = np.asarray(n_event_special)
 
     # Metrics using predicted probability of Y=1.
     min_pred = 1e-8

@@ -234,7 +234,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         "peak_heuristic", "valley_heuristic" and None, one for each class.
         If None, then the monotonic constraint is disabled.
 
-    max_pvalue : float or None, optional (default=0.05)
+    max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint.
 

@@ -114,8 +114,9 @@ class OptimalPWBinning(BasePWBinning):
 
     outlier_detector : str or None, optional (default=None)
         The outlier detection method. Supported methods are "range" to use
-        the interquartile range based method or "zcore" to use the modified
-        Z-score method.
+        the interquartile range based method, "zcore" to use the modified
+        Z-score method or "yquantile" to use the y-axis detector over
+        quantiles.
 
     outlier_params : dict or None, optional (default=None)
         Dictionary of parameters to pass to the outlier detection method.

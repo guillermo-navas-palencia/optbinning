@@ -132,9 +132,10 @@ def _check_parameters(name, estimator, objective, degree, continuous,
                          'values are "all" and "consecutive".')
 
     if outlier_detector is not None:
-        if outlier_detector not in ("range", "zscore"):
+        if outlier_detector not in ("range", "zscore", "yquantile"):
             raise ValueError('Invalid value for outlier_detector. Allowed '
-                             'string values are "range" and "zscore".')
+                             'string values are "range", "zscore" and '
+                             '"yquantile".')
 
         if outlier_params is not None:
             if not isinstance(outlier_params, dict):

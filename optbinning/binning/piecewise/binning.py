@@ -142,7 +142,9 @@ class OptimalPWBinning(BasePWBinning):
         <https://github.com/embotech/ecos>`_, `"osqp"
         <https://github.com/oxfordcontrol/osqp>`_, "direct", to choose the
         direct solver, and "auto", to choose the most appropriate solver for
-        the problem.
+        the problem. Version 0.16.1 added support to solvers
+        `"scs" <https://github.com/cvxgrp/scs>`_ and `"highs"
+        <https://github.com/ERGO-Code/HiGHS>`_.
 
     h_epsilon: float (default=1.35)
         The parameter h_epsilon used when ``objective="huber"``, controls the

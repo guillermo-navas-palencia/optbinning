@@ -171,9 +171,10 @@ def _check_parameters(name, estimator, objective, degree, continuous,
             raise ValueError("split_digist must be an integer in [0, 8]; "
                              "got {}.".format(split_digits))
 
-    if solver not in ("auto", "ecos", "osqp", "direct"):
+    if solver not in ("auto", "ecos", "osqp", "direct", "scs", "highs"):
         raise ValueError('Invalid value for solver. Allowed string '
-                         'values are "auto", "ecos", "osqp" and "direct".')
+                         'values are "auto", "ecos", "osqp", "direct", '
+                         '"scs" and "highs".')
 
     if not isinstance(h_epsilon, numbers.Number) or h_epsilon < 1.0:
         raise ValueError("h_epsilon must a number >= 1.0; got {}."

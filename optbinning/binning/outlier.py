@@ -21,18 +21,20 @@ class OutlierDetector:
         # flag
         self._is_fitted = False
 
-    def fit(self, x):
-        """Fit univariate outlier detector.
+    def fit(self, x, y=None):
+        """Fit outlier detector.
 
         Parameters
         ----------
         x : array-like, shape = (n_samples)
 
+        y : array-like, shape = (n_samples) or None (default=None)
+
         Returns
         -------
         self : OutlierDetector
         """
-        self._fit(x)
+        self._fit(x, y)
 
         return self
 
@@ -88,7 +90,7 @@ class RangeDetector(BaseEstimator, OutlierDetector):
         self.k = k
         self.method = method
 
-    def _fit(self, x):
+    def _fit(self, x, y=None):
         if self.method not in ("ETI", "HDI"):
             raise ValueError('Invalid value for method. Allowed string '
                              'values are "ETI" and "HDI".')
@@ -144,12 +146,58 @@ class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
     def __init__(self, threshold=3.5):
         self.threshold = threshold
 
-    def _fit(self, x):
+    def _fit(self, x, y=None):
         x = np.asarray(x)
         median = np.median(x)
         mad = np.median(np.abs(x - median))
         m_z_score = 0.6745 * (x - median) / mad
 
         self._support = np.abs(m_z_score) > self.threshold
+
+        self._is_fitted = True
+
+
+class YQuantileDetector(BaseEstimator, OutlierDetector):
+    def __init__(self, outlier_detector="zscore",  outlier_params=None,
+                 n_bins=5):
+        self.outlier_detector = outlier_detector
+        self.outlier_params = outlier_params
+        self.n_bins = n_bins
+
+    def _fit(self, x, y):
+        if self.outlier_detector not in ("range", "zscore"):
+            raise ValueError('Invalid value for outlier_detector. Allowed '
+                             'string values are "range" and "zscore".')
+
+        if self.outlier_params is not None:
+            if not isinstance(self.outlier_params, dict):
+                raise TypeError("outlier_params must be a dict or None; "
+                                "got {}.".format(self.outlier_params))
+
+        x = np.asarray(x)
+        y = np.asarray(y)
+
+        q = np.linspace(0, 1, self.n_bins + 1)
+        splits = np.unique(np.quantile(x, q))[1:-1]
+        n_bins = len(splits) + 1
+        indices = np.digitize(x, splits, right=False)
+
+        self._support = np.zeros(x.size, dtype=bool)
+        idx_support = np.arange(x.size)
+
+        if self.outlier_detector == "zscore":
+            detector = ModifiedZScoreDetector()
+        elif self.outlier_detector == "range":
+            detector = RangeDetector()
+
+        if self.outlier_params is not None:
+            detector.set_params(**self.outlier_params)
+
+        for i in range(n_bins):
+            mask_x = indices == i
+            detector.fit(y[mask_x])
+            mask_out = detector.get_support()
+            idx_out = idx_support[mask_x][mask_out]
+            self._support[idx_out] = True
 
         self._is_fitted = True

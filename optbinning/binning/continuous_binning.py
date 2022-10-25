@@ -118,9 +118,10 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
         raise ValueError("gamma must be >= 0; got {}.".format(gamma))
 
     if outlier_detector is not None:
-        if outlier_detector not in ("range", "zscore"):
+        if outlier_detector not in ("range", "zscore", "yquantile"):
             raise ValueError('Invalid value for outlier_detector. Allowed '
-                             'string values are "range" and "zscore".')
+                             'string values are "range", "zscore" and '
+                             '"yquantile".')
 
         if outlier_params is not None:
             if not isinstance(outlier_params, dict):

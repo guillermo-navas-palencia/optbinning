@@ -453,7 +453,7 @@ class BasePWBinning(Base, BaseEstimator):
             self.solver, self.h_epsilon, self.quantile, self.regularization,
             self.reg_l1, self.reg_l1, self.verbose)
 
-        optimizer.fit(x_subsamples, pred_subsamples, splits, lb, ub)
+        optimizer.fit(x_subsamples, pred_subsamples, splits, lb=lb, ub=ub)
 
         self._c = optimizer.coef_
 

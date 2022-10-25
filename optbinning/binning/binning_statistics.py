@@ -617,14 +617,16 @@ class BinningTable:
         add_missing : bool (default=True)
             Whether to add the special values bin.
 
-        style: str, optional (default="bin")
+        style : str, optional (default="bin")
             Plot style. style="bin" shows the standard binning plot. If
             style="actual", show the plot with the actual scale, i.e, actual
             bin widths.
 
-        show_bin_labels: bool (default=False)
+        show_bin_labels : bool (default=False)
             Whether to show the bin label instead of the bin id on the x-axis.
             For long labels (length > 27), labels are truncated.
+
+            .. versionadded:: 0.15.1
 
         savefig : str or None (default=None)
             Path to save the plot figure.
@@ -1203,9 +1205,11 @@ class MulticlassBinningTable:
         add_missing : bool (default=True)
             Whether to add the special values bin.
 
-        show_bin_labels: bool (default=False)
+        show_bin_labels : bool (default=False)
             Whether to show the bin label instead of the bin id on the x-axis.
             For long labels (length > 27), labels are truncated.
+
+            .. versionadded:: 0.15.1
 
         savefig : str or None (default=None)
             Path to save the plot figure.
@@ -1660,9 +1664,11 @@ class ContinuousBinningTable:
             style="actual", show the plot with the actual scale, i.e, actual
             bin widths.
 
-        show_bin_labels: bool (default=False)
+        show_bin_labels : bool (default=False)
             Whether to show the bin label instead of the bin id on the x-axis.
             For long labels (length > 27), labels are truncated.
+
+            .. versionadded:: 0.15.1
 
         savefig : str or None (default=None)
             Path to save the plot figure.

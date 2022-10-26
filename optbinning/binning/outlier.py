@@ -147,6 +147,11 @@ class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
         self.threshold = threshold
 
     def _fit(self, x, y=None):
+        if (not isinstance(self.threshold, numbers.Number) or
+                self.threshold < 0):
+            raise ValueError("threshold must be a value >= 0; got {}".
+                             format(self.threshold))
+
         x = np.asarray(x)
         median = np.median(x)
         mad = np.median(np.abs(x - median))
@@ -188,6 +193,10 @@ class YQuantileDetector(BaseEstimator, OutlierDetector):
             if not isinstance(self.outlier_params, dict):
                 raise TypeError("outlier_params must be a dict or None; "
                                 "got {}.".format(self.outlier_params))
+
+        if not isinstance(self.n_bins, numbers.Integral) or self.n_bins <= 0:
+            raise ValueError("bins must be a positive integer; got {}."
+                             .format(self.n_bins))
 
         x = np.asarray(x)
         y = np.asarray(y)

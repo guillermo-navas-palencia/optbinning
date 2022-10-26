@@ -158,6 +158,21 @@ class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
 
 
 class YQuantileDetector(BaseEstimator, OutlierDetector):
+    """Outlier detector on the y-axis over quantiles.
+
+    Parameters
+    ----------
+    outlier_detector : str or None, optional (default=None)
+        The outlier detection method. Supported methods are "range" to use
+        the interquartile range based method or "zcore" to use the modified
+        Z-score method.
+
+    outlier_params : dict or None, optional (default=None)
+        Dictionary of parameters to pass to the outlier detection method.
+
+    n_bins : int (default=5)
+        The maximum number of bins to consider.
+    """
     def __init__(self, outlier_detector="zscore",  outlier_params=None,
                  n_bins=5):
         self.outlier_detector = outlier_detector

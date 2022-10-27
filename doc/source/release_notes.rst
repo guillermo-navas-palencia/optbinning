@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+Version 0.16.1 (2022-11-28)
+---------------------------
+
+New features:
+
+   - Outlier detector``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
+
+Improvements
+
+   - Add support to solver SCS and HIGHS for optimal piecewise binning classes.
+   - Unit testing outlier detector methods.
+
+Bugfixes
+
+   - Pass ``lb`` and ``ub`` as a position arguments to RoPWR fit method (required since ropwr>=0.4.0).
+
+
 Version 0.16.0 (2022-10-24)
 ---------------------------
 

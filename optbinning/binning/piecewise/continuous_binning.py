@@ -104,8 +104,9 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
     outlier_detector : str or None, optional (default=None)
         The outlier detection method. Supported methods are "range" to use
-        the interquartile range based method or "zcore" to use the modified
-        Z-score method.
+        the interquartile range based method, "zcore" to use the modified
+        Z-score method or "yquantile" to use the y-axis detector over
+        quantiles.
 
     outlier_params : dict or None, optional (default=None)
         Dictionary of parameters to pass to the outlier detection method.
@@ -132,7 +133,9 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         <https://github.com/embotech/ecos>`_, `"osqp"
         <https://github.com/oxfordcontrol/osqp>`_, "direct", to choose the
         direct solver, and "auto", to choose the most appropriate solver for
-        the problem.
+        the problem. Version 0.16.1 added support to solvers
+        `"scs" <https://github.com/cvxgrp/scs>`_ and `"highs"
+        <https://github.com/ERGO-Code/HiGHS>`_.
 
     h_epsilon: float (default=1.35)
         The parameter h_epsilon used when ``objective="huber"``, controls the
@@ -339,15 +342,6 @@ class ContinuousOptimalPWBinning(BasePWBinning):
             logger.info("Post-processing: compute binning information.")
 
         time_postprocessing = time.perf_counter()
-
-        # Compute n_records and sum for special and missing
-        # self._n_records_special = len(y_special)
-        # self._sum_special = np.sum(y_special)
-        # self._n_zeros_special = np.count_nonzero(y_special == 0)
-        # if len(y_special):
-        #     self._std_special = np.std(y_special)
-        #     self._min_target_special = np.min(y_special)
-        #     self._max_target_special = np.max(y_special)
 
         [self._n_records_special, self._sum_special, self._n_zeros_special,
          self._std_special, self._min_target_special,

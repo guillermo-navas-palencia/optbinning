@@ -132,9 +132,10 @@ def _check_parameters(name, estimator, objective, degree, continuous,
                          'values are "all" and "consecutive".')
 
     if outlier_detector is not None:
-        if outlier_detector not in ("range", "zscore"):
+        if outlier_detector not in ("range", "zscore", "yquantile"):
             raise ValueError('Invalid value for outlier_detector. Allowed '
-                             'string values are "range" and "zscore".')
+                             'string values are "range", "zscore" and '
+                             '"yquantile".')
 
         if outlier_params is not None:
             if not isinstance(outlier_params, dict):
@@ -171,9 +172,10 @@ def _check_parameters(name, estimator, objective, degree, continuous,
             raise ValueError("split_digist must be an integer in [0, 8]; "
                              "got {}.".format(split_digits))
 
-    if solver not in ("auto", "ecos", "osqp", "direct"):
+    if solver not in ("auto", "ecos", "osqp", "direct", "scs", "highs"):
         raise ValueError('Invalid value for solver. Allowed string '
-                         'values are "auto", "ecos", "osqp" and "direct".')
+                         'values are "auto", "ecos", "osqp", "direct", '
+                         '"scs" and "highs".')
 
     if not isinstance(h_epsilon, numbers.Number) or h_epsilon < 1.0:
         raise ValueError("h_epsilon must a number >= 1.0; got {}."
@@ -453,7 +455,7 @@ class BasePWBinning(Base, BaseEstimator):
             self.solver, self.h_epsilon, self.quantile, self.regularization,
             self.reg_l1, self.reg_l1, self.verbose)
 
-        optimizer.fit(x_subsamples, pred_subsamples, splits, lb, ub)
+        optimizer.fit(x_subsamples, pred_subsamples, splits, lb=lb, ub=ub)
 
         self._c = optimizer.coef_
 

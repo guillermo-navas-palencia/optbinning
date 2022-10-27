@@ -17,3 +17,9 @@ Outlier detection
    :members:
    :inherited-members:
    :show-inheritance:
+
+
+.. autoclass:: optbinning.binning.outlier.YQuantileDetector
+   :members:
+   :inherited-members:
+   :show-inheritance:

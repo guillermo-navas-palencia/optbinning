@@ -15,7 +15,7 @@ Improvements
 
 Bugfixes
 
-   - Pass ``lb`` and ``ub`` as a position arguments to RoPWR fit method (required since ropwr>=0.4.0).
+   - Pass ``lb`` and ``ub`` as keyword arguments to RoPWR fit method (required since ropwr>=0.4.0).
 
 
 Version 0.16.0 (2022-10-24)

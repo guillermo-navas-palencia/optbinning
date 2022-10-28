@@ -6,7 +6,7 @@ Version 0.16.1 (2022-11-28)
 
 New features:
 
-   - Outlier detector``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
+   - Outlier detector ``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
 
 Improvements
 

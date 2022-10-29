@@ -93,8 +93,22 @@ def find_pvalue_violation_indices_continuous(n, U, S, R, max_pvalue,
     return pvalue_violation_indices
 
 
+def find_min_diff_violation_indices(n, X, min_diff):
+    min_diff_violation_indices = []
+
+    for i in range(n - 1):
+        for k in range(i + 1):
+            x = X[i][k]
+            for j in range(i + 1, n):
+                x2 = X[j][i + 1]
+                if abs(x - x2) <= min_diff:
+                    min_diff_violation_indices.append(([i, k], [j, i+1]))
+
+    return min_diff_violation_indices
+
+
 def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
-               scale=None, return_nonevent_event=False):
+               min_event_rate_diff, scale=None, return_nonevent_event=False):
     n = len(n_nonevent)
 
     t_n_event = n_event.sum()
@@ -143,10 +157,21 @@ def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
     else:
         pvalue_violation_indices = []
 
+    if min_event_rate_diff > 0:
+        if scale is not None:
+            min_diff = int(min_event_rate_diff * scale)
+        else:
+            min_diff = min_event_rate_diff
+
+        min_diff_violation_indices = find_min_diff_violation_indices(
+            n, D, min_diff)
+    else:
+        min_diff_violation_indices = []
+
     if return_nonevent_event:
         return D, V, NE, E, pvalue_violation_indices
 
-    return D, V, pvalue_violation_indices
+    return D, V, pvalue_violation_indices, min_diff_violation_indices
 
 
 def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
@@ -205,7 +230,7 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
 
 def continuous_model_data(n_records, sums, ssums, max_pvalue,
-                          max_pvalue_policy, scale=None):
+                          max_pvalue_policy, min_mean_diff, scale=None):
 
     n = len(n_records)
 
@@ -250,4 +275,15 @@ def continuous_model_data(n_records, sums, ssums, max_pvalue,
     else:
         pvalue_violation_indices = []
 
-    return U, V, pvalue_violation_indices
+    if min_mean_diff > 0:
+        if scale is not None:
+            min_diff = int(min_mean_diff * scale)
+        else:
+            min_diff = min_mean_diff
+
+        min_diff_violation_indices = find_min_diff_violation_indices(
+            n, U, min_diff)
+    else:
+        min_diff_violation_indices = []
+
+    return U, V, pvalue_violation_indices, min_diff_violation_indices

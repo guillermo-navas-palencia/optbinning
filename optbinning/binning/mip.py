@@ -47,9 +47,11 @@ class BinningMIP:
 
     def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
-        D, V, pvalue_violation_indices = model_data(divergence, n_nonevent,
-                                                    n_event, self.max_pvalue,
-                                                    self.max_pvalue_policy)
+        [D, V, pvalue_violation_indices,
+         min_diff_violation_indices] = model_data(
+            divergence, n_nonevent, n_event, self.max_pvalue,
+            self.max_pvalue_policy, self.min_event_rate_diff)
+
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
 
@@ -164,6 +166,9 @@ class BinningMIP:
 
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(solver, x, pvalue_violation_indices)
+
+        # Constraint: min diff
+        self.add_min_diff_constraint(solver, x, min_diff_violation_indices)
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(solver, n, x)
@@ -281,8 +286,7 @@ class BinningMIP:
                                 for j in range(z)]) +
                     D[z][z] * x[z, z] - 1 - (D[i][i] - 1) * x[i, i] -
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                                for j in range(i)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(i)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -301,8 +305,7 @@ class BinningMIP:
                                 for j in range(i)]) + D[i][i] * x[i, i] -
                     1 - (D[z][z] - 1) * x[z, z] -
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                                for j in range(z)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(z)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -389,8 +392,7 @@ class BinningMIP:
                                 for j in range(z)]) +
                     D[z][z] * x[z, z] - 1 - (D[i][i] - 1) * x[i, i] -
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                                for j in range(i)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(i)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -408,8 +410,7 @@ class BinningMIP:
                                 for j in range(i)]) + D[i][i] * x[i, i] -
                     1 - (D[z][z] - 1) * x[z, z] -
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                                for j in range(z)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(z)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -428,8 +429,7 @@ class BinningMIP:
                                 for j in range(i)]) + D[i][i] * x[i, i] -
                     1 - (D[z][z] - 1) * x[z, z] -
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                                for j in range(z)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(z)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -447,8 +447,7 @@ class BinningMIP:
                                 for j in range(z)]) +
                     D[z][z] * x[z, z] - 1 - (D[i][i] - 1) * x[i, i] -
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                                for j in range(i)]) +
-                    self.min_event_rate_diff * (x[i, i] + x[z, z] - 1) <= 0)
+                                for j in range(i)]) <= 0)
 
         # Preprocessing
         if self.min_event_rate_diff == 0:
@@ -461,6 +460,10 @@ class BinningMIP:
 
     def add_max_pvalue_constraint(self, solver, x, pvalue_violation_indices):
         for ind1, ind2 in pvalue_violation_indices:
+            solver.Add(x[ind1[0], ind1[1]] + x[ind2[0], ind2[1]] <= 1)
+
+    def add_min_diff_constraint(self, solver, x, min_diff_violation_indices):
+        for ind1, ind2 in min_diff_violation_indices:
             solver.Add(x[ind1[0], ind1[1]] + x[ind2[0], ind2[1]] <= 1)
 
     def add_constraint_fixed_splits(self, solver, n, x):

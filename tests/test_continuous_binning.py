@@ -221,6 +221,18 @@ def test_numerical_max_pvalue():
                                   rel=1e-6)
 
 
+def test_min_mean_diff():
+    min_mean_diff = 2
+
+    optb = ContinuousOptimalBinning(
+        monotonic_trend=None, min_mean_diff=min_mean_diff)
+    optb.fit(x, y)
+
+    mean = optb.binning_table.build()['Mean'].values[:-3]
+    min_diff = np.absolute(mean[1:] - mean[:-1])
+    assert np.all(min_diff >= min_mean_diff)
+
+
 def test_auto_modes():
     x = df["INDUS"].values
 

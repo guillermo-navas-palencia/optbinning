@@ -235,9 +235,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         is disabled.
 
     min_mean_diff : float, optional (default=0)
-        The minimum mean difference between consecutives bins. This
-        option currently only applies when ``monotonic_trend`` is "ascending"
-        or "descending".
+        The minimum mean difference between consecutives bins.
 
     max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The T-test is used to detect bins

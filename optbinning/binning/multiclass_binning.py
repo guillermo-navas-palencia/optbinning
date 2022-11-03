@@ -32,10 +32,11 @@ logger = Logger(__name__).logger
 
 def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
-                      max_bin_size, monotonic_trend, max_pvalue,
-                      max_pvalue_policy, outlier_detector, outlier_params,
-                      user_splits, user_splits_fixed, special_codes,
-                      split_digits, mip_solver, time_limit, verbose):
+                      max_bin_size, monotonic_trend, min_event_rate_diff,
+                      max_pvalue, max_pvalue_policy, outlier_detector,
+                      outlier_params, user_splits, user_splits_fixed,
+                      special_codes, split_digits, mip_solver, time_limit,
+                      verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -109,6 +110,11 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
                                         "auto_asc_desc")):
             raise ValueError("Invalid value for monotonic trend; got {}."
                              .format(monotonic_trend))
+
+    if (not isinstance(min_event_rate_diff, numbers.Number) or
+            not 0. <= min_event_rate_diff <= 1.0):
+        raise ValueError("min_event_rate_diff must be in [0, 1]; got {}."
+                         .format(min_event_rate_diff))
 
     if max_pvalue is not None:
         if (not isinstance(max_pvalue, numbers.Number) or
@@ -234,6 +240,11 @@ class MulticlassOptimalBinning(OptimalBinning):
         "peak_heuristic", "valley_heuristic" and None, one for each class.
         If None, then the monotonic constraint is disabled.
 
+    min_event_rate_diff : float, optional (default=0)
+        The minimum event rate difference between consecutives bins.
+
+        .. versionadded:: 0.17.0
+
     max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins
         not satisfying the p-value constraint.
@@ -296,7 +307,8 @@ class MulticlassOptimalBinning(OptimalBinning):
     def __init__(self, name="", prebinning_method="cart", solver="cp",
                  max_n_prebins=20, min_prebin_size=0.05,
                  min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, monotonic_trend="auto", max_pvalue=None,
+                 max_bin_size=None, monotonic_trend="auto",
+                 min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, mip_solver="bop",
@@ -316,6 +328,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         self.max_bin_size = max_bin_size
 
         self.monotonic_trend = monotonic_trend
+        self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
 
@@ -729,14 +742,18 @@ class MulticlassOptimalBinning(OptimalBinning):
         if self.solver == "cp":
             optimizer = MulticlassBinningCP(monotonic, self.min_n_bins,
                                             self.max_n_bins, min_bin_size,
-                                            max_bin_size, self.max_pvalue,
+                                            max_bin_size,
+                                            self.min_event_rate_diff,
+                                            self.max_pvalue,
                                             self.max_pvalue_policy,
                                             self.user_splits_fixed,
                                             self.time_limit)
         else:
             optimizer = MulticlassBinningMIP(monotonic, self.min_n_bins,
                                              self.max_n_bins, min_bin_size,
-                                             max_bin_size, self.max_pvalue,
+                                             max_bin_size,
+                                             self.min_event_rate_diff,
+                                             self.max_pvalue,
                                              self.max_pvalue_policy,
                                              self.mip_solver,
                                              self.user_splits_fixed,

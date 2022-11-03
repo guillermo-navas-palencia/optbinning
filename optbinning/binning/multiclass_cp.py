@@ -14,8 +14,8 @@ from .model_data import multiclass_model_data
 
 class MulticlassBinningCP(BinningCP):
     def __init__(self, monotonic_trend, min_n_bins, max_n_bins, min_bin_size,
-                 max_bin_size, max_pvalue, max_pvalue_policy,
-                 user_splits_fixed, time_limit):
+                 max_bin_size, min_event_rate_diff, max_pvalue,
+                 max_pvalue_policy, user_splits_fixed, time_limit):
 
         self.monotonic_trend = monotonic_trend
 
@@ -24,12 +24,11 @@ class MulticlassBinningCP(BinningCP):
         self.min_bin_size = min_bin_size
         self.max_bin_size = max_bin_size
 
+        self.min_event_rate_diff = min_event_rate_diff
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
         self.user_splits_fixed = user_splits_fixed
         self.time_limit = time_limit
-
-        self.min_event_rate_diff = 0
 
         self.solver_ = None
 
@@ -40,8 +39,10 @@ class MulticlassBinningCP(BinningCP):
     def build_model(self, n_nonevent, n_event, trend_changes):
         # Parameters
         M = int(1e6)
-        D, V, pvalue_violation_indices = multiclass_model_data(
-            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy, M)
+        (D, V, pvalue_violation_indices,
+         min_diff_violation_indices) = multiclass_model_data(
+            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy,
+            self.min_event_rate_diff, M)
 
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
@@ -101,10 +102,15 @@ class MulticlassBinningCP(BinningCP):
                 self.add_constraint_monotonic_valley_heuristic(
                     model, n, D[c], x, trend_changes[c], M)
 
-        # constraint: max-pvalue
+        # Constraint: max-pvalue
         for c in range(n_classes):
             self.add_max_pvalue_constraint(model, x,
                                            pvalue_violation_indices[c])
+
+        # Constraint: min diff
+        for c in range(n_classes):
+            self.add_min_diff_constraint(model, x,
+                                         min_diff_violation_indices[c])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)

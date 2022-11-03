@@ -175,13 +175,14 @@ def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
 
 
 def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
-                          scale=None):
+                          min_event_rate_diff, scale=None):
 
     n, n_classes = n_nonevent.shape
 
     DD = []
-    PV = []
     VV = []
+    PV = []
+    MD = []
 
     for c in range(n_classes):
         t_n_event = n_event[:, c].sum()
@@ -222,11 +223,23 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
         else:
             pvalue_violation_indices = []
 
+        if min_event_rate_diff > 0:
+            if scale is not None:
+                min_diff = int(min_event_rate_diff * scale)
+            else:
+                min_diff = min_event_rate_diff
+
+            min_diff_violation_indices = find_min_diff_violation_indices(
+                n, D, min_diff)
+        else:
+            min_diff_violation_indices = []
+
         DD.append(D)
         VV.append(V)
         PV.append(pvalue_violation_indices)
+        MD.append(min_diff_violation_indices)
 
-    return DD, VV, PV
+    return DD, VV, PV, MD
 
 
 def continuous_model_data(n_records, sums, ssums, max_pvalue,

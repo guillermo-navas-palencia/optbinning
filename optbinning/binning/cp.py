@@ -49,8 +49,8 @@ class BinningCP:
     def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
-        [D, V, pvalue_violation_indices,
-         min_diff_violation_indices] = model_data(
+        (D, V, pvalue_violation_indices,
+         min_diff_violation_indices) = model_data(
             divergence, n_nonevent, n_event, self.max_pvalue,
             self.max_pvalue_policy, self.min_event_rate_diff, M)
 
@@ -173,8 +173,10 @@ class BinningCP:
     def build_model_scenarios(self, n_nonevent, n_event, w):
         # Parameters
         M = int(1e6)
-        D, V, pvalue_violation_indices = multiclass_model_data(
-            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy, M)
+        (D, V, pvalue_violation_indices,
+         min_diff_violation_indices) = multiclass_model_data(
+            n_nonevent, n_event, self.max_pvalue, self.max_pvalue_policy,
+            self.min_event_rate_diff, M)
 
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
@@ -243,6 +245,11 @@ class BinningCP:
         for s in range(n_scenarios):
             self.add_max_pvalue_constraint(model, x,
                                            pvalue_violation_indices[s])
+
+        # Constraint: min diff
+        for s in range(n_scenarios):
+            self.add_min_diff_constraint(model, x,
+                                         min_diff_violation_indices[s])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)

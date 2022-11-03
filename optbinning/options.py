@@ -50,6 +50,7 @@ multiclass_optimal_binning_default_options = {
     "min_bin_size": None,
     "max_bin_size": None,
     "monotonic_trend": "auto",
+    "min_event_rate_diff": 0,
     "max_pvalue": None,
     "max_pvalue_policy": "consecutive",
     "user_splits": None,

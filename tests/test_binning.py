@@ -436,6 +436,19 @@ def test_numerical_prebinning_kwargs():
     assert optb_kwargs.binning_table.iv == approx(4.37337682, rel=1e-6)
 
 
+def test_min_event_rate_diff():
+    min_event_rate_diff = 0.01
+
+    for solver, mip_solver in (('cp', 'bop'), ('mip', 'bop'), ('mip', 'cbc')):
+        optb = OptimalBinning(solver=solver, mip_solver=mip_solver,
+                              min_event_rate_diff=min_event_rate_diff)
+        optb.fit(x, y)
+
+        event_rate = optb.binning_table.build()['Event rate'].values[:-3]
+        min_diff = np.absolute(event_rate[1:] - event_rate[:-1])
+        assert np.all(min_diff >= min_event_rate_diff)
+
+
 def test_numerical_default_transform():
     optb = OptimalBinning()
     with raises(NotFittedError):

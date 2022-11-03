@@ -49,9 +49,9 @@ class BinningLS:
     def build_model(self, divergence, n_nonevent, n_event, trend_change):
         # Parameters
         M = int(1e6)
-        D, V, NE, E, pvalue_violation_indices = model_data(
+        D, V, NE, E, _, _ = model_data(
             divergence, n_nonevent, n_event, self.max_pvalue,
-            self.max_pvalue_policy, M, True)
+            self.max_pvalue_policy, self.min_event_rate_diff, M, True)
 
         n = len(n_nonevent)
 

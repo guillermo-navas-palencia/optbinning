@@ -101,7 +101,7 @@ def find_min_diff_violation_indices(n, X, min_diff):
             x = X[i][k]
             for j in range(i + 1, n):
                 x2 = X[j][i + 1]
-                if abs(x - x2) <= min_diff:
+                if abs(x - x2) < min_diff:
                     min_diff_violation_indices.append(([i, k], [j, i+1]))
 
     return min_diff_violation_indices

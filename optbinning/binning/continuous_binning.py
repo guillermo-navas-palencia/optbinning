@@ -395,7 +395,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, check_input=False):
+    def fit(self, x, y, sample_weight=None, check_input=False):
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -406,6 +406,11 @@ class ContinuousOptimalBinning(OptimalBinning):
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
 
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
+
         check_input : bool (default=False)
             Whether to check input arrays.
 
@@ -414,10 +419,11 @@ class ContinuousOptimalBinning(OptimalBinning):
         self : ContinuousOptimalBinning
             Fitted optimal binning.
         """
-        return self._fit(x, y, check_input)
+        return self._fit(x, y, sample_weight, check_input)
 
-    def fit_transform(self, x, y, metric="mean", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(self, x, y, sample_weight=None, metric="mean",
+                      metric_special=0, metric_missing=0, show_digits=2,
+                      check_input=False):
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -428,6 +434,11 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         y : array-like, shape = (n_samples,)
             Target vector relative to x.
+
+        sample_weight : array-like of shape (n_samples,) (default=None)
+            Array of weights that are assigned to individual samples.
+            If not provided, then each sample is given unit weight.
+            Only applied if ``prebinning_method="cart"``.
 
         metric : str (default="mean"):
             The metric used to transform the input vector. Supported metrics
@@ -457,7 +468,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         x_new : numpy array, shape = (n_samples,)
             Transformed array.
         """
-        return self.fit(x, y, check_input).transform(
+        return self.fit(x, y, sample_weight, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
@@ -514,7 +525,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                                            metric_missing, self.user_splits,
                                            show_digits, check_input)
 
-    def _fit(self, x, y, check_input):
+    def _fit(self, x, y, sample_weight, check_input):
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -536,10 +547,11 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         y_others, categories, cat_others, _, _, _, _] = split_data(
+         y_others, categories, cat_others, sw_clean, sw_missing, sw_special,
+         sw_others] = split_data(
             self.dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params)
+            self.outlier_params, None, None, None, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -610,9 +622,9 @@ class ContinuousOptimalBinning(OptimalBinning):
                     user_splits = user_splits[sorted_idx]
                 else:
                     [categories, user_splits, x_clean, y_clean, y_others,
-                     cat_others, _, _, sorted_idx
+                     cat_others, sw_clean, sw_others, sorted_idx
                      ] = preprocessing_user_splits_categorical(
-                        self.user_splits, x_clean, y_clean, None)
+                        self.user_splits, x_clean, y_clean, sw_clean)
 
                 if self.user_splits_fixed is not None:
                     self.user_splits_fixed = np.asarray(
@@ -621,11 +633,13 @@ class ContinuousOptimalBinning(OptimalBinning):
                 [splits, n_records, sums, ssums, stds, min_t, max_t,
                  n_zeros] = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, x_special,
-                    y_special, y_others)
+                    y_special, y_others, sw_clean, sw_missing, sw_special,
+                    sw_others)
         else:
             [splits, n_records, sums, ssums, stds, min_t, max_t,
              n_zeros] = self._fit_prebinning(
-                x_clean, y_clean, y_missing, x_special, y_special, y_others)
+                x_clean, y_clean, y_missing, x_special, y_special, y_others,
+                None, sw_clean, sw_missing, sw_special, sw_others)
 
         self._n_prebins = len(n_records)
 
@@ -652,8 +666,14 @@ class ContinuousOptimalBinning(OptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_records = n_records.sum()
-            sums = sums.sum()
+            n_records = np.sum(sw_clean)
+            sw_y_clean = sw_clean * y_clean
+            sums = np.sum(sw_y_clean)
+            ssums = np.sum(sw_y_clean ** 2)
+            n_zeros = np.count_nonzero(sw_y_clean == 0)
+            stds = np.std(sw_y_clean)
+            min_t = np.min(sw_y_clean)
+            max_t = np.max(sw_y_clean)
 
         [self._n_records, self._sums, self._stds, self._min_target,
          self._max_target, self._n_zeros] = continuous_bin_info(
@@ -806,24 +826,19 @@ class ContinuousOptimalBinning(OptimalBinning):
                         .format(self._time_solver))
 
     def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               x_special, y_special, y_others, sw_clean=None,
-                               sw_missing=None, sw_special=None,
-                               sw_others=None):
-        n_splits = len(splits_prebinning)
-
-        if not n_splits:
-            return splits_prebinning, np.array([]), np.array([])
-
-        if self.split_digits is not None:
-            splits_prebinning = np.round(splits_prebinning, self.split_digits)
+                               x_special, y_special, y_others, sw_clean,
+                               sw_missing, sw_special, sw_others):
 
         # Compute n_records, sum and std for special, missing and others
         [self._n_records_special, self._sum_special, self._n_zeros_special,
          self._std_special, self._min_target_special,
          self._max_target_special] = target_info_special_continuous(
-            self.special_codes, x_special, y_special)
+            self.special_codes, x_special, y_special, sw_special)
 
-        self._n_records_missing = len(y_missing)
+        if len(sw_missing):
+            y_missing *= sw_missing
+
+        self._n_records_missing = np.sum(sw_missing)
         self._sum_missing = np.sum(y_missing)
         self._n_zeros_missing = np.count_nonzero(y_missing == 0)
         if len(y_missing):
@@ -832,20 +847,33 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._max_target_missing = np.max(y_missing)
 
         if len(y_others):
-            self._n_records_cat_others = len(y_others)
+            if len(sw_others):
+                y_others *= sw_others
+
+            self._n_records_cat_others = np.sum(sw_others)
             self._sum_cat_others = np.sum(y_others)
             self._std_cat_others = np.std(y_others)
             self._min_target_others = np.min(y_others)
             self._max_target_others = np.max(y_others)
             self._n_zeros_others = np.count_nonzero(y_others == 0)
 
+        n_splits = len(splits_prebinning)
+
+        if not n_splits:
+            return (splits_prebinning, np.array([]), np.array([]),
+                    np.array([]), np.array([]), np.array([]), np.array([]),
+                    np.array([]))
+
+        if self.split_digits is not None:
+            splits_prebinning = np.round(splits_prebinning, self.split_digits)
+
         (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
-         n_zeros) = self._compute_prebins(splits_prebinning, x, y)
+         n_zeros) = self._compute_prebins(splits_prebinning, x, y, sw_clean)
 
         return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
                 n_zeros)
 
-    def _compute_prebins(self, splits_prebinning, x, y):
+    def _compute_prebins(self, splits_prebinning, x, y, sw):
         n_splits = len(splits_prebinning)
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
@@ -868,8 +896,8 @@ class ContinuousOptimalBinning(OptimalBinning):
         # Compute prebin information
         for i in range(n_bins):
             mask = (indices == i)
-            n_records[i] = np.count_nonzero(mask)
-            ymask = y[mask]
+            n_records[i] = np.sum(sw[mask])
+            ymask = sw[mask] * y[mask]
             sums[i] = np.sum(ymask)
             ssums[i] = np.sum(ymask ** 2)
             n_zeros[i] = np.count_nonzero(ymask == 0)
@@ -912,7 +940,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                             .format(np.count_nonzero(mask_remove)))
 
             (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
-             n_zeros) = self._compute_prebins(splits, x, y)
+             n_zeros) = self._compute_prebins(splits, x, y, sw)
 
         return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
                 n_zeros)

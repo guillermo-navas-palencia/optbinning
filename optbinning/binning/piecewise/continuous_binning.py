@@ -303,7 +303,8 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         _, _, _, _, _, _, _] = self._fit_preprocessing(x, y, check_input)
+         _, _, _, _, _, sw_special, _] = self._fit_preprocessing(
+            x, y, check_input)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -346,7 +347,7 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         [self._n_records_special, self._sum_special, self._n_zeros_special,
          self._std_special, self._min_target_special,
          self._max_target_special] = target_info_special_continuous(
-            self.special_codes, x_special, y_special)
+            self.special_codes, x_special, y_special, sw_special)
 
         self._n_records_missing = len(y_missing)
         self._sum_missing = np.sum(y_missing)

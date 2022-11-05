@@ -202,17 +202,17 @@ def target_info_special_continuous(special_codes, x, y, sw):
                 max_target_special.append(0)
     else:
         if len(sw):
-            wy = sw * y
+            sw_y = sw * y
         else:
-            wy = y
+            sw_y = y
 
         n_records_special = np.sum(sw)
-        sum_special = np.sum(wy)
-        n_zeros_special = np.count_nonzero(wy == 0)
+        sum_special = np.sum(sw_y)
+        n_zeros_special = np.count_nonzero(sw_y == 0)
         if len(y):
-            std_special = np.std(wy)
-            min_target_special = np.min(wy)
-            max_target_special = np.max(wy)
+            std_special = np.std(sw_y)
+            min_target_special = np.min(sw_y)
+            max_target_special = np.max(sw_y)
         else:
             std_special = None
             min_target_special = None

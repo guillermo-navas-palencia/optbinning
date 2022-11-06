@@ -165,7 +165,7 @@ def target_info_special_multiclass(special_codes, x, y, classes):
     return n_event
 
 
-def target_info_special_continuous(special_codes, x, y):
+def target_info_special_continuous(special_codes, x, y, sw):
     if isinstance(special_codes, dict):
         n_records_special = []
         sum_special = []
@@ -185,27 +185,34 @@ def target_info_special_continuous(special_codes, x, y):
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
 
-            n_records = np.count_nonzero(mask)
+            n_records = np.sum(sw[mask])
             n_records_special.append(n_records)
-            sum_special.append(np.sum(y[mask]))
-            n_zeros_special.append(np.count_nonzero(y[mask] == 0))
+
+            ymask = sw[mask] * y[mask]
+            sum_special.append(np.sum(ymask))
+            n_zeros_special.append(np.count_nonzero(ymask == 0))
 
             if n_records:
-                std_special.append(np.std(y[mask]))
-                min_target_special.append(np.min(y[mask]))
-                max_target_special.append(np.max(y[mask]))
+                std_special.append(np.std(ymask))
+                min_target_special.append(np.min(ymask))
+                max_target_special.append(np.max(ymask))
             else:
                 std_special.append(0)
                 min_target_special.append(0)
                 max_target_special.append(0)
     else:
-        n_records_special = len(y)
-        sum_special = np.sum(y)
-        n_zeros_special = np.count_nonzero(y == 0)
+        if len(sw):
+            sw_y = sw * y
+        else:
+            sw_y = y
+
+        n_records_special = np.sum(sw)
+        sum_special = np.sum(sw_y)
+        n_zeros_special = np.count_nonzero(sw_y == 0)
         if len(y):
-            std_special = np.std(y)
-            min_target_special = np.min(y)
-            max_target_special = np.max(y)
+            std_special = np.std(sw_y)
+            min_target_special = np.min(sw_y)
+            max_target_special = np.max(sw_y)
         else:
             std_special = None
             min_target_special = None

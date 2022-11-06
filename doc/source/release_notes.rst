@@ -1,12 +1,27 @@
 Release Notes
 =============
 
-Version 0.16.1 (2022-11-28)
+Version 0.17.1 (2022-11-06)
 ---------------------------
 
 New features:
 
-   - Outlier detector``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
+   - Optimize formulation of minimum difference constraints for all optimal binning classes and support these constraints regardless of the monotonic trend (`Issue 201 <https://github.com/guillermo-navas-palencia/optbinning/issues/201>`_).
+
+   - Implementation of sample weight for ``ContinuousOptimalBinning`` (`Issue 131 <https://github.com/guillermo-navas-palencia/optbinning/issues/131>`_).
+
+
+Bugfixes:
+
+   - Fix ``ContinuousOptimalBinning`` prebinning step when no prebinning splits were generated (`Issue 205 <https://github.com/guillermo-navas-palencia/optbinning/issues/205>`_).
+
+
+Version 0.16.1 (2022-10-28)
+---------------------------
+
+New features:
+
+   - Outlier detector ``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
 
 Improvements
 

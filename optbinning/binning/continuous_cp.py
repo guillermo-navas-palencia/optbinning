@@ -42,8 +42,10 @@ class ContinuousBinningCP(BinningCP):
     def build_model(self, n_records, sums, ssums, trend_change):
         # Parameters
         M = int(1e6)
-        U, V, pvalue_violation_indices = continuous_model_data(
-            n_records, sums, ssums, self.max_pvalue, self.max_pvalue_policy, M)
+        [U, V, pvalue_violation_indices,
+         min_diff_violation_indices] = continuous_model_data(
+            n_records, sums, ssums, self.max_pvalue, self.max_pvalue_policy,
+            self.min_mean_diff, M)
 
         n = len(n_records)
 
@@ -115,6 +117,9 @@ class ContinuousBinningCP(BinningCP):
         # Constraint: max-pvalue
         self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
 
+        # Constraint: min diff
+        self.add_min_diff_constraint(model, x, min_diff_violation_indices)
+
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)
 
@@ -123,7 +128,6 @@ class ContinuousBinningCP(BinningCP):
         self._n = n
 
     def add_constraint_monotonic_ascending(self, model, n, U, x, M):
-        min_mean_diff = int(M * self.min_mean_diff)
         for i in range(1, n):
             for z in range(i):
                 model.Add(
@@ -131,11 +135,10 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
                     sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + min_mean_diff <= 0
+                         for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_descending(self, model, n, U, x, M):
-        min_mean_diff = int(M * self.min_mean_diff)
         for i in range(1, n):
             for z in range(i):
                 model.Add(
@@ -143,7 +146,7 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(i)]) + U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
                     sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) + min_mean_diff <= 0
+                         for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_concave(self, model, n, U, x):
@@ -213,7 +216,6 @@ class ContinuousBinningCP(BinningCP):
                     U[i][i] * x[i, i] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_peak_heuristic(self, model, n, U, x, tc, M):
-        min_mean_diff = int(M * self.min_mean_diff)
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
@@ -221,7 +223,7 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
                     sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + min_mean_diff <= 0
+                         for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
         for i in range(tc, n):
@@ -231,11 +233,10 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(i)]) + U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
                     sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) + min_mean_diff <= 0
+                         for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, U, x, tc, M):
-        min_mean_diff = int(M * self.min_mean_diff)
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
@@ -243,7 +244,7 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(i)]) + U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
                     sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) + min_mean_diff <= 0
+                         for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
         for i in range(tc, n):
@@ -253,5 +254,5 @@ class ContinuousBinningCP(BinningCP):
                          for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
                     sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + min_mean_diff <= 0
+                         for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])

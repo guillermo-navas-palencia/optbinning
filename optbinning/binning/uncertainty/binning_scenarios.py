@@ -220,9 +220,7 @@ class SBOptimalBinning(OptimalBinning):
         the monotonic constraint is disabled.
 
     min_event_rate_diff : float, optional (default=0)
-        The minimum event rate difference between consecutives bins. This
-        option currently only applies when ``monotonic_trend`` is "ascending",
-        "descending", "peak_heuristic" or "valley_heuristic".
+        The minimum event rate difference between consecutives bins.
 
     max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins. The Z-test is used to detect bins

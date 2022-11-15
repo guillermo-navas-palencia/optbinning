@@ -346,12 +346,10 @@ class Scorecard(Base, BaseEstimator):
         pred: array of shape (n_samples)
             The predicted target values.
         """
-        self._check_is_fitted()
-
-        X_t = X[self.binning_process_.variable_names]
-        X_t = self.binning_process_.transform(
-            X, metric_special=self._metric_special,
+        X_t = self._transform(
+            X=X, metric=None, metric_special=self._metric_special,
             metric_missing=self._metric_missing)
+
         return self.estimator_.predict(X_t)
 
     def predict_proba(self, X):
@@ -368,13 +366,32 @@ class Scorecard(Base, BaseEstimator):
         p: array of shape (n_samples, n_classes)
             The class probabilities of the input samples.
         """
-        self._check_is_fitted()
-
-        X_t = X[self.binning_process_.variable_names]
-        X_t = self.binning_process_.transform(
-            X, metric_special=self._metric_special,
+        X_t = self._transform(
+            X=X, metric=None, metric_special=self._metric_special,
             metric_missing=self._metric_missing)
+
         return self.estimator_.predict_proba(X_t)
+
+    def decision_function(self, X):
+        """Predict confidence scores for samples.
+        The confidence score for a sample is proportional to the signed
+        distance of that sample to the hyperplane.
+
+        Parameters
+        ----------
+        X : pandas.DataFrame (n_samples, n_features)
+            The data matrix for which we want to get the confidence scores.
+
+        Returns
+        -------
+        scores : array of shape (n_samples, n_classes)
+            Confidence scores per (n_samples, n_classes) combination.
+        """
+        X_t = self._transform(
+            X=X, metric=None, metric_special=self._metric_special,
+            metric_missing=self._metric_missing)
+
+        return self.estimator_.decision_function(X_t)
 
     def score(self, X):
         """Score of the dataset.
@@ -389,11 +406,8 @@ class Scorecard(Base, BaseEstimator):
         score: array of shape (n_samples)
             The score of the input samples.
         """
-        self._check_is_fitted()
-
-        X_t = X[self.binning_process_.variable_names]
-        X_t = self.binning_process_.transform(
-            X_t, metric="indices", metric_special="empirical",
+        X_t = self._transform(
+            X=X, metric="indices", metric_special="empirical",
             metric_missing="empirical")
 
         score_ = np.zeros(X_t.shape[0])
@@ -554,7 +568,7 @@ class Scorecard(Base, BaseEstimator):
         # Get coefs
         intercept = 0
         if hasattr(self.estimator_, 'coef_'):
-            coefs = self.estimator_.coef_
+            coefs = self.estimator_.coef_.flatten()
             if hasattr(self.estimator_, 'intercept_'):
                 intercept = self.estimator_.intercept_
         else:
@@ -573,7 +587,7 @@ class Scorecard(Base, BaseEstimator):
             optb = self.binning_process_.get_binned_variable(variable)
             binning_table = optb.binning_table.build(
                 show_digits=show_digits, add_totals=False)
-            c = coefs.ravel()[i]
+            c = coefs[i]
             binning_table.loc[:, "Variable"] = variable
             binning_table.loc[:, "Coefficient"] = c
             binning_table.loc[:, "Points"] = binning_table[bt_metric] * c
@@ -652,3 +666,12 @@ class Scorecard(Base, BaseEstimator):
         self._is_fitted = True
 
         return self
+
+    def _transform(self, X, metric, metric_special, metric_missing):
+        self._check_is_fitted()
+
+        X_t = self.binning_process_.transform(
+            X=X[self.binning_process_.variable_names], metric=metric,
+            metric_special=metric_special, metric_missing=metric_missing)
+
+        return X_t

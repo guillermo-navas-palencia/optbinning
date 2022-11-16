@@ -97,6 +97,17 @@ def _check_show_digits(show_digits):
                          "got {}.".format(show_digits))
 
 
+def _check_cat_unknown(metric, cat_unknown):
+    if cat_unknown is not None:
+        if not isinstance(cat_unknown, str) and metric == "bins":
+            raise ValueError("Invalid value for cat_unknown. cat_unknown "
+                             "must be string if metric='bins'.")
+
+        if not isinstance(cat_unknown, int) and metric == "indices":
+            raise ValueError("Invalid value for cat_unknown. cat_unknown "
+                             "must be an integer if metric='indices'.")
+
+
 def _retrieve_special_codes(special_codes):
     _special_codes = []
     for s in special_codes.values():
@@ -133,10 +144,17 @@ def _mask_special_missing(x, special_codes):
 
 
 def _transform_metric_indices_bins(x, special_codes, metric, n_bins,
-                                   n_special, bins_str):
+                                   n_special, bins_str, cat_unknown):
+
+    if cat_unknown is None:
+        if metric == 'indices':
+            cat_unknown = -1
+        else:
+            cat_unknown = 'unknown'
+
     if metric == "indices":
         metric_value = np.arange(n_bins + n_special + 1)
-        x_transform = np.full(x.shape, -1, dtype=int)
+        x_transform = np.full(x.shape, cat_unknown, dtype=int)
     elif metric == "bins":
         if isinstance(special_codes, dict):
             bins_str.extend(list(special_codes) + ["Missing"])
@@ -144,7 +162,7 @@ def _transform_metric_indices_bins(x, special_codes, metric, n_bins,
             bins_str.extend(["Special", "Missing"])
 
         metric_value = bins_str
-        x_transform = np.full(x.shape, "", dtype=object)
+        x_transform = np.full(x.shape, cat_unknown, dtype=object)
 
     return metric_value, x_transform
 
@@ -152,13 +170,14 @@ def _transform_metric_indices_bins(x, special_codes, metric, n_bins,
 def _apply_transform(x, dtype, special_codes, metric, metric_special,
                      metric_missing, metric_value, clean_mask, special_mask,
                      missing_mask, indices, x_transform, x_clean, bins, n_bins,
-                     n_special):
+                     n_special, cat_unknown):
 
     if dtype == "numerical":
         if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, "", dtype=object)
+            x_clean_transform = np.full(x_clean.shape, cat_unknown,
+                                        dtype=object)
         else:
-            x_clean_transform = np.zeros(x_clean.shape)
+            x_clean_transform = np.full(x_clean.shape, cat_unknown)
 
         for i in range(n_bins):
             mask = (indices == i)
@@ -203,15 +222,16 @@ def _apply_transform(x, dtype, special_codes, metric, metric_special,
 
 
 def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
-                            special_codes, categories, cat_others, metric,
-                            metric_special, metric_missing, user_splits,
-                            show_digits, check_input=False):
+                            special_codes, categories, cat_others, cat_unknown,
+                            metric, metric_special, metric_missing,
+                            user_splits, show_digits, check_input=False):
 
     if metric not in ("event_rate", "woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
                          'values are "event_rate", "woe", "indices" and '
                          '"bins".')
 
+    _check_cat_unknown(metric, cat_unknown)
     _check_metric_special_missing(metric_special, metric_missing)
     _check_show_digits(show_digits)
 
@@ -252,29 +272,40 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
             n_nonevent = n_nonevent[:n_bins]
             n_records = n_records[:n_bins]
 
-        # default woe and event rate is 0
+        # Default woe and event rate is 0
         mask = (n_event > 0) & (n_nonevent > 0)
         event_rate = np.zeros(len(n_records))
         woe = np.zeros(len(n_records))
-        event_rate[mask] = n_event[mask] / n_records[mask]
-        constant = np.log(t_n_event / t_n_nonevent)
-        woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
+        event_rate[mask] = n_event[mask] / n_records[mask]
+        woe[mask] = transform_event_rate_to_woe(
+            event_rate[mask], t_n_nonevent, t_n_event)
+
+        # Assign unknown category value
+        if cat_unknown is None:
+            mean_event_rate = t_n_event / n_records.sum()
+            if metric == "woe":
+                cat_unknown = transform_event_rate_to_woe(
+                    mean_event_rate, t_n_nonevent, t_n_event)
+            else:
+                cat_unknown = mean_event_rate
+
+        # Assign normal metric values
         if metric == "woe":
             metric_value = woe
         else:
             metric_value = event_rate
 
-        x_transform = np.zeros(x.shape)
+        x_transform = np.full(x.shape, cat_unknown)
     else:
         # Assign corresponding indices or bin intervals
         metric_value, x_transform = _transform_metric_indices_bins(
-            x, special_codes, metric, n_bins, n_special, bins_str)
+            x, special_codes, metric, n_bins, n_special, bins_str, cat_unknown)
 
     x_transform = _apply_transform(
         x, dtype, special_codes, metric, metric_special, metric_missing,
         metric_value, clean_mask, special_mask, missing_mask, indices,
-        x_transform, x_clean, bins, n_bins, n_special)
+        x_transform, x_clean, bins, n_bins, n_special, cat_unknown)
 
     return x_transform
 
@@ -338,25 +369,27 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
     else:
         # Assign corresponding indices or bin intervals
         metric_value, x_transform = _transform_metric_indices_bins(
-            x, special_codes, metric, n_bins, n_special, bins_str)
+            x, special_codes, metric, n_bins, n_special, bins_str, None)
 
     x_transform = _apply_transform(
         x, "numerical", special_codes, metric, metric_special, metric_missing,
         metric_value, clean_mask, special_mask, missing_mask, indices,
-        x_transform, x_clean, bins, n_bins, n_special)
+        x_transform, x_clean, bins, n_bins, n_special, None)
 
     return x_transform
 
 
 def transform_continuous_target(splits, dtype, x, n_records, sums,
-                                special_codes, categories, cat_others, metric,
-                                metric_special, metric_missing, user_splits,
-                                show_digits, check_input):
+                                special_codes, categories, cat_others,
+                                cat_unknown, metric, metric_special,
+                                metric_missing, user_splits, show_digits,
+                                check_input):
 
     if metric not in ("mean", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
                          'values are "mean", "indices" and "bins".')
 
+    _check_cat_unknown(metric, cat_unknown)
     _check_metric_special_missing(metric_special, metric_missing)
     _check_show_digits(show_digits)
 
@@ -394,15 +427,20 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
         mask = n_records > 0
         metric_value = np.zeros(len(n_records))
         metric_value[mask] = sums[mask] / n_records[mask]
-        x_transform = np.zeros(x.shape)
+
+        # Assign unknown category value
+        if cat_unknown is None:
+            cat_unknown = sums.sum() / n_records.sum()
+
+        x_transform = np.full(x.shape, cat_unknown)
     else:
         # Assign corresponding indices or bin intervals
         metric_value, x_transform = _transform_metric_indices_bins(
-            x, special_codes, metric, n_bins, n_special, bins_str)
+            x, special_codes, metric, n_bins, n_special, bins_str, cat_unknown)
 
     x_transform = _apply_transform(
         x, dtype, special_codes, metric, metric_special, metric_missing,
         metric_value, clean_mask, special_mask, missing_mask, indices,
-        x_transform, x_clean, bins, n_bins, n_special)
+        x_transform, x_clean, bins, n_bins, n_special, cat_unknown)
 
     return x_transform

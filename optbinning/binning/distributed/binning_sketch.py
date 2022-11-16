@@ -44,8 +44,9 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
                       max_bin_size, min_bin_n_nonevent, max_bin_n_nonevent,
                       min_bin_n_event, max_bin_n_event, monotonic_trend,
                       min_event_rate_diff, max_pvalue, max_pvalue_policy,
-                      gamma, cat_cutoff, cat_heuristic, special_codes,
-                      split_digits, mip_solver, time_limit, verbose):
+                      gamma, cat_cutoff, cat_unknown, cat_heuristic,
+                      special_codes, split_digits, mip_solver, time_limit,
+                      verbose):
 
     # Check pympler
     if not PYMPLER_AVAILABLE:
@@ -188,6 +189,11 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
                 not 0. < cat_cutoff <= 1.0):
             raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
                              .format(cat_cutoff))
+
+    if cat_unknown is not None:
+        if not isinstance(cat_unknown, (numbers.Number, str)):
+            raise TypeError("cat_unknown must be a number or string, "
+                            "depending on the metric used in transform.")
 
     if not isinstance(cat_heuristic, bool):
         raise TypeError("cat_heuristic must be a boolean; got {}."
@@ -368,8 +374,9 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                  max_bin_n_event=None, monotonic_trend="auto",
                  min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", gamma=0, cat_cutoff=None,
-                 cat_heuristic=False, special_codes=None, split_digits=None,
-                 mip_solver="bop", time_limit=100, verbose=False):
+                 cat_unknown=None, cat_heuristic=False, special_codes=None,
+                 split_digits=None, mip_solver="bop", time_limit=100,
+                 verbose=False):
 
         self.name = name
         self.dtype = dtype
@@ -396,7 +403,9 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self.max_pvalue = max_pvalue
         self.max_pvalue_policy = max_pvalue_policy
         self.gamma = gamma
+
         self.cat_cutoff = cat_cutoff
+        self.cat_unknown = cat_unknown
         self.cat_heuristic = cat_heuristic
 
         self.special_codes = special_codes
@@ -686,8 +695,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         return transform_binary_target(self._splits_optimal, self.dtype, x,
                                        self._n_nonevent, self._n_event,
                                        self.special_codes, self._categories,
-                                       self._cat_others, metric,
-                                       metric_special, metric_missing,
+                                       self._cat_others, self.cat_unknown,
+                                       metric, metric_special, metric_missing,
                                        None, show_digits, check_input)
 
     def _prebinning_data(self):

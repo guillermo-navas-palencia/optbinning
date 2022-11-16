@@ -41,9 +41,9 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
                       max_bin_n_nonevent, min_bin_n_event, max_bin_n_event,
                       monotonic_trend, min_event_rate_diff, max_pvalue,
                       max_pvalue_policy, gamma, outlier_detector,
-                      outlier_params, class_weight, cat_cutoff, user_splits,
-                      user_splits_fixed, special_codes, split_digits,
-                      mip_solver, time_limit, verbose):
+                      outlier_params, class_weight, cat_cutoff, cat_unknown,
+                      user_splits, user_splits_fixed, special_codes,
+                      split_digits, mip_solver, time_limit, verbose):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -195,6 +195,11 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
                 not 0. < cat_cutoff <= 1.0):
             raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
                              .format(cat_cutoff))
+
+    if cat_unknown is not None:
+        if not isinstance(cat_unknown, (numbers.Number, str)):
+            raise TypeError("cat_unknown must be a number or string, "
+                            "depending on the metric used in transform.")
 
     if user_splits is not None:
         if not isinstance(user_splits, (np.ndarray, list)):
@@ -372,6 +377,19 @@ class OptimalBinning(BaseOptimalBinning):
         occurrences is below the  ``cat_cutoff`` value. This option is
         available when ``dtype`` is "categorical".
 
+    cat_unknown : float, str or None (default=None)
+        The assigned value to the unobserved categories in training but
+        occurring during transform.
+
+        If None, the assigned value to an unknown category follows this rule:
+
+           - if transform metric == 'woe' then woe(mean event rate) = 0
+           - if transform metric == 'event_rate' then mean event rate
+           - if transform metric == 'indices' then -1
+           - if transform metric == 'bins' then 'unknown'
+
+        .. versionadded:: 0.17.1
+
     user_splits : array-like or None, optional (default=None)
         The list of pre-binning split points when ``dtype`` is "numerical" or
         the list of prebins when ``dtype`` is "categorical".
@@ -430,9 +448,10 @@ class OptimalBinning(BaseOptimalBinning):
                  min_event_rate_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", gamma=0,
                  outlier_detector=None, outlier_params=None, class_weight=None,
-                 cat_cutoff=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False, **prebinning_kwargs):
+                 cat_cutoff=None, cat_unknown=None, user_splits=None,
+                 user_splits_fixed=None, special_codes=None, split_digits=None,
+                 mip_solver="bop", time_limit=100, verbose=False,
+                 **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -463,6 +482,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         self.class_weight = class_weight
         self.cat_cutoff = cat_cutoff
+        self.cat_unknown = cat_unknown
 
         self.user_splits = user_splits
         self.user_splits_fixed = user_splits_fixed
@@ -636,8 +656,8 @@ class OptimalBinning(BaseOptimalBinning):
         return transform_binary_target(self._splits_optimal, self.dtype, x,
                                        self._n_nonevent, self._n_event,
                                        self.special_codes, self._categories,
-                                       self._cat_others, metric,
-                                       metric_special, metric_missing,
+                                       self._cat_others, self.cat_unknown,
+                                       metric, metric_special, metric_missing,
                                        self.user_splits, show_digits,
                                        check_input)
 

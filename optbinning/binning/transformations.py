@@ -107,6 +107,12 @@ def _check_cat_unknown(metric, cat_unknown):
             raise ValueError("Invalid value for cat_unknown. cat_unknown "
                              "must be an integer if metric='indices'.")
 
+        if metric in ("woe", "event_rate", "mean"):
+            if not isinstance(cat_unknown, numbers.Number):
+                raise ValueError("Invalid value for cat_unknown. cat_unknown "
+                                 "must be numeric if metric='{}'."
+                                 .format(metric))
+
 
 def _retrieve_special_codes(special_codes):
     _special_codes = []

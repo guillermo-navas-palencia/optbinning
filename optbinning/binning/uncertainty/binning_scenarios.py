@@ -22,6 +22,7 @@ from ..binning_statistics import BinningTable
 from ..binning_statistics import target_info
 from ..cp import BinningCP
 from ..prebinning import PreBinning
+from ..transformations import transform_binary_target
 
 
 logger = Logger(__name__).logger
@@ -410,6 +411,60 @@ class SBOptimalBinning(OptimalBinning):
         return self.fit(X, Y, weights, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
+
+    def transform(self, x, metric="woe", metric_special=0,
+                  metric_missing=0, show_digits=2, check_input=False):
+        """Transform given data to Weight of Evidence (WoE) or event rate using
+        bins from the fitted optimal binning.
+
+        Parameters
+        ----------
+        x : array-like, shape = (n_samples,)
+            Training vector, where n_samples is the number of samples.
+
+        metric : str (default="woe")
+            The metric used to transform the input vector. Supported metrics
+            are "woe" to choose the Weight of Evidence, "event_rate" to
+            choose the event rate, "indices" to assign the corresponding
+            indices of the bins and "bins" to assign the corresponding
+            bin interval.
+
+        metric_special : float or str (default=0)
+            The metric value to transform special codes in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        metric_missing : float or str (default=0)
+            The metric value to transform missing values in the input vector.
+            Supported metrics are "empirical" to use the empirical WoE or
+            event rate and any numerical value.
+
+        show_digits : int, optional (default=2)
+            The number of significant digits of the bin column. Applies when
+            ``metric="bins"``.
+
+        check_input : bool (default=False)
+            Whether to check input arrays.
+
+        Returns
+        -------
+        x_new : numpy array, shape = (n_samples,)
+            Transformed array.
+
+        Notes
+        -----
+        Transformation of data including categories not present during training
+        return zero WoE or event rate.
+        """
+        self._check_is_fitted()
+
+        return transform_binary_target(self._splits_optimal, self.dtype, x,
+                                       self._n_nonevent, self._n_event,
+                                       self.special_codes, self._categories,
+                                       self._cat_others, None,
+                                       metric, metric_special, metric_missing,
+                                       self.user_splits, show_digits,
+                                       check_input)
 
     def _fit(self, X, Y, weights, check_input):
         time_init = time.perf_counter()

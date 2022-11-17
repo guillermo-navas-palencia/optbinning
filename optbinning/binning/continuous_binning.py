@@ -33,7 +33,7 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                       min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
                       max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
                       max_pvalue_policy, gamma, outlier_detector,
-                      outlier_params, cat_cutoff, user_splits,
+                      outlier_params, cat_cutoff, cat_unknown, user_splits,
                       user_splits_fixed, special_codes, split_digits,
                       time_limit, verbose):
 
@@ -133,6 +133,11 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
                 not 0. < cat_cutoff <= 1.0):
             raise ValueError("cat_cutoff must be in (0, 1.0]; got {}."
                              .format(cat_cutoff))
+
+    if cat_unknown is not None:
+        if not isinstance(cat_unknown, (numbers.Number, str)):
+            raise TypeError("cat_unknown must be a number or string, "
+                            "depending on the metric used in transform.")
 
     if user_splits is not None:
         if not isinstance(user_splits, (np.ndarray, list)):
@@ -266,6 +271,18 @@ class ContinuousOptimalBinning(OptimalBinning):
         occurrences is below the  ``cat_cutoff`` value. This option is
         available when ``dtype`` is "categorical".
 
+    cat_unknown : float, str or None (default=None)
+        The assigned value to the unobserved categories in training but
+        occurring during transform.
+
+        If None, the assigned value to an unknown category follows this rule:
+
+           - if transform metric == 'mean' then mean target
+           - if transform metric == 'indices' then -1
+           - if transform metric == 'bins' then 'unknown'
+
+        .. versionadded:: 0.17.1
+
     user_splits : array-like or None, optional (default=None)
         The list of pre-binning split points when ``dtype`` is "numerical" or
         the list of prebins when ``dtype`` is "categorical".
@@ -309,9 +326,9 @@ class ContinuousOptimalBinning(OptimalBinning):
                  monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
                  max_pvalue_policy="consecutive", gamma=0,
                  outlier_detector=None, outlier_params=None, cat_cutoff=None,
-                 user_splits=None, user_splits_fixed=None, special_codes=None,
-                 split_digits=None, time_limit=100, verbose=False,
-                 **prebinning_kwargs):
+                 cat_unknown=None, user_splits=None, user_splits_fixed=None,
+                 special_codes=None, split_digits=None, time_limit=100,
+                 verbose=False, **prebinning_kwargs):
 
         self.name = name
         self.dtype = dtype
@@ -336,6 +353,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self.outlier_params = outlier_params
 
         self.cat_cutoff = cat_cutoff
+        self.cat_unknown = cat_unknown
 
         self.user_splits = user_splits
         self.user_splits_fixed = user_splits_fixed
@@ -521,9 +539,10 @@ class ContinuousOptimalBinning(OptimalBinning):
                                            x, self._n_records, self._sums,
                                            self.special_codes,
                                            self._categories, self._cat_others,
-                                           metric, metric_special,
-                                           metric_missing, self.user_splits,
-                                           show_digits, check_input)
+                                           self.cat_unknown, metric,
+                                           metric_special, metric_missing,
+                                           self.user_splits, show_digits,
+                                           check_input)
 
     def _fit(self, x, y, sample_weight, check_input):
         time_init = time.perf_counter()
@@ -836,7 +855,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             self.special_codes, x_special, y_special, sw_special)
 
         if len(sw_missing):
-            y_missing *= sw_missing
+            y_missing = y_missing * sw_missing
 
         self._n_records_missing = np.sum(sw_missing)
         self._sum_missing = np.sum(y_missing)
@@ -848,7 +867,8 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if len(y_others):
             if len(sw_others):
-                y_others *= sw_others
+                print(y_others.dtype, sw_others.dtype)
+                y_others = y_others * sw_others
 
             self._n_records_cat_others = np.sum(sw_others)
             self._sum_cat_others = np.sum(y_others)

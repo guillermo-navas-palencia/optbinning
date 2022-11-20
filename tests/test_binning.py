@@ -133,6 +133,10 @@ def test_params():
         optb.fit(x, y)
 
     with raises(TypeError):
+        optb = OptimalBinning(cat_unknown=list())
+        optb.fit(x, y)
+
+    with raises(TypeError):
         optb = OptimalBinning(user_splits={"a": [1, 2]})
         optb.fit(x, y)
 
@@ -504,14 +508,41 @@ def test_categorical_transform():
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
 
-    optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1,
-                          verbose=True)
+    # unknown category metric errors
+    for cat_unknown, metric in ((1, "bins"), ("a", "indices"), ("b", "woe")):
+        optb = OptimalBinning(dtype="categorical", solver="mip",
+                              cat_cutoff=0.1, cat_unknown=cat_unknown)
+        optb.fit(x, y)
+
+        if metric == "bins":
+            match = ("Invalid value for cat_unknown. cat_unknown must be "
+                     "string if metric='bins'.")
+
+        elif metric == "indices":
+            match = ("Invalid value for cat_unknown. cat_unknown must be an "
+                     "integer if metric='indices'.")
+
+        elif metric in ("woe", "event_rate"):
+            match = ("Invalid value for cat_unknown. cat_unknown must be "
+                     "numeric if metric='{}'.".format(metric))
+
+        with raises(ValueError, match=match):
+            optb.transform(x=x, metric=metric)
+
+    # general case
+    optb = OptimalBinning(dtype="categorical", solver="mip", cat_cutoff=0.1)
     optb.fit(x, y)
     x_transform = optb.transform(["Pensioner", "Working",
                                   "Commercial associate", "State servant"])
 
     assert x_transform == approx([-0.26662866, 0.30873548, -0.55431074,
                                   0.30873548], rel=1e-6)
+
+    # unknown category default case
+    for metric, value in (("bins", "unknown"), ("indices", -1), ("woe", 0)):
+        optb.fit(x, y)
+
+        assert optb.transform(x=['new'], metric=metric)[0] == value
 
 
 def test_information():

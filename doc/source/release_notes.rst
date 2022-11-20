@@ -1,7 +1,19 @@
 Release Notes
 =============
 
-Version 0.17.1 (2022-11-06)
+Version 0.17.1 (2022-11-20)
+---------------------------
+
+New features
+
+   - Add parameter ``cat_unknown`` to assign values to the unobserved categories during training.
+
+Improvements
+
+   - Add method ``decision_function`` to ``Scorecard`` (`Issue 198 <https://github.com/guillermo-navas-palencia/optbinning/issues/198>`_).
+
+
+Version 0.17.0 (2022-11-06)
 ---------------------------
 
 New features:

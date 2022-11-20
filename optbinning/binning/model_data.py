@@ -277,8 +277,10 @@ def continuous_model_data(n_records, sums, ssums, max_pvalue,
             U.append(mean)
             V.append(norm)
 
-        if max_pvalue is not None:
+        if max_pvalue is not None or min_mean_diff > 0:
             UP.append(mean)
+
+        if max_pvalue is not None:
             R.append(s_n_records)
             S.append(std)
 
@@ -289,13 +291,8 @@ def continuous_model_data(n_records, sums, ssums, max_pvalue,
         pvalue_violation_indices = []
 
     if min_mean_diff > 0:
-        if scale is not None:
-            min_diff = int(min_mean_diff * scale)
-        else:
-            min_diff = min_mean_diff
-
         min_diff_violation_indices = find_min_diff_violation_indices(
-            n, U, min_diff)
+            n, UP, min_mean_diff)
     else:
         min_diff_violation_indices = []
 

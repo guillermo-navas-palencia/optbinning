@@ -109,13 +109,13 @@ class MulticlassBinningMIP(BinningMIP):
 
         # Constraint: max-pvalue
         for c in range(n_classes):
-            self.add_max_pvalue_constraint(solver, x,
-                                           pvalue_violation_indices[c])
+            self.add_constraint_violation(solver, x,
+                                          pvalue_violation_indices[c])
 
         # Constraint: min diff
         for c in range(n_classes):
-            self.add_min_diff_constraint(solver, x,
-                                         min_diff_violation_indices[c])
+            self.add_constraint_violation(solver, x,
+                                          min_diff_violation_indices[c])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(solver, n, x)

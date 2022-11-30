@@ -795,6 +795,7 @@ class SBOptimalBinning(OptimalBinning):
         Parameters
         ----------
         scenario_id : int
+            Scenario identifier.
 
         Returns
         -------

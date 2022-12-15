@@ -32,6 +32,8 @@ class MulticlassBinningCP(BinningCP):
 
         self.solver_ = None
 
+        # Auxiliary
+        self._is_scenario_binning = False
         self._model = None
         self._n = None
         self._x = None
@@ -104,13 +106,13 @@ class MulticlassBinningCP(BinningCP):
 
         # Constraint: max-pvalue
         for c in range(n_classes):
-            self.add_max_pvalue_constraint(model, x,
-                                           pvalue_violation_indices[c])
+            self.add_constraint_violation(model, x,
+                                          pvalue_violation_indices[c])
 
         # Constraint: min diff
         for c in range(n_classes):
-            self.add_min_diff_constraint(model, x,
-                                         min_diff_violation_indices[c])
+            self.add_constraint_violation(model, x,
+                                          min_diff_violation_indices[c])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)

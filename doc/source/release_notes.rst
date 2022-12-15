@@ -1,14 +1,31 @@
 Release Notes
 =============
 
+Version 0.17.2 (2022-12-15)
+---------------------------
+
+Improvements:
+
+   - Modify max-pvalue and min_diff constraints for CP and MIP formulation to avoid suboptimal solutions.
+
+Bugfixes:
+
+   - Use keyword arguments in ``compute_class_weight`` (`Issue 222 <https://github.com/guillermo-navas-palencia/optbinning/issues/222>`_).
+   - Remove preprocessing step when monotonic trend in (ascending, descending) for scenario-based binning (`Issue 216 <https://github.com/guillermo-navas-palencia/optbinning/issues/216>`_).
+
+Dependencies:
+
+   - Update scikit-learn and ortools required versions.
+
+
 Version 0.17.1 (2022-11-20)
 ---------------------------
 
-New features
+New features:
 
    - Add parameter ``cat_unknown`` to assign values to the unobserved categories during training.
 
-Improvements
+Improvements:
 
    - Add method ``decision_function`` to ``Scorecard`` (`Issue 198 <https://github.com/guillermo-navas-palencia/optbinning/issues/198>`_).
 
@@ -35,12 +52,12 @@ New features:
 
    - Outlier detector ``YQuantileDetector`` for continuous target (`Issue 203 <https://github.com/guillermo-navas-palencia/optbinning/issues/203>`_).
 
-Improvements
+Improvements:
 
    - Add support to solver SCS and HIGHS for optimal piecewise binning classes.
    - Unit testing outlier detector methods.
 
-Bugfixes
+Bugfixes:
 
    - Pass ``lb`` and ``ub`` as keyword arguments to RoPWR fit method (required since ropwr>=0.4.0).
 
@@ -52,13 +69,13 @@ New features:
 
    - Treatment of special codes separately for optimal piecewise binning classes (`Issue 191 <https://github.com/guillermo-navas-palencia/optbinning/issues/191>`_).
 
-Improvements
+Improvements:
 
    - Allow plot ``style="actual"`` for stochastic optimal binning.
    - Unit testing optimal piecewise binning classes (`Issue 93 <https://github.com/guillermo-navas-palencia/optbinning/issues/93>`_).
    - Unit testing add macOS Monterey 12.
 
-Bugfixes
+Bugfixes:
 
    - Fix sample weight for ``BinningProcess`` when ``n_jobs != 1`` (`Issue 190 <https://github.com/guillermo-navas-palencia/optbinning/issues/190>`_).
    - Fix transform method for optimal binning 2D when dtype is categorical (`Issue 197 <https://github.com/guillermo-navas-palencia/optbinning/issues/197>`_).
@@ -80,12 +97,12 @@ New features:
 
    - Optimal binning 2D support to categorical variables for binary and continuous target.
 
-Improvements
+Improvements:
 
    - Integer intercept if ``rounding=True`` (`Issue 165 <https://github.com/guillermo-navas-palencia/optbinning/issues/165>`_).
    - Parameter ``show_digits`` applies to scorecard table bin column (`Issue 170 <https://github.com/guillermo-navas-palencia/optbinning/issues/170>`_).
 
-Bugfixes
+Bugfixes:
 
    - Fix ``Scorecard.score`` method when there are special and missing bins. (`Issue 179 <https://github.com/guillermo-navas-palencia/optbinning/pull/179>`_).
    - Fix x and y axis labels in ``OptimalBinning2D`` plots, x and y were interchanged.
@@ -94,7 +111,7 @@ Bugfixes
 Version 0.14.1 (2022-04-11)
 ---------------------------
 
-Bugfixes
+Bugfixes:
 
    - Fix new setup function.
 
@@ -144,7 +161,7 @@ Bugfixes:
 
    - Various bug fixes for the ``OptimalBinning2D`` class. See `Issue 138 <https://github.com/guillermo-navas-palencia/optbinning/issues/138>`_, for instance.
 
-Tutorials
+Tutorials:
 
    - Tutorial: optimal binning 2D with binary target
 

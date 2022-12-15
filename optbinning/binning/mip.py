@@ -165,10 +165,10 @@ class BinningMIP:
             solver.Add(pmin <= pmax)
 
         # Constraint: max-pvalue
-        self.add_max_pvalue_constraint(solver, x, pvalue_violation_indices)
+        self.add_constraint_violation(solver, x, pvalue_violation_indices)
 
         # Constraint: min diff
-        self.add_min_diff_constraint(solver, x, min_diff_violation_indices)
+        self.add_constraint_violation(solver, x, min_diff_violation_indices)
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(solver, n, x)
@@ -458,13 +458,12 @@ class BinningMIP:
                         if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
                             solver.Add(x[i+j, i+j] == 0)
 
-    def add_max_pvalue_constraint(self, solver, x, pvalue_violation_indices):
-        for ind1, ind2 in pvalue_violation_indices:
-            solver.Add(x[ind1[0], ind1[1]] + x[ind2[0], ind2[1]] <= 1)
-
-    def add_min_diff_constraint(self, solver, x, min_diff_violation_indices):
-        for ind1, ind2 in min_diff_violation_indices:
-            solver.Add(x[ind1[0], ind1[1]] + x[ind2[0], ind2[1]] <= 1)
+    def add_constraint_violation(self, solver, x, violation_indices):
+        for (i, j), (z, l) in violation_indices:
+            if j >= 1:
+                solver.Add(x[i, j] + x[z, l] <= 1 + x[i, j-1] + x[z, l-1])
+            else:
+                solver.Add(x[i, j] + x[z, l] <= 1 + x[z, l-1])
 
     def add_constraint_fixed_splits(self, solver, n, x):
         if self.user_splits_fixed is not None:

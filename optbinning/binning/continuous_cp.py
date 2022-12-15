@@ -115,10 +115,10 @@ class ContinuousBinningCP(BinningCP):
                 model, n, U, x, trend_change, M)
 
         # Constraint: max-pvalue
-        self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
+        self.add_constraint_violation(model, x, pvalue_violation_indices)
 
         # Constraint: min diff
-        self.add_min_diff_constraint(model, x, min_diff_violation_indices)
+        self.add_constraint_violation(model, x, min_diff_violation_indices)
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)

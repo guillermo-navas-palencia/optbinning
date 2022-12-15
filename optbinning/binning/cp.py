@@ -42,6 +42,8 @@ class BinningCP:
 
         self.solver_ = None
 
+        # Auxiliary
+        self._is_scenario_binning = False
         self._model = None
         self._n = None
         self._x = None
@@ -158,10 +160,10 @@ class BinningCP:
             model.Add(pmin <= pmax)
 
         # Constraint: max-pvalue
-        self.add_max_pvalue_constraint(model, x, pvalue_violation_indices)
+        self.add_constraint_violation(model, x, pvalue_violation_indices)
 
         # Constraint: min diff
-        self.add_min_diff_constraint(model, x, min_diff_violation_indices)
+        self.add_constraint_violation(model, x, min_diff_violation_indices)
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)
@@ -172,6 +174,8 @@ class BinningCP:
 
     def build_model_scenarios(self, n_nonevent, n_event, w):
         # Parameters
+        self._is_scenario_binning = True
+
         M = int(1e6)
         (D, V, pvalue_violation_indices,
          min_diff_violation_indices) = multiclass_model_data(
@@ -243,13 +247,13 @@ class BinningCP:
 
         # Constraint: max-pvalue
         for s in range(n_scenarios):
-            self.add_max_pvalue_constraint(model, x,
+            self.add_constraint_violation(model, x,
                                            pvalue_violation_indices[s])
 
         # Constraint: min diff
         for s in range(n_scenarios):
-            self.add_min_diff_constraint(model, x,
-                                         min_diff_violation_indices[s])
+            self.add_constraint_violation(model, x,
+                                          min_diff_violation_indices[s])
 
         # Constraint: fixed splits
         self.add_constraint_fixed_splits(model, n, x)
@@ -399,7 +403,7 @@ class BinningCP:
                          for j in range(i)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(n - 1):
                 if D[i+1][i] - D[i+1][i+1] > 0:
                     model.Add(x[i, i] == 0)
@@ -418,7 +422,7 @@ class BinningCP:
                          for j in range(z)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(n - 1):
                 if D[i+1][i] - D[i+1][i+1] < 0:
                     model.Add(x[i, i] == 0)
@@ -501,7 +505,7 @@ class BinningCP:
                          for j in range(i)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(tc - 1):
                 if D[i+1][i] - D[i+1][i+1] > 0:
                     model.Add(x[i, i] == 0)
@@ -519,7 +523,7 @@ class BinningCP:
                          for j in range(z)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(tc, n - 1):
                 if D[i+1][i] - D[i+1][i+1] < 0:
                     model.Add(x[i, i] == 0)
@@ -538,7 +542,7 @@ class BinningCP:
                          for j in range(z)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(tc - 1):
                 if D[i+1][i] - D[i+1][i+1] < 0:
                     model.Add(x[i, i] == 0)
@@ -556,7 +560,7 @@ class BinningCP:
                          for j in range(i)]) <= 0)
 
         # Preprocessing
-        if self.min_event_rate_diff == 0:
+        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
             for i in range(tc, n - 1):
                 if D[i+1][i] - D[i+1][i+1] > 0:
                     model.Add(x[i, i] == 0)
@@ -564,15 +568,14 @@ class BinningCP:
                         if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
                             model.Add(x[i+j, i+j] == 0)
 
-    def add_max_pvalue_constraint(self, model, x, pvalue_violation_indices):
-        for ind1, ind2 in pvalue_violation_indices:
-            model.AddImplication(x[ind1[0], ind1[1]],
-                                 x[ind2[0], ind2[1]].Not())
-
-    def add_min_diff_constraint(self, model, x, min_diff_violation_indices):
-        for ind1, ind2 in min_diff_violation_indices:
-            model.AddImplication(x[ind1[0], ind1[1]],
-                                 x[ind2[0], ind2[1]].Not())
+    def add_constraint_violation(self, model, x, violation_indices):
+        for (i, j), (z, l) in violation_indices:
+            if j >= 1:
+                model.AddImplication(x[i, j], x[z, l].Not()).OnlyEnforceIf(
+                    [x[i, j-1].Not(), x[z, l-1].Not()])
+            else:
+                model.AddImplication(x[i, j], x[z, l].Not()).OnlyEnforceIf(
+                    [x[z, l-1].Not()])
 
     def add_constraint_fixed_splits(self, model, n, x):
         if self.user_splits_fixed is not None:

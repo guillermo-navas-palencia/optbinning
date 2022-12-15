@@ -181,7 +181,8 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
     if class_weight is not None:
         classes = np.unique(y)
         le = LabelEncoder()
-        class_weight_ = compute_class_weight(class_weight, classes, y)
+        class_weight_ = compute_class_weight(
+            class_weight=class_weight, classes=classes, y=y)
         sample_weight *= class_weight_[le.fit_transform(y)]
 
     if np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number):

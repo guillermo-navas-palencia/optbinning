@@ -28,9 +28,9 @@ logger = Logger(__name__).logger
 
 
 def _check_parameters(name, estimator, objective, degree, continuous,
-                      prebinning_method, max_n_prebins, min_prebin_size,
-                      min_n_bins, max_n_bins, min_bin_size, max_bin_size,
-                      monotonic_trend, n_subsamples, max_pvalue,
+                      continuous_deriv, prebinning_method, max_n_prebins,
+                      min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
+                      max_bin_size, monotonic_trend, n_subsamples, max_pvalue,
                       max_pvalue_policy, outlier_detector, outlier_params,
                       user_splits, user_splits_fixed, special_codes,
                       split_digits, solver, h_epsilon, quantile,
@@ -62,6 +62,10 @@ def _check_parameters(name, estimator, objective, degree, continuous,
 
     if not isinstance(continuous, bool):
         raise TypeError("continuous must be a boolean; got {}."
+                        .format(verbose))
+
+    if not isinstance(continuous_deriv, bool):
+        raise TypeError("continuous_deriv must be a boolean; got {}."
                         .format(verbose))
 
     if prebinning_method not in ("cart", "quantile", "uniform"):
@@ -209,7 +213,8 @@ def _check_parameters(name, estimator, objective, degree, continuous,
 
 class BasePWBinning(Base, BaseEstimator):
     def __init__(self, name="", estimator=None, objective="l2", degree=1,
-                 continuous=True, prebinning_method="cart", max_n_prebins=20,
+                 continuous=True, continuous_deriv=True,
+                 prebinning_method="cart", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
                  n_subsamples=None, max_pvalue=None,
@@ -224,6 +229,7 @@ class BasePWBinning(Base, BaseEstimator):
         self.objective = objective
         self.degree = degree
         self.continuous = continuous
+        self.continuous_deriv = continuous_deriv
         self.prebinning_method = prebinning_method
 
         self.max_n_prebins = max_n_prebins
@@ -451,9 +457,19 @@ class BasePWBinning(Base, BaseEstimator):
         time_solver = time.perf_counter()
 
         optimizer = RobustPWRegression(
-            self.objective, self.degree, self.continuous, monotonic,
-            self.solver, self.h_epsilon, self.quantile, self.regularization,
-            self.reg_l1, self.reg_l1, self.verbose)
+            objective=self.objective,
+            degree=self.degree,
+            continuous=self.continuous,
+            continuous_deriv=self.continuous_deriv,
+            monotonic_trend=monotonic,
+            solver=self.solver,
+            h_epsilon=self.h_epsilon,
+            quantile=self.quantile,
+            regularization=self.regularization,
+            reg_l1=self.reg_l1,
+            reg_l2=self.reg_l2,
+            extrapolation="continue",
+            verbose=self.verbose)
 
         optimizer.fit(x_subsamples, pred_subsamples, splits, lb=lb, ub=ub)
 

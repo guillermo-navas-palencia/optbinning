@@ -54,7 +54,7 @@ install_requires = [
     'numpy>=1.16.1',
     'ortools>=9.4',
     'pandas',
-    'ropwr>=0.4.0',
+    'ropwr>=1.0.0',
     'scikit-learn>=1.0.2',
     'scipy>=1.6.0',
 ]

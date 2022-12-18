@@ -45,6 +45,11 @@ class ContinuousOptimalPWBinning(BasePWBinning):
     continuous : bool (default=True)
         Whether to fit a continuous or discontinuous piecewise regression.
 
+    continuous_deriv : bool (default=True)
+        Whether to fit a polynomial with continuous derivatives. This option
+        fits a smooth degree d-polynomial with d-1 continuity in derivatives
+        (splines).
+
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
         decision tree, "quantile" to generate prebins with approximately same
@@ -164,11 +169,11 @@ class ContinuousOptimalPWBinning(BasePWBinning):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, name="", objective="l2", degree=1,
-                 continuous=True, prebinning_method="cart", max_n_prebins=20,
-                 min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, monotonic_trend="auto",
-                 n_subsamples=None, max_pvalue=None,
+    def __init__(self, name="", objective="l2", degree=1, continuous=True,
+                 continuous_deriv=True, prebinning_method="cart",
+                 max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
+                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
+                 monotonic_trend="auto", n_subsamples=None, max_pvalue=None,
                  max_pvalue_policy="consecutive", outlier_detector=None,
                  outlier_params=None, user_splits=None, user_splits_fixed=None,
                  special_codes=None, split_digits=None, solver="auto",
@@ -176,13 +181,14 @@ class ContinuousOptimalPWBinning(BasePWBinning):
                  reg_l2=1.0, random_state=None, verbose=False):
 
         super().__init__(name, None, objective, degree, continuous,
-                         prebinning_method, max_n_prebins, min_prebin_size,
-                         min_n_bins, max_n_bins, min_bin_size, max_bin_size,
-                         monotonic_trend, n_subsamples, max_pvalue,
-                         max_pvalue_policy, outlier_detector, outlier_params,
-                         user_splits, user_splits_fixed, special_codes,
-                         split_digits, solver, h_epsilon, quantile,
-                         regularization, reg_l1, reg_l2, random_state, verbose)
+                         continuous_deriv, prebinning_method, max_n_prebins,
+                         min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
+                         max_bin_size, monotonic_trend, n_subsamples,
+                         max_pvalue, max_pvalue_policy, outlier_detector,
+                         outlier_params, user_splits, user_splits_fixed,
+                         special_codes, split_digits, solver, h_epsilon,
+                         quantile, regularization, reg_l1, reg_l2,
+                         random_state, verbose)
 
         self._problem_type = "regression"
 

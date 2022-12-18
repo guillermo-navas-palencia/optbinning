@@ -450,3 +450,26 @@ def test_verbose():
     with open("tests/results/test_scorecard_verbose.txt", "w") as f:
         with redirect_stdout(f):
             scorecard.fit(X, y)
+
+
+def test_missing_metrics():
+    data = pd.DataFrame(
+        {'target': np.hstack(
+            (np.tile(np.array([0, 1]), 50),
+             np.array([0]*90 + [1]*10)
+             )
+         ),
+         'var': [np.nan] * 100 + ['A'] * 100}
+    )
+
+    binning_process = BinningProcess(['var'])
+    scaling_method_params = {'min': 0, 'max': 100}
+
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(),
+        scaling_method="min_max",
+        scaling_method_params=scaling_method_params
+    ).fit(data, data.target)
+
+    assert scorecard.table()['Points'].iloc[-1] == approx(0, rel=1e-6)

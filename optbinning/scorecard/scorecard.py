@@ -605,7 +605,7 @@ class Scorecard(Base, BaseEstimator):
 
                 binning_table.loc[
                     nt-1-n_specials:nt-2, "Points"] = metric_special * c
-            elif metric_missing != 'empirical':
+            if metric_missing != 'empirical':
                 binning_table.loc[nt-1, "Points"] = metric_missing * c
 
             binning_table.index.names = ['Bin id']

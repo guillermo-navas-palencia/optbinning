@@ -557,7 +557,11 @@ class Scorecard(Base, BaseEstimator):
             logger.info("Fitting estimator.")
 
         self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X_t, y, sample_weight)
+
+        if sample_weight is not None:
+            self.estimator_.fit(X_t, y, sample_weight=sample_weight)
+        else:
+            self.estimator_.fit(X_t, y)
 
         self._time_estimator = time.perf_counter() - time_estimator
 

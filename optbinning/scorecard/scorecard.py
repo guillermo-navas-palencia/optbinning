@@ -557,7 +557,11 @@ class Scorecard(Base, BaseEstimator):
             logger.info("Fitting estimator.")
 
         self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X_t, y, sample_weight)
+
+        if sample_weight is not None:
+            self.estimator_.fit(X_t, y, sample_weight=sample_weight)
+        else:
+            self.estimator_.fit(X_t, y)
 
         self._time_estimator = time.perf_counter() - time_estimator
 
@@ -601,7 +605,7 @@ class Scorecard(Base, BaseEstimator):
 
                 binning_table.loc[
                     nt-1-n_specials:nt-2, "Points"] = metric_special * c
-            elif metric_missing != 'empirical':
+            if metric_missing != 'empirical':
                 binning_table.loc[nt-1, "Points"] = metric_missing * c
 
             binning_table.index.names = ['Bin id']

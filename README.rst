@@ -646,6 +646,7 @@ Currently **officially** using OptBinning:
 9. `Tamara <https://tamara.co/>`_
 10. `BBVA AI Factory <https://www.bbvaaifactory.com/>`_
 11. `N26 <https://n26.com/>`_
+12. `Home Credit International <https://www.homecredit.net/>`_
 
 
 Citation

@@ -1,6 +1,22 @@
 Release Notes
 =============
 
+Version 0.17.3 (2023-02-12)
+---------------------------
+
+Improvements:
+
+   - Implement ``sample_weight`` check in Scorecard class (`Issue 228 <https://github.com/guillermo-navas-palencia/optbinning/issues/228>`_).
+
+Bugfixes:
+
+   - Fix ``metric_missing`` ignored in Scorecard class (`Issue 226 <https://github.com/guillermo-navas-palencia/optbinning/issues/226>`_).
+
+Dependencies:
+
+   - Update RoPWR required version.
+
+
 Version 0.17.2 (2022-12-15)
 ---------------------------
 

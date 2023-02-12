@@ -227,8 +227,8 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.17.0)
-   Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.17.3)
+   Copyright (c) 2019-2023 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        name                         mean radius   * U
@@ -395,8 +395,8 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.17.0)
-   Copyright (c) 2019-2022 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.17.3)
+   Copyright (c) 2019-2023 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        binning_process                      yes   * U

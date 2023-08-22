@@ -14,10 +14,10 @@ OptBinning
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blueviolet
    :target: https://img.shields.io/pypi/v/optbinning?color=blueviolet
 
-.. image:: https://pepy.tech/badge/optbinning
+.. image:: https://static.pepy.tech/badge/optbinning
    :target: https://pepy.tech/project/optbinning
 
-.. image:: https://pepy.tech/badge/optbinning/month
+.. image:: https://static.pepy.tech/badge/optbinning/month
    :target: https://pepy.tech/project/optbinning/month
 
 

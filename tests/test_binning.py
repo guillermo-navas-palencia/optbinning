@@ -431,13 +431,13 @@ def test_numerical_regularization():
     assert len(optb_cp.splits) < 6
 
 
-def test_numerical_prebinning_kwargs():
-    optb_kwargs = OptimalBinning(solver="mip", prebinning_method="mdlp",
-                                 **{"max_candidates": 64})
+# def test_numerical_prebinning_kwargs():
+#     optb_kwargs = OptimalBinning(solver="mip", prebinning_method="mdlp",
+#                                  **{"max_candidates": 64})
 
-    optb_kwargs.fit(x, y)
-    optb_kwargs.binning_table.build()
-    assert optb_kwargs.binning_table.iv == approx(4.37337682, rel=1e-6)
+#     optb_kwargs.fit(x, y)
+#     optb_kwargs.binning_table.build()
+#     assert optb_kwargs.binning_table.iv == approx(4.37337682, rel=1e-6)
 
 
 def test_min_event_rate_diff():

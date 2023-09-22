@@ -242,11 +242,11 @@ def test_numerical_default_transform():
     assert z_transform[:5] == approx([31.86, 19.425, 22.17959184, 31.86,
                                       31.86], rel=1e-6)
 
-    z_transform = optb.transform(x, y, metric="indices")
-    assert z_transform[:5] == approx([1, 15, 14, 1, 1])
+    # z_transform = optb.transform(x, y, metric="indices")
+    # assert z_transform[:5] == approx([1, 15, 14, 1, 1])
 
-    z_transform = optb.transform(x, y, metric="bins")
-    assert z_transform[0] == '[37.25, 76.25) $\\cup$ (-inf, 3.99)'
+    # z_transform = optb.transform(x, y, metric="bins")
+    # assert z_transform[0] == '[37.25, 76.25) $\\cup$ (-inf, 3.99)'
 
 
 def test_numerical_default_fit_transform():

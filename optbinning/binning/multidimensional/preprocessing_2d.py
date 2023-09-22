@@ -83,7 +83,7 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
         special_mask_x = np.zeros(len(x), dtype=bool)
 
     if special_codes_y is not None:
-        special_mask_y = pd.Series(x).isin(special_codes_y).values
+        special_mask_y = pd.Series(y).isin(special_codes_y).values
     else:
         special_mask_y = np.zeros(len(y), dtype=bool)
 

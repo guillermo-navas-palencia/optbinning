@@ -779,14 +779,19 @@ class BinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
             if show_bin_labels:
-                ax1.set_xlabel("Bin", fontsize=12)
-                ax1.set_xticks(np.arange(len(self._bin_str)))
-
                 if self.dtype == "categorical":
                     bin_str = _bin_str_label_format(self._bin_str)
                 else:
                     bin_str = self._bin_str
 
+                if not add_special:
+                    bin_str = bin_str[:-2] + [bin_str[-1]]
+
+                if not add_missing:
+                    bin_str = bin_str[:-1]
+
+                ax1.set_xlabel("Bin", fontsize=12)
+                ax1.set_xticks(np.arange(len(bin_str)))
                 ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
         elif style == "actual":
@@ -1331,9 +1336,16 @@ class MulticlassBinningTable:
         ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
         if show_bin_labels:
+            bin_str = self._bin_str
+            if not add_special:
+                bin_str = bin_str[:-2] + [bin_str[-1]]
+
+            if not add_missing:
+                bin_str = bin_str[:-1]
+
             ax1.set_xlabel("Bin", fontsize=12)
-            ax1.set_xticks(np.arange(len(self._bin_str)))
-            ax1.set_xticklabels(self._bin_str, rotation=45, ha="right")
+            ax1.set_xticks(np.arange(len(bin_str)))
+            ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
         plt.title(self.name, fontsize=14)
 
@@ -1805,14 +1817,19 @@ class ContinuousBinningTable:
             ax2.xaxis.set_major_locator(mtick.MultipleLocator(1))
 
             if show_bin_labels:
-                ax1.set_xlabel("Bin", fontsize=12)
-                ax1.set_xticks(np.arange(len(self._bin_str)))
-
                 if self.dtype == "categorical":
                     bin_str = _bin_str_label_format(self._bin_str)
                 else:
                     bin_str = self._bin_str
 
+                if not add_special:
+                    bin_str = bin_str[:-2] + [bin_str[-1]]
+
+                if not add_missing:
+                    bin_str = bin_str[:-1]
+
+                ax1.set_xlabel("Bin", fontsize=12)
+                ax1.set_xticks(np.arange(len(bin_str)))
                 ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
         elif style == "actual":

@@ -323,7 +323,7 @@ def preprocessing_user_splits_categorical(user_splits, x, y,
     categories = pd.Series(x).unique()
 
     n_user_splits = len(user_splits)
-    user_splits = np.asarray(user_splits)
+    user_splits = np.asarray(user_splits, dtype='object')
 
     # Check no category is repeated
     user_categories = {}

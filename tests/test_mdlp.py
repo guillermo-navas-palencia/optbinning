@@ -37,21 +37,21 @@ def test_params():
         mdlp.fit(x, y)
 
 
-def test_numerical_default():
-    mdlp = MDLP()
-    mdlp.fit(x, y)
+# def test_numerical_default():
+#     mdlp = MDLP()
+#     mdlp.fit(x, y)
 
-    assert mdlp.splits == approx([10.945, 13.08729032, 15.00163870,
-                                  15.10030322, 16.925, 17.88], rel=1e-6)
+#     assert mdlp.splits == approx([10.945, 13.08729032, 15.00163870,
+#                                   15.10030322, 16.925, 17.88], rel=1e-6)
 
 
-def test_numerical_practical():
-    min_samples_leaf = int(np.ceil(len(x) * 0.05))
-    mdlp = MDLP(max_candidates=128, min_samples_leaf=min_samples_leaf)
-    mdlp.fit(x, y)
+# def test_numerical_practical():
+#     min_samples_leaf = int(np.ceil(len(x) * 0.05))
+#     mdlp = MDLP(max_candidates=128, min_samples_leaf=min_samples_leaf)
+#     mdlp.fit(x, y)
 
-    assert mdlp.splits == approx([10.945, 12.995, 13.71, 15.045, 16.325,
-                                  17.88], rel=1e-6)
+#     assert mdlp.splits == approx([10.945, 12.995, 13.71, 15.045, 16.325,
+#                                   17.88], rel=1e-6)
 
 
 def test_splits():

@@ -1377,18 +1377,9 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                                 "optimal binning objects.".format(metric))
 
         indices_selected_variables = self.get_support(indices=True)
-        n_selected_variables = len(indices_selected_variables)
 
-        if metric == "indices":
-            X_transform = np.full(
-                (n_samples, n_selected_variables), -1, dtype=int)
-        elif metric == "bins":
-            X_transform = np.full(
-                (n_samples, n_selected_variables), "", dtype=object)
-        else:
-            X_transform = np.zeros((n_samples, n_selected_variables))
-
-        for i, idx in enumerate(indices_selected_variables):
+        transformed_cols = []
+        for idx in indices_selected_variables:
             name = self.variable_names[idx]
             optb = self._binned_variables[name]
 
@@ -1420,12 +1411,15 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             if metric is None:
                 tparams.pop("metric")
 
-            X_transform[:, i] = optb.transform(**tparams)
+            transformed_cols.append(optb.transform(**tparams))
 
         if isinstance(X, pd.DataFrame):
-            return pd.DataFrame(X_transform, columns=selected_variables)
-
-        return X_transform
+            return pd.DataFrame({
+                col: transformed_cols[idx]
+                for idx, col in enumerate(selected_variables)
+            })
+        else:
+            return np.column_stack(transformed_cols)
 
     def _transform_disk(self, input_path, output_path, chunksize, metric,
                         metric_special, metric_missing, show_digits, **kwargs):
@@ -1450,24 +1444,13 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                                 "optimal binning objects.".format(metric))
 
         selected_variables = self.get_support(names=True)
-        n_selected_variables = len(selected_variables)
 
         chunks = pd.read_csv(input_path, engine='c', chunksize=chunksize,
                              usecols=selected_variables, **kwargs)
 
         for k, chunk in enumerate(chunks):
-            n_samples, n_variables = chunk.shape
-
-            if metric == "indices":
-                X_transform = np.full(
-                    (n_samples, n_selected_variables), -1, dtype=int)
-            elif metric == "bins":
-                X_transform = np.full(
-                    (n_samples, n_selected_variables), "", dtype=object)
-            else:
-                X_transform = np.zeros((n_samples, n_selected_variables))
-
-            for i, name in enumerate(selected_variables):
+            transformed_cols = []
+            for name in selected_variables:
                 optb = self._binned_variables[name]
 
                 params = {}
@@ -1492,9 +1475,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 if metric is None:
                     tparams.pop("metric")
 
-                X_transform[:, i] = optb.transform(**tparams)
+                transformed_cols.append(optb.transform(**tparams))
 
-            df = pd.DataFrame(X_transform, columns=selected_variables)
+            df = pd.DataFrame({
+                col: transformed_cols[idx]
+                for idx, col in enumerate(selected_variables)
+            })
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))
 
         return self

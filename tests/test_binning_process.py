@@ -484,6 +484,16 @@ def test_default_fit_transform_disk():
                                target="target", chunksize=100)
 
 
+def test_binning_transform_params():
+    btp = {variable_names[0]: {"metric": "bins"},
+           variable_names[1]: {"metric": "woe"}}
+    process = BinningProcess(variable_names[:3],
+                             binning_transform_params=btp)
+    X_transform = process.fit_transform(X[:, :3], y)
+    assert isinstance(X_transform[0, 0], str)
+    assert isinstance(X_transform[0, 1], float)
+
+
 def test_update_binned_variable():
     process = BinningProcess(variable_names)
     process.fit(X, y, check_input=True)

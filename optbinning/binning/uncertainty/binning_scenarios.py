@@ -678,9 +678,9 @@ class SBOptimalBinning(OptimalBinning):
             return splits_prebinning, np.array([]), np.array([])
 
         n_bins = n_splits + 1
-        n_nonevent = np.empty((n_bins, self._n_scenarios)).astype(np.int64)
-        n_event = np.empty((n_bins, self._n_scenarios)).astype(np.int64)
-        mask_remove = np.zeros(n_bins).astype(bool)
+        n_nonevent = np.empty((n_bins, self._n_scenarios), dtype=np.int64)
+        n_event = np.empty((n_bins, self._n_scenarios), dtype=np.int64)
+        mask_remove = np.zeros(n_bins, dtype=bool)
 
         for s in range(self._n_scenarios):
             y0 = (y[s] == 0)
@@ -733,7 +733,7 @@ class SBOptimalBinning(OptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: no bins after pre-binning.")

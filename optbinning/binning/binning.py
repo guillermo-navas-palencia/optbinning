@@ -902,7 +902,7 @@ class OptimalBinning(BaseOptimalBinning):
         if len(n_nonevent) <= 1:
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
@@ -1083,8 +1083,8 @@ class OptimalBinning(BaseOptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_nonevent = np.empty(n_bins).astype(np.int64)
-        n_event = np.empty(n_bins).astype(np.int64)
+        n_nonevent = np.empty(n_bins, dtype=np.int64)
+        n_event = np.empty(n_bins, dtype=np.int64)
 
         for i in range(n_bins):
             mask = (indices == i)

@@ -109,7 +109,7 @@ class Binning2DMIP:
             else:
                 status_name = "UNKNOWN"
 
-            solution = np.zeros(self._n_rectangles).astype(bool)
+            solution = np.zeros(self._n_rectangles, dtype=bool)
 
         return status_name, solution
 

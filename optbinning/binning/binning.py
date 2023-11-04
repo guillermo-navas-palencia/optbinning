@@ -12,6 +12,8 @@ import numpy as np
 
 from sklearn.utils import check_array
 
+import json
+
 from ..information import solver_statistics
 from ..logging import Logger
 from .auto_monotonic import auto_monotonic
@@ -1174,3 +1176,34 @@ class OptimalBinning(BaseOptimalBinning):
         self._check_is_fitted()
 
         return self._status
+    
+    def to_json(self, data, path: str):
+        """
+        Save optimal bins and/or splits points and transformation depending on the target type.
+        
+        data: The data of the variable ued for optimal binning
+        path: The path where the json is going to be saved
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file')
+        
+        transformed_data = {self.name : self.transform(data, 'indices').tolist()}
+        if self.dtype == 'numerical':
+            splits = {'splits' : self.splits.tolist()}
+        else:
+            splits = {'splits' : [split.tolist() for split in self.splits]}
+            
+        opt_bin_dict = dict(splits, **transformed_data)
+        with open(path, "w") as write_file:
+            json.dump(opt_bin_dict, write_file)
+            
+    def read_json(self, path: str):
+        """
+        Read json file containing split points and set them as the new split points.
+        
+        path: The path of the json file.
+        """
+        with open(path, "r") as read_file:
+            splits = json.load(read_file)
+            
+        self.set_params(user_splits = splits['splits'])

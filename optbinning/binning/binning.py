@@ -1190,7 +1190,7 @@ class OptimalBinning(BaseOptimalBinning):
         transformed_data = {self.name : self.transform(data, 'indices').tolist()}
         if self.dtype == 'numerical':
             splits = {'splits' : self.splits.tolist()}
-        else:
+        elif self.dtype == 'categorical':
             splits = {'splits' : [split.tolist() for split in self.splits]}
             
         opt_bin_dict = dict(splits, **transformed_data)

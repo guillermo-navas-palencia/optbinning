@@ -606,7 +606,7 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -663,6 +663,10 @@ class BinningTable:
         if show_bin_labels and style == "actual":
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
+            
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError('figsize should be a tuple.')
 
         if style == "actual":
             # Hide special and missing bin
@@ -682,8 +686,8 @@ class BinningTable:
         elif metric == "event_rate":
             metric_values = self._event_rate
             metric_label = "Event rate"
-
-        fig, ax1 = plt.subplots()
+            
+        fig, ax1 = plt.subplots(figsize = figsize)
 
         if style == "bin":
             n_bins = len(self._n_records)

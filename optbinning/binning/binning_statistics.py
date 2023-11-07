@@ -1562,6 +1562,7 @@ class ContinuousBinningTable:
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
                  categories=None, cat_others=None, user_splits=None):
+        
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes

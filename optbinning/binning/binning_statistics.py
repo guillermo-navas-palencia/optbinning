@@ -844,7 +844,7 @@ class BinningTable:
             metric_values = self._event_rate
             metric_label = "Event rate"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self._n_records)

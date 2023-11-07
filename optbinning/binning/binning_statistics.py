@@ -35,29 +35,107 @@ from .metrics import triangular
 
 
 COLORS_RGB = [
-    (215, 0, 0), (140, 60, 255), (2, 136, 0), (0, 172, 199), (152, 255, 0),
-    (255, 127, 209), (108, 0, 79), (255, 165, 48), (0, 0, 157),
-    (134, 112, 104), (0, 73, 66), (79, 42, 0), (0, 253, 207), (188, 183, 255),
-    (149, 180, 122), (192, 4, 185), (37, 102, 162), (40, 0, 65),
-    (220, 179, 175), (254, 245, 144), (80, 69, 91), (164, 124, 0),
-    (255, 113, 102), (63, 129, 110), (130, 0, 13), (163, 123, 179),
-    (52, 78, 0), (155, 228, 255), (235, 0, 119), (45, 0, 10), (94, 144, 255),
-    (0, 199, 32), (88, 1, 170), (0, 30, 0), (154, 71, 0), (150, 159, 166),
-    (155, 66, 92), (0, 31, 50), (200, 196, 0), (255, 208, 255), (0, 190, 154),
-    (55, 21, 255), (45, 37, 37), (223, 88, 255), (190, 231, 192),
-    (127, 69, 152), (82, 79, 60), (216, 102, 0), (100, 116, 56),
-    (193, 115, 136), (110, 116, 138), (128, 157, 3), (190, 139, 101),
-    (99, 51, 57), (202, 205, 218), (108, 235, 131), (34, 64, 105),
-    (162, 127, 255), (254, 3, 203), (118, 188, 253), (217, 195, 130),
-    (206, 163, 206), (109, 80, 0), (0, 105, 116), (71, 159, 94),
-    (148, 198, 191), (249, 255, 0), (192, 84, 69), (0, 101, 60), (91, 80, 168),
-    (83, 32, 100), (79, 95, 255), (126, 143, 119), (185, 8, 250),
-    (139, 146, 195), (179, 0, 53), (136, 96, 126), (159, 0, 117),
-    (255, 222, 196), (81, 8, 0), (26, 8, 0), (76, 137, 182), (0, 223, 223),
-    (200, 255, 250), (48, 53, 21), (255, 39, 71), (255, 151, 170), (4, 0, 26),
-    (201, 96, 177), (195, 162, 55), (124, 79, 58), (249, 158, 119),
-    (86, 101, 100), (209, 147, 255), (45, 31, 105), (65, 27, 52),
-    (175, 147, 152), (98, 158, 153), (255, 255, 255), (0, 0, 0)]
+    (215, 0, 0),
+    (140, 60, 255),
+    (2, 136, 0),
+    (0, 172, 199),
+    (152, 255, 0),
+    (255, 127, 209),
+    (108, 0, 79),
+    (255, 165, 48),
+    (0, 0, 157),
+    (134, 112, 104),
+    (0, 73, 66),
+    (79, 42, 0),
+    (0, 253, 207),
+    (188, 183, 255),
+    (149, 180, 122),
+    (192, 4, 185),
+    (37, 102, 162),
+    (40, 0, 65),
+    (220, 179, 175),
+    (254, 245, 144),
+    (80, 69, 91),
+    (164, 124, 0),
+    (255, 113, 102),
+    (63, 129, 110),
+    (130, 0, 13),
+    (163, 123, 179),
+    (52, 78, 0),
+    (155, 228, 255),
+    (235, 0, 119),
+    (45, 0, 10),
+    (94, 144, 255),
+    (0, 199, 32),
+    (88, 1, 170),
+    (0, 30, 0),
+    (154, 71, 0),
+    (150, 159, 166),
+    (155, 66, 92),
+    (0, 31, 50),
+    (200, 196, 0),
+    (255, 208, 255),
+    (0, 190, 154),
+    (55, 21, 255),
+    (45, 37, 37),
+    (223, 88, 255),
+    (190, 231, 192),
+    (127, 69, 152),
+    (82, 79, 60),
+    (216, 102, 0),
+    (100, 116, 56),
+    (193, 115, 136),
+    (110, 116, 138),
+    (128, 157, 3),
+    (190, 139, 101),
+    (99, 51, 57),
+    (202, 205, 218),
+    (108, 235, 131),
+    (34, 64, 105),
+    (162, 127, 255),
+    (254, 3, 203),
+    (118, 188, 253),
+    (217, 195, 130),
+    (206, 163, 206),
+    (109, 80, 0),
+    (0, 105, 116),
+    (71, 159, 94),
+    (148, 198, 191),
+    (249, 255, 0),
+    (192, 84, 69),
+    (0, 101, 60),
+    (91, 80, 168),
+    (83, 32, 100),
+    (79, 95, 255),
+    (126, 143, 119),
+    (185, 8, 250),
+    (139, 146, 195),
+    (179, 0, 53),
+    (136, 96, 126),
+    (159, 0, 117),
+    (255, 222, 196),
+    (81, 8, 0),
+    (26, 8, 0),
+    (76, 137, 182),
+    (0, 223, 223),
+    (200, 255, 250),
+    (48, 53, 21),
+    (255, 39, 71),
+    (255, 151, 170),
+    (4, 0, 26),
+    (201, 96, 177),
+    (195, 162, 55),
+    (124, 79, 58),
+    (249, 158, 119),
+    (86, 101, 100),
+    (209, 147, 255),
+    (45, 31, 105),
+    (65, 27, 52),
+    (175, 147, 152),
+    (98, 158, 153),
+    (255, 255, 255),
+    (0, 0, 0),
+]
 
 
 def bin_str_format(bins, show_digits):
@@ -66,11 +144,9 @@ def bin_str_format(bins, show_digits):
     bin_str = []
     for i in range(len(bins) - 1):
         if np.isinf(bins[i]):
-            b = "({0:.{2}f}, {1:.{2}f})".format(
-                bins[i], bins[i+1], show_digits)
+            b = "({0:.{2}f}, {1:.{2}f})".format(bins[i], bins[i + 1], show_digits)
         else:
-            b = "[{0:.{2}f}, {1:.{2}f})".format(
-                bins[i], bins[i+1], show_digits)
+            b = "[{0:.{2}f}, {1:.{2}f})".format(bins[i], bins[i + 1], show_digits)
 
         bin_str.append(b)
 
@@ -90,7 +166,7 @@ def bin_categorical(splits_categorical, categories, cat_others, user_splits):
 
     bins = []
     for i in range(n_bins):
-        mask = (indices == i)
+        mask = indices == i
         bins.append(categories[mask])
 
     if user_splits is not None:
@@ -113,7 +189,7 @@ def target_info(y, cl=0):
     if not len(y):
         return 0, 0
     else:
-        y0 = (y == cl)
+        y0 = y == cl
         n_nonevent = np.count_nonzero(y0)
         n_event = np.count_nonzero(~y0)
 
@@ -126,7 +202,7 @@ def target_info_samples(y, sw, cl=0):
     elif not len(sw):
         return target_info(y, cl)
     else:
-        y0 = (y == cl)
+        y0 = y == cl
         n_nonevent = np.sum(sw[y0])
         n_event = np.sum(sw[~y0])
 
@@ -218,14 +294,28 @@ def target_info_special_continuous(special_codes, x, y, sw):
             min_target_special = None
             max_target_special = None
 
-    return (n_records_special, sum_special, n_zeros_special, std_special,
-            min_target_special, max_target_special)
+    return (
+        n_records_special,
+        sum_special,
+        n_zeros_special,
+        std_special,
+        min_target_special,
+        max_target_special,
+    )
 
 
-def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
-             n_event_missing, n_nonevent_special, n_event_special,
-             n_nonevent_cat_others, n_event_cat_others, cat_others):
-
+def bin_info(
+    solution,
+    n_nonevent,
+    n_event,
+    n_nonevent_missing,
+    n_event_missing,
+    n_nonevent_special,
+    n_event_special,
+    n_nonevent_cat_others,
+    n_event_cat_others,
+    cat_others,
+):
     n_nev = []
     n_ev = []
     accum_nev = 0
@@ -261,8 +351,7 @@ def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
     return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
 
 
-def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
-                        n_event_special):
+def multiclass_bin_info(solution, n_classes, n_event, n_event_missing, n_event_special):
     n_ev = []
     accum_ev = np.zeros(n_classes)
     for i, selected in enumerate(solution):
@@ -289,14 +378,35 @@ def nstd(s, ss, records):
     return np.sqrt(ss / records - (s / records) ** 2)
 
 
-def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
-                        max_target, n_zeros, n_records_missing, sum_missing,
-                        std_missing,  min_target_missing, max_target_missing,
-                        n_zeros_missing, n_records_special, sum_special,
-                        std_special, min_target_special, max_target_special,
-                        n_zeros_special, n_records_cat_others, sum_cat_others,
-                        std_cat_others, min_target_others, max_target_others,
-                        n_zeros_others, cat_others):
+def continuous_bin_info(
+    solution,
+    n_records,
+    sums,
+    ssums,
+    stds,
+    min_target,
+    max_target,
+    n_zeros,
+    n_records_missing,
+    sum_missing,
+    std_missing,
+    min_target_missing,
+    max_target_missing,
+    n_zeros_missing,
+    n_records_special,
+    sum_special,
+    std_special,
+    min_target_special,
+    max_target_special,
+    n_zeros_special,
+    n_records_cat_others,
+    sum_cat_others,
+    std_cat_others,
+    min_target_others,
+    max_target_others,
+    n_zeros_others,
+    cat_others,
+):
     r = []
     s = []
     st = []
@@ -314,8 +424,9 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
         if selected:
             r.append(n_records[i] + accum_r)
             s.append(sums[i] + accum_s)
-            st.append(nstd(sums[i] + accum_s, ssums[i] + accum_ss,
-                           n_records[i] + accum_r))
+            st.append(
+                nstd(sums[i] + accum_s, ssums[i] + accum_ss, n_records[i] + accum_r)
+            )
             z.append(n_zeros[i] + accum_z)
             min_t.append(min(accum_min_t, min_target[i]))
             max_t.append(max(accum_max_t, max_target[i]))
@@ -372,35 +483,40 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
     min_t.append(min_target_missing)
     max_t.append(max_target_missing)
 
-    return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
-            np.array(st).astype(np.float64),
-            np.array(min_t).astype(np.float64),
-            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64))
+    return (
+        np.array(r).astype(np.int64),
+        np.array(s).astype(np.float64),
+        np.array(st).astype(np.float64),
+        np.array(min_t).astype(np.float64),
+        np.array(max_t).astype(np.float64),
+        np.array(z).astype(np.int64),
+    )
 
 
 def _check_build_parameters(show_digits, add_totals):
-    if (not isinstance(show_digits, numbers.Integral) or
-            not 0 <= show_digits <= 8):
-        raise ValueError("show_digits must be an integer in [0, 8]; "
-                         "got {}.".format(show_digits))
+    if not isinstance(show_digits, numbers.Integral) or not 0 <= show_digits <= 8:
+        raise ValueError(
+            "show_digits must be an integer in [0, 8]; " "got {}.".format(show_digits)
+        )
 
     if not isinstance(add_totals, bool):
-        raise TypeError("add_totals must be a boolean; got {}."
-                        .format(add_totals))
+        raise TypeError("add_totals must be a boolean; got {}.".format(add_totals))
 
 
 def _check_is_built(table):
     if not table._is_built:
-        raise NotFittedError("This {} instance is not built yet. Call "
-                             "'build' with appropriate arguments."
-                             .format(table.__class__.__name__))
+        raise NotFittedError(
+            "This {} instance is not built yet. Call "
+            "'build' with appropriate arguments.".format(table.__class__.__name__)
+        )
 
 
 def _check_is_analyzed(table):
     if not table._is_analyzed:
-        raise NotFittedError("This {} instance is not analyzed yet. Call "
-                             "'analysis' with appropriate arguments."
-                             .format(table.__class__.__name__))
+        raise NotFittedError(
+            "This {} instance is not analyzed yet. Call "
+            "'analysis' with appropriate arguments.".format(table.__class__.__name__)
+        )
 
 
 def _bin_str_label_format(bin_str, max_length=27):
@@ -408,7 +524,7 @@ def _bin_str_label_format(bin_str, max_length=27):
     for bs in bin_str:
         label = str(bs)
         if len(label) > max_length:
-            label = label[:max_length] + '...'
+            label = label[:max_length] + "..."
         _bin_str.append(label)
 
     return _bin_str
@@ -462,10 +578,21 @@ class BinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, special_codes, splits, n_nonevent, n_event,
-                 min_x=None, max_x=None, categories=None, cat_others=None,
-                 user_splits=None):
 
+    def __init__(
+        self,
+        name,
+        dtype,
+        special_codes,
+        splits,
+        n_nonevent,
+        n_event,
+        min_x=None,
+        max_x=None,
+        categories=None,
+        cat_others=None,
+        user_splits=None,
+    ):
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes
@@ -574,8 +701,9 @@ class BinningTable:
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
         else:
-            bin_str = bin_categorical(self.splits, self.categories,
-                                      self.cat_others, self.user_splits)
+            bin_str = bin_categorical(
+                self.splits, self.categories, self.cat_others, self.user_splits
+            )
 
         if isinstance(self.special_codes, dict):
             bin_str.extend(list(self.special_codes) + ["Missing"])
@@ -584,29 +712,48 @@ class BinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": n_records,
-            "Count (%)": p_records,
-            "Non-event": n_nonevent,
-            "Event": n_event,
-            "Event rate": event_rate,
-            "WoE": woe,
-            "IV": iv,
-            "JS": js
-            })
+        df = pd.DataFrame(
+            {
+                "Bin": bin_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Event rate": event_rate,
+                "WoE": woe,
+                "IV": iv,
+                "JS": js,
+            }
+        )
 
         if add_totals:
-            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
-                      t_event_rate, "", t_iv, t_js]
+            totals = [
+                "",
+                t_n_records,
+                1,
+                t_n_nonevent,
+                t_n_event,
+                t_event_rate,
+                "",
+                t_iv,
+                t_js,
+            ]
             df.loc["Totals"] = totals
 
         self._is_built = True
 
         return df
 
-    def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None, figsize=None):
+    def plot(
+        self,
+        metric="woe",
+        add_special=True,
+        add_missing=True,
+        style="bin",
+        show_bin_labels=False,
+        savefig=None,
+        figsize=None,
+    ):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -641,32 +788,38 @@ class BinningTable:
         _check_is_built(self)
 
         if metric not in ("event_rate", "woe"):
-            raise ValueError('Invalid value for metric. Allowed string '
-                             'values are "event_rate" and "woe".')
+            raise ValueError(
+                "Invalid value for metric. Allowed string "
+                'values are "event_rate" and "woe".'
+            )
 
         if not isinstance(add_special, bool):
-            raise TypeError("add_special must be a boolean; got {}."
-                            .format(add_special))
+            raise TypeError(
+                "add_special must be a boolean; got {}.".format(add_special)
+            )
 
         if not isinstance(add_missing, bool):
-            raise TypeError("add_missing must be a boolean; got {}."
-                            .format(add_missing))
+            raise TypeError(
+                "add_missing must be a boolean; got {}.".format(add_missing)
+            )
 
         if style not in ("bin", "actual"):
-            raise ValueError('Invalid value for style. Allowed string '
-                             'values are "bin" and "actual".')
+            raise ValueError(
+                "Invalid value for style. Allowed string "
+                'values are "bin" and "actual".'
+            )
 
         if not isinstance(show_bin_labels, bool):
-            raise TypeError("show_bin_labels must be a boolean; got {}."
-                            .format(show_bin_labels))
+            raise TypeError(
+                "show_bin_labels must be a boolean; got {}.".format(show_bin_labels)
+            )
 
         if show_bin_labels and style == "actual":
-            raise ValueError('show_bin_labels only supported when '
-                             'style="actual".')
+            raise ValueError("show_bin_labels only supported when " 'style="actual".')
 
         if figsize is not None:
             if not isinstance(figsize, tuple):
-                raise TypeError('figsize argument must be a tuple.')
+                raise TypeError("figsize argument must be a tuple.")
 
         if style == "actual":
             # Hide special and missing bin
@@ -677,8 +830,9 @@ class BinningTable:
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:
-                raise ValueError('If style="actual", min_x and max_x must be '
-                                 'provided.')
+                raise ValueError(
+                    'If style="actual", min_x and max_x must be ' "provided."
+                )
 
         if metric == "woe":
             metric_values = self._woe
@@ -711,19 +865,23 @@ class BinningTable:
                 n_bins -= 1
 
             p2 = ax1.bar(range(n_bins), _n_event, color="tab:red")
-            p1 = ax1.bar(range(n_bins), _n_nonevent, color="tab:blue",
-                         bottom=_n_event)
+            p1 = ax1.bar(range(n_bins), _n_nonevent, color="tab:blue", bottom=_n_event)
 
             handles = [p1[0], p2[0]]
-            labels = ['Non-event', 'Event']
+            labels = ["Non-event", "Event"]
 
             ax1.set_xlabel("Bin ID", fontsize=12)
             ax1.set_ylabel("Bin count", fontsize=13)
 
             ax2 = ax1.twinx()
 
-            ax2.plot(range(n_metric), metric_values[:n_metric],
-                     linestyle="solid", marker="o", color="black")
+            ax2.plot(
+                range(n_metric),
+                metric_values[:n_metric],
+                linestyle="solid",
+                marker="o",
+                color="black",
+            )
 
             # Positions special and missing bars
             pos_special = 0
@@ -745,8 +903,9 @@ class BinningTable:
                 p1[pos_others].set_alpha(0.5)
                 p2[pos_others].set_alpha(0.5)
 
-                ax2.plot(pos_others, metric_values[pos_others], marker="o",
-                         color="black")
+                ax2.plot(
+                    pos_others, metric_values[pos_others], marker="o", color="black"
+                )
 
             if add_special:
                 for i in range(self._n_specials):
@@ -757,8 +916,12 @@ class BinningTable:
                 label_special = "Bin special"
 
                 for s in range(self._n_specials):
-                    ax2.plot(pos_special+s, metric_values[pos_special+s],
-                             marker="o", color="black")
+                    ax2.plot(
+                        pos_special + s,
+                        metric_values[pos_special + s],
+                        marker="o",
+                        color="black",
+                    )
 
             if add_missing:
                 p1[pos_missing].set_hatch("\\")
@@ -766,8 +929,9 @@ class BinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
-                         color="black")
+                ax2.plot(
+                    pos_missing, metric_values[pos_missing], marker="o", color="black"
+                )
 
             if add_special and add_missing:
                 handles.extend([handle_special, handle_missing])
@@ -799,8 +963,8 @@ class BinningTable:
                 ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
         elif style == "actual":
-            _n_nonevent = self.n_nonevent[:-(self._n_specials + 1)]
-            _n_event = self.n_event[:-(self._n_specials + 1)]
+            _n_nonevent = self.n_nonevent[: -(self._n_specials + 1)]
+            _n_event = self.n_event[: -(self._n_specials + 1)]
 
             n_splits = len(self.splits)
 
@@ -812,13 +976,18 @@ class BinningTable:
             width = y_pos[1:] - y_pos[:-1]
             y_pos2 = y_pos[:-1]
 
-            p2 = ax1.bar(y_pos2, _n_event, width, color="tab:red",
-                         align="edge")
-            p1 = ax1.bar(y_pos2, _n_nonevent, width, color="tab:blue",
-                         bottom=_n_event, align="edge")
+            p2 = ax1.bar(y_pos2, _n_event, width, color="tab:red", align="edge")
+            p1 = ax1.bar(
+                y_pos2,
+                _n_nonevent,
+                width,
+                color="tab:blue",
+                bottom=_n_event,
+                align="edge",
+            )
 
             handles = [p1[0], p2[0]]
-            labels = ['Non-event', 'Event']
+            labels = ["Non-event", "Event"]
 
             ax1.set_xlabel("x", fontsize=12)
             ax1.set_ylabel("Bin count", fontsize=13)
@@ -826,16 +995,23 @@ class BinningTable:
             ax2 = ax1.twinx()
 
             for i in range(n_splits + 1):
-                ax2.plot([y_pos[i], y_pos[i+1]], [metric_values[i]] * 2,
-                         linestyle="solid", color="black")
+                ax2.plot(
+                    [y_pos[i], y_pos[i + 1]],
+                    [metric_values[i]] * 2,
+                    linestyle="solid",
+                    color="black",
+                )
 
-            ax2.plot(width / 2 + y_pos2,
-                     metric_values[:-(self._n_specials + 1)],
-                     linewidth=0.75, marker="o", color="black")
+            ax2.plot(
+                width / 2 + y_pos2,
+                metric_values[: -(self._n_specials + 1)],
+                linewidth=0.75,
+                marker="o",
+                color="black",
+            )
 
             for split in self.splits:
-                ax2.axvline(x=split, color="black", linestyle="--",
-                            linewidth=0.9)
+                ax2.axvline(x=split, color="black", linestyle="--", linewidth=0.9)
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
@@ -843,18 +1019,31 @@ class BinningTable:
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -legend_high),
+                ncol=2,
+                fontsize=12,
+            )
         else:
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.2),
+                ncol=2,
+                fontsize=12,
+            )
 
         if savefig is None:
             plt.show()
         else:
             if not isinstance(savefig, str):
-                raise TypeError("savefig must be a string path; got {}."
-                                .format(savefig))
+                raise TypeError(
+                    "savefig must be a string path; got {}.".format(savefig)
+                )
             plt.savefig(savefig)
             plt.close()
 
@@ -894,12 +1083,15 @@ class BinningTable:
         _check_is_built(self)
 
         if pvalue_test not in ("chi2", "fisher"):
-            raise ValueError('Invalid value for pvalue_test. Allowed string '
-                             'values are "chi2" and "fisher".')
+            raise ValueError(
+                "Invalid value for pvalue_test. Allowed string "
+                'values are "chi2" and "fisher".'
+            )
 
         if not isinstance(n_samples, numbers.Integral) or n_samples <= 0:
-            raise ValueError("n_samples must be a positive integer; got {}."
-                             .format(n_samples))
+            raise ValueError(
+                "n_samples must be a positive integer; got {}.".format(n_samples)
+            )
 
         # Significance tests
         n_bins = len(self._n_records)
@@ -920,8 +1112,8 @@ class BinningTable:
         p_values = []
         p_a_b = []
         p_b_a = []
-        for i in range(n_metric-1):
-            obs = np.array([n_nev[i:i+2], n_ev[i:i+2]])
+        for i in range(n_metric - 1):
+            obs = np.array([n_nev[i : i + 2], n_ev[i : i + 2]])
             t_statistic, p_value = frequentist_pvalue(obs, pvalue_test)
             pab, pba = bayesian_probability(obs, n_samples)
 
@@ -931,14 +1123,16 @@ class BinningTable:
             t_statistics.append(t_statistic)
             p_values.append(p_value)
 
-        df_tests = pd.DataFrame({
-                "Bin A": np.arange(n_metric-1),
-                "Bin B": np.arange(n_metric-1) + 1,
+        df_tests = pd.DataFrame(
+            {
+                "Bin A": np.arange(n_metric - 1),
+                "Bin B": np.arange(n_metric - 1) + 1,
                 "t-statistic": t_statistics,
                 "p-value": p_values,
                 "P[A > B]": p_a_b,
-                "P[B > A]": p_b_a
-            })
+                "P[B > A]": p_b_a,
+            }
+        )
 
         if pvalue_test == "fisher":
             df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
@@ -950,8 +1144,7 @@ class BinningTable:
             df_tests_string = " " * tab + "None"
 
         # Quality score
-        self._quality_score = binning_quality_score(self._iv, p_values,
-                                                    self._hhi_norm)
+        self._quality_score = binning_quality_score(self._iv, p_values, self._hhi_norm)
 
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._event_rate[:-2])
@@ -977,9 +1170,20 @@ class BinningTable:
             "  Monotonic trend       {:>15}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._gini, self._iv, self._js, self._hellinger,
-                     self._triangular, self._ks, self._hhi, self._hhi_norm,
-                     cramer_v, self._quality_score, type_mono, df_tests_string)
+        ).format(
+            self._gini,
+            self._iv,
+            self._js,
+            self._hellinger,
+            self._triangular,
+            self._ks,
+            self._hhi,
+            self._hhi_norm,
+            cramer_v,
+            self._quality_score,
+            type_mono,
+            df_tests_string,
+        )
 
         if print_output:
             print(report)
@@ -1106,6 +1310,7 @@ class MulticlassBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
+
     def __init__(self, name, special_codes, splits, n_event, classes):
         self.name = name
         self.special_codes = special_codes
@@ -1148,12 +1353,11 @@ class MulticlassBinningTable:
         t_n_records = n_records.sum()
         p_records = n_records / t_n_records
 
-        mask = (n_event > 0)
+        mask = n_event > 0
         event_rate = np.zeros((len(n_records), len(self.classes)))
 
         for i in range(len(self.classes)):
-            event_rate[mask[:, i], i] = n_event[
-                mask[:, i], i] / n_records[mask[:, i]]
+            event_rate[mask[:, i], i] = n_event[mask[:, i], i] / n_records[mask[:, i]]
 
         # Compute Jensen-Shannon multivariate divergence
         p_event = self.n_event / self.n_event.sum(axis=0)
@@ -1183,16 +1387,19 @@ class MulticlassBinningTable:
 
         self._bin_str = bin_str
 
-        dict_event = {"Event_{0}".format(cl): n_event[:, i]
-                      for i, cl in enumerate(self.classes)}
+        dict_event = {
+            "Event_{0}".format(cl): n_event[:, i] for i, cl in enumerate(self.classes)
+        }
 
-        dict_p_event = {"Event_rate_{0}".format(cl): event_rate[:, i]
-                        for i, cl in enumerate(self.classes)}
+        dict_p_event = {
+            "Event_rate_{0}".format(cl): event_rate[:, i]
+            for i, cl in enumerate(self.classes)
+        }
 
-        dict_data = {**{"Bin": bin_str,
-                        "Count": n_records,
-                        "Count (%)": p_records},
-                     **{**dict_event, **dict_p_event}}
+        dict_data = {
+            **{"Bin": bin_str, "Count": n_records, "Count (%)": p_records},
+            **{**dict_event, **dict_p_event},
+        }
 
         df = pd.DataFrame(dict_data)
 
@@ -1207,8 +1414,14 @@ class MulticlassBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, show_bin_labels=False,
-             savefig=None):
+    def plot(
+        self,
+        add_special=True,
+        add_missing=True,
+        show_bin_labels=False,
+        savefig=None,
+        figsize=None,
+    ):
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1233,25 +1446,32 @@ class MulticlassBinningTable:
         _check_is_built(self)
 
         if not isinstance(add_special, bool):
-            raise TypeError("add_special must be a boolean; got {}."
-                            .format(add_special))
+            raise TypeError(
+                "add_special must be a boolean; got {}.".format(add_special)
+            )
 
         if not isinstance(add_missing, bool):
-            raise TypeError("add_missing must be a boolean; got {}."
-                            .format(add_missing))
+            raise TypeError(
+                "add_missing must be a boolean; got {}.".format(add_missing)
+            )
 
         if not isinstance(show_bin_labels, bool):
-            raise TypeError("show_bin_labels must be a boolean; got {}."
-                            .format(show_bin_labels))
+            raise TypeError(
+                "show_bin_labels must be a boolean; got {}.".format(show_bin_labels)
+            )
+
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError("figsize argument must be a tuple.")
 
         n_bins = len(self._n_records)
         n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         colors = COLORS_RGB[:n_classes]
-        colors = [tuple(c / 255. for c in color) for color in colors]
+        colors = [tuple(c / 255.0 for c in color) for color in colors]
 
         if not add_special:
             n_bins -= self._n_specials
@@ -1274,8 +1494,9 @@ class MulticlassBinningTable:
         p = []
         cum_size = np.zeros(n_bins)
         for i, cl in enumerate(self.classes):
-            p.append(ax1.bar(range(n_bins), _n_event[i],
-                             color=colors[i], bottom=cum_size))
+            p.append(
+                ax1.bar(range(n_bins), _n_event[i], color=colors[i], bottom=cum_size)
+            )
             cum_size += _n_event[i]
 
         handles = [_p[0] for _p in p]
@@ -1290,9 +1511,15 @@ class MulticlassBinningTable:
         metric_label = "Event rate"
 
         for i, cl in enumerate(self.classes):
-            ax2.plot(range(n_metric), metric_values[:n_metric, i],
-                     linestyle="solid", marker="o", color="black",
-                     markerfacecolor=colors[i], markeredgewidth=0.5)
+            ax2.plot(
+                range(n_metric),
+                metric_values[:n_metric, i],
+                linestyle="solid",
+                marker="o",
+                color="black",
+                markerfacecolor=colors[i],
+                markeredgewidth=0.5,
+            )
 
         # Add points for special and missing bin
         if add_special:
@@ -1312,8 +1539,12 @@ class MulticlassBinningTable:
 
             for i, cl in enumerate(self.classes):
                 for s in range(self._n_specials):
-                    ax2.plot(pos_special+s, metric_values[pos_special+s, i],
-                             marker="o", color=colors[i])
+                    ax2.plot(
+                        pos_special + s,
+                        metric_values[pos_special + s, i],
+                        marker="o",
+                        color=colors[i],
+                    )
 
         if add_missing:
             for _p in p:
@@ -1323,8 +1554,12 @@ class MulticlassBinningTable:
             label_missing = "Bin missing"
 
             for i, cl in enumerate(self.classes):
-                ax2.plot(pos_missing, metric_values[pos_missing, i],
-                         marker="o", color=colors[i])
+                ax2.plot(
+                    pos_missing,
+                    metric_values[pos_missing, i],
+                    marker="o",
+                    color=colors[i],
+                )
 
         if add_special and add_missing:
             handles.extend([handle_special, handle_missing])
@@ -1355,18 +1590,31 @@ class MulticlassBinningTable:
 
         if show_bin_labels:
             legend_high = max(map(len, self._bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -legend_high),
+                ncol=2,
+                fontsize=12,
+            )
         else:
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.2),
+                ncol=2,
+                fontsize=12,
+            )
 
         if savefig is None:
             plt.show()
         else:
             if not isinstance(savefig, str):
-                raise TypeError("savefig must be a string path; got {}."
-                                .format(savefig))
+                raise TypeError(
+                    "savefig must be a string path; got {}.".format(savefig)
+                )
             plt.savefig(savefig)
             plt.close()
 
@@ -1403,19 +1651,21 @@ class MulticlassBinningTable:
 
         t_statistics = []
         p_values = []
-        for i in range(n_metric-1):
-            obs = n_ev[i:i+2, :]
+        for i in range(n_metric - 1):
+            obs = n_ev[i : i + 2, :]
             t_statistic, p_value = frequentist_pvalue(obs, "chi2")
 
             t_statistics.append(t_statistic)
             p_values.append(p_value)
 
-        df_tests = pd.DataFrame({
-                "Bin A": np.arange(n_metric-1),
-                "Bin B": np.arange(n_metric-1) + 1,
+        df_tests = pd.DataFrame(
+            {
+                "Bin A": np.arange(n_metric - 1),
+                "Bin B": np.arange(n_metric - 1) + 1,
                 "t-statistic": t_statistics,
-                "p-value": p_values
-            })
+                "p-value": p_values,
+            }
+        )
 
         tab = 4
         if len(df_tests):
@@ -1425,7 +1675,8 @@ class MulticlassBinningTable:
 
         # Quality score
         self._quality_score = multiclass_binning_quality_score(
-            self._js, len(self.classes), p_values, self._hhi_norm)
+            self._js, len(self.classes), p_values, self._hhi_norm
+        )
 
         # Monotonic trend
         mono_string = "    Class {:>2}            {:>15}\n"
@@ -1451,8 +1702,15 @@ class MulticlassBinningTable:
             "  Monotonic trend\n\n{}"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._js, self._hhi, self._hhi_norm, cramer_v,
-                     self._quality_score, monotonic_string, df_tests_string)
+        ).format(
+            self._js,
+            self._hhi,
+            self._hhi_norm,
+            cramer_v,
+            self._quality_score,
+            monotonic_string,
+            df_tests_string,
+        )
 
         if print_output:
             print(report)
@@ -1549,10 +1807,25 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, special_codes, splits, n_records, sums,
-                 stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
-                 categories=None, cat_others=None, user_splits=None):
 
+    def __init__(
+        self,
+        name,
+        dtype,
+        special_codes,
+        splits,
+        n_records,
+        sums,
+        stds,
+        min_target,
+        max_target,
+        n_zeros,
+        min_x=None,
+        max_x=None,
+        categories=None,
+        cat_others=None,
+        user_splits=None,
+    ):
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes
@@ -1604,7 +1877,7 @@ class ContinuousBinningTable:
         t_mean = t_sum / t_n_records
         p_records = self.n_records / t_n_records
 
-        mask = (self.n_records > 0)
+        mask = self.n_records > 0
         self._mean = np.zeros(len(self.n_records))
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
 
@@ -1632,8 +1905,9 @@ class ContinuousBinningTable:
             bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
             bin_str = bin_str_format(bins, show_digits)
         else:
-            bin_str = bin_categorical(self.splits, self.categories,
-                                      self.cat_others, self.user_splits)
+            bin_str = bin_categorical(
+                self.splits, self.categories, self.cat_others, self.user_splits
+            )
 
         if isinstance(self.special_codes, dict):
             bin_str.extend(list(self.special_codes) + ["Missing"])
@@ -1642,34 +1916,53 @@ class ContinuousBinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": self.n_records,
-            "Count (%)": p_records,
-            "Sum": self.sums,
-            "Std": self.stds,
-            "Mean": self._mean,
-            "Min": self.min_target,
-            "Max": self.max_target,
-            "Zeros count": self.n_zeros,
-            "WoE": woe,
-            "IV": iv,
-            })
+        df = pd.DataFrame(
+            {
+                "Bin": bin_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Mean": self._mean,
+                "Min": self.min_target,
+                "Max": self.max_target,
+                "Zeros count": self.n_zeros,
+                "WoE": woe,
+                "IV": iv,
+            }
+        )
 
         if add_totals:
             t_min = np.nanmin(self.min_target)
             t_max = np.nanmax(self.max_target)
             t_n_zeros = self.n_zeros.sum()
-            totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
-                      t_n_zeros, t_woe, t_iv]
+            totals = [
+                "",
+                t_n_records,
+                1,
+                t_sum,
+                "",
+                t_mean,
+                t_min,
+                t_max,
+                t_n_zeros,
+                t_woe,
+                t_iv,
+            ]
             df.loc["Totals"] = totals
 
         self._is_built = True
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, style="bin",
-             show_bin_labels=False, savefig=None):
+    def plot(
+        self,
+        add_special=True,
+        add_missing=True,
+        style="bin",
+        show_bin_labels=False,
+        savefig=None,
+    ):
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -1699,24 +1992,28 @@ class ContinuousBinningTable:
         _check_is_built(self)
 
         if not isinstance(add_special, bool):
-            raise TypeError("add_special must be a boolean; got {}."
-                            .format(add_special))
+            raise TypeError(
+                "add_special must be a boolean; got {}.".format(add_special)
+            )
 
         if not isinstance(add_missing, bool):
-            raise TypeError("add_missing must be a boolean; got {}."
-                            .format(add_missing))
+            raise TypeError(
+                "add_missing must be a boolean; got {}.".format(add_missing)
+            )
 
         if style not in ("bin", "actual"):
-            raise ValueError('Invalid value for style. Allowed string '
-                             'values are "bin" and "actual".')
+            raise ValueError(
+                "Invalid value for style. Allowed string "
+                'values are "bin" and "actual".'
+            )
 
         if not isinstance(show_bin_labels, bool):
-            raise TypeError("show_bin_labels must be a boolean; got {}."
-                            .format(show_bin_labels))
+            raise TypeError(
+                "show_bin_labels must be a boolean; got {}.".format(show_bin_labels)
+            )
 
         if show_bin_labels and style == "actual":
-            raise ValueError('show_bin_labels only supported when '
-                             'style="actual".')
+            raise ValueError("show_bin_labels only supported when " 'style="actual".')
 
         if style == "actual":
             # Hide special and missing bin
@@ -1727,8 +2024,9 @@ class ContinuousBinningTable:
                 raise ValueError('If style="actual", dtype must be numerical.')
 
             elif self.min_x is None or self.max_x is None:
-                raise ValueError('If style="actual", min_x and max_x must be '
-                                 'provided.')
+                raise ValueError(
+                    'If style="actual", min_x and max_x must be ' "provided."
+                )
 
         metric_values = self._mean
         metric_label = "Mean"
@@ -1756,15 +2054,20 @@ class ContinuousBinningTable:
             p1 = ax1.bar(range(n_bins), _n_records, color="tab:blue")
 
             handles = [p1[0]]
-            labels = ['Count']
+            labels = ["Count"]
 
             ax1.set_xlabel("Bin ID", fontsize=12)
             ax1.set_ylabel("Bin count", fontsize=13)
 
             ax2 = ax1.twinx()
 
-            ax2.plot(range(n_metric), metric_values[:n_metric],
-                     linestyle="solid", marker="o", color="black")
+            ax2.plot(
+                range(n_metric),
+                metric_values[:n_metric],
+                linestyle="solid",
+                marker="o",
+                color="black",
+            )
 
             # Positions special and missing bars
             pos_special = 0
@@ -1785,8 +2088,9 @@ class ContinuousBinningTable:
 
                 p1[pos_others].set_alpha(0.5)
 
-                ax2.plot(pos_others, metric_values[pos_others], marker="o",
-                         color="black")
+                ax2.plot(
+                    pos_others, metric_values[pos_others], marker="o", color="black"
+                )
 
             if add_special:
                 for i in range(self._n_specials):
@@ -1796,16 +2100,21 @@ class ContinuousBinningTable:
                 label_special = "Bin special"
 
                 for s in range(self._n_specials):
-                    ax2.plot(pos_special+s, metric_values[pos_special+s],
-                             marker="o", color="black")
+                    ax2.plot(
+                        pos_special + s,
+                        metric_values[pos_special + s],
+                        marker="o",
+                        color="black",
+                    )
 
             if add_missing:
                 p1[pos_missing].set_hatch("\\")
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
-                         color="black")
+                ax2.plot(
+                    pos_missing, metric_values[pos_missing], marker="o", color="black"
+                )
 
             if add_special and add_missing:
                 handles.extend([handle_special, handle_missing])
@@ -1837,7 +2146,7 @@ class ContinuousBinningTable:
                 ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
         elif style == "actual":
-            _n_records = self.n_records[:-(self._n_specials + 1)]
+            _n_records = self.n_records[: -(self._n_specials + 1)]
 
             n_splits = len(self.splits)
 
@@ -1849,29 +2158,35 @@ class ContinuousBinningTable:
             width = y_pos[1:] - y_pos[:-1]
             y_pos2 = y_pos[:-1]
 
-            p1 = ax1.bar(y_pos2, _n_records, width, color="tab:blue",
-                         align="edge")
+            p1 = ax1.bar(y_pos2, _n_records, width, color="tab:blue", align="edge")
 
             handles = [p1[0]]
-            labels = ['Count']
+            labels = ["Count"]
 
             ax1.set_xlabel("x", fontsize=12)
             ax1.set_ylabel("Bin count", fontsize=13)
-            ax1.tick_params(axis='x', labelrotation=45)
+            ax1.tick_params(axis="x", labelrotation=45)
 
             ax2 = ax1.twinx()
 
             for i in range(n_splits + 1):
-                ax2.plot([y_pos[i], y_pos[i+1]], [metric_values[i]] * 2,
-                         linestyle="solid", color="black")
+                ax2.plot(
+                    [y_pos[i], y_pos[i + 1]],
+                    [metric_values[i]] * 2,
+                    linestyle="solid",
+                    color="black",
+                )
 
-            ax2.plot(width / 2 + y_pos2,
-                     metric_values[:-(self._n_specials + 1)],
-                     linewidth=0.75, marker="o", color="black")
+            ax2.plot(
+                width / 2 + y_pos2,
+                metric_values[: -(self._n_specials + 1)],
+                linewidth=0.75,
+                marker="o",
+                color="black",
+            )
 
             for split in self.splits:
-                ax2.axvline(x=split, color="black", linestyle="--",
-                            linewidth=0.9)
+                ax2.axvline(x=split, color="black", linestyle="--", linewidth=0.9)
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
@@ -1879,18 +2194,31 @@ class ContinuousBinningTable:
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -legend_high),
+                ncol=2,
+                fontsize=12,
+            )
         else:
-            plt.legend(handles, labels, loc="upper center",
-                       bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
+            plt.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.2),
+                ncol=2,
+                fontsize=12,
+            )
 
         if savefig is None:
             plt.show()
         else:
             if not isinstance(savefig, str):
-                raise TypeError("savefig must be a string path; got {}."
-                                .format(savefig))
+                raise TypeError(
+                    "savefig must be a string path; got {}.".format(savefig)
+                )
             plt.savefig(savefig)
             plt.close()
 
@@ -1933,23 +2261,26 @@ class ContinuousBinningTable:
         t_statistics = []
         p_values = []
 
-        for i in range(n_metric-1):
-            u, u2 = mean[i], mean[i+1]
-            s, s2 = std[i], std[i+1]
-            r, r2 = n_records[i], n_records[i+1]
+        for i in range(n_metric - 1):
+            u, u2 = mean[i], mean[i + 1]
+            s, s2 = std[i], std[i + 1]
+            r, r2 = n_records[i], n_records[i + 1]
 
             t_statistic, p_value = stats.ttest_ind_from_stats(
-                u, s, r, u2, s2, r2, False)
+                u, s, r, u2, s2, r2, False
+            )
 
             t_statistics.append(t_statistic)
             p_values.append(p_value)
 
-        df_tests = pd.DataFrame({
-                "Bin A": np.arange(n_metric-1),
-                "Bin B": np.arange(n_metric-1) + 1,
+        df_tests = pd.DataFrame(
+            {
+                "Bin A": np.arange(n_metric - 1),
+                "Bin B": np.arange(n_metric - 1) + 1,
                 "t-statistic": t_statistics,
-                "p-value": p_values
-            })
+                "p-value": p_values,
+            }
+        )
 
         tab = 4
         if len(df_tests):
@@ -1964,7 +2295,8 @@ class ContinuousBinningTable:
             rwoe = self._woe / abs(self._t_mean)
 
         self._quality_score = continuous_binning_quality_score(
-            rwoe, p_values, self._hhi_norm)
+            rwoe, p_values, self._hhi_norm
+        )
 
         # Monotonic trend
         type_mono = type_of_monotonic_trend(self._mean[:-2])
@@ -1986,8 +2318,16 @@ class ContinuousBinningTable:
             "  Monotonic trend       {:>15}\n"
             "\n"
             "  Significance tests\n\n{}\n"
-            ).format(self._iv, self._woe, rwoe, self._hhi, self._hhi_norm,
-                     self._quality_score, type_mono, df_tests_string)
+        ).format(
+            self._iv,
+            self._woe,
+            rwoe,
+            self._hhi,
+            self._hhi_norm,
+            self._quality_score,
+            type_mono,
+            df_tests_string,
+        )
 
         if print_output:
             print(report)

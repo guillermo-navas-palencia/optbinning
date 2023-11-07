@@ -1962,6 +1962,7 @@ class ContinuousBinningTable:
         style="bin",
         show_bin_labels=False,
         savefig=None,
+        figsize=None,
     ):
         """Plot the binning table.
 
@@ -2028,10 +2029,14 @@ class ContinuousBinningTable:
                     'If style="actual", min_x and max_x must be ' "provided."
                 )
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError("figsize argument must be a tuple.")
+
         metric_values = self._mean
         metric_label = "Mean"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self.n_records)

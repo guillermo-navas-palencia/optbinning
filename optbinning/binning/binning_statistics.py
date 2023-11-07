@@ -1571,7 +1571,9 @@ class ContinuousBinningTable:
         self.user_splits = user_splits
 
         self._mean = None
+        self._iv_values = None
         self._iv = None
+        self._woe_values = None
         self._woe = None
         self._t_mean = None
         self._hhi = None
@@ -1615,7 +1617,9 @@ class ContinuousBinningTable:
         t_iv = iv.sum()
         t_woe = np.absolute(woe).sum()
 
+        self._iv_values = iv
         self._iv = t_iv
+        self._woe_values = woe
         self._woe = t_woe
         self._t_mean = t_mean
 
@@ -1670,13 +1674,17 @@ class ContinuousBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, style="bin",
-             show_bin_labels=False, savefig=None):
+             show_bin_labels=False, savefig=None, metric='mean'):
         """Plot the binning table.
 
         Visualize records count and mean values.
 
         Parameters
         ----------
+        metric : str, optional (default="mean")
+            Supported metrics are "mean" to show the Mean value of the target variable in each bin,
+            "iv" to show the IV of each bin and "woe" to show the Weight of Evidence (WoE) of each bin.
+
         add_special : bool (default=True)
             Whether to add the special codes bin.
 
@@ -1719,6 +1727,10 @@ class ContinuousBinningTable:
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
 
+        if metric not in ("mean", "iv", "woe"):
+            raise ValueError('Invalid value for metric. Allowed string '
+                             'values are "mean", "iv" and "woe".')
+
         if style == "actual":
             # Hide special and missing bin
             add_special = False
@@ -1730,9 +1742,16 @@ class ContinuousBinningTable:
             elif self.min_x is None or self.max_x is None:
                 raise ValueError('If style="actual", min_x and max_x must be '
                                  'provided.')
-
-        metric_values = self._mean
-        metric_label = "Mean"
+        
+        if metric == "mean":
+            metric_values = self._mean
+            metric_label = "Mean"
+        elif metric == "woe":
+            metric_values = self._woe_values
+            metric_label = "WoE"
+        elif metric == "iv":
+            metric_values = self._iv_values
+            metric_label = "IV"
 
         fig, ax1 = plt.subplots()
 

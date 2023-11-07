@@ -784,6 +784,9 @@ class BinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1442,6 +1445,9 @@ class MulticlassBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1989,6 +1995,9 @@ class ContinuousBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 

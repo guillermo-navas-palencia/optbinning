@@ -1423,7 +1423,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             X_transform[:, i] = optb.transform(**tparams)
 
         if isinstance(X, pd.DataFrame):
-            return pd.DataFrame(X_transform, columns=selected_variables)
+            return pd.DataFrame(X_transform, columns=selected_variables, index=X.index)
 
         return X_transform
 

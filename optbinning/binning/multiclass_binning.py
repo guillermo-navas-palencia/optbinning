@@ -602,7 +602,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_event = np.empty(self._n_classes).astype(np.int64)
+            n_event = np.empty(self._n_classes, dtype=np.int64)
 
             for i, cl in enumerate(self._classes):
                 n_event[i] = target_info(y_clean, cl)[0]
@@ -671,7 +671,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: no bins after pre-binning.")
@@ -790,9 +790,9 @@ class MulticlassOptimalBinning(OptimalBinning):
         indices = np.digitize(x, splits_prebinning, right=False)
 
         n_bins = n_splits + 1
-        n_nonevent = np.empty((n_bins, self._n_classes)).astype(np.int64)
-        n_event = np.empty((n_bins, self._n_classes)).astype(np.int64)
-        mask_remove = np.zeros(n_bins).astype(bool)
+        n_nonevent = np.empty((n_bins, self._n_classes), dtype=np.int64)
+        n_event = np.empty((n_bins, self._n_classes), dtype=np.int64)
+        mask_remove = np.zeros(n_bins, dtype=bool)
 
         for idx, cl in enumerate(self._classes):
             y1 = (y == cl)

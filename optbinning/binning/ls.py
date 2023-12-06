@@ -223,7 +223,7 @@ class BinningLS:
             solution = np.array([self._x[i].value
                                  for i in range(self._n)]).astype(bool)
         else:
-            solution = np.zeros(self._n).astype(bool)
+            solution = np.zeros(self._n, dtype=bool)
             solution[-1] = True
 
         return status_name, solution

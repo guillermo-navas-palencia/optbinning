@@ -905,11 +905,11 @@ class ContinuousOptimalBinning(OptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_records = np.empty(n_bins).astype(np.int64)
+        n_records = np.empty(n_bins, dtype=np.int64)
         sums = np.empty(n_bins)
         ssums = np.empty(n_bins)
         stds = np.zeros(n_bins)
-        n_zeros = np.empty(n_bins).astype(np.int64)
+        n_zeros = np.empty(n_bins, dtype=np.int64)
         min_t = np.full(n_bins, -np.inf)
         max_t = np.full(n_bins, np.inf)
 

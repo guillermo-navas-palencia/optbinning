@@ -78,7 +78,7 @@ def print_psi_report(df_psi):
     n_bins = len(splits) + 1
     indices = np.digitize(psi, splits, right=True)
 
-    psi_bins = np.empty(n_bins).astype(np.int64)
+    psi_bins = np.empty(n_bins, dtype=np.int64)
     for i in range(n_bins):
         mask = (indices == i)
         psi_bins[i] = len(psi[mask])
@@ -109,7 +109,7 @@ def print_tests_report(df_tests):
     n_bins = len(splits) + 1
     indices = np.digitize(pvalues, splits, right=True)
 
-    pvalue_bins = np.empty(n_bins).astype(np.int64)
+    pvalue_bins = np.empty(n_bins, dtype=np.int64)
     for i in range(n_bins):
         mask = (indices == i)
         pvalue_bins[i] = len(pvalues[mask])
@@ -501,10 +501,10 @@ class ScorecardMonitoring(BaseEstimator):
         indices_e = np.digitize(score_expected, splits, right=True)
 
         if self._target_dtype == "binary":
-            n_nonevent_a = np.empty(n_bins).astype(np.int64)
-            n_event_a = np.empty(n_bins).astype(np.int64)
-            n_nonevent_e = np.empty(n_bins).astype(np.int64)
-            n_event_e = np.empty(n_bins).astype(np.int64)
+            n_nonevent_a = np.empty(n_bins, dtype=np.int64)
+            n_event_a = np.empty(n_bins, dtype=np.int64)
+            n_nonevent_e = np.empty(n_bins, dtype=np.int64)
+            n_event_e = np.empty(n_bins, dtype=np.int64)
 
             y0_a = (y_actual == 0)
             y1_a = ~ y0_a
@@ -524,8 +524,8 @@ class ScorecardMonitoring(BaseEstimator):
             n_records_a = n_nonevent_a + n_event_a
             n_records_e = n_nonevent_e + n_event_e
         else:
-            n_records_a = np.empty(n_bins).astype(np.int64)
-            n_records_e = np.empty(n_bins).astype(np.int64)
+            n_records_a = np.empty(n_bins, dtype=np.int64)
+            n_records_e = np.empty(n_bins, dtype=np.int64)
             mean_a = np.empty(n_bins)
             mean_e = np.empty(n_bins)
             std_a = np.empty(n_bins)
@@ -784,8 +784,8 @@ class ScorecardMonitoring(BaseEstimator):
 
             n_bins = te.max() + 1
 
-            n_records_a = np.empty(n_bins).astype(np.int64)
-            n_records_e = np.empty(n_bins).astype(np.int64)
+            n_records_a = np.empty(n_bins, dtype=np.int64)
+            n_records_e = np.empty(n_bins, dtype=np.int64)
 
             for i in range(n_bins):
                 n_records_a[i] = np.count_nonzero(ta == i)

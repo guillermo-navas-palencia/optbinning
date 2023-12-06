@@ -1379,10 +1379,35 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         indices_selected_variables = self.get_support(indices=True)
         n_selected_variables = len(indices_selected_variables)
 
-        if metric == "indices":
+        # Check if specific binning transform metrics were supplied, and
+        # whether these are compatible. Default base metric is the binning
+        # process transform metric.
+        base_metric = metric
+
+        if self.binning_transform_params is not None:
+            metrics = set()
+
+            if metric is not None:
+                metrics.add(metric)
+
+            for idx in indices_selected_variables:
+                name = self.variable_names[idx]
+                params = self.binning_transform_params.get(name, {})
+                metrics.add(params.get("metric", metric))
+
+            if len(metrics) > 1:
+                # indices and default transform metrics are numeric. If bins
+                # metrics is present the dtypes are incompatible.
+                if "bins" in metrics:
+                    raise ValueError(
+                        "metric 'bins' cannot be mixed with numeric metrics.")
+            else:
+                base_metric = metrics.pop()
+
+        if base_metric == "indices":
             X_transform = np.full(
                 (n_samples, n_selected_variables), -1, dtype=int)
-        elif metric == "bins":
+        elif base_metric == "bins":
             X_transform = np.full(
                 (n_samples, n_selected_variables), "", dtype=object)
         else:
@@ -1423,7 +1448,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             X_transform[:, i] = optb.transform(**tparams)
 
         if isinstance(X, pd.DataFrame):
-            return pd.DataFrame(X_transform, columns=selected_variables, index=X.index)
+            return pd.DataFrame(
+                X_transform, columns=selected_variables, index=X.index)
 
         return X_transform
 
@@ -1452,16 +1478,40 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         selected_variables = self.get_support(names=True)
         n_selected_variables = len(selected_variables)
 
+        # Check if specific binning transform metrics were supplied, and
+        # whether these are compatible. Default base metric is the binning
+        # process transform metric.
+        base_metric = metric
+
+        if self.binning_transform_params is not None:
+            metrics = set()
+
+            if metric is not None:
+                metrics.add(metric)
+
+            for name in selected_variables:
+                params = self.binning_transform_params.get(name, {})
+                metrics.add(params.get("metric", metric))
+
+            if len(metrics) > 1:
+                # indices and default transform metrics are numeric. If bins
+                # metrics is present the dtypes are incompatible.
+                if "bins" in metrics:
+                    raise ValueError(
+                        "metric 'bins' cannot be mixed with numeric metrics.")
+            else:
+                base_metric = metrics.pop()
+
         chunks = pd.read_csv(input_path, engine='c', chunksize=chunksize,
                              usecols=selected_variables, **kwargs)
 
         for k, chunk in enumerate(chunks):
             n_samples, n_variables = chunk.shape
 
-            if metric == "indices":
+            if base_metric == "indices":
                 X_transform = np.full(
                     (n_samples, n_selected_variables), -1, dtype=int)
-            elif metric == "bins":
+            elif base_metric == "bins":
                 X_transform = np.full(
                     (n_samples, n_selected_variables), "", dtype=object)
             else:

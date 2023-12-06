@@ -608,7 +608,7 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -639,6 +639,9 @@ class BinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -666,6 +669,10 @@ class BinningTable:
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError("figsize argument must be a tuple.")
+
         if style == "actual":
             # Hide special and missing bin
             add_special = False
@@ -688,7 +695,7 @@ class BinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self._n_records)
@@ -1209,7 +1216,7 @@ class MulticlassBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, show_bin_labels=False,
-             savefig=None):
+             savefig=None, figsize=None):
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1230,6 +1237,9 @@ class MulticlassBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1245,11 +1255,15 @@ class MulticlassBinningTable:
             raise TypeError("show_bin_labels must be a boolean; got {}."
                             .format(show_bin_labels))
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError('figsize argument must be a tuple.')
+
         n_bins = len(self._n_records)
         n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         colors = COLORS_RGB[:n_classes]
         colors = [tuple(c / 255. for c in color) for color in colors]
@@ -1553,7 +1567,7 @@ class ContinuousBinningTable:
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
                  categories=None, cat_others=None, user_splits=None):
-
+        
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes
@@ -1674,7 +1688,7 @@ class ContinuousBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, style="bin",
-             show_bin_labels=False, savefig=None, metric='mean'):
+             show_bin_labels=False, savefig=None, figsize=None, metric='mean'):
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -1704,6 +1718,9 @@ class ContinuousBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1726,6 +1743,10 @@ class ContinuousBinningTable:
         if show_bin_labels and style == "actual":
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
+
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError('figsize argument must be a tuple.')
 
         if metric not in ("mean", "iv", "woe"):
             raise ValueError('Invalid value for metric. Allowed string '
@@ -1753,7 +1774,7 @@ class ContinuousBinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self.n_records)
@@ -2063,3 +2084,4 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
+        

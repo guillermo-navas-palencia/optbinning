@@ -1177,33 +1177,53 @@ class OptimalBinning(BaseOptimalBinning):
 
         return self._status
     
-    def to_json(self, data, path: str):
+    def to_json(self, path: str):
         """
         Save optimal bins and/or splits points and transformation depending on the target type.
         
-        data: The data of the variable ued for optimal binning
+        Parameters
+        ----------
         path: The path where the json is going to be saved
         """
         if path is None:
             raise ValueError('Specify the path for the json file')
+
+        table = self.binning_table
+
+        opt_bin_dict=dict()
+        opt_bin_dict['name'] = table.name
+        opt_bin_dict['dtype'] = table.dtype
+        opt_bin_dict['special_codes'] = table.special_codes
         
-        transformed_data = {self.name : self.transform(data, 'indices').tolist()}
-        if self.dtype == 'numerical':
-            splits = {'splits' : self.splits.tolist()}
-        elif self.dtype == 'categorical':
-            splits = {'splits' : [split.tolist() for split in self.splits]}
-            
-        opt_bin_dict = dict(splits, **transformed_data)
+        if table.dtype == 'numerical':
+            opt_bin_dict['splits'] = table.splits.tolist()
+        elif table.dtype == 'categorical':
+            opt_bin_dict['splits'] = [split.tolist() for split in table.splits]
+
+        opt_bin_dict['n_nonevent'] = table.n_nonevent.tolist()
+        opt_bin_dict['n_event'] = table.n_event.tolist()
+
+        opt_bin_dict['min_x'] = table.min_x
+        opt_bin_dict['max_x'] = table.max_x
+        opt_bin_dict['categories'] = table.categories
+        opt_bin_dict['cat_others'] = table.cat_others
+        opt_bin_dict['user_splits'] = table.user_splits
+
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
             
     def read_json(self, path: str):
         """
         Read json file containing split points and set them as the new split points.
-        
+
+        Parameters
+        ----------        
         path: The path of the json file.
         """
         with open(path, "r") as read_file:
-            splits = json.load(read_file)
+            bin_table_attr = json.load(read_file)
+
+        bin_table_attr['n_nonevent'] = np.array(bin_table_attr['n_nonevent'])
+        bin_table_attr['n_event'] = np.array(bin_table_attr['n_event'])
             
-        self.set_params(user_splits = splits['splits'])
+        self._binning_table = BinningTable(**bin_table_attr)

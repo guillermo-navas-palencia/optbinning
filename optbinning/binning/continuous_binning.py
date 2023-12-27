@@ -7,6 +7,7 @@ Optimal binning algorithm for continuous target.
 
 import numbers
 import time
+import json
 
 from sklearn.utils import check_array
 
@@ -977,3 +978,64 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._check_is_fitted()
 
         return self._binning_table
+    
+    def to_json(self, path: str):
+        """
+        Save optimal bins and/or splits points and transformation depending on the target type.
+        
+        Parameters
+        ----------
+        path: The path where the json is going to be saved
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file.')
+
+        table = self.binning_table
+
+        opt_bin_dict=dict()
+        opt_bin_dict['name'] = table.name
+        opt_bin_dict['dtype'] = table.dtype
+        opt_bin_dict['special_codes'] = table.special_codes
+        
+        if table.dtype == 'numerical':
+            opt_bin_dict['splits'] = table.splits.tolist()
+        elif table.dtype == 'categorical':
+            opt_bin_dict['splits'] = [split.tolist() for split in table.splits]
+
+        opt_bin_dict['n_records'] = table.n_records.tolist()
+        opt_bin_dict['sums'] = table.sums.tolist()
+        opt_bin_dict['stds'] = table.stds.tolist()
+        opt_bin_dict['min_target'] = table.min_target.tolist()
+        opt_bin_dict['max_target'] = table.max_target.tolist()
+        opt_bin_dict['n_zeros'] = table.n_zeros.tolist()
+
+        opt_bin_dict['min_x'] = table.min_x
+        opt_bin_dict['max_x'] = table.max_x
+        opt_bin_dict['categories'] = table.categories
+        opt_bin_dict['cat_others'] = table.cat_others
+        opt_bin_dict['user_splits'] = table.user_splits
+
+        with open(path, "w") as write_file:
+            json.dump(opt_bin_dict, write_file)
+            
+    def read_json(self, path: str):
+        """
+        Read json file containing split points and set them as the new split points.
+
+        Parameters
+        ----------        
+        path: The path of the json file.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file.')
+        
+        self._is_fitted = True
+        
+        with open(path, "r") as read_file:
+            cont_table_attr = json.load(read_file)
+
+        for key in cont_table_attr.keys():
+            if isinstance(cont_table_attr[key], list):
+                cont_table_attr[key] = np.array(cont_table_attr[key])
+            
+        self._binning_table = ContinuousBinningTable(**cont_table_attr)

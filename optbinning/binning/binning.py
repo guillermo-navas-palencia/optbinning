@@ -1220,10 +1220,13 @@ class OptimalBinning(BaseOptimalBinning):
         ----------        
         path: The path of the json file.
         """
+        self._is_fitted = True
+        
         with open(path, "r") as read_file:
             bin_table_attr = json.load(read_file)
 
-        bin_table_attr['n_nonevent'] = np.array(bin_table_attr['n_nonevent'])
-        bin_table_attr['n_event'] = np.array(bin_table_attr['n_event'])
+        for key in bin_table_attr.keys():
+            if isinstance(bin_table_attr[key], list):
+                bin_table_attr[key] = np.array(bin_table_attr[key])
             
         self._binning_table = BinningTable(**bin_table_attr)

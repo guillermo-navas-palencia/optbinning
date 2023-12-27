@@ -1227,3 +1227,5 @@ class OptimalBinning(BaseOptimalBinning):
         bin_table_attr['n_event'] = np.array(bin_table_attr['n_event'])
             
         self._binning_table = BinningTable(**bin_table_attr)
+        
+        "test"

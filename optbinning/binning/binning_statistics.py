@@ -489,6 +489,7 @@ class BinningTable:
         self._gini = None
         self._n_specials = None
         self._quality_score = None
+        self._type_mono = None
         self._ks = None
 
         self._bin_str = False
@@ -962,7 +963,7 @@ class BinningTable:
                                                     self._hhi_norm)
 
         # Monotonic trend
-        type_mono = type_of_monotonic_trend(self._event_rate[:-2])
+        self._type_mono = type_of_monotonic_trend(self._event_rate[:-2])
 
         report = (
             "---------------------------------------------\n"
@@ -987,7 +988,7 @@ class BinningTable:
             "  Significance tests\n\n{}\n"
             ).format(self._gini, self._iv, self._js, self._hellinger,
                      self._triangular, self._ks, self._hhi, self._hhi_norm,
-                     cramer_v, self._quality_score, type_mono, df_tests_string)
+                     cramer_v, self._quality_score, self._type_mono, df_tests_string)
 
         if print_output:
             print(report)
@@ -1089,6 +1090,17 @@ class BinningTable:
 
         return self._quality_score
 
+    @property
+    def monotonic_trend(self):
+        """The monotonic trend.
+
+        Returns
+        -------
+        monotonic_trend : str
+        """
+        _check_is_analyzed(self)
+
+        return self._type_mono
 
 class MulticlassBinningTable:
     """Binning table to summarize optimal binning of a numerical variable with
@@ -1128,6 +1140,7 @@ class MulticlassBinningTable:
         self._hhi_norm = None
         self._n_specials = None
         self._quality_score = None
+        self._type_mono = None
 
         self._bin_str = False
         self._is_built = False
@@ -1447,8 +1460,8 @@ class MulticlassBinningTable:
         monotonic_string = ""
 
         for i in range(len(self.classes)):
-            type_mono = type_of_monotonic_trend(self._event_rate[:-2, i])
-            monotonic_string += mono_string.format(i, type_mono)
+            self._type_mono = type_of_monotonic_trend(self._event_rate[:-2, i])
+            monotonic_string += mono_string.format(i, self._type_mono)
 
         report = (
             "-------------------------------------------------\n"
@@ -1503,6 +1516,17 @@ class MulticlassBinningTable:
 
         return self._quality_score
 
+    @property
+    def monotonic_trend(self):
+        """The monotonic trend.
+
+        Returns
+        -------
+        monotonic_trend : str
+        """
+        _check_is_analyzed(self)
+
+        return self._type_mono
 
 class ContinuousBinningTable:
     """Binning table to summarize optimal binning of a numerical or categorical
@@ -1566,6 +1590,7 @@ class ContinuousBinningTable:
     """
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
+                 monotonic_score_kendalltau=None, monotonic_score_spearmanr=None,
                  categories=None, cat_others=None, user_splits=None):
         
         self.name = name
@@ -1580,6 +1605,8 @@ class ContinuousBinningTable:
         self.n_zeros = n_zeros
         self.min_x = min_x
         self.max_x = max_x
+        self.monotonic_score_kendalltau = monotonic_score_kendalltau
+        self.monotonic_score_spearmanr = monotonic_score_spearmanr
         self.categories = categories
         self.cat_others = cat_others if cat_others is not None else []
         self.user_splits = user_splits
@@ -2008,7 +2035,7 @@ class ContinuousBinningTable:
             rwoe, p_values, self._hhi_norm)
 
         # Monotonic trend
-        type_mono = type_of_monotonic_trend(self._mean[:-2])
+        self._type_mono = type_of_monotonic_trend(self._mean[:-2])
 
         report = (
             "-------------------------------------------------\n"
@@ -2025,10 +2052,13 @@ class ContinuousBinningTable:
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Monotonic trend       {:>15}\n"
+            "  Monotonic score (kendalltau)       {:>15f}\n"
+            "  Monotonic score (spearmanr)       {:>15f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
             ).format(self._iv, self._woe, rwoe, self._hhi, self._hhi_norm,
-                     self._quality_score, type_mono, df_tests_string)
+                     self._quality_score, self._type_mono,
+                     self.monotonic_score_kendalltau, self.monotonic_score_spearmanr, df_tests_string)
 
         if print_output:
             print(report)
@@ -2084,4 +2114,15 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
-        
+
+    @property
+    def monotonic_trend(self):
+        """The monotonic trend.
+
+        Returns
+        -------
+        monotonic_trend : str
+        """
+        _check_is_analyzed(self)
+
+        return self._type_mono

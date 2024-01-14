@@ -51,7 +51,7 @@ class PyTest(TestCommand):
 # install requirements
 install_requires = [
     'matplotlib',
-    'numpy>=1.16.1',
+    'numpy>=1.16.1,<2',
     'ortools>=9.4',
     'pandas',
     'ropwr>=1.0.0',

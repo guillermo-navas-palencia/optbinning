@@ -1567,7 +1567,7 @@ class ContinuousBinningTable:
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
                  categories=None, cat_others=None, user_splits=None):
-        
+
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes
@@ -1696,8 +1696,11 @@ class ContinuousBinningTable:
         Parameters
         ----------
         metric : str, optional (default="mean")
-            Supported metrics are "mean" to show the Mean value of the target variable in each bin,
-            "iv" to show the IV of each bin and "woe" to show the Weight of Evidence (WoE) of each bin.
+            Supported metrics are "mean" to show the Mean value of the target
+            variable in each bin, "iv" to show the IV of each bin and "woe" to
+            show the Weight of Evidence (WoE) of each bin.
+
+            .. versionadded:: 0.19.0
 
         add_special : bool (default=True)
             Whether to add the special codes bin.
@@ -1763,7 +1766,7 @@ class ContinuousBinningTable:
             elif self.min_x is None or self.max_x is None:
                 raise ValueError('If style="actual", min_x and max_x must be '
                                  'provided.')
-        
+
         if metric == "mean":
             metric_values = self._mean
             metric_label = "Mean"
@@ -2084,4 +2087,3 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
-        

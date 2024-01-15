@@ -6,14 +6,14 @@ Version 0.19.0 (2024-01-16)
 
 Improvements:
 
-   - Adjust plot size (`Issue 244 <https://github.com/guillermo-navas-palencia/optbinning/issues/244>`_)
-   - Save optimal binning object in JSON format (`Issue 96 <https://github.com/guillermo-navas-palencia/optbinning/issues/96>`_)
+   - Adjust plot size (`Issue 244 <https://github.com/guillermo-navas-palencia/optbinning/issues/244>`_).
+   - Save optimal binning object in JSON format (`Issue 96 <https://github.com/guillermo-navas-palencia/optbinning/issues/96>`_).
    - Plot IV/WoE metric in binning table plot for binary and continuous target.
 
 Bugfixes:
 
-   - Keep pandas.DataFrame index in transform method (`Issue 286 <https://github.com/guillermo-navas-palencia/optbinning/issues/286>`_)
-   - Fix BinningProcess's binning_transform_params="bins" (`Issue 266 <https://github.com/guillermo-navas-palencia/optbinning/issues/266>`_)
+   - Keep pandas.DataFrame index in transform method (`Issue 286 <https://github.com/guillermo-navas-palencia/optbinning/issues/286>`_).
+   - Fix BinningProcess's binning_transform_params="bins" (`Issue 266 <https://github.com/guillermo-navas-palencia/optbinning/issues/266>`_).
 
 
 Version 0.18.0 (2023-09-22)
@@ -21,9 +21,9 @@ Version 0.18.0 (2023-09-22)
 
 Bugfixes:
 
-   - Fix numpy array object (`Issue 229 <https://github.com/guillermo-navas-palencia/optbinning/issues/229>`_)
-   - Fix ``show_bin_labels`` (`Issue 262 <https://github.com/guillermo-navas-palencia/optbinning/issues/262>`_)
-   - Fix ``special_codes_y`` (`Issue 263 <https://github.com/guillermo-navas-palencia/optbinning/issues/263>`_)
+   - Fix numpy array object (`Issue 229 <https://github.com/guillermo-navas-palencia/optbinning/issues/229>`_).
+   - Fix ``show_bin_labels`` (`Issue 262 <https://github.com/guillermo-navas-palencia/optbinning/issues/262>`_).
+   - Fix ``special_codes_y`` (`Issue 263 <https://github.com/guillermo-navas-palencia/optbinning/issues/263>`_).
 
 
 Version 0.17.3 (2023-02-12)

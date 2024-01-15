@@ -484,6 +484,17 @@ def test_default_fit_transform_disk():
                                target="target", chunksize=100)
 
 
+def test_binning_transform_params():
+    btp = {variable_names[0]: {"metric": "bins"},
+           variable_names[1]: {"metric": "woe"}}
+
+    process = BinningProcess(variable_names[:3],
+                             binning_transform_params=btp)
+
+    with raises(ValueError):
+        X_transform = process.fit_transform(X[:, :3], y)
+
+
 def test_update_binned_variable():
     process = BinningProcess(variable_names)
     process.fit(X, y, check_input=True)
@@ -580,3 +591,10 @@ def test_verbose():
     with open("tests/results/test_binning_process_verbose.txt", "w") as f:
         with redirect_stdout(f):
             process.fit(X, y, check_input=True)
+
+
+def test_dataframe_index():
+    process = BinningProcess(variable_names)
+    X_train = pd.DataFrame(X, columns=variable_names, index=[2 * i for i in range(len(X))])
+    X_transform = process.fit_transform(X_train, y, metric="indices")
+    pd.testing.assert_index_equal(X_train.index, X_transform.index)

@@ -159,8 +159,8 @@ class BSketch:
         bins : tuple of arrays of size n_splits + 1.
         """
         n_bins = len(splits) + 1
-        bins_e = np.zeros(n_bins).astype(np.int64)
-        bins_ne = np.zeros(n_bins).astype(np.int64)
+        bins_e = np.zeros(n_bins, dtype=np.int64)
+        bins_ne = np.zeros(n_bins, dtype=np.int64)
 
         indices_e, count_e = _indices_count(
             self.sketch, self._sketch_e, splits)

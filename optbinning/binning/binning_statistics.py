@@ -483,6 +483,7 @@ class BinningTable:
         self._woe = None
         self._hhi = None
         self._hhi_norm = None
+        self._iv_values = None
         self._iv = None
         self._js = None
         self._gini = None
@@ -547,6 +548,7 @@ class BinningTable:
         t_iv = iv.sum()
         t_js = js.sum()
 
+        self._iv_values = iv
         self._iv = t_iv
         self._js = t_js
         self._hellinger = hellinger(p_ev, p_nev, return_sum=True)
@@ -606,7 +608,7 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -637,12 +639,15 @@ class BinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
-        if metric not in ("event_rate", "woe"):
+        if metric not in ("event_rate", "woe", "iv"):
             raise ValueError('Invalid value for metric. Allowed string '
-                             'values are "event_rate" and "woe".')
+                             'values are "event_rate", "woe" and "iv".')
 
         if not isinstance(add_special, bool):
             raise TypeError("add_special must be a boolean; got {}."
@@ -664,6 +669,10 @@ class BinningTable:
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError("figsize argument must be a tuple.")
+
         if style == "actual":
             # Hide special and missing bin
             add_special = False
@@ -682,8 +691,11 @@ class BinningTable:
         elif metric == "event_rate":
             metric_values = self._event_rate
             metric_label = "Event rate"
+        elif metric == "iv":
+            metric_values = self._iv_values
+            metric_label = "IV"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self._n_records)
@@ -1204,7 +1216,7 @@ class MulticlassBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, show_bin_labels=False,
-             savefig=None):
+             savefig=None, figsize=None):
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1225,6 +1237,9 @@ class MulticlassBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1240,11 +1255,15 @@ class MulticlassBinningTable:
             raise TypeError("show_bin_labels must be a boolean; got {}."
                             .format(show_bin_labels))
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError('figsize argument must be a tuple.')
+
         n_bins = len(self._n_records)
         n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         colors = COLORS_RGB[:n_classes]
         colors = [tuple(c / 255. for c in color) for color in colors]
@@ -1566,7 +1585,9 @@ class ContinuousBinningTable:
         self.user_splits = user_splits
 
         self._mean = None
+        self._iv_values = None
         self._iv = None
+        self._woe_values = None
         self._woe = None
         self._t_mean = None
         self._hhi = None
@@ -1610,7 +1631,9 @@ class ContinuousBinningTable:
         t_iv = iv.sum()
         t_woe = np.absolute(woe).sum()
 
+        self._iv_values = iv
         self._iv = t_iv
+        self._woe_values = woe
         self._woe = t_woe
         self._t_mean = t_mean
 
@@ -1665,13 +1688,20 @@ class ContinuousBinningTable:
         return df
 
     def plot(self, add_special=True, add_missing=True, style="bin",
-             show_bin_labels=False, savefig=None):
+             show_bin_labels=False, savefig=None, figsize=None, metric='mean'):
         """Plot the binning table.
 
         Visualize records count and mean values.
 
         Parameters
         ----------
+        metric : str, optional (default="mean")
+            Supported metrics are "mean" to show the Mean value of the target
+            variable in each bin, "iv" to show the IV of each bin and "woe" to
+            show the Weight of Evidence (WoE) of each bin.
+
+            .. versionadded:: 0.19.0
+
         add_special : bool (default=True)
             Whether to add the special codes bin.
 
@@ -1691,6 +1721,9 @@ class ContinuousBinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
         """
         _check_is_built(self)
 
@@ -1714,6 +1747,14 @@ class ContinuousBinningTable:
             raise ValueError('show_bin_labels only supported when '
                              'style="actual".')
 
+        if figsize is not None:
+            if not isinstance(figsize, tuple):
+                raise TypeError('figsize argument must be a tuple.')
+
+        if metric not in ("mean", "iv", "woe"):
+            raise ValueError('Invalid value for metric. Allowed string '
+                             'values are "mean", "iv" and "woe".')
+
         if style == "actual":
             # Hide special and missing bin
             add_special = False
@@ -1726,10 +1767,17 @@ class ContinuousBinningTable:
                 raise ValueError('If style="actual", min_x and max_x must be '
                                  'provided.')
 
-        metric_values = self._mean
-        metric_label = "Mean"
+        if metric == "mean":
+            metric_values = self._mean
+            metric_label = "Mean"
+        elif metric == "woe":
+            metric_values = self._woe_values
+            metric_label = "WoE"
+        elif metric == "iv":
+            metric_values = self._iv_values
+            metric_label = "IV"
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self.n_records)

@@ -7,6 +7,7 @@ Optimal binning algorithm for multiclass target.
 
 import numbers
 import time
+import json
 
 import numpy as np
 
@@ -602,7 +603,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_event = np.empty(self._n_classes).astype(np.int64)
+            n_event = np.empty(self._n_classes, dtype=np.int64)
 
             for i, cl in enumerate(self._classes):
                 n_event[i] = target_info(y_clean, cl)[0]
@@ -671,7 +672,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         if not len(n_nonevent):
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: no bins after pre-binning.")
@@ -790,9 +791,9 @@ class MulticlassOptimalBinning(OptimalBinning):
         indices = np.digitize(x, splits_prebinning, right=False)
 
         n_bins = n_splits + 1
-        n_nonevent = np.empty((n_bins, self._n_classes)).astype(np.int64)
-        n_event = np.empty((n_bins, self._n_classes)).astype(np.int64)
-        mask_remove = np.zeros(n_bins).astype(bool)
+        n_nonevent = np.empty((n_bins, self._n_classes), dtype=np.int64)
+        n_event = np.empty((n_bins, self._n_classes), dtype=np.int64)
+        mask_remove = np.zeros(n_bins, dtype=bool)
 
         for idx, cl in enumerate(self._classes):
             y1 = (y == cl)
@@ -873,3 +874,51 @@ class MulticlassOptimalBinning(OptimalBinning):
         self._check_is_fitted()
 
         return self._splits_optimal
+
+    def to_json(self, path):
+        """
+        Save optimal bins and/or splits points and transformation depending on
+        the target type.
+
+        Parameters
+        ----------
+        path: The path where the json is going to be saved.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file.')
+
+        table = self.binning_table
+
+        opt_bin_dict = dict()
+        opt_bin_dict['name'] = table.name
+        opt_bin_dict['special_codes'] = table.special_codes
+
+        opt_bin_dict['splits'] = table.splits.tolist()
+        opt_bin_dict['n_event'] = table.n_event.tolist()
+        opt_bin_dict['classes'] = table.classes.tolist()
+
+        with open(path, "w") as write_file:
+            json.dump(opt_bin_dict, write_file)
+
+    def read_json(self, path):
+        """
+        Read json file containing split points and set them as the new split
+        points.
+
+        Parameters
+        ----------
+        path: The path of the json file.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file.')
+
+        self._is_fitted = True
+
+        with open(path, "r") as read_file:
+            multi_table_attr = json.load(read_file)
+
+        for key in multi_table_attr.keys():
+            if isinstance(multi_table_attr[key], list):
+                multi_table_attr[key] = np.array(multi_table_attr[key])
+
+        self._binning_table = MulticlassBinningTable(**multi_table_attr)

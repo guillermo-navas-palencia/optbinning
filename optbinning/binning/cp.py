@@ -248,7 +248,7 @@ class BinningCP:
         # Constraint: max-pvalue
         for s in range(n_scenarios):
             self.add_constraint_violation(model, x,
-                                           pvalue_violation_indices[s])
+                                          pvalue_violation_indices[s])
 
         # Constraint: min diff
         for s in range(n_scenarios):
@@ -273,7 +273,7 @@ class BinningCP:
             solution = np.array([self.solver_.BooleanValue(self._x[i, i])
                                  for i in range(self._n)]).astype(bool)
         else:
-            solution = np.zeros(self._n).astype(bool)
+            solution = np.zeros(self._n, dtype=bool)
             solution[-1] = True
 
         return status_name, solution

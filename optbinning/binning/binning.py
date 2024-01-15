@@ -12,6 +12,8 @@ import numpy as np
 
 from sklearn.utils import check_array
 
+import json
+
 from ..information import solver_statistics
 from ..logging import Logger
 from .auto_monotonic import auto_monotonic
@@ -902,7 +904,7 @@ class OptimalBinning(BaseOptimalBinning):
         if len(n_nonevent) <= 1:
             self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits)).astype(bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
@@ -1083,8 +1085,8 @@ class OptimalBinning(BaseOptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_nonevent = np.empty(n_bins).astype(np.int64)
-        n_event = np.empty(n_bins).astype(np.int64)
+        n_nonevent = np.empty(n_bins, dtype=np.int64)
+        n_event = np.empty(n_bins, dtype=np.int64)
 
         for i in range(n_bins):
             mask = (indices == i)
@@ -1174,3 +1176,59 @@ class OptimalBinning(BaseOptimalBinning):
         self._check_is_fitted()
 
         return self._status
+
+    def to_json(self, path):
+        """
+        Save optimal bins and/or splits points and transformation depending on
+        the target type.
+
+        Parameters
+        ----------
+        path: The path where the json is going to be saved.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file')
+
+        table = self.binning_table
+
+        opt_bin_dict = dict()
+        opt_bin_dict['name'] = table.name
+        opt_bin_dict['dtype'] = table.dtype
+        opt_bin_dict['special_codes'] = table.special_codes
+
+        if table.dtype == 'numerical':
+            opt_bin_dict['splits'] = table.splits.tolist()
+        elif table.dtype == 'categorical':
+            opt_bin_dict['splits'] = [split.tolist() for split in table.splits]
+
+        opt_bin_dict['n_nonevent'] = table.n_nonevent.tolist()
+        opt_bin_dict['n_event'] = table.n_event.tolist()
+
+        opt_bin_dict['min_x'] = table.min_x
+        opt_bin_dict['max_x'] = table.max_x
+        opt_bin_dict['categories'] = table.categories
+        opt_bin_dict['cat_others'] = table.cat_others
+        opt_bin_dict['user_splits'] = table.user_splits
+
+        with open(path, "w") as write_file:
+            json.dump(opt_bin_dict, write_file)
+
+    def read_json(self, path):
+        """
+        Read json file containing split points and set them as the new split
+        points.
+
+        Parameters
+        ----------
+        path: The path of the json file.
+        """
+        self._is_fitted = True
+
+        with open(path, "r") as read_file:
+            bin_table_attr = json.load(read_file)
+
+        for key in bin_table_attr.keys():
+            if isinstance(bin_table_attr[key], list):
+                bin_table_attr[key] = np.array(bin_table_attr[key])
+
+        self._binning_table = BinningTable(**bin_table_attr)

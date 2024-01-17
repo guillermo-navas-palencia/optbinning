@@ -1590,8 +1590,7 @@ class ContinuousBinningTable:
     """
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
-                 monotonic_score_kendalltau=None, monotonic_score_spearmanr=None,
-                 categories=None, cat_others=None, user_splits=None):
+                 correlation=None, categories=None, cat_others=None, user_splits=None):
         
         self.name = name
         self.dtype = dtype
@@ -1605,8 +1604,7 @@ class ContinuousBinningTable:
         self.n_zeros = n_zeros
         self.min_x = min_x
         self.max_x = max_x
-        self.monotonic_score_kendalltau = monotonic_score_kendalltau
-        self.monotonic_score_spearmanr = monotonic_score_spearmanr
+        self.correlation = correlation
         self.categories = categories
         self.cat_others = cat_others if cat_others is not None else []
         self.user_splits = user_splits
@@ -2052,13 +2050,12 @@ class ContinuousBinningTable:
             "    Quality score       {:>15.8f}\n"
             "\n"
             "  Monotonic trend       {:>15}\n"
-            "  Monotonic score (kendalltau)       {:>15f}\n"
-            "  Monotonic score (spearmanr)       {:>15f}\n"
+            "  Correlation           {:>15f}\n"
             "\n"
             "  Significance tests\n\n{}\n"
             ).format(self._iv, self._woe, rwoe, self._hhi, self._hhi_norm,
                      self._quality_score, self._type_mono,
-                     self.monotonic_score_kendalltau, self.monotonic_score_spearmanr, df_tests_string)
+                     self.correlation, df_tests_string)
 
         if print_output:
             print(report)

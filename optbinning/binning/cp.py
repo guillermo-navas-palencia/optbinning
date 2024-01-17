@@ -248,7 +248,7 @@ class BinningCP:
         # Constraint: max-pvalue
         for s in range(n_scenarios):
             self.add_constraint_violation(model, x,
-                                           pvalue_violation_indices[s])
+                                          pvalue_violation_indices[s])
 
         # Constraint: min diff
         for s in range(n_scenarios):

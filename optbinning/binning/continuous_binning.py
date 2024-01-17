@@ -984,25 +984,26 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._check_is_fitted()
 
         return self._binning_table
-    
-    def to_json(self, path: str):
+
+    def to_json(self, path):
         """
-        Save optimal bins and/or splits points and transformation depending on the target type.
-        
+        Save optimal bins and/or splits points and transformation depending on
+        the target type.
+
         Parameters
         ----------
-        path: The path where the json is going to be saved
+        path: The path where the json is going to be saved.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
 
         table = self.binning_table
 
-        opt_bin_dict=dict()
+        opt_bin_dict = dict()
         opt_bin_dict['name'] = table.name
         opt_bin_dict['dtype'] = table.dtype
         opt_bin_dict['special_codes'] = table.special_codes
-        
+
         if table.dtype == 'numerical':
             opt_bin_dict['splits'] = table.splits.tolist()
         elif table.dtype == 'categorical':
@@ -1023,25 +1024,26 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
-            
-    def read_json(self, path: str):
+
+    def read_json(self, path):
         """
-        Read json file containing split points and set them as the new split points.
+        Read json file containing split points and set them as the new split
+        points.
 
         Parameters
-        ----------        
+        ----------
         path: The path of the json file.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
-        
+
         self._is_fitted = True
-        
+
         with open(path, "r") as read_file:
             cont_table_attr = json.load(read_file)
 
         for key in cont_table_attr.keys():
             if isinstance(cont_table_attr[key], list):
                 cont_table_attr[key] = np.array(cont_table_attr[key])
-            
+
         self._binning_table = ContinuousBinningTable(**cont_table_attr)

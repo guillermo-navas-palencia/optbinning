@@ -936,7 +936,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         df_summary.rename(columns={"index": "name"}, inplace=True)
         df_summary["selected"] = self._support
 
-        columns = ["name", "dtype", "status", "monotonic_trend", "selected", "n_bins"]
+        columns = ["name", "dtype", "status", "monotonic_trend",
+                   "selected", "n_bins"]
         columns += _METRICS[self._target_dtype]["metrics"]
 
         return df_summary[columns]

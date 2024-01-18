@@ -988,7 +988,8 @@ class BinningTable:
             "  Significance tests\n\n{}\n"
             ).format(self._gini, self._iv, self._js, self._hellinger,
                      self._triangular, self._ks, self._hhi, self._hhi_norm,
-                     cramer_v, self._quality_score, self._type_mono, df_tests_string)
+                     cramer_v, self._quality_score,
+                     self._type_mono, df_tests_string)
 
         if print_output:
             print(report)
@@ -1101,6 +1102,7 @@ class BinningTable:
         _check_is_analyzed(self)
 
         return self._type_mono
+
 
 class MulticlassBinningTable:
     """Binning table to summarize optimal binning of a numerical variable with
@@ -1528,6 +1530,7 @@ class MulticlassBinningTable:
 
         return self._type_mono
 
+
 class ContinuousBinningTable:
     """Binning table to summarize optimal binning of a numerical or categorical
     variable with respect to a continuous target.
@@ -1590,7 +1593,8 @@ class ContinuousBinningTable:
     """
     def __init__(self, name, dtype, special_codes, splits, n_records, sums,
                  stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
-                 correlation=None, categories=None, cat_others=None, user_splits=None):
+                 correlation=None, categories=None, cat_others=None,
+                 user_splits=None):
         self.name = name
         self.dtype = dtype
         self.special_codes = special_codes
@@ -2114,7 +2118,6 @@ class ContinuousBinningTable:
 
         return self._quality_score
 
-
     @property
     def monotonic_trend(self):
         """The monotonic trend.
@@ -2126,4 +2129,3 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._type_mono
-

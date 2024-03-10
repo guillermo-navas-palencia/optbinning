@@ -338,7 +338,7 @@ class BinningTable2D(BinningTable):
 
         return df
 
-    def plot(self, metric="woe", savefig=None):
+    def plot(self, metric="woe", savefig=None, save_kwargs={}):
         """Plot the binning table.
 
         Visualize the Weight of Evidence or the event rate for each bin as a
@@ -437,7 +437,7 @@ class BinningTable2D(BinningTable):
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
+            plt.savefig(savefig, **save_kwargs)
             plt.close()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):

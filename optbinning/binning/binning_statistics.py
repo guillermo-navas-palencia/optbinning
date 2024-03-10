@@ -608,7 +608,7 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None, figsize=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None, save_kwargs={}):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -863,7 +863,7 @@ class BinningTable:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
+            plt.savefig(savefig, **save_kwargs)
             plt.close()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):

@@ -177,7 +177,7 @@ class PWBinningTable(BinningTable):
 
         return df
 
-    def plot(self, metric="woe", n_samples=10000, savefig=None, save_kwargs={}):
+    def plot(self, metric="woe", n_samples=10000, savefig=None, save_kwargs=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the predicted Weight of
@@ -258,6 +258,12 @@ class PWBinningTable(BinningTable):
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
+            if save_kwargs is None:
+                save_kwargs = {}
+            else:
+                if not isinstance(save_kwargs, dict):
+                    raise TypeError("save_kwargs must be a dictionary; got {}."
+                                    .format(save_kwargs))
             plt.savefig(savefig, **save_kwargs)
             plt.close()
 

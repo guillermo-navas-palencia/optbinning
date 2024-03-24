@@ -352,6 +352,9 @@ class BinningTable2D(BinningTable):
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        save_kwargs : dict or None (default=None)
+            Additional keyword arguments to be passed to `plt.savefig`.
         """
         _check_is_built(self)
 

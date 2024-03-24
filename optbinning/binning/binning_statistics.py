@@ -642,6 +642,9 @@ class BinningTable:
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        save_kwargs : dict or None (default=None)
+            Additional keyword arguments to be passed to `plt.savefig`.
         """
         _check_is_built(self)
 

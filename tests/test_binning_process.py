@@ -528,6 +528,22 @@ def test_update_binned_variable():
         process.update_binned_variable('mean radius', optb)
 
 
+def test_plot():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names)
+    process.fit(X, y, check_input=True)
+
+    # TODO: include the other types of plots that are available, categorical features, etc.
+    process.plot(savefig="tests/results/test_binning_process.png")
+    process.plot(show_bin_labels=True, savefig="tests/results/test_binning_process_edges.png")
+    process.plot(style="actual", savefig="tests/results/test_binning_process_actual.png")
+    # TODO: finish
+
+
 def test_information():
     data = load_breast_cancer()
 

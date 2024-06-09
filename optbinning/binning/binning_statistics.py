@@ -608,7 +608,8 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None, figsize=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None,
+             ax=None, sharey=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -639,9 +640,15 @@ class BinningTable:
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+            If None, return the figure object instead.
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        ax : matplotlib axes object or None (default=None)
+            Axes object on which to draw plot.
+            (More specifically, the bar chart is on `ax`,
+             and a twinned axis is created for the metric plot.)
         """
         _check_is_built(self)
 
@@ -695,7 +702,10 @@ class BinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        if ax is not None:
+            ax1 = ax
+        else:
+            fig, ax1 = plt.subplots(figsize=figsize)
 
         if style == "bin":
             n_bins = len(self._n_records)
@@ -729,7 +739,6 @@ class BinningTable:
             ax1.set_ylabel("Bin count", fontsize=13)
 
             ax2 = ax1.twinx()
-
             ax2.plot(range(n_metric), metric_values[:n_metric],
                      linestyle="solid", marker="o", color="black")
 
@@ -857,9 +866,7 @@ class BinningTable:
             plt.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
-        if savefig is None:
-            plt.show()
-        else:
+        if savefig is not None:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))

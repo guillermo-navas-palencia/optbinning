@@ -11,6 +11,7 @@ import time
 
 from warnings import warn
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -25,6 +26,7 @@ from ..logging import Logger
 from .base import Base
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
+from .binning_statistics import _check_is_built
 from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
 from .piecewise.binning import OptimalPWBinning
@@ -1548,3 +1550,54 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))
 
         return self
+
+    def plot(self, style="bin", show_bin_labels=False, savefig=None, figsize=None):
+        """Plot the binning tables.
+
+        Parameters
+        ----------
+        TODO: reconcile the needed parameters for different flavors of binning.
+
+        metric, add_special, add_missing?
+
+        style : str, optional (default="bin")
+            Plot style. style="bin" shows the standard binning plot. If
+            style="actual", show the plot with the actual scale, i.e, actual
+            bin widths.
+
+        show_bin_labels : bool (default=False)
+            Whether to show the bin label instead of the bin id on the x-axis.
+            For long labels (length > 27), labels are truncated.
+
+        savefig : str or None (default=None)
+            Path to save the plot figure.
+
+        figsize : tuple or None (default=None)
+            Size of the plot.
+        """
+
+        # TODO: logic for grid shape and figure size
+        fig, axs = plt.subplots(5, 5, figsize=figsize or (50, 50))
+
+        for ax, name in zip(axs.flatten(), self._binned_variables):
+            table = self.get_binned_variable(name)._binning_table
+            try:
+                _check_is_built(table)
+            except NotFittedError:
+                warn("One or more binned variables don't have their "
+                     "tables built; doing so now with default parameters")
+                table.build()
+
+            table.plot(ax=ax, style=style, show_bin_labels=show_bin_labels,
+                       savefig=None)
+
+        # TODO: (optionally?) share the y-axes for metric
+
+        if savefig is None:
+            plt.show()
+        else:
+            if not isinstance(savefig, str):
+                raise TypeError("savefig must be a string path; got {}."
+                                .format(savefig))
+            plt.savefig(savefig)
+            plt.close()

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import sys
 
 from setuptools import find_packages, setup, Command
 
@@ -43,15 +42,10 @@ install_requires = [
     'scipy>=1.6.0',
 ]
 
-# test requirements
-tests_require = [
-    'pytest',
-    'coverage'
-]
-
 # extra requirements
 extras_require = {
     'distributed': ['pympler', 'tdigest'],
+    'test': ['coverage', 'flake8', 'pytest', 'pyarrow'],
 }
 
 
@@ -76,7 +70,6 @@ setup(
     cmdclass={'clean': CleanCommand},
     python_requires='>=3.7',
     install_requires=install_requires,
-    tests_require=tests_require,
     extras_require=extras_require,
     classifiers=[
         'Topic :: Scientific/Engineering :: Mathematics',

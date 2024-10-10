@@ -46,6 +46,8 @@ install_requires = [
 extras_require = {
     'distributed': ['pympler', 'tdigest'],
     'test': ['coverage', 'flake8', 'pytest', 'pyarrow'],
+    # For ecos support: https://github.com/embotech/ecos 
+    'ecos': ['ecos']
 }
 
 

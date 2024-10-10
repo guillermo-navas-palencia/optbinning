@@ -184,7 +184,7 @@ def test_default():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(-43.65762593147646, rel=1e-6)
     assert sc_max == approx(42.69694657427327, rel=1e-6)
@@ -204,7 +204,7 @@ def test_default_continuous():
 
     sct = scorecard.table(style="detailed")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(-43.261900687199045, rel=1e-6)
     assert sc_max == approx(100.28829019286185, rel=1e-6)
@@ -229,7 +229,7 @@ def test_scaling_method_pdo_odd():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(-612.2266586867094, rel=1e-6)
     assert sc_max == approx(1879.4396115559216, rel=1e-6)
@@ -253,7 +253,7 @@ def test_scaling_method_min_max():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(300, rel=1e-6)
     assert sc_max == approx(850, rel=1e-6)
@@ -277,7 +277,7 @@ def test_intercept_based():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(300 - scorecard.intercept_, rel=1e-6)
     assert sc_max == approx(850 - scorecard.intercept_, rel=1e-6)
@@ -301,7 +301,7 @@ def test_reverse_scorecard():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(300, rel=1e-6)
     assert sc_max == approx(850, rel=1e-6)
@@ -325,7 +325,7 @@ def test_rounding():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(201, rel=1e-6)
     assert sc_max == approx(851, rel=1e-6)
@@ -350,7 +350,7 @@ def test_rounding_pdo_odds():
 
     sct = scorecard.table(style="summary")
     sc_min, sc_max = sct.groupby("Variable").agg(
-        {'Points': [np.min, np.max]}).sum()
+        {'Points': ['min', 'max']}).sum()
 
     assert sc_min == approx(-612, rel=1e-6)
     assert sc_max == approx(1880, rel=1e-6)

@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
 import os
-import sys
 
 from setuptools import find_packages, setup, Command
-from setuptools.command.test import test as TestCommand
-
 
 long_description = '''
 The optimal binning is the optimal discretization of a variable into bins
@@ -34,20 +31,6 @@ class CleanCommand(Command):
         os.system('rm -vrf ./build ./dist ./*.pyc ./*.tgz ./*.egg-info')
 
 
-# test suites
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = []
-
-    def run_tests(self):
-        # import here, because outside the eggs aren't loaded
-        import pytest
-        errcode = pytest.main(self.test_args)
-        sys.exit(errcode)
-
-
 # install requirements
 install_requires = [
     'matplotlib',
@@ -59,15 +42,10 @@ install_requires = [
     'scipy>=1.6.0',
 ]
 
-# test requirements
-tests_require = [
-    'pytest',
-    'coverage'
-]
-
 # extra requirements
 extras_require = {
     'distributed': ['pympler', 'tdigest'],
+    'test': ['coverage', 'flake8', 'pytest', 'pyarrow'],
 }
 
 
@@ -89,10 +67,9 @@ setup(
     include_package_data=True,
     license="Apache Licence 2.0",
     url="https://github.com/guillermo-navas-palencia/optbinning",
-    cmdclass={'clean': CleanCommand, 'test': PyTest},
+    cmdclass={'clean': CleanCommand},
     python_requires='>=3.7',
     install_requires=install_requires,
-    tests_require=tests_require,
     extras_require=extras_require,
     classifiers=[
         'Topic :: Scientific/Engineering :: Mathematics',
@@ -105,5 +82,9 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9']
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        ]
     )

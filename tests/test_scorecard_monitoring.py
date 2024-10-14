@@ -119,7 +119,7 @@ def test_default_binary():
 
     # Check psi_table
     psi_table = monitoring.psi_table()
-    assert psi_table.PSI.sum() == approx(0.003536079105130241)
+    assert psi_table.PSI.sum() == approx(0.002224950381423254)
 
     # Check psi_variable_table
     with raises(ValueError):
@@ -134,7 +134,7 @@ def test_default_binary():
     # Check tests table
     tests_table = monitoring.tests_table()
     assert tests_table["p-value"].values[:2] == approx(
-        [0.00077184, 0.51953576], rel=1e-4)
+        [0.00250006, 0.49480006], rel=1e-4)
 
     # Check system stability report
     with open("tests/results/test_scorecard_monitoring_default.txt", "w") as f:

@@ -45,7 +45,14 @@ install_requires = [
 # extra requirements
 extras_require = {
     'distributed': ['pympler', 'tdigest'],
-    'test': ['coverage', 'flake8', 'pytest', 'pyarrow'],
+    'test': [
+        'coverage', 
+        'flake8',
+        'pytest',
+        'pyarrow',
+        'pympler',
+        'tdigest',
+    ],
     # For ecos support: https://github.com/embotech/ecos 
     'ecos': ['ecos']
 }
@@ -82,8 +89,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',

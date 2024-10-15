@@ -31,7 +31,7 @@ def categorical_transform(x, y):
 
 def categorical_cutoff(x, y, cutoff=0.01):
     cutoff_count = np.ceil(cutoff * len(x))
-    cat_count = pd.value_counts(x)
+    cat_count = pd.Series(x).value_counts()
     cat_others = cat_count[cat_count < cutoff_count].index.values
     mask_others = pd.Series(x).isin(cat_others).values
 

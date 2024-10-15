@@ -80,7 +80,7 @@ def test_special_codes():
         name=variable, monotonic_trend="convex", special_codes=special_codes)
     optb.fit(x, y)
 
-    x_transform = optb.transform([np.NaN], metric_missing='empirical')
+    x_transform = optb.transform([np.nan], metric_missing='empirical')
     assert x_transform == approx([17.94], rel=1e-6)
 
 

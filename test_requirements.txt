@@ -2,3 +2,5 @@ coverage
 flake8
 pytest
 pyarrow
+pympler
+tdigest

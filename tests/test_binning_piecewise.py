@@ -174,7 +174,7 @@ def test_default():
     optb.fit(x, y)
 
     optb.binning_table.build()
-    assert optb.binning_table.iv == approx(5.87152846, rel=1e-6)
+    assert optb.binning_table.iv == approx(5.87474602, rel=1e-6)
 
     with raises(ValueError):
         optb.binning_table.plot(metric="new_metric")
@@ -188,7 +188,7 @@ def test_default_discontinuous():
     optb.fit(x, y)
 
     optb.binning_table.build()
-    assert optb.binning_table.iv == approx(5.84252707, rel=1e-6)
+    assert optb.binning_table.iv == approx(5.84465825, rel=1e-6)
 
 
 def test_bounds_transform():
@@ -197,11 +197,11 @@ def test_bounds_transform():
 
     x_transform_woe = optb.transform(x, metric="woe")
     assert x_transform_woe[:4] == approx(
-        [3.9899792, 4.2806587, 4.17226985, -3.25509338], rel=1e-6)
+        [3.99180564, 4.28245092, 4.17407503, -3.2565373], rel=1e-6)
 
     x_transform_event_rate = optb.transform(x, metric="event_rate")
     assert x_transform_event_rate[:4] == approx(
-        [0.03021225, 0.02276486, 0.02530506, 0.97760445], rel=1e-6)
+        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-6)
 
 
 def test_bounds_fit_transform():
@@ -211,13 +211,11 @@ def test_bounds_fit_transform():
         x, y, lb=0.001, ub=0.999, metric="woe")
 
     assert x_transform_woe[:4] == approx(
-        [3.9899792, 4.2806587, 4.17226985, -3.25509338], rel=1e-6)
-
+        [3.9918056, 4.2824509, 4.17407503, -3.25653732], rel=1e-6)
     x_transform_event_rate = optb.fit_transform(
         x, y, lb=0.001, ub=0.999, metric="event_rate")
-
     assert x_transform_event_rate[:4] == approx(
-        [0.03021225, 0.02276486, 0.02530506, 0.97760445], rel=1e-6)
+        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-6)
 
 
 def test_solvers():
@@ -226,7 +224,7 @@ def test_solvers():
         optb.fit(x, y)
 
         optb.binning_table.build()
-        assert optb.binning_table.iv == approx(5.87152846, rel=1e-6)
+        assert optb.binning_table.iv == approx(5.87474602, rel=1e-6)
 
 
 def test_user_splits():

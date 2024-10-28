@@ -21,7 +21,13 @@ def problem_data(scorecard, X):
         sc["Points"] = sc["Mean"] * sc["Coefficient"]
 
     # Linear model coefficients
-    intercept = float(scorecard.estimator_.intercept_)
+
+    # Only index into the intercept if it is an array, it is a scalar otherwise
+    if isinstance(scorecard.estimator_.intercept_, np.ndarray):
+        intercept = float(scorecard.estimator_.intercept_[0])
+    else:
+        intercept = float(scorecard.estimator_.intercept_)
+
     coef = scorecard.estimator_.coef_.ravel()
 
     # Big-M parameters (min, max) points.

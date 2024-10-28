@@ -338,7 +338,7 @@ class BinningTable2D(BinningTable):
 
         return df
 
-    def plot(self, metric="woe", savefig=None):
+    def plot(self, metric="woe", savefig=None, save_kwargs=None):
         """Plot the binning table.
 
         Visualize the Weight of Evidence or the event rate for each bin as a
@@ -352,6 +352,9 @@ class BinningTable2D(BinningTable):
 
         savefig : str or None (default=None)
             Path to save the plot figure.
+
+        save_kwargs : dict or None (default=None)
+            Additional keyword arguments to be passed to `plt.savefig`.
         """
         _check_is_built(self)
 
@@ -384,7 +387,7 @@ class BinningTable2D(BinningTable):
 
             er = er + [er[-1]]
             axtop.step(np.arange(self.n + 1) - 0.5, er,
-                       label=path, where="post")
+                       label=str(path), where="post")
 
         for i in range(self.n):
             axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
@@ -414,7 +417,7 @@ class BinningTable2D(BinningTable):
                     self.P == p, axis=0).max()) for p in path], [])
 
             er = er + [er[-1]]
-            axright.step(er, np.arange(self.m + 1) - 0.5, label=path,
+            axright.step(er, np.arange(self.m + 1) - 0.5, label=str(path),
                          where="pre")
 
         for j in range(self.m):
@@ -437,7 +440,13 @@ class BinningTable2D(BinningTable):
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
+            if save_kwargs is None:
+                save_kwargs = {}
+            else:
+                if not isinstance(save_kwargs, dict):
+                    raise TypeError("save_kwargs must be a dictionary; got {}."
+                                    .format(save_kwargs))
+            plt.savefig(savefig, **save_kwargs)
             plt.close()
 
     def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
@@ -763,7 +772,7 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
 
             er = er + [er[-1]]
             axtop.step(np.arange(self.n + 1) - 0.5, er,
-                       label=path, where="post")
+                       label=str(path), where="post")
 
         for i in range(self.n):
             axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
@@ -793,7 +802,7 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                     self.P == p, axis=0).max()) for p in path], [])
 
             er = er + [er[-1]]
-            axright.step(er, np.arange(self.m + 1) - 0.5, label=path,
+            axright.step(er, np.arange(self.m + 1) - 0.5, label=str(path),
                          where="pre")
 
         for j in range(self.m):

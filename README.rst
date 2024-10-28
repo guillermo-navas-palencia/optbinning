@@ -58,6 +58,12 @@ To include batch and stream binning algorithms (this option is not required for 
 
   pip install optbinning[distributed]
 
+To include support for the `ecos <https://github.com/embotech/ecos>`_ solver:
+
+.. code-block:: text
+
+  pip install optbinning[ecos]
+
 To install from source, download or clone the git repository
 
 .. code-block:: text

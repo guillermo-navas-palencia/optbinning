@@ -956,7 +956,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         self._solve_stats[self._n_solve] = {
             "n_add": self._n_add,
             "n_records": self._bsketch.n,
-            "divergence".format(self.divergence): dv
+            "divergence": dv
         }
 
     @property

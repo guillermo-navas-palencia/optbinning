@@ -469,6 +469,8 @@ class ScorecardMonitoring(BaseEstimator):
         plt.legend(handles, labels, loc="upper center",
                    bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
+        plt.tight_layout()
+
         if savefig is None:
             plt.show()
         else:

@@ -8,8 +8,8 @@ OptBinning
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 
-.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue
-   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue
+.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
+   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
 
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blueviolet
    :target: https://img.shields.io/pypi/v/optbinning?color=blueviolet
@@ -233,8 +233,8 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.18.0)
-   Copyright (c) 2019-2023 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.20.0)
+   Copyright (c) 2019-2024 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        name                         mean radius   * U
@@ -401,8 +401,8 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.18.0)
-   Copyright (c) 2019-2023 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 0.20.0)
+   Copyright (c) 2019-2024 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        binning_process                      yes   * U

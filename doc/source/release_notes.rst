@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+Version 0.20.0 (2024-10-29)
+---------------------------
+
+Improvements:
+
+   - Axis labels are cut off when saving the table plot to file (`Issue 303 <https://github.com/guillermo-navas-palencia/optbinning/issues/303>`_).
+   - Packaging improvements (`Issue 335 <https://github.com/guillermo-navas-palencia/optbinning/issues/335>`_).
+
+Bugfixes:
+
+   - Legend missing in ScorecardMonitoring.psi_plot() (`Issue 327 <https://github.com/guillermo-navas-palencia/optbinning/issues/327>`_).
+
+
 Version 0.19.0 (2024-01-16)
 ---------------------------
 

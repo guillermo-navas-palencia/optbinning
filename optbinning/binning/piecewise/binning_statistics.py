@@ -177,7 +177,8 @@ class PWBinningTable(BinningTable):
 
         return df
 
-    def plot(self, metric="woe", n_samples=10000, savefig=None, save_kwargs=None):
+    def plot(self, metric="woe", n_samples=10000, savefig=None,
+             save_kwargs=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the predicted Weight of

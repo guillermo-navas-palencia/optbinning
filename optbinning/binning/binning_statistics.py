@@ -608,7 +608,8 @@ class BinningTable:
         return df
 
     def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None, figsize=None, save_kwargs=None):
+             style="bin", show_bin_labels=False, savefig=None, figsize=None,
+             save_kwargs=None):
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or

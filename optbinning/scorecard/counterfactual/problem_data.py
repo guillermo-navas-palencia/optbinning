@@ -22,7 +22,7 @@ def problem_data(scorecard, X):
 
     # Linear model coefficients
 
-    # Only index into the intercept if it is an array, it is a scalar otherwise 
+    # Only index into the intercept if it is an array, it is a scalar otherwise
     if isinstance(scorecard.estimator_.intercept_, np.ndarray):
         intercept = float(scorecard.estimator_.intercept_[0])
     else:

@@ -451,6 +451,57 @@ class Scorecard(Base, BaseEstimator):
             columns = main_columns + rest_columns
 
         return self._df_scorecard[columns]
+    
+    def transform(self, X):
+        """Transform the dataset in to scores.
+
+        Parameters
+        ----------
+        X : pandas.DataFrame (n_samples, n_features)
+            Training vector, where n_samples is the number of samples.
+
+        Returns
+        -------
+        score: dataframe of shape (n_samples, n_features)
+            The score of the input samples.
+
+        ```python
+        import pandas as pd
+        from optbinning import Scorecard, BinningProcess
+        from sklearn.datasets import load_breast_cancer
+        data = load_breast_cancer()
+        X_train = pd.DataFrame(
+            data=data.data,
+            columns=data.feature_names
+        )
+        y_train  = data.target
+
+
+        model = Scorecard(
+            binning_process=BinningProcess(variable_names=data.feature_names),
+            estimator=LogisticRegression(random_state=34),
+            rounding=True,
+            scaling_method="min_max",
+            scaling_method_params={"min": 0, "max": 250}
+        )
+        model.fit(X_train, y_train)
+
+        print(model.transform(X_train.head()))
+        ```
+        """
+        X_t = self._transform(
+            X=X, metric="indices", metric_special="empirical",
+            metric_missing="empirical")
+
+        selected_variables = self.binning_process_.get_support(names=True)
+        score_ = {
+            feature: (
+                self._df_scorecard[self._df_scorecard.Variable==feature]
+                .Points
+                .values[X_t[feature]]
+            ) for feature in selected_variables
+        }
+        return pd.DataFrame(score_)
 
     @classmethod
     def load(cls, path):

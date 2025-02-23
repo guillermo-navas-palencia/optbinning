@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 0.20.1 (2025-02-23)
+---------------------------
+
+Bugfixes:
+
+   - Set the maximum ortools to be <9.12 to avoid CP-SAT incompatible changes (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/347>`_).
+
+
 Version 0.20.0 (2024-10-29)
 ---------------------------
 

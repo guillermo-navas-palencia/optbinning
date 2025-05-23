@@ -78,7 +78,7 @@ OptBinning requires
 
 * matplotlib
 * numpy (>=1.16.1)
-* ortools (>=9.4)
+* ortools (>=9.11)
 * pandas
 * ropwr (>=1.0.0)
 * scikit-learn (>=1.0.2)

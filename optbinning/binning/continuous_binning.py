@@ -920,7 +920,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_records[i] = np.sum(sw[mask])
             ymask = sw[mask] * y[mask]
             sums[i] = np.sum(ymask)
-            ssums[i] = np.sum(ymask ** 2)
+            ssums[i] = np.sum(sw[mask] * (y[mask] ** 2))
             n_zeros[i] = np.count_nonzero(ymask == 0)
             if len(ymask):
                 stds[i] = np.std(ymask)

@@ -400,6 +400,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._n_prebins = None
         self._n_refinements = 0
         self._n_samples = None
+        self._n_samples_weighted = None
         self._optimizer = None
         self._splits_optimal = None
         self._status = None
@@ -559,10 +560,15 @@ class ContinuousOptimalBinning(OptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
+        self._n_samples_weighted = sum(sample_weight) if sample_weight is not None else len(x)
 
         if self.verbose:
-            logger.info("Pre-processing: number of samples: {}"
-                        .format(self._n_samples))
+            if self._n_samples == self._n_samples_weighted:
+                logger.info("Pre-processing: number of samples: {}"
+                            .format(self._n_samples))
+            else:
+                logger.info("Pre-processing: number of samples: {}. Weighted samples: {}"
+                            .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
 
@@ -757,12 +763,12 @@ class ContinuousOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples_weighted))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples_weighted))
         else:
             max_bin_size = self.max_bin_size
 

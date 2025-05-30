@@ -360,6 +360,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         self._n_prebins = None
         self._n_refinements = 0
         self._n_samples = None
+        self._n_samples_weighted = None
         self._optimizer = None
         self._splits_optimal = None
         self._status = None
@@ -504,6 +505,7 @@ class MulticlassOptimalBinning(OptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
+        self._n_samples_weighted = self._n_samples
 
         if self.verbose:
             logger.info("Pre-processing: number of samples: {}"

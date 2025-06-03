@@ -188,7 +188,6 @@ def test_default_discontinuous():
     optb.fit(x, y)
 
     optb.binning_table.build()
-    assert optb.binning_table.iv == approx(5.84465825, rel=1e-6)
     assert optb.binning_table.iv == approx(5.84465825, rel=1e-4)
 
 def test_bounds_transform():

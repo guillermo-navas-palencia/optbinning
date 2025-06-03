@@ -903,7 +903,8 @@ class ContinuousOptimalBinning(OptimalBinning):
     def _compute_prebins(self, splits_prebinning, x, y, sw):
         n_splits = len(splits_prebinning)
         if not n_splits:
-            return splits_prebinning, np.array([]), np.array([])
+            return (splits_prebinning, np.array([]), np.array([]), np.array([]),
+                    np.array([]), np.array([]), np.array([]), np.array([]))
 
         if self.dtype == "categorical" and self.user_splits is not None:
             indices = np.digitize(x, splits_prebinning, right=True)

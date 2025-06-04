@@ -214,7 +214,8 @@ class MulticlassOptimalBinning(OptimalBinning):
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin.
+        The fraction of mininum number of records for each prebin
+        (including missing and ``special_code`` groups).
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -225,11 +226,13 @@ class MulticlassOptimalBinning(OptimalBinning):
         a value in ``[0, max_n_prebins]``.
 
     min_bin_size : float or None, optional (default=None)
-        The fraction of minimum number of records for each bin. If None,
+        The fraction of minimum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``min_bin_size = min_prebin_size``.
 
     max_bin_size : float or None, optional (default=None)
-        The fraction of maximum number of records for each bin. If None,
+        The fraction of maximum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``max_bin_size = 1.0``.
 
     monotonic_trend : str, array-like or None, optional (default="auto")

@@ -101,9 +101,22 @@ class PreBinning:
             self._splits = est.bin_edges_[0][1:-1]
 
         elif self.method == "cart":
-            cart_kwargs = {
-                    "min_samples_leaf": self.min_bin_size,
-                    "max_leaf_nodes": self.n_bins}
+            if sample_weight is None:
+                cart_kwargs = {
+                        "min_samples_leaf": self.min_bin_size,
+                        "max_leaf_nodes": self.n_bins}
+            else:
+                # https://scikit-learn.org/stable/modules/tree.html#tips-on-practical-use
+                # If the samples are weighted, it will be easier to optimize the tree 
+                # structure using weight-based pre-pruning criterion such as 
+                # min_weight_fraction_leaf, which ensure that leaf nodes contain at 
+                # least a fraction of the overall sum of the sample weights.
+                cart_kwargs = {
+                    "min_weight_fraction_leaf": min(
+                        0.5, self.min_bin_size / np.sum(sample_weight)
+                        ),
+                    "max_leaf_nodes": self.n_bins
+                }
 
             if self.problem_type == "classification":
                 cart_kwargs["class_weight"] = self.class_weight

@@ -9,8 +9,9 @@ import numpy as np
 
 from scipy import special
 from scipy import stats
-from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
+
+from .._sklearn_compat import check_array
 
 
 def _check_x_y(x, y):

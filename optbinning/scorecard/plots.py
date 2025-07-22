@@ -11,8 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import roc_curve, roc_auc_score
-from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
+
+from .._sklearn_compat import check_array
 
 
 def _check_arrays(y, y_pred):

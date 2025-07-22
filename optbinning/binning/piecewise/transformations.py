@@ -8,11 +8,11 @@ Piecewise binning transformations.
 import numpy as np
 import pandas as pd
 
-from sklearn.utils import check_array
 
 from ...binning.transformations import transform_event_rate_to_woe
 from ...binning.transformations import _check_metric_special_missing
 from ...binning.transformations import _mask_special_missing
+from ..._sklearn_compat import check_array
 
 
 def _apply_transform(x, c, lb, ub, special_codes, metric_special,

@@ -12,7 +12,8 @@ import numpy as np
 from scipy import special
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
-from sklearn.utils import check_array
+
+from .._sklearn_compat import check_array
 
 
 def _check_parameters(min_samples_split, min_samples_leaf, max_candidates):

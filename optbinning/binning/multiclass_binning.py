@@ -11,10 +11,10 @@ import json
 
 import numpy as np
 
-from sklearn.utils import check_array
 
 from ..information import solver_statistics
 from ..logging import Logger
+from .._sklearn_compat import check_array
 from .auto_monotonic import auto_monotonic
 from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning

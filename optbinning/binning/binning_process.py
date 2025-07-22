@@ -17,11 +17,11 @@ import pandas as pd
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
-from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
 from ..logging import Logger
+from .._sklearn_compat import check_array
 from .base import Base
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information

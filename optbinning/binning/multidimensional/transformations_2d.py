@@ -8,8 +8,9 @@ Binning 2D transformations.
 import numpy as np
 import pandas as pd
 
-from sklearn.utils import check_array
 
+
+from ..._sklearn_compat import check_array
 from ..transformations import _check_metric_special_missing
 from ..transformations import _check_show_digits
 from .binning_statistics_2d import bin_categorical

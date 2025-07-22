@@ -36,6 +36,7 @@ install_requires = [
     'matplotlib',
     'numpy>=1.16.1',
     'ortools>=9.4,<9.12',
+    'packaging',
     'pandas',
     'ropwr>=1.0.0',
     'scikit-learn>=1.0.2',

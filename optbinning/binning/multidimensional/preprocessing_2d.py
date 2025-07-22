@@ -8,9 +8,9 @@ Preprocessing 2D functions.
 import numpy as np
 import pandas as pd
 
-from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
+from ..._sklearn_compat import check_array
 from ..preprocessing import categorical_transform
 
 

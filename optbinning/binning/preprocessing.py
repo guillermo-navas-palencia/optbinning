@@ -11,11 +11,11 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 from sklearn.utils import compute_class_weight
 from sklearn.utils.validation import _check_sample_weight
 
+from .._sklearn_compat import check_array
 from .outlier import ModifiedZScoreDetector
 from .outlier import RangeDetector
 from .outlier import YQuantileDetector

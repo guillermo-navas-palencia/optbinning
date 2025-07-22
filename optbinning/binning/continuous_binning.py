@@ -9,12 +9,12 @@ import numbers
 import time
 import json
 
-from sklearn.utils import check_array
 
 import numpy as np
 
 from ..information import solver_statistics
 from ..logging import Logger
+from .._sklearn_compat import check_array
 from .auto_monotonic import auto_monotonic_continuous
 from .auto_monotonic import peak_valley_trend_change_heuristic
 from .binning import OptimalBinning

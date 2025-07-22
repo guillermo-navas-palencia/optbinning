@@ -10,8 +10,7 @@ import numbers
 import numpy as np
 import pandas as pd
 
-from sklearn.utils import check_array
-
+from .._sklearn_compat import check_array
 from .binning_statistics import bin_categorical
 from .binning_statistics import bin_str_format
 

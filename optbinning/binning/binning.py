@@ -1176,19 +1176,16 @@ class OptimalBinning(BaseOptimalBinning):
         self._check_is_fitted()
 
         return self._status
-
-    def to_json(self, path):
+    
+    def to_dict(self):
         """
-        Save optimal bins and/or splits points and transformation depending on
-        the target type.
+        Convert optimal bins and/or splits points and transformation depending on
+        the target type to dictionary.
 
-        Parameters
-        ----------
-        path: The path where the json is going to be saved.
+       Returns
+        -------
+        opt_bin_dict : dict
         """
-        if path is None:
-            raise ValueError('Specify the path for the json file')
-
         table = self.binning_table
 
         opt_bin_dict = dict()
@@ -1209,6 +1206,24 @@ class OptimalBinning(BaseOptimalBinning):
         opt_bin_dict['categories'] = table.categories
         opt_bin_dict['cat_others'] = table.cat_others
         opt_bin_dict['user_splits'] = table.user_splits
+
+        return opt_bin_dict
+
+    def to_json(self, path):
+        """
+        Save optimal bins and/or splits points and transformation depending on
+        the target type.
+
+        Parameters
+        ----------
+        path: The path where the json is going to be saved.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file')
+
+        table = self.binning_table
+
+        opt_bin_dict = self.to_dict()
 
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)

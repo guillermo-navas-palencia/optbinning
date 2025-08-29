@@ -1,5 +1,13 @@
 Release Notes
 =============
+Version 0.20.? (2025-02-?)
+---------------------------
+
+New features:
+
+   - Added a `.transform()` method to the Scorecard class. (`Discussion 345 <https://github.com/guillermo-navas-palencia/optbinning/discussions/345>`_).
+
+
 
 Version 0.20.1 (2025-02-23)
 ---------------------------

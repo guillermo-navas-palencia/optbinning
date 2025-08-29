@@ -208,7 +208,8 @@ class ContinuousOptimalBinning(OptimalBinning):
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin.
+        The fraction of mininum number of records for each prebin
+        (including missing and ``special_code`` groups).
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -219,11 +220,13 @@ class ContinuousOptimalBinning(OptimalBinning):
         a value in ``[0, max_n_prebins]``.
 
     min_bin_size : float or None, optional (default=None)
-        The fraction of minimum number of records for each bin. If None,
+        The fraction of minimum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``min_bin_size = min_prebin_size``.
 
     max_bin_size : float or None, optional (default=None)
-        The fraction of maximum number of records for each bin. If None,
+        The fraction of maximum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``max_bin_size = 1.0``.
 
     monotonic_trend : str or None, optional (default="auto")
@@ -400,6 +403,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         self._n_prebins = None
         self._n_refinements = 0
         self._n_samples = None
+        self._n_samples_weighted = None
         self._optimizer = None
         self._splits_optimal = None
         self._status = None
@@ -559,10 +563,15 @@ class ContinuousOptimalBinning(OptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
+        self._n_samples_weighted = sum(sample_weight) if sample_weight is not None else len(x)
 
         if self.verbose:
-            logger.info("Pre-processing: number of samples: {}"
-                        .format(self._n_samples))
+            if self._n_samples == self._n_samples_weighted:
+                logger.info("Pre-processing: number of samples: {}"
+                            .format(self._n_samples))
+            else:
+                logger.info("Pre-processing: number of samples: {}. Weighted samples: {}"
+                            .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
 
@@ -757,12 +766,12 @@ class ContinuousOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples_weighted))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples_weighted))
         else:
             max_bin_size = self.max_bin_size
 
@@ -897,7 +906,8 @@ class ContinuousOptimalBinning(OptimalBinning):
     def _compute_prebins(self, splits_prebinning, x, y, sw):
         n_splits = len(splits_prebinning)
         if not n_splits:
-            return splits_prebinning, np.array([]), np.array([])
+            return (splits_prebinning, np.array([]), np.array([]), np.array([]),
+                    np.array([]), np.array([]), np.array([]), np.array([]))
 
         if self.dtype == "categorical" and self.user_splits is not None:
             indices = np.digitize(x, splits_prebinning, right=True)
@@ -920,7 +930,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             n_records[i] = np.sum(sw[mask])
             ymask = sw[mask] * y[mask]
             sums[i] = np.sum(ymask)
-            ssums[i] = np.sum(ymask ** 2)
+            ssums[i] = np.sum(sw[mask] * (y[mask] ** 2))
             n_zeros[i] = np.count_nonzero(ymask == 0)
             if len(ymask):
                 stds[i] = np.std(ymask)

@@ -1185,7 +1185,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._check_is_fitted()
 
         return self._status
-    
+
     def to_dict(self):
         """
         Convert optimal bins and/or splits points and transformation depending on

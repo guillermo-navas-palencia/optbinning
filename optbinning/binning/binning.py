@@ -1230,8 +1230,6 @@ class OptimalBinning(BaseOptimalBinning):
         if path is None:
             raise ValueError('Specify the path for the json file')
 
-        table = self.binning_table
-
         opt_bin_dict = self.to_dict()
 
         with open(path, "w") as write_file:

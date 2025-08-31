@@ -16,8 +16,8 @@ from sklearn.utils import check_consistent_length
 
 
 def _check_arrays(y, y_pred):
-    y = check_array(y, ensure_2d=False, force_all_finite=True)
-    y_pred = check_array(y_pred, ensure_2d=False, force_all_finite=True)
+    y = check_array(y, ensure_2d=False, ensure_all_finite=True)
+    y_pred = check_array(y_pred, ensure_2d=False, ensure_all_finite=True)
 
     check_consistent_length(y, y_pred)
 

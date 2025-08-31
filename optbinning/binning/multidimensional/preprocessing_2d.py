@@ -53,13 +53,13 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
     """
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
         y = check_array(y, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
         z = check_array(z, ensure_2d=False, dtype=None,
-                        force_all_finite=True)
+                        ensure_all_finite=True)
 
         check_consistent_length(x, y, z)
 

@@ -121,10 +121,10 @@ def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
         y = check_array(y, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
     y = np.asarray(y)
@@ -198,10 +198,10 @@ def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
         y = check_array(y, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
     y = np.asarray(y)

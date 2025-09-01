@@ -243,7 +243,7 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
 
@@ -330,7 +330,7 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
 
@@ -401,7 +401,7 @@ def transform_continuous_target(splits, dtype, x, n_records, sums,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
 

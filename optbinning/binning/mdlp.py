@@ -99,8 +99,8 @@ class MDLP(BaseEstimator):
     def _fit(self, x, y):
         _check_parameters(**self.get_params())
 
-        x = check_array(x, ensure_2d=False, force_all_finite=True)
-        y = check_array(y, ensure_2d=False, force_all_finite=True)
+        x = check_array(x, ensure_2d=False, ensure_all_finite=True)
+        y = check_array(y, ensure_2d=False, ensure_all_finite=True)
 
         idx = np.argsort(x)
         x = x[idx]

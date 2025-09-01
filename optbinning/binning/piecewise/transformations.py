@@ -72,7 +72,7 @@ def transform_binary_target(splits, x, c, lb, ub, n_nonevent, n_event,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
 
@@ -144,7 +144,7 @@ def transform_continuous_target(splits, x, c, lb, ub, n_records_special,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
     x = np.asarray(x)
 

@@ -1191,7 +1191,7 @@ class OptimalBinning(BaseOptimalBinning):
         Convert optimal bins and/or splits points and transformation depending on
         the target type to dictionary.
 
-       Returns
+        Returns
         -------
         opt_bin_dict : dict
         """

@@ -81,7 +81,7 @@ OptBinning requires
 * ortools (>=9.4)
 * pandas
 * ropwr (>=1.0.0)
-* scikit-learn (>=1.0.2)
+* scikit-learn (>=1.6.0)
 * scipy (>=1.6.0)
 
 OptBinning[distributed] requires additional packages

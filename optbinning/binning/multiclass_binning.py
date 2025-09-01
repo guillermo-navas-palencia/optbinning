@@ -565,7 +565,7 @@ class MulticlassOptimalBinning(OptimalBinning):
                             .format(n_splits))
 
             user_splits = check_array(self.user_splits, ensure_2d=False,
-                                      dtype=None, force_all_finite=True)
+                                      dtype=None, ensure_all_finite=True)
 
             if len(set(user_splits)) != len(user_splits):
                 raise ValueError("User splits are not unique.")

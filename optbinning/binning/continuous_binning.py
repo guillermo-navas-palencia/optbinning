@@ -9,6 +9,7 @@ import numbers
 import time
 import json
 
+from scipy.stats import kendalltau
 from sklearn.utils import check_array
 
 import numpy as np
@@ -724,10 +725,16 @@ class ContinuousOptimalBinning(OptimalBinning):
             min_x = None
             max_x = None
 
+        if self.dtype == "numerical":
+            correlation_kendalltau = kendalltau(x_clean, y_clean)[0]
+        else:
+            correlation_kendalltau = None
+
         self._binning_table = ContinuousBinningTable(
             self.name, self.dtype, self.special_codes, self._splits_optimal,
             self._n_records, self._sums, self._stds, self._min_target,
-            self._max_target, self._n_zeros, min_x, max_x, self._categories,
+            self._max_target, self._n_zeros, min_x, max_x,
+            correlation_kendalltau, self._categories,
             self._cat_others, self.user_splits)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing

@@ -1,12 +1,18 @@
 Release Notes
 =============
-Version 0.20.? (2025-02-?)
+Version 0.21.0 (2025-10-26)
 ---------------------------
 
 New features:
 
-   - Added a `.transform()` method to the Scorecard class. (`Discussion 345 <https://github.com/guillermo-navas-palencia/optbinning/discussions/345>`_).
+   - Add ``transform`` method in scorecard (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/346>`_).
+   - Add ``to_dict`` method for binning table serialization (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/371>`_).
+   - Replace Boston dataset (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/372>`_).
 
+Bugfixes:
+
+   - Use weighted min and max bin size, and correct decision tree hyperparameters when sample_weight is provided (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/359>`_).
+   - Fix ssym for std calculation (`Issue 347 <https://github.com/guillermo-navas-palencia/optbinning/issues/360>`_)..
 
 
 Version 0.20.1 (2025-02-23)

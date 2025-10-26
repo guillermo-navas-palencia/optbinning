@@ -166,10 +166,10 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
 
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,
-                        force_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
         y = check_array(y, ensure_2d=False, dtype=None,
-                        force_all_finite=True)
+                        ensure_all_finite=True)
 
         check_consistent_length(x, y)
 

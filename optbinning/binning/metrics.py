@@ -14,8 +14,8 @@ from sklearn.utils import check_consistent_length
 
 
 def _check_x_y(x, y):
-    x = check_array(x, ensure_2d=False, force_all_finite=True)
-    y = check_array(y, ensure_2d=False, force_all_finite=True)
+    x = check_array(x, ensure_2d=False, ensure_all_finite=True)
+    y = check_array(y, ensure_2d=False, ensure_all_finite=True)
 
     check_consistent_length(x, y)
 

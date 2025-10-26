@@ -448,7 +448,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin.
+        The fraction of mininum number of records for each prebin
+        (including missing and ``special_code`` groups).
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -459,11 +460,13 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         a value in ``[0, max_n_prebins]``.
 
     min_bin_size : float or None, optional (default=None)
-        The fraction of minimum number of records for each bin. If None,
+        The fraction of minimum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``min_bin_size = min_prebin_size``.
 
     max_bin_size : float or None, optional (default=None)
-        The fraction of maximum number of records for each bin. If None,
+        The fraction of maximum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``max_bin_size = 1.0``.
 
     max_pvalue : float or None, optional (default=None)
@@ -1082,10 +1085,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         # check X and y data
         if check_input:
             X = check_array(X, ensure_2d=False, dtype=None,
-                            force_all_finite='allow-nan')
+                            ensure_all_finite='allow-nan')
 
             y = check_array(y, ensure_2d=False, dtype=None,
-                            force_all_finite=True)
+                            ensure_all_finite=True)
 
             check_consistent_length(X, y)
 

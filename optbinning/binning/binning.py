@@ -290,7 +290,8 @@ class OptimalBinning(BaseOptimalBinning):
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin.
+        The fraction of mininum number of records for each prebin
+        (including missing and ``special_code`` groups).
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -301,11 +302,13 @@ class OptimalBinning(BaseOptimalBinning):
         a value in ``[0, max_n_prebins]``.
 
     min_bin_size : float or None, optional (default=None)
-        The fraction of minimum number of records for each bin. If None,
+        The fraction of minimum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``min_bin_size = min_prebin_size``.
 
     max_bin_size : float or None, optional (default=None)
-        The fraction of maximum number of records for each bin. If None,
+        The fraction of maximum number of records for each bin
+        (including missing and ``special_code`` groups). If None,
         ``max_bin_size = 1.0``.
 
     min_bin_n_nonevent : int or None, optional (default=None)
@@ -516,6 +519,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._n_prebins = None
         self._n_refinements = 0
         self._n_samples = None
+        self._n_samples_weighted = None
         self._optimizer = None
         self._solution = None
         self._splits_optimal = None
@@ -711,10 +715,15 @@ class OptimalBinning(BaseOptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
+        self._n_samples_weighted = sum(sample_weight) if sample_weight is not None else len(x)
 
         if self.verbose:
-            logger.info("Pre-processing: number of samples: {}"
-                        .format(self._n_samples))
+            if self._n_samples == self._n_samples_weighted:
+                logger.info("Pre-processing: number of samples: {}"
+                            .format(self._n_samples))
+            else:
+                logger.info("Pre-processing: number of samples: {}. Weighted samples: {}"
+                            .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
 
@@ -784,7 +793,7 @@ class OptimalBinning(BaseOptimalBinning):
                 if self.dtype == "numerical":
                     user_splits = check_array(
                         self.user_splits, ensure_2d=False, dtype=None,
-                        force_all_finite=True)
+                        ensure_all_finite=True)
 
                     if len(set(user_splits)) != len(user_splits):
                         raise ValueError("User splits are not unique.")
@@ -880,7 +889,7 @@ class OptimalBinning(BaseOptimalBinning):
                         class_weight=None, sw_clean=None, sw_missing=None,
                         sw_special=None, sw_others=None):
 
-        min_bin_size = int(np.ceil(self.min_prebin_size * self._n_samples))
+        min_bin_size = int(np.ceil(self.min_prebin_size * self._n_samples_weighted))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
@@ -916,12 +925,12 @@ class OptimalBinning(BaseOptimalBinning):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples_weighted))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples_weighted))
         else:
             max_bin_size = self.max_bin_size
 
@@ -1177,18 +1186,15 @@ class OptimalBinning(BaseOptimalBinning):
 
         return self._status
 
-    def to_json(self, path):
+    def to_dict(self):
         """
-        Save optimal bins and/or splits points and transformation depending on
-        the target type.
+        Convert optimal bins and/or splits points and transformation depending on
+        the target type to dictionary.
 
-        Parameters
-        ----------
-        path: The path where the json is going to be saved.
+        Returns
+        -------
+        opt_bin_dict : dict
         """
-        if path is None:
-            raise ValueError('Specify the path for the json file')
-
         table = self.binning_table
 
         opt_bin_dict = dict()
@@ -1209,6 +1215,22 @@ class OptimalBinning(BaseOptimalBinning):
         opt_bin_dict['categories'] = table.categories
         opt_bin_dict['cat_others'] = table.cat_others
         opt_bin_dict['user_splits'] = table.user_splits
+
+        return opt_bin_dict
+
+    def to_json(self, path):
+        """
+        Save optimal bins and/or splits points and transformation depending on
+        the target type.
+
+        Parameters
+        ----------
+        path: The path where the json is going to be saved.
+        """
+        if path is None:
+            raise ValueError('Specify the path for the json file')
+
+        opt_bin_dict = self.to_dict()
 
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)

@@ -6,11 +6,12 @@ Automatic monotonic trend algorithm.
 # Copyright (C) 2019
 
 import numpy as np
+import numpy.typing as npt
 
 from scipy.spatial import ConvexHull
 
 
-def n_peaks_valleys(x):
+def n_peaks_valleys(x: npt.NDArray) -> int:
     """Find number of peaks and valleys in an array of values.
 
     Parameters
@@ -26,7 +27,10 @@ def n_peaks_valleys(x):
     return np.count_nonzero(diff_sign[1:] != diff_sign[:-1])
 
 
-def peak_valley_trend_change_heuristic(x, monotonic_trend):
+def peak_valley_trend_change_heuristic(
+    x: npt.NDArray,
+    monotonic_trend: str
+) -> float:
     if monotonic_trend == "peak_heuristic":
         trend_change = np.argmax(x)
     else:
@@ -35,7 +39,7 @@ def peak_valley_trend_change_heuristic(x, monotonic_trend):
     return trend_change
 
 
-def extreme_points_area(x):
+def extreme_points_area(x: npt.NDArray) -> float:
     """Compute area within extreme points divided by total rectangular area.
 
     Parameters
@@ -81,7 +85,11 @@ def extreme_points_area(x):
     return p_area
 
 
-def auto_monotonic_data(n_nonevent, n_event):
+def auto_monotonic_data(
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray
+) -> dict[str, int | float]:
+
     n_prebins = len(n_nonevent)
 
     # Trend changes data
@@ -155,7 +163,11 @@ def auto_monotonic_data(n_nonevent, n_event):
     return dict_data
 
 
-def auto_monotonic_data_continuous(n_records, sums):
+def auto_monotonic_data_continuous(
+    n_records: npt.NDArray,
+    sums: npt.NDArray
+) -> dict[str, int | float]:
+
     n_prebins = len(n_records)
 
     # Trend changes data
@@ -228,9 +240,15 @@ def auto_monotonic_data_continuous(n_records, sums):
     return dict_data
 
 
-def auto_monotonic_decision(lr_sense, p_records_min_left, p_records_min_right,
-                            p_records_max_left, p_records_max_right, p_area,
-                            p_convex_hull):
+def auto_monotonic_decision(
+    lr_sense: int,
+    p_records_min_left: float,
+    p_records_min_right: float,
+    p_records_max_left: float,
+    p_records_max_right: float,
+    p_area: float,
+    p_convex_hull: float
+) -> str:
 
     if p_area <= 0.22145836800336838:
         if lr_sense == 0:
@@ -289,10 +307,17 @@ def auto_monotonic_decision(lr_sense, p_records_min_left, p_records_min_right,
         return "valley"
 
 
-def auto_monotonic_asc_desc_decision(p_trend_changes, lr_sense,
-                                     p_records_min_left, p_records_min_right,
-                                     p_records_max_left, p_records_max_right,
-                                     p_area, p_convex_hull):
+def auto_monotonic_asc_desc_decision(
+    p_trend_changes: float,
+    lr_sense: int,
+    p_records_min_left: float,
+    p_records_min_right: float,
+    p_records_max_left: float,
+    p_records_max_right: float,
+    p_area: float,
+    p_convex_hull: float
+) -> str:
+
     if lr_sense == 0:
         if p_area <= 0.4890555590391159:
             if p_records_max_right <= 0.029244758188724518:
@@ -331,7 +356,10 @@ def auto_monotonic_asc_desc_decision(p_trend_changes, lr_sense,
         return "descending"
 
 
-def _auto_monotonic_decision(dict_data, auto_mode):
+def _auto_monotonic_decision(
+    dict_data: dict[str, int | float],
+    auto_mode: str
+) -> str:
     p_trend_changes = dict_data["p_trend_changes"]
     lr_sense = dict_data["lr_sense"]
     p_records_min_left = dict_data["p_records_min_left"]
@@ -352,17 +380,25 @@ def _auto_monotonic_decision(dict_data, auto_mode):
             p_records_max_left, p_records_max_right, p_area, p_convex_hull)
 
 
-def auto_monotonic(n_nonevent, n_event, auto_mode):
+def auto_monotonic(
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    auto_mode: str
+) -> str:
     dict_data = auto_monotonic_data(n_nonevent, n_event)
     return _auto_monotonic_decision(dict_data, auto_mode)
 
 
-def auto_monotonic_continuous(n_records, sums, auto_mode):
+def auto_monotonic_continuous(
+    n_records: npt.NDArray,
+    sums: npt.NDArray,
+    auto_mode: str
+) -> str:
     dict_data = auto_monotonic_data_continuous(n_records, sums)
     return _auto_monotonic_decision(dict_data, auto_mode)
 
 
-def _is_peak(x):
+def _is_peak(x: npt.NDArray) -> bool:
     t = np.argmax(x)
 
     t_asc = np.all(x[1:t+1] - x[:t] >= 0)
@@ -374,7 +410,7 @@ def _is_peak(x):
     return False
 
 
-def _is_valley(x):
+def _is_valley(x: npt.NDArray) -> bool:
     t = np.argmin(x)
 
     t_desc = np.all(x[1:t+1] - x[:t] <= 0)
@@ -386,7 +422,7 @@ def _is_valley(x):
     return False
 
 
-def _is_convex(x):
+def _is_convex(x: npt.NDArray) -> bool:
     n = len(x)
 
     convex = True
@@ -400,7 +436,7 @@ def _is_convex(x):
     return convex
 
 
-def _is_concave(x):
+def _is_concave(x: npt.NDArray) -> bool:
     n = len(x)
 
     concave = True
@@ -414,7 +450,7 @@ def _is_concave(x):
     return concave
 
 
-def type_of_monotonic_trend(x):
+def type_of_monotonic_trend(x: npt.NDArray) -> str:
     if len(x) == 1:
         return "undefined"
 

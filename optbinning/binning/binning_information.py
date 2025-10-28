@@ -5,6 +5,8 @@ Optimal binning information.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
+from typing import Any
+
 from ..information import print_header
 from ..information import print_optional_parameters
 from ..information import print_solver_statistics
@@ -16,7 +18,7 @@ from ..options import continuous_optimal_binning_2d_default_options
 from ..options import optimal_binning_2d_default_options
 
 
-def print_prebinning_statistics(n_prebins, n_refinement):
+def print_prebinning_statistics(n_prebins: int, n_refinement: int) -> None:
     prebinning_stats = (
         "  Pre-binning statistics\n"
         "    Number of pre-bins            {:>10}\n"
@@ -26,9 +28,16 @@ def print_prebinning_statistics(n_prebins, n_refinement):
     print(prebinning_stats)
 
 
-def print_timing(solver_type, solver, time_total, time_preprocessing,
-                 time_prebinning, time_solver, time_optimizer,
-                 time_postprocessing):
+def print_timing(
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_preprocessing: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_optimizer: float,
+    time_postprocessing: float
+) -> None:
 
     p_preprocessing = time_preprocessing / time_total
     p_prebinning = time_prebinning / time_total
@@ -68,7 +77,7 @@ def print_timing(solver_type, solver, time_total, time_preprocessing,
     print(time_stats)
 
 
-def print_name_status(name, status):
+def print_name_status(name: str, status: str) -> None:
     if not name:
         name = "UNKNOWN"
 
@@ -76,17 +85,29 @@ def print_name_status(name, status):
           "  Status  : {:<32}\n".format(name, status))
 
 
-def print_main_info(name, status, time_total):
+def print_main_info(name: str, status: str, time_total: float) -> None:
     print_name_status(name, status)
 
     print("  Time    : {:<7.4f} sec\n".format(time_total))
 
 
-def print_binning_information(binning_type, print_level, name, status,
-                              solver_type, solver, time_total,
-                              time_preprocessing, time_prebinning, time_solver,
-                              time_optimizer, time_postprocessing, n_prebins,
-                              n_refinements, dict_user_options):
+def print_binning_information(
+    binning_type: str,
+    print_level: int,
+    name: str,
+    status: str,
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_preprocessing: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_optimizer: float,
+    time_postprocessing: float,
+    n_prebins: int,
+    n_refinements: int,
+    dict_user_options: dict[str, Any]
+) -> None:
 
     print_header()
 

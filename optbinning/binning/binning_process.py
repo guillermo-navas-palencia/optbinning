@@ -419,15 +419,18 @@ class BaseBinningProcess:
                     "iv": optb.binning_table.iv,
                     "gini": optb.binning_table.gini,
                     "js": optb.binning_table.js,
-                    "quality_score": optb.binning_table.quality_score}
+                    "quality_score": optb.binning_table.quality_score,
+                    "monotonic_trend": optb.binning_table.monotonic_trend}
             elif self._target_dtype == "multiclass":
                 metrics = {
                     "js": optb.binning_table.js,
-                    "quality_score": optb.binning_table.quality_score}
+                    "quality_score": optb.binning_table.quality_score,
+                    "monotonic_trend": optb.binning_table.monotonic_trend}
             elif self._target_dtype == "continuous":
                 metrics = {
                     "woe": optb.binning_table.woe,
-                    "quality_score": optb.binning_table.quality_score}
+                    "quality_score": optb.binning_table.quality_score,
+                    "monotonic_trend": optb.binning_table.monotonic_trend}
 
             info = {**info, **metrics}
             self._variable_stats[name] = info
@@ -936,7 +939,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         df_summary.rename(columns={"index": "name"}, inplace=True)
         df_summary["selected"] = self._support
 
-        columns = ["name", "dtype", "status", "selected", "n_bins"]
+        columns = ["name", "dtype", "status", "monotonic_trend",
+                   "selected", "n_bins"]
         columns += _METRICS[self._target_dtype]["metrics"]
 
         return df_summary[columns]

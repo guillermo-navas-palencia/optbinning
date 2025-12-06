@@ -778,7 +778,7 @@ class BinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:

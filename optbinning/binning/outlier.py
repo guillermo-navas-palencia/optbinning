@@ -7,7 +7,10 @@ Univariate outlier detection methods.
 
 import numbers
 
+from typing import Any, Self
+
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
@@ -21,7 +24,7 @@ class OutlierDetector:
         # flag
         self._is_fitted = False
 
-    def fit(self, x, y=None):
+    def fit(self, x: npt.ArrayLike, y: npt.ArrayLike | None = None) -> Self:
         """Fit outlier detector.
 
         Parameters
@@ -38,7 +41,7 @@ class OutlierDetector:
 
         return self
 
-    def get_support(self, indices=False):
+    def get_support(self, indices: bool = False) -> np.ndarray:
         """Get a mask, or integer index, of the samples excluded, i.e, samples
         detected as outliers.
 
@@ -85,12 +88,17 @@ class RangeDetector(BaseEstimator, OutlierDetector):
         Density interval (``method="HDI"``) and Equal-tailed interval
         (``method="ETI"``).
     """
-    def __init__(self, interval_length=0.5, k=1.5, method="ETI"):
+    def __init__(
+        self,
+        interval_length: float = 0.5,
+        k: float = 1.5,
+        method: str = "ETI"
+    ):
         self.interval_length = interval_length
         self.k = k
         self.method = method
 
-    def _fit(self, x, y=None):
+    def _fit(self, x: npt.ArrayLike, y: npt.ArrayLike | None = None) -> None:
         if self.method not in ("ETI", "HDI"):
             raise ValueError('Invalid value for method. Allowed string '
                              'values are "ETI" and "HDI".')
@@ -143,10 +151,10 @@ class ModifiedZScoreDetector(BaseEstimator, OutlierDetector):
               Outliers", The ASQC Basic References in Quality Control:
               Statistical Techniques, Edward F. Mykytka, Ph.D., Editor, 1993.
     """
-    def __init__(self, threshold=3.5):
+    def __init__(self, threshold: float = 3.5):
         self.threshold = threshold
 
-    def _fit(self, x, y=None):
+    def _fit(self, x: npt.ArrayLike, y: npt.ArrayLike | None = None) -> None:
         if (not isinstance(self.threshold, numbers.Number) or
                 self.threshold < 0):
             raise ValueError("threshold must be a value >= 0; got {}".
@@ -178,13 +186,17 @@ class YQuantileDetector(BaseEstimator, OutlierDetector):
     n_bins : int (default=5)
         The maximum number of bins to consider.
     """
-    def __init__(self, outlier_detector="zscore",  outlier_params=None,
-                 n_bins=5):
+    def __init__(
+        self,
+        outlier_detector: str | None = "zscore",
+        outlier_params: dict[str, Any] | None = None,
+        n_bins: int = 5
+    ):
         self.outlier_detector = outlier_detector
         self.outlier_params = outlier_params
         self.n_bins = n_bins
 
-    def _fit(self, x, y):
+    def _fit(self, x: npt.ArrayLike, y: npt.ArrayLike) -> None:
         if self.outlier_detector not in ("range", "zscore"):
             raise ValueError('Invalid value for outlier_detector. Allowed '
                              'string values are "range" and "zscore".')

@@ -16,12 +16,13 @@ def n_peaks_valleys(x: npt.NDArray) -> int:
 
     Parameters
     ----------
-    x : array-like, shape = (n_samples)
+    x : numpy.ndarray, shape = (n_samples)
         Data samples, where n_samples is the number of samples.
 
     Returns
     -------
-    n_changes : number of changes (peaks and valleys).
+    n_changes : int
+        number of changes (peaks and valleys).
     """
     diff_sign = np.sign(x[1:] - x[:-1])
     return np.count_nonzero(diff_sign[1:] != diff_sign[:-1])
@@ -31,6 +32,22 @@ def peak_valley_trend_change_heuristic(
     x: npt.NDArray,
     monotonic_trend: str
 ) -> float:
+    """Estimate the trend change value. If monotonic_trend="peak_heuristic"
+    choose the argmax(x), otherwise argmin(x).
+
+    Parameters
+    ----------
+    x : numpy.ndarray, shape = (n_samples)
+        Data samples, where n_samples is the number of samples.
+
+    monotonic_trend: str
+        Monotonic trend.
+
+    Returns
+    -------
+    trend_change: float
+        Trend change value.
+    """
     if monotonic_trend == "peak_heuristic":
         trend_change = np.argmax(x)
     else:
@@ -44,13 +61,13 @@ def extreme_points_area(x: npt.NDArray) -> float:
 
     Parameters
     ----------
-    x : array-like, shape = (n_samples)
+    x : numpy.ndarray, shape = (n_samples)
         Data samples, where n_samples is the number of samples.
 
     Returns
     -------
-    p_area : percentage of total area corresponding to are within
-        extreme points.
+    p_area : float
+        percentage of total area corresponding to are within extreme points.
     """
     n = len(x)
 
@@ -89,7 +106,19 @@ def auto_monotonic_data(
     n_nonevent: npt.NDArray,
     n_event: npt.NDArray
 ) -> dict[str, int | float]:
+    """Calculate auto monotonic data information for binary target.
 
+    n_nonevent : np.ndarray, shape = (n_bins,)
+        The number of non-events per bin.
+
+    n_event : np.ndarray, shape = (n_bins,)
+        The number of events per bin.
+
+    Returns
+    -------
+    data : dict
+        Auto monotonic data for ML inference.
+    """
     n_prebins = len(n_nonevent)
 
     # Trend changes data
@@ -167,7 +196,19 @@ def auto_monotonic_data_continuous(
     n_records: npt.NDArray,
     sums: npt.NDArray
 ) -> dict[str, int | float]:
+    """Calculate auto monotonic data information for continuous target.
 
+    n_recors : np.ndarray, shape = (n_bins,)
+        The number of records per bin.
+
+    sums : np.ndarray, shape = (n_bins,)
+        The sum of target per bin.
+
+    Returns
+    -------
+    data : dict
+        Auto monotonic data for ML inference.
+    """
     n_prebins = len(n_records)
 
     # Trend changes data

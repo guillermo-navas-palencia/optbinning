@@ -35,7 +35,7 @@ class CleanCommand(Command):
 install_requires = [
     'matplotlib',
     'numpy>=1.16.1',
-    'ortools>=9.4,<9.15',
+    'ortools>=9.4,<9.16,!=9.12.4544',
     'pandas',
     'ropwr>=1.0.0',
     'scikit-learn>=1.6.0',

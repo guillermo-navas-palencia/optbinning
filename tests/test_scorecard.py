@@ -484,3 +484,203 @@ def test_missing_metrics():
     ).fit(data, data.target)
 
     assert scorecard.table()['Points'].iloc[-1] == approx(0, rel=1e-6)
+
+
+def test_per_variable_metric_special():
+    """Test that per-variable metric_special from binning_transform_params
+    is used for scorecard Points calculation."""
+    data = load_breast_cancer()
+    variable_names = ['mean radius', 'mean texture', 'mean perimeter']
+    X = pd.DataFrame(data.data[:, :3], columns=variable_names)
+    y = data.target
+    
+    # Add special codes to variables
+    X_with_specials = X.copy()
+    X_with_specials.loc[:20, 'mean radius'] = -999  # Special code
+    X_with_specials.loc[:20, 'mean texture'] = -888  # Special code
+    
+    binning_process = BinningProcess(
+        variable_names=variable_names,
+        binning_fit_params={
+            'mean radius': {'special_codes': [-999]},
+            'mean texture': {'special_codes': [-888]},
+        },
+        binning_transform_params={
+            'mean radius': {'metric': 'woe', 'metric_special': 'empirical'},
+            'mean texture': {'metric': 'woe', 'metric_special': 0.5},
+            'mean perimeter': {'metric': 'woe'},  # Will use global default
+        }
+    )
+    
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(),
+    )
+    
+    # Fit with global metric_special=0 (should be overridden per-variable)
+    scorecard.fit(X_with_specials, y, metric_special=0)
+    
+    table = scorecard.table(style='detailed')
+    
+    # For 'mean radius': metric_special='empirical', so Points should use empirical WoE
+    # For 'mean texture': metric_special=0.5, so Points should be 0.5 * coefficient
+    # For 'mean perimeter': no binning_transform_params metric_special, so use global=0
+    
+    # Get the special code rows
+    radius_table = table[table['Variable'] == 'mean radius']
+    texture_table = table[table['Variable'] == 'mean texture']
+    
+    # For 'mean radius' with empirical, Points should equal WoE * Coefficient
+    radius_special = radius_table[radius_table['Bin'].str.contains('Special', na=False)]
+    if len(radius_special) > 0:
+        woe_value = radius_special['WoE'].iloc[0]
+        coef_value = radius_special['Coefficient'].iloc[0]
+        points_value = radius_special['Points'].iloc[0]
+        # Points should be WoE * coef (empirical case)
+        assert points_value == approx(woe_value * coef_value, rel=1e-6)
+    
+    # For 'mean texture' with metric_special=0.5, Points should be 0.5 * Coefficient
+    texture_special = texture_table[texture_table['Bin'].str.contains('Special', na=False)]
+    if len(texture_special) > 0:
+        coef_value = texture_special['Coefficient'].iloc[0]
+        points_value = texture_special['Points'].iloc[0]
+        # Points should be 0.5 * coef
+        assert points_value == approx(0.5 * coef_value, rel=1e-6)
+
+
+def test_per_variable_metric_special_backward_compatibility():
+    """Test that global metric_special is used when binning_transform_params
+    doesn't specify it (backward compatibility)."""
+    data = load_breast_cancer()
+    variable_names = ['mean radius', 'mean texture']
+    X = pd.DataFrame(data.data[:, :2], columns=variable_names)
+    y = data.target
+    
+    # Add special codes
+    X_with_specials = X.copy()
+    X_with_specials.loc[:20, 'mean radius'] = -999
+    X_with_specials.loc[:20, 'mean texture'] = -888
+    
+    binning_process = BinningProcess(
+        variable_names=variable_names,
+        binning_fit_params={
+            'mean radius': {'special_codes': [-999]},
+            'mean texture': {'special_codes': [-888]},
+        },
+        # No binning_transform_params specified - should use global values
+    )
+    
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(),
+    )
+    
+    # Fit with global metric_special=0.3
+    scorecard.fit(X_with_specials, y, metric_special=0.3)
+    
+    table = scorecard.table(style='detailed')
+    
+    # Both variables should use global metric_special=0.3
+    for variable in variable_names:
+        var_table = table[table['Variable'] == variable]
+        special_rows = var_table[var_table['Bin'].str.contains('Special', na=False)]
+        
+        if len(special_rows) > 0:
+            coef_value = special_rows['Coefficient'].iloc[0]
+            points_value = special_rows['Points'].iloc[0]
+            # Points should be 0.3 * coef (global value)
+            assert points_value == approx(0.3 * coef_value, rel=1e-6)
+
+
+def test_per_variable_metric_missing():
+    """Test that per-variable metric_missing from binning_transform_params
+    is used for scorecard Points calculation."""
+    data = pd.DataFrame({
+        'target': np.hstack((np.tile(np.array([0, 1]), 50), np.array([0]*90 + [1]*10))),
+        'var1': [np.nan] * 100 + ['A'] * 100,
+        'var2': [np.nan] * 100 + ['B'] * 100,
+    })
+    
+    binning_process = BinningProcess(
+        variable_names=['var1', 'var2'],
+        binning_transform_params={
+            'var1': {'metric': 'woe', 'metric_missing': 'empirical'},
+            'var2': {'metric': 'woe', 'metric_missing': 0.25},
+        }
+    )
+    
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(),
+    )
+    
+    # Fit with global metric_missing=0 (should be overridden per-variable)
+    scorecard.fit(data, data.target, metric_missing=0)
+    
+    table = scorecard.table(style='detailed')
+    
+    # For 'var1': metric_missing='empirical', Points should use empirical WoE
+    var1_table = table[table['Variable'] == 'var1']
+    var1_missing = var1_table[var1_table['Bin'].str.contains('Missing', na=False)]
+    
+    if len(var1_missing) > 0:
+        woe_value = var1_missing['WoE'].iloc[0]
+        coef_value = var1_missing['Coefficient'].iloc[0]
+        points_value = var1_missing['Points'].iloc[0]
+        # Points should equal WoE * coef (empirical case)
+        assert points_value == approx(woe_value * coef_value, rel=1e-6)
+    
+    # For 'var2': metric_missing=0.25, Points should be 0.25 * Coefficient
+    var2_table = table[table['Variable'] == 'var2']
+    var2_missing = var2_table[var2_table['Bin'].str.contains('Missing', na=False)]
+    
+    if len(var2_missing) > 0:
+        coef_value = var2_missing['Coefficient'].iloc[0]
+        points_value = var2_missing['Points'].iloc[0]
+        # Points should be 0.25 * coef
+        assert points_value == approx(0.25 * coef_value, rel=1e-6)
+
+
+def test_woe_points_consistency():
+    """Test that WoE and Points columns are consistent when using per-variable
+    metric_special from binning_transform_params."""
+    data = load_breast_cancer()
+    variable_names = ['mean radius', 'mean texture']
+    X = pd.DataFrame(data.data[:, :2], columns=variable_names)
+    y = data.target
+    
+    # Add special codes
+    X_with_specials = X.copy()
+    X_with_specials.loc[:20, 'mean radius'] = -999
+    
+    binning_process = BinningProcess(
+        variable_names=variable_names,
+        binning_fit_params={
+            'mean radius': {'special_codes': [-999]},
+        },
+        binning_transform_params={
+            'mean radius': {'metric': 'woe', 'metric_special': 'empirical'},
+        }
+    )
+    
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(),
+    )
+    
+    # Fit - WoE display should match Points calculation
+    scorecard.fit(X_with_specials, y)
+    
+    table = scorecard.table(style='detailed')
+    
+    # For all bins (including special), Points should be WoE * Coefficient
+    # This verifies the consistency fix
+    radius_table = table[table['Variable'] == 'mean radius']
+    
+    for _, row in radius_table.iterrows():
+        woe = row['WoE']
+        coef = row['Coefficient']
+        points = row['Points']
+        # Points should equal WoE * coef for all bins
+        assert points == approx(woe * coef, rel=1e-6)
+

@@ -647,17 +647,25 @@ class Scorecard(Base, BaseEstimator):
             binning_table.loc[:, "Coefficient"] = c
             binning_table.loc[:, "Points"] = binning_table[bt_metric] * c
 
+            # Get variable-specific metric_special and metric_missing from binning_transform_params
+            # Fall back to global values if not specified per-variable
+            transform_params = {}
+            if self.binning_process_.binning_transform_params is not None:
+                transform_params = self.binning_process_.binning_transform_params.get(variable, {})
+            var_metric_special = transform_params.get('metric_special', self._metric_special)
+            var_metric_missing = transform_params.get('metric_missing', self._metric_missing)
+
             nt = len(binning_table)
-            if metric_special != 'empirical':
+            if var_metric_special != 'empirical':
                 if isinstance(optb.special_codes, dict):
                     n_specials = len(optb.special_codes)
                 else:
                     n_specials = 1
 
                 binning_table.loc[
-                    nt-1-n_specials:nt-2, "Points"] = metric_special * c
-            if metric_missing != 'empirical':
-                binning_table.loc[nt-1, "Points"] = metric_missing * c
+                    nt-1-n_specials:nt-2, "Points"] = var_metric_special * c
+            if var_metric_missing != 'empirical':
+                binning_table.loc[nt-1, "Points"] = var_metric_missing * c
 
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)

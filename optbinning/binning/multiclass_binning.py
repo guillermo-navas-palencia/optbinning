@@ -969,7 +969,8 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         Parameters
         ----------
-        path: The path where the json is going to be saved.
+        path : str
+            The path where the json is going to be saved.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
@@ -994,7 +995,8 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         Parameters
         ----------
-        path: The path of the json file.
+        path : str
+            The path of the json file.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')

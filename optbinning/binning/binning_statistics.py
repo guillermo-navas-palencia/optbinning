@@ -2040,7 +2040,7 @@ class ContinuousBinningTable:
     cat_others : list, numpy.ndarray or None, optional (default=None)
         List of categories in others' bin.
 
-    user_splits: numpy.ndarray
+    user_splits: numpy.ndarray or None, optional (default=None)
         List of split points pass if prebins were passed by the user.
 
     Warning

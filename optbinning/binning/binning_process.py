@@ -568,7 +568,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         selection_criteria: dict[str, Any] = None,
         fixed_variables: npt.ArrayLike | list[str] | None = None,
         categorical_variables: npt.ArrayLike | list[str] | None = None,
-        special_codes: npt.Arralike | None = None,
+        special_codes: npt.ArrayLike | None = None,
         split_digits: npt.ArrayLike | None = None,
         binning_fit_params: dict[str, Any] | None = None,
         binning_transform_params: dict[str, Any] | None = None,

@@ -8,8 +8,10 @@ optimal binning.
 
 import numbers
 import time
+from typing import Self
 
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.utils import check_array
 
@@ -28,12 +30,27 @@ from ..transformations import transform_binary_target
 logger = Logger(__name__).logger
 
 
-def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,
-                      min_n_bins, max_n_bins, min_bin_size, max_bin_size,
-                      monotonic_trend, min_event_rate_diff, max_pvalue,
-                      max_pvalue_policy, class_weight, user_splits,
-                      user_splits_fixed, special_codes, split_digits,
-                      time_limit, verbose):
+def _check_parameters(
+    name: str,
+    prebinning_method: str,
+    max_n_prebins: int,
+    min_prebin_size: float,
+    min_n_bins: int | None,
+    max_n_bins: int | None,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+    monotonic_trend: str | None,
+    min_event_rate_diff: float,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    class_weight: dict | str | None,
+    user_splits: list[float] | npt.NDArray | None,
+    user_splits_fixed: list[bool] | npt.NDArray | None,
+    special_codes: list | npt.NDArray | None,
+    split_digits: int | None,
+    time_limit: int | float,
+    verbose: bool,
+) -> None:
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -151,7 +168,11 @@ def _check_parameters(name, prebinning_method, max_n_prebins, min_prebin_size,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def _check_X_Y_weights(X, Y, weights):
+def _check_X_Y_weights(
+    X: list[npt.NDArray],
+    Y: list[npt.NDArray],
+    weights: list | npt.NDArray | None,
+) -> None:
     if not isinstance(X, list):
         raise TypeError("X must be a list of numpy.ndarray.")
 
@@ -240,8 +261,7 @@ class SBOptimalBinning(OptimalBinning):
         DecisionTreeClassifier.html>`_.
 
     user_splits : array-like or None, optional (default=None)
-        The list of pre-binning split points when ``dtype`` is "numerical" or
-        the list of prebins when ``dtype`` is "categorical".
+        The list of pre-binning split points.
 
     user_splits_fixed : array-like or None (default=None)
         The list of pre-binning split points that must be fixed.
@@ -261,13 +281,28 @@ class SBOptimalBinning(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, name="", prebinning_method="cart", max_n_prebins=20,
-                 min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, monotonic_trend=None,
-                 min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", class_weight=None,
-                 user_splits=None, user_splits_fixed=None, special_codes=None,
-                 split_digits=None, time_limit=100, verbose=False):
+    def __init__(
+        self,
+        name: str = "",
+        prebinning_method: str = "cart",
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        monotonic_trend: str | None = None,
+        min_event_rate_diff: float = 0,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        class_weight: dict | str | None = None,
+        user_splits: list[float] | npt.NDArray | None = None,
+        user_splits_fixed: list[bool] | npt.NDArray | None = None,
+        special_codes: list | npt.NDArray | None = None,
+        split_digits: int | None = None,
+        time_limit: int | float = 100,
+        verbose: bool = False,
+    ) -> None:
 
         self.name = name
         self.dtype = "numerical"
@@ -333,7 +368,13 @@ class SBOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, X, Y, weights=None, check_input=False):
+    def fit(
+        self,
+        X: list[npt.NDArray],
+        Y: list[npt.NDArray],
+        weights: list | npt.NDArray | None = None,
+        check_input: bool = False,
+    ) -> Self:
         """Fit the optimal binning given a list of scenarios.
 
         Parameters
@@ -358,9 +399,18 @@ class SBOptimalBinning(OptimalBinning):
         """
         return self._fit(X, Y, weights, check_input)
 
-    def fit_transform(self, x, X, Y, weights=None, metric="woe",
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit_transform(
+        self,
+        x: list | npt.NDArray,
+        X: list[npt.NDArray],
+        Y: list[npt.NDArray],
+        weights: list | npt.NDArray | None = None,
+        metric: str = "woe",
+        metric_special: int | float | str = 0,
+        metric_missing: int | float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Fit the optimal binning given a list of scenarios, then
         transform it.
 
@@ -412,8 +462,15 @@ class SBOptimalBinning(OptimalBinning):
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, metric="woe", metric_special=0,
-                  metric_missing=0, show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        metric: str = "woe",
+        metric_special: int | float | str = 0,
+        metric_missing: int | float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data to Weight of Evidence (WoE) or event rate using
         bins from the fitted optimal binning.
 
@@ -788,7 +845,7 @@ class SBOptimalBinning(OptimalBinning):
             logger.info("Optimizer terminated. Time: {:.4f}s"
                         .format(self._time_solver))
 
-    def binning_table_scenario(self, scenario_id):
+    def binning_table_scenario(self, scenario_id: int) -> object:
         """Return the instantiated binning table corresponding to
         ``scenario_id``. Please refer to :ref:`Binning table: binary target`.
 
@@ -811,7 +868,7 @@ class SBOptimalBinning(OptimalBinning):
         return self._binning_tables[scenario_id]
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of optimal split points.
 
         Returns

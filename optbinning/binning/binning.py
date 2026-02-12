@@ -5,14 +5,16 @@ Optimal binning algorithm.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
+import json
 import numbers
 import time
 
+from typing import Any, Self
+
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.utils import check_array
-
-import json
 
 from ..information import solver_statistics
 from ..logging import Logger
@@ -444,19 +446,42 @@ class OptimalBinning(BaseOptimalBinning):
     The mathematical formulation when ``solver="ls"`` does **not** currently
     support the ``max_pvalue`` constraint.
     """
-    def __init__(self, name="", dtype="numerical", prebinning_method="cart",
-                 solver="cp", divergence="iv", max_n_prebins=20,
-                 min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
-                 max_bin_n_nonevent=None, min_bin_n_event=None,
-                 max_bin_n_event=None, monotonic_trend="auto",
-                 min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", gamma=0,
-                 outlier_detector=None, outlier_params=None, class_weight=None,
-                 cat_cutoff=None, cat_unknown=None, user_splits=None,
-                 user_splits_fixed=None, special_codes=None, split_digits=None,
-                 mip_solver="bop", time_limit=100, verbose=False,
-                 **prebinning_kwargs):
+    def __init__(
+        self,
+        name: str = "",
+        dtype: str = "numerical",
+        prebinning_method: str = "cart",
+        solver: str = "cp",
+        divergence: str = "iv",
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        min_bin_n_nonevent: int | None = None,
+        max_bin_n_nonevent: int | None = None,
+        min_bin_n_event: int | None = None,
+        max_bin_n_event: int | None = None,
+        monotonic_trend: str = "auto",
+        min_event_rate_diff: float = 0,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        gamma: float = 0,
+        outlier_detector: str | None = None,
+        outlier_params: dict[str, Any] | None = None,
+        class_weight: str | dict[int, float] | None = None,
+        cat_cutoff: int | float | None = None,
+        cat_unknown: int | float | str | None = None,
+        user_splits: list[float] | npt.NDArray | None = None,
+        user_splits_fixed: list[bool] | npt.NDArray | None = None,
+        special_codes: list | npt.NDArray | dict | None = None,
+        split_digits: int | None = None,
+        mip_solver: str = "bop",
+        time_limit: float = 100,
+        verbose: bool = False,
+        **prebinning_kwargs: Any,
+    ) -> None:
 
         self.name = name
         self.dtype = dtype
@@ -535,7 +560,13 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, sample_weight=None, check_input=False):
+    def fit(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        sample_weight: list | npt.NDArray | None = None,
+        check_input: bool = False,
+    ) -> Self:
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -561,9 +592,17 @@ class OptimalBinning(BaseOptimalBinning):
         """
         return self._fit(x, y, sample_weight, check_input)
 
-    def fit_transform(self, x, y, sample_weight=None, metric="woe",
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit_transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        sample_weight: list | npt.NDArray | None = None,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -613,8 +652,15 @@ class OptimalBinning(BaseOptimalBinning):
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, metric="woe", metric_special=0,
-                  metric_missing=0, show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data to Weight of Evidence (WoE) or event rate using
         bins from the fitted optimal binning.
 
@@ -667,7 +713,7 @@ class OptimalBinning(BaseOptimalBinning):
                                        self.user_splits, show_digits,
                                        check_input)
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings, problem
         statistics, and the solution of the computation.
 
@@ -715,14 +761,18 @@ class OptimalBinning(BaseOptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
-        self._n_samples_weighted = sum(sample_weight) if sample_weight is not None else len(x)
+        if sample_weight is not None:
+            self._n_samples_weighted = sum(sample_weight)
+        else:
+            self._n_samples_weighted = self._n_samples
 
         if self.verbose:
             if self._n_samples == self._n_samples_weighted:
                 logger.info("Pre-processing: number of samples: {}"
                             .format(self._n_samples))
             else:
-                logger.info("Pre-processing: number of samples: {}. Weighted samples: {}"
+                logger.info("Pre-processing: number of samples: {}. "
+                            "Weighted samples: {}"
                             .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
@@ -889,7 +939,8 @@ class OptimalBinning(BaseOptimalBinning):
                         class_weight=None, sw_clean=None, sw_missing=None,
                         sw_special=None, sw_others=None):
 
-        min_bin_size = int(np.ceil(self.min_prebin_size * self._n_samples_weighted))
+        min_bin_size = int(
+            np.ceil(self.min_prebin_size * self._n_samples_weighted))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
@@ -925,12 +976,14 @@ class OptimalBinning(BaseOptimalBinning):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples_weighted))
+            min_bin_size = int(
+                np.ceil(self.min_bin_size * self._n_samples_weighted))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples_weighted))
+            max_bin_size = int(
+                np.ceil(self.max_bin_size * self._n_samples_weighted))
         else:
             max_bin_size = self.max_bin_size
 
@@ -1145,7 +1198,7 @@ class OptimalBinning(BaseOptimalBinning):
         return splits_prebinning, n_nonevent, n_event
 
     @property
-    def binning_table(self):
+    def binning_table(self) -> BinningTable:
         """Return an instantiated binning table. Please refer to
         :ref:`Binning table: binary target`.
 
@@ -1158,7 +1211,7 @@ class OptimalBinning(BaseOptimalBinning):
         return self._binning_table
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of optimal split points when ``dtype`` is set to "numerical" or
         list of optimal bins when ``dtype`` is set to "categorical".
 
@@ -1175,7 +1228,7 @@ class OptimalBinning(BaseOptimalBinning):
                                    self._cat_others, self.user_splits)
 
     @property
-    def status(self):
+    def status(self) -> str:
         """The status of the underlying optimization solver.
 
         Returns
@@ -1186,10 +1239,10 @@ class OptimalBinning(BaseOptimalBinning):
 
         return self._status
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
-        Convert optimal bins and/or splits points and transformation depending on
-        the target type to dictionary.
+        Convert optimal bins and/or splits points and transformation
+        depending on the target type to dictionary.
 
         Returns
         -------
@@ -1218,7 +1271,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         return opt_bin_dict
 
-    def to_json(self, path):
+    def to_json(self, path: str) -> None:
         """
         Save optimal bins and/or splits points and transformation depending on
         the target type.
@@ -1235,7 +1288,7 @@ class OptimalBinning(BaseOptimalBinning):
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
 
-    def read_json(self, path):
+    def read_json(self, path: str) -> None:
         """
         Read json file containing split points and set them as the new split
         points.

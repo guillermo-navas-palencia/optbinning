@@ -21,7 +21,7 @@ except ImportError:
 def print_header() -> None:
     header = (
         "optbinning (Version {})\n"
-        "Copyright (c) 2019-2025 Guillermo Navas-Palencia, Apache License 2.0"
+        "Copyright (c) 2019-2026 Guillermo Navas-Palencia, Apache License 2.0"
         "\n".format(__version__))
 
     print(header)

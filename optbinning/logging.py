@@ -10,7 +10,11 @@ import sys
 
 
 class Logger:
-    def __init__(self, logger_name=None, filename=None):
+    def __init__(
+        self,
+        logger_name: str | None = None,
+        filename: str | None = None,
+    ) -> None:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
@@ -27,7 +31,7 @@ class Logger:
             fhandler.setFormatter(formatter)
             self.logger.addHandler(fhandler)
 
-    def close(self):
+    def close(self) -> None:
         for handler in self.logger.handlers:
             handler.close()
             self.logger.removeHandler(handler)

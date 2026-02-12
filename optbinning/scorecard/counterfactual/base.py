@@ -17,15 +17,15 @@ from ...exceptions import NotGeneratedError
 
 class BaseCounterfactual(Base, BaseEstimator, metaclass=ABCMeta):
     @abstractmethod
-    def fit(self):
+    def fit(self) -> "BaseCounterfactual":
         """Fit counterfactual with training data."""
 
     @abstractmethod
-    def generate(self):
+    def generate(self) -> "BaseCounterfactual":
         """Generate counterfactual explanations."""
 
     @abstractmethod
-    def display(self):
+    def display(self) -> None:
         """Display counterfactual explanations."""
 
     @property
@@ -33,14 +33,14 @@ class BaseCounterfactual(Base, BaseEstimator, metaclass=ABCMeta):
     def status(self):
         """The status of the underlying optimization solver."""
 
-    def _check_is_generated(self):
+    def _check_is_generated(self) -> None:
         if not self._is_generated:
             raise NotGeneratedError("This {} instance has not generated "
                                     "counterfactuals yet. Call "
                                     "'generate' with appropriate arguments."
                                     .format(self.__class__.__name__))
 
-    def _check_counterfactual_is_found(self):
+    def _check_counterfactual_is_found(self) -> None:
         if not self._cfs:
             raise CounterfactualsFoundWarning(
                 "Neither optimal or feasible counterfactuals were found.")

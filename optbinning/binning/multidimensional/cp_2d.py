@@ -12,9 +12,18 @@ from ortools.sat.python import cp_model
 
 
 class Binning2DCP:
-    def __init__(self, monotonic_trend_x, monotonic_trend_y, min_n_bins,
-                 max_n_bins, min_diff_x, min_diff_y, gamma, n_jobs,
-                 time_limit):
+    def __init__(
+        self,
+        monotonic_trend_x: str | None,
+        monotonic_trend_y: str | None,
+        min_n_bins: int | None,
+        max_n_bins: int | None,
+        min_diff_x: float,
+        min_diff_y: float,
+        gamma: float,
+        n_jobs: int,
+        time_limit: float,
+    ) -> None:
 
         self.monotonic_trend_x = monotonic_trend_x
         self.monotonic_trend_y = monotonic_trend_y
@@ -83,7 +92,7 @@ class Binning2DCP:
         self._x = x
         self._n_rectangles = n_rectangles
 
-    def solve(self):
+    def solve(self) -> tuple[str, np.ndarray]:
         # Solve
         self.solver_ = cp_model.CpSolver()
         if self.n_jobs > 1:

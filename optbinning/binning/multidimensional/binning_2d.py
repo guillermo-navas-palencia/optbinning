@@ -8,7 +8,10 @@ Optimal binning 2D algorithm.
 import numbers
 import time
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from joblib import effective_n_jobs
 from sklearn.tree import DecisionTreeClassifier
@@ -348,18 +351,40 @@ class OptimalBinning2D(OptimalBinning):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, name_x="", name_y="", dtype_x="numerical",
-                 dtype_y="numerical", prebinning_method="cart",
-                 strategy="grid", solver="cp", divergence="iv",
-                 max_n_prebins_x=5, max_n_prebins_y=5, min_prebin_size_x=0.05,
-                 min_prebin_size_y=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
-                 max_bin_n_nonevent=None, min_bin_n_event=None,
-                 max_bin_n_event=None, monotonic_trend_x=None,
-                 monotonic_trend_y=None, min_event_rate_diff_x=0,
-                 min_event_rate_diff_y=0, gamma=0, special_codes_x=None,
-                 special_codes_y=None, split_digits=None, n_jobs=1,
-                 time_limit=100, verbose=False):
+    def __init__(
+        self,
+        name_x: str = "",
+        name_y: str = "",
+        dtype_x: str = "numerical",
+        dtype_y: str = "numerical",
+        prebinning_method: str = "cart",
+        strategy: str = "grid",
+        solver: str = "cp",
+        divergence: str = "iv",
+        max_n_prebins_x: int = 5,
+        max_n_prebins_y: int = 5,
+        min_prebin_size_x: float = 0.05,
+        min_prebin_size_y: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        min_bin_n_nonevent: int | None = None,
+        max_bin_n_nonevent: int | None = None,
+        min_bin_n_event: int | None = None,
+        max_bin_n_event: int | None = None,
+        monotonic_trend_x: str | None = None,
+        monotonic_trend_y: str | None = None,
+        min_event_rate_diff_x: float = 0,
+        min_event_rate_diff_y: float = 0,
+        gamma: float = 0,
+        special_codes_x: list | npt.NDArray | None = None,
+        special_codes_y: list | npt.NDArray | None = None,
+        split_digits: int | None = None,
+        n_jobs: int = 1,
+        time_limit: float = 100,
+        verbose: bool = False,
+    ) -> None:
 
         self.name_x = name_x
         self.name_y = name_y
@@ -431,7 +456,13 @@ class OptimalBinning2D(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, z, check_input=False):
+    def fit(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        z: list | npt.NDArray,
+        check_input: bool = False,
+    ) -> Self:
         """Fit the optimal binning 2D according to the given training data.
 
         Parameters
@@ -455,8 +486,17 @@ class OptimalBinning2D(OptimalBinning):
         """
         return self._fit(x, y, z, check_input)
 
-    def fit_transform(self, x, y, z, metric="woe", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        z: list | npt.NDArray,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Fit the optimal binning 2D according to the given training data,
         then transform it.
 
@@ -504,8 +544,16 @@ class OptimalBinning2D(OptimalBinning):
             x, y, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, y, metric="woe", metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data to Weight of Evidence (WoE) or event rate using
         bins from the fitted optimal binning 2D.
 

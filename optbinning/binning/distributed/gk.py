@@ -14,7 +14,7 @@ import numpy as np
 
 
 class Entry:
-    def __init__(self, value, g, delta):
+    def __init__(self, value: float, g: float, delta: float) -> None:
         """
         Tuple t = (v, g, delta)
 
@@ -42,8 +42,8 @@ class GK:
     eps : float (default=0.01)
         Relative error epsilon.
     """
-    def __init__(self, eps=0.01):
-        self.eps = eps
+    def __init__(self, eps: float = 0.01) -> None:
+        self.eps: float = eps
 
         self.entries = []
         self.incoming = []
@@ -54,12 +54,12 @@ class GK:
 
         self._compress_threshold = int(1.0 / self.eps) + 1
 
-    def __len__(self):
+    def __len__(self) -> int:
         if len(self.incoming):
             self.merge_compress()
         return len(self.entries)
 
-    def add(self, value):
+    def add(self, value: float) -> None:
         """Add value to sketch."""
         self.incoming.append(value)
         self._count += 1
@@ -73,7 +73,7 @@ class GK:
         if self._count % self._compress_threshold == 0:
             self.merge_compress()
 
-    def copy(self, gk):
+    def copy(self, gk: "GK") -> None:
         """Copy GK sketch."""
         self.entries = [Entry(e.value, e.g, e.delta) for e in gk.entries]
         self.incoming = gk.incoming[:]
@@ -82,7 +82,7 @@ class GK:
         self._max = gk._max
         self._sum = gk._sum
 
-    def merge(self, gk):
+    def merge(self, gk: "GK") -> None:
         """Merge sketch with another sketch gk."""
         if not self.mergeable(gk):
             raise Exception("gk does not share signature.")
@@ -124,8 +124,11 @@ class GK:
 
         self.merge_compress(entries)
 
-    def merge_compress(self, entries=[]):
+    def merge_compress(self, entries: list[Entry] | None = None) -> None:
         """Compress sketch."""
+        if entries is None:
+            entries = []
+
         remove_threshold = float(2.0 * self.eps * (self._count - 1))
 
         incoming = [Entry(value, 1, 0) for value in self.incoming]
@@ -182,11 +185,11 @@ class GK:
         self.entries = merged
         self.incoming = []
 
-    def mergeable(self, gk):
+    def mergeable(self, gk: "GK") -> bool:
         """Check whether a sketch gk is mergeable."""
         return self.eps == gk.eps
 
-    def quantile(self, q):
+    def quantile(self, q: float) -> float:
         """Calculate quantile q."""
         if not (0 <= q <= 1):
             raise ValueError("q must be a value in [0, 1].")
@@ -214,6 +217,6 @@ class GK:
         return self.entries[i - 1].value
 
     @property
-    def n(self):
+    def n(self) -> int:
         """Number of records in sketch."""
         return self._count

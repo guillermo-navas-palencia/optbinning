@@ -347,6 +347,24 @@ class BaseBinningProcess:
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
+    def get_feature_names_out(self, input_features=None):
+        """Get output feature names for transformation.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, optional (default=None)
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Transformed feature names, i.e., the names of the selected
+            variables.
+        """
+        self._check_is_fitted()
+
+        return self.get_support(names=True)
+
     def _support_selection_criteria(self):
         self._support = np.full(self._n_variables, True, dtype=bool)
 

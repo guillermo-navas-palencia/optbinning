@@ -598,3 +598,63 @@ def test_dataframe_index():
     X_train = pd.DataFrame(X, columns=variable_names, index=[2 * i for i in range(len(X))])
     X_transform = process.fit_transform(X_train, y, metric="indices")
     pd.testing.assert_index_equal(X_train.index, X_transform.index)
+
+
+def test_get_feature_names_out():
+    """Test get_feature_names_out method for sklearn compatibility (issue #382)."""
+    process = BinningProcess(variable_names)
+
+    # Should raise NotFittedError before fitting
+    with raises(NotFittedError):
+        process.get_feature_names_out()
+
+    process.fit(X, y)
+
+    # Test basic functionality
+    feature_names_out = process.get_feature_names_out()
+    assert isinstance(feature_names_out, np.ndarray)
+    assert feature_names_out.dtype.kind in ('U', 'O')  # string or object dtype
+
+    # Should return same result as get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # With no selection criteria, all variables should be selected
+    assert len(feature_names_out) == len(variable_names)
+
+
+def test_get_feature_names_out_with_selection():
+    """Test get_feature_names_out with selection_criteria."""
+    selection_criteria = {"iv": {"min": 0.1, "max": 0.6,
+                                 "strategy": "highest", "top": 10}}
+
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    feature_names_out = process.get_feature_names_out()
+
+    # Should match get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # Number of features should match selection criteria
+    assert len(feature_names_out) == np.count_nonzero(process.get_support())
+
+    # Verify specific selected features
+    expected_names = [
+        'mean fractal dimension', 'texture error', 'smoothness error',
+        'symmetry error', 'fractal dimension error',
+        'worst fractal dimension']
+    assert all(feature_names_out == expected_names)
+
+
+def test_get_feature_names_out_input_features_ignored():
+    """Test that input_features parameter is ignored (sklearn API consistency)."""
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    # input_features should be ignored
+    result_none = process.get_feature_names_out(input_features=None)
+    result_with_input = process.get_feature_names_out(
+        input_features=["a", "b", "c"])
+
+    assert all(result_none == result_with_input)

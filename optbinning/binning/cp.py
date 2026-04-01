@@ -77,9 +77,11 @@ class BinningCP:
                                 for j in range(i)]) for i in range(n)]) -
                            regularization * (pmax - pmin))
         else:
-            model.Maximize(sum([(V[i][i] * x[i, i]) +
-                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                for j in range(i)]) for i in range(n)]))
+            sum_diagonal = sum([V[i][i] * x[i, i] for i in range(n)])
+            model.Maximize(sum_diagonal +
+                           sum([
+                               sum([(V[i][j] - V[i][j+1]) * x[i, j]
+                                    for j in range(i)]) for i in range(n)]))
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)

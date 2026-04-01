@@ -470,10 +470,11 @@ def test_missing_metrics():
              np.array([0]*90 + [1]*10)
              )
          ),
-         'var': [np.nan] * 100 + ['A'] * 100}
+         'var': pd.array([np.nan] * 100 + ['A'] * 100, dtype=object)}
     )
 
-    binning_process = BinningProcess(['var'])
+    binning_process = BinningProcess(['var'],
+                                      categorical_variables=['var'])
     scaling_method_params = {'min': 0, 'max': 100}
 
     scorecard = Scorecard(

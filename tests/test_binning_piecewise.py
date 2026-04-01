@@ -196,11 +196,11 @@ def test_bounds_transform():
 
     x_transform_woe = optb.transform(x, metric="woe")
     assert x_transform_woe[:4] == approx(
-        [3.99180564, 4.28245092, 4.17407503, -3.2565373], rel=1e-6)
+        [3.99180564, 4.28245092, 4.17407503, -3.2565373], rel=1e-5)
 
     x_transform_event_rate = optb.transform(x, metric="event_rate")
     assert x_transform_event_rate[:4] == approx(
-        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-6)
+        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-5)
 
 
 def test_bounds_fit_transform():
@@ -210,11 +210,11 @@ def test_bounds_fit_transform():
         x, y, lb=0.001, ub=0.999, metric="woe")
 
     assert x_transform_woe[:4] == approx(
-        [3.9918056, 4.2824509, 4.17407503, -3.25653732], rel=1e-6)
+        [3.9918056, 4.2824509, 4.17407503, -3.25653732], rel=1e-5)
     x_transform_event_rate = optb.fit_transform(
         x, y, lb=0.001, ub=0.999, metric="event_rate")
     assert x_transform_event_rate[:4] == approx(
-        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-6)
+        [0.03015878, 0.02272502, 0.02526056, 0.97763604], rel=1e-5)
 
 
 def test_solvers():

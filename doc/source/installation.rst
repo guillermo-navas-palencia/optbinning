@@ -16,7 +16,7 @@ using
 
 .. code-block:: text
 
-   python setup.py install
+   pip install .
 
 Install from source
 -------------------
@@ -26,4 +26,4 @@ To install from source, download or clone the git repository https://github.com/
 .. code-block:: text
 
    cd optbinning
-   python setup.py install
+   pip install .

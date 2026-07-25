@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "optbinning"
+dynamic = ["version"]
+description = "OptBinning: The Python Optimal Binning library"
+readme = "README.rst"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Guillermo Navas-Palencia", email = "g.navas.palencia@gmail.com" },
+]
+requires-python = ">=3.9"
+dependencies = [
+    "matplotlib",
+    "numpy>=1.16.1",
+    "ortools>=9.4,<9.12",
+    "pandas",
+    "ropwr>=1.0.0",
+    "scikit-learn>=1.6.0",
+    "scipy>=1.6.0",
+]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+distributed = ["pympler", "tdigest"]
+test = [
+    "coverage",
+    "flake8",
+    "pytest",
+    "pyarrow",
+    "pympler",
+    "tdigest",
+]
+ecos = ["ecos"]
+
+[project.urls]
+Homepage = "https://github.com/guillermo-navas-palencia/optbinning"
+Documentation = "http://gnpalencia.org/optbinning/"
+Issues = "https://github.com/guillermo-navas-palencia/optbinning/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "optbinning._version.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["optbinning*"]
+exclude = ["tests*"]

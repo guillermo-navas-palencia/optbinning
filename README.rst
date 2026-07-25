@@ -70,7 +70,7 @@ To install from source, download or clone the git repository
 
    git clone https://github.com/guillermo-navas-palencia/optbinning.git
    cd optbinning
-   python setup.py install
+   pip install .
 
 Dependencies
 ------------

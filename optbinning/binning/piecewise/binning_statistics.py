@@ -151,8 +151,13 @@ class PWBinningTable(BinningTable):
         self._ks = self.d_metrics["KS"]
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
@@ -531,8 +536,13 @@ class PWContinuousBinningTable:
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)

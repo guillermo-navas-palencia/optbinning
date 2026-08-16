@@ -302,11 +302,19 @@ class BinningTable2D(BinningTable):
         self._W = W
 
         # Compute KS
-        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+        if len(p_ev):
+            self._ks = np.abs(np.cumsum(p_ev) - np.cumsum(p_nev)).max()
+        else:
+            self._ks = 0.0
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Compute paths. This is required for both plot and analysis
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
@@ -730,8 +738,13 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._t_mean = t_mean
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Compute paths. This is required for both plot and analysis
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)

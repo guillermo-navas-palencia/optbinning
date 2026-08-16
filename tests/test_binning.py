@@ -212,6 +212,24 @@ def test_split_digits_negative():
     assert np.all(np.mod(optb.splits, 10) == 0)
 
 
+def test_binning_table_hhi_masked_bins():
+    from optbinning.binning.binning_statistics import BinningTable
+
+    table = BinningTable(
+        name="test",
+        dtype="numerical",
+        special_codes=None,
+        splits=np.array([1.0, 2.0]),
+        n_nonevent=np.array([1, 0, 2, 0, 0]),
+        n_event=np.array([2, 0, 3, 0, 0]),
+    )
+
+    table.build(add_totals=False)
+
+    assert table._hhi == approx(0.53125)
+    assert table._hhi_norm == approx(0.0625)
+
+
 def test_numerical_user_splits():
     user_splits = [11, 12, 13, 14, 15, 17]
     optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05)

@@ -997,11 +997,19 @@ class BinningTable:
         self._triangular = triangular(p_ev, p_nev, return_sum=True)
 
         # Compute KS
-        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+        if len(p_ev):
+            self._ks = np.abs(np.cumsum(p_ev) - np.cumsum(p_nev)).max()
+        else:
+            self._ks = 0.0
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Keep data for plotting
         self._n_records = n_records
@@ -1644,8 +1652,13 @@ class MulticlassBinningTable:
         self._js = jensen_shannon_multivariate(p_event)
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Keep data for plotting
         self._n_records = n_records
@@ -2141,8 +2154,13 @@ class ContinuousBinningTable:
         self._t_mean = t_mean
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # special codes info
         if isinstance(self.special_codes, dict):

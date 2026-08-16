@@ -8,8 +8,8 @@ OptBinning
 .. image::  https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
    :target: https://img.shields.io/github/license/guillermo-navas-palencia/optbinning
 
-.. image:: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
-   :target: https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
+.. image:: https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
+   :target: https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
 
 .. image:: https://img.shields.io/pypi/v/optbinning?color=blueviolet
    :target: https://img.shields.io/pypi/v/optbinning?color=blueviolet
@@ -78,7 +78,7 @@ OptBinning requires
 
 * matplotlib
 * numpy (>=1.16.1)
-* ortools (>=9.4)
+* ortools (>=9.15)
 * pandas
 * ropwr (>=1.0.0)
 * scikit-learn (>=1.6.0)

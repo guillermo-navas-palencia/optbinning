@@ -192,8 +192,8 @@ def _check_parameters(
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digist must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if not isinstance(time_limit, numbers.Number) or time_limit < 0:
@@ -322,8 +322,9 @@ class ContinuousOptimalBinning(OptimalBinning):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     time_limit : int (default=100)
         The maximum time in seconds to run the optimization solver.

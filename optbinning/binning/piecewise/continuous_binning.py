@@ -130,8 +130,9 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     solver : str, optional (default="auto")
         The optimizer to solve the underlying mathematical optimization

@@ -204,6 +204,14 @@ def test_numerical_default_solvers():
                                      rel=1e-6)
 
 
+def test_split_digits_negative():
+    optb = OptimalBinning(split_digits=-1)
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    assert np.all(np.mod(optb.splits, 10) == 0)
+
+
 def test_numerical_user_splits():
     user_splits = [11, 12, 13, 14, 15, 17]
     optb = OptimalBinning(user_splits=user_splits, max_pvalue=0.05)

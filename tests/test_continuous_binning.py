@@ -203,6 +203,55 @@ def test_categorical_user_splits():
         assert optb.status == "OPTIMAL"
 
 
+def test_dtype_autodetect():
+    # dtype=None (the new default) infers the variable type from the data.
+    # See GH issue #316.
+    np.random.seed(0)
+    n = 300
+    x_cat = np.random.choice(
+        ["Working", "Pensioner", "Student"], size=n).astype(object)
+    y_cat = np.random.normal(size=n)
+
+    # default constructor now uses dtype=None
+    optb = ContinuousOptimalBinning()
+    assert optb.dtype is None
+
+    # numerical data is inferred as "numerical"
+    optb = ContinuousOptimalBinning()
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # object-dtype string array is inferred as "categorical"
+    optb = ContinuousOptimalBinning()
+    optb.fit(x_cat, y_cat)
+    assert optb._dtype == "categorical"
+
+    # plain numpy unicode string array (not dtype=object) is also
+    # inferred as "categorical"
+    x_cat_unicode = np.array(x_cat, dtype=str)
+    optb = ContinuousOptimalBinning()
+    optb.fit(x_cat_unicode, y_cat)
+    assert optb._dtype == "categorical"
+
+    # pandas category dtype with *numeric* categories is inferred as
+    # "categorical", not "numerical"
+    x_coded = pd.Series(pd.Categorical(
+        np.random.choice([1, 2, 3], size=n)))
+    optb = ContinuousOptimalBinning()
+    optb.fit(x_coded, y_cat)
+    assert optb._dtype == "categorical"
+
+    # explicit dtype still overrides auto-detection
+    optb = ContinuousOptimalBinning(dtype="numerical")
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # invalid explicit dtype values are still rejected
+    with raises(ValueError):
+        optb = ContinuousOptimalBinning(dtype="nominal")
+        optb.fit(x, y)
+
+
 def test_numerical_max_pvalue():
     optb0 = ContinuousOptimalBinning(max_pvalue=0.05,
                                      max_pvalue_policy="consecutive")

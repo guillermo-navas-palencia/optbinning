@@ -9,6 +9,7 @@ import numbers
 import time
 
 import numpy as np
+import pandas as pd
 
 from sklearn.utils import check_array
 
@@ -29,6 +30,7 @@ from .cp import BinningCP
 from .ls import BinningLS
 from .mip import BinningMIP
 from .prebinning import PreBinning
+from .preprocessing import _check_variable_dtype
 from .preprocessing import preprocessing_user_splits_categorical
 from .preprocessing import split_data
 from .transformations import transform_binary_target
@@ -50,9 +52,9 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
 
-    if dtype not in ("categorical", "numerical"):
+    if dtype is not None and dtype not in ("categorical", "numerical"):
         raise ValueError('Invalid value for dtype. Allowed string '
-                         'values are "categorical" and "numerical".')
+                         'values are "categorical", "numerical" and None.')
 
     if prebinning_method not in ("cart", "mdlp", "quantile", "uniform"):
         raise ValueError('Invalid value for prebinning_method. Allowed string '
@@ -258,10 +260,16 @@ class OptimalBinning(BaseOptimalBinning):
     name : str, optional (default="")
         The variable name.
 
-    dtype : str, optional (default="numerical")
+    dtype : str or None, optional (default=None)
         The variable data type. Supported data types are "numerical" for
         continuous and ordinal variables and "categorical" for categorical
-        and nominal variables.
+        and nominal variables. If None, the data type is inferred from
+        ``x`` at fit time: "categorical" for an object, string or pandas
+        ``category`` dtype, "numerical" otherwise.
+
+        .. versionchanged:: 0.21.0
+           ``dtype`` is now optional; the default changed from
+           ``"numerical"`` to auto-detection.
 
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
@@ -444,7 +452,7 @@ class OptimalBinning(BaseOptimalBinning):
     The mathematical formulation when ``solver="ls"`` does **not** currently
     support the ``max_pvalue`` constraint.
     """
-    def __init__(self, name="", dtype="numerical", prebinning_method="cart",
+    def __init__(self, name="", dtype=None, prebinning_method="cart",
                  solver="cp", divergence="iv", max_n_prebins=20,
                  min_prebin_size=0.05, min_n_bins=None, max_n_bins=None,
                  min_bin_size=None, max_bin_size=None, min_bin_n_nonevent=None,
@@ -501,6 +509,7 @@ class OptimalBinning(BaseOptimalBinning):
         self.prebinning_kwargs = prebinning_kwargs
 
         # auxiliary
+        self._dtype = None
         self._flag_min_n_event_nonevent = False
         self._categories = None
         self._cat_others = None
@@ -659,7 +668,7 @@ class OptimalBinning(BaseOptimalBinning):
         """
         self._check_is_fitted()
 
-        return transform_binary_target(self._splits_optimal, self.dtype, x,
+        return transform_binary_target(self._splits_optimal, self._dtype, x,
                                        self._n_nonevent, self._n_event,
                                        self.special_codes, self._categories,
                                        self._cat_others, self.cat_unknown,
@@ -710,6 +719,13 @@ class OptimalBinning(BaseOptimalBinning):
 
         _check_parameters(**self.get_params())
 
+        # Determine variable dtype: use user-provided dtype, otherwise
+        # infer it from the data. See GH issue #316.
+        if self.dtype is None:
+            self._dtype = _check_variable_dtype(pd.Series(x))
+        else:
+            self._dtype = self.dtype
+
         # Pre-processing
         if self.verbose:
             logger.info("Pre-processing started.")
@@ -730,7 +746,7 @@ class OptimalBinning(BaseOptimalBinning):
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          y_others, categories, cat_others, sw_clean, sw_missing,
          sw_special, sw_others] = split_data(
-            self.dtype, x, y, self.special_codes, self.cat_cutoff,
+            self._dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
             self.outlier_params, None, None, self.class_weight, sample_weight)
 
@@ -755,7 +771,7 @@ class OptimalBinning(BaseOptimalBinning):
                 logger.info("Pre-processing: number of outlier samples: "
                             "{}".format(n_outlier))
 
-            if self.dtype == "categorical":
+            if self._dtype == "categorical":
                 n_categories = len(categories)
                 n_categories_others = len(cat_others)
                 n_others = len(y_others)
@@ -790,7 +806,7 @@ class OptimalBinning(BaseOptimalBinning):
                 n_nonevent = np.array([])
                 n_event = np.array([])
             else:
-                if self.dtype == "numerical":
+                if self._dtype == "numerical":
                     user_splits = check_array(
                         self.user_splits, ensure_2d=False, dtype=None,
                         ensure_all_finite=True)
@@ -856,7 +872,7 @@ class OptimalBinning(BaseOptimalBinning):
             self._n_event_special, self._n_nonevent_cat_others,
             self._n_event_cat_others, cat_others)
 
-        if self.dtype == "numerical":
+        if self._dtype == "numerical":
             min_x = x_clean.min()
             max_x = x_clean.max()
         else:
@@ -864,7 +880,7 @@ class OptimalBinning(BaseOptimalBinning):
             max_x = None
 
         self._binning_table = BinningTable(
-            self.name, self.dtype, self.special_codes, self._splits_optimal,
+            self.name, self._dtype, self.special_codes, self._splits_optimal,
             self._n_nonevent, self._n_event, min_x, max_x, self._categories,
             self._cat_others, self.user_splits)
 
@@ -953,7 +969,7 @@ class OptimalBinning(BaseOptimalBinning):
         # Monotonic trend
         trend_change = None
 
-        if self.dtype == "numerical":
+        if self._dtype == "numerical":
             auto_monotonic_modes = ("auto", "auto_heuristic", "auto_asc_desc")
             if self.monotonic_trend in auto_monotonic_modes:
                 monotonic = auto_monotonic(n_nonevent, n_event,
@@ -1040,7 +1056,7 @@ class OptimalBinning(BaseOptimalBinning):
             self.solver, optimizer.solver_)
         self._status = status
 
-        if self.dtype == "categorical" and self.user_splits is not None:
+        if self._dtype == "categorical" and self.user_splits is not None:
             self._splits_optimal = splits[solution]
         else:
             self._splits_optimal = splits[solution[:-1]]
@@ -1087,7 +1103,7 @@ class OptimalBinning(BaseOptimalBinning):
         if not n_splits:
             return splits_prebinning, np.array([]), np.array([])
 
-        if self.dtype == "categorical" and self.user_splits is not None:
+        if self._dtype == "categorical" and self.user_splits is not None:
             indices = np.digitize(x, splits_prebinning, right=True)
             n_bins = n_splits
         else:
@@ -1110,7 +1126,7 @@ class OptimalBinning(BaseOptimalBinning):
             else:
                 self._n_refinements += 1
 
-                if (self.dtype == "categorical" and
+                if (self._dtype == "categorical" and
                         self.user_splits is not None):
                     mask_splits = mask_remove
                 else:
@@ -1168,7 +1184,7 @@ class OptimalBinning(BaseOptimalBinning):
         """
         self._check_is_fitted()
 
-        if self.dtype == "numerical":
+        if self._dtype == "numerical":
             return self._splits_optimal
         else:
             return bin_categorical(self._splits_optimal, self._categories,

@@ -309,7 +309,12 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
 
 def _check_variable_dtype(x):
-    return "categorical" if x.dtype == object else "numerical"
+    # pandas >= 3.0 no longer stores string columns as numpy object dtype
+    # by default (its new "str" dtype is used instead), so object-dtype
+    # alone is not enough to catch them.
+    if pd.api.types.is_object_dtype(x) or pd.api.types.is_string_dtype(x):
+        return "categorical"
+    return "numerical"
 
 
 class BaseBinningProcess:

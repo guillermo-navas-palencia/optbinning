@@ -20,6 +20,7 @@ from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
+from optbinning.binning.binning_process import _check_variable_dtype
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
@@ -337,6 +338,17 @@ def test_categorical_variables():
     df_summary = process.summary()
     assert df_summary[
         df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
+
+
+def test_check_variable_dtype_string_columns():
+    # pandas >= 3.0 stores strings under its own "str" dtype instead of
+    # numpy object, which _check_variable_dtype must still treat as
+    # categorical.
+    assert _check_variable_dtype(pd.Series(["a", "b", None])) == "categorical"
+    assert _check_variable_dtype(
+        pd.Series(["a", "b"], dtype=object)) == "categorical"
+    assert _check_variable_dtype(pd.Series([1.0, 2.0])) == "numerical"
+    assert _check_variable_dtype(np.array([1, 2, 3])) == "numerical"
 
 
 def test_fit_params():

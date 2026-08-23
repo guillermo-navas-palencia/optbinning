@@ -21,6 +21,23 @@ from .outlier import RangeDetector
 from .outlier import YQuantileDetector
 
 
+def _check_variable_dtype(x):
+    """Infer whether a variable is numerical or categorical from its
+    values. Shared by ``OptimalBinning`` and ``BinningProcess`` (kept
+    here since neither module can import from the other).
+
+    A pandas ``category`` column is always categorical, regardless of
+    its categories' dtype; otherwise, anything not numeric (including
+    raw numpy string/unicode arrays) is categorical. See GH issue #316.
+    """
+    if isinstance(x.dtype, pd.CategoricalDtype):
+        return "categorical"
+    elif pd.api.types.is_numeric_dtype(x):
+        return "numerical"
+    else:
+        return "categorical"
+
+
 def categorical_transform(x, y):
     event_rate = pd.Series(y).groupby(x).mean()
     sorted_categories = event_rate.sort_values().index.values

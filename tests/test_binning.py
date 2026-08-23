@@ -339,6 +339,85 @@ def test_categorical_default_user_splits():
     assert optb.status == "OPTIMAL"
 
 
+def test_dtype_autodetect():
+    # dtype=None (the new default) infers the variable type from the data.
+    # See GH issue #316.
+    x_cat = np.array([
+        'Working', 'State servant', 'Working', 'Working', 'Working',
+        'State servant', 'Commercial associate', 'State servant',
+        'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
+        'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Working', 'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Working', 'Pensioner', 'Working',
+        'Commercial associate', 'Working', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'State servant', 'Commercial associate', 'Working',
+        'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Commercial associate',
+        'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'Working', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner'], dtype=object)
+
+    y_cat = np.array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+
+    # default constructor now uses dtype=None
+    optb = OptimalBinning()
+    assert optb.dtype is None
+
+    # numerical data (numpy array of floats) is inferred as "numerical"
+    optb = OptimalBinning()
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+    assert optb.status == "OPTIMAL"
+
+    # object-dtype string array is inferred as "categorical"
+    optb = OptimalBinning(solver="mip", cat_cutoff=0.1)
+    optb.fit(x_cat, y_cat)
+    assert optb._dtype == "categorical"
+    assert optb.status == "OPTIMAL"
+
+    # plain numpy unicode string array (not dtype=object) is also
+    # inferred as "categorical"
+    x_cat_unicode = np.array(x_cat, dtype=str)
+    optb = OptimalBinning(solver="mip", cat_cutoff=0.1)
+    optb.fit(x_cat_unicode, y_cat)
+    assert optb._dtype == "categorical"
+
+    # pandas category dtype with *numeric* categories is inferred as
+    # "categorical", not "numerical"
+    x_coded = pd.Series(pd.Categorical(
+        np.random.RandomState(0).choice([1, 2, 3], size=len(x_cat))))
+    optb = OptimalBinning(solver="mip", cat_cutoff=0.1)
+    optb.fit(x_coded, y_cat)
+    assert optb._dtype == "categorical"
+
+    # explicit dtype still overrides auto-detection
+    optb = OptimalBinning(dtype="numerical")
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # invalid explicit dtype values are still rejected
+    with raises(ValueError):
+        optb = OptimalBinning(dtype="nominal")
+        optb.fit(x, y)
+
+
 def test_categorical_user_splits():
     np.random.seed(0)
     n = 100000

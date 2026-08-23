@@ -13,6 +13,9 @@ import time
 import numpy as np
 import pandas as pd
 
+from scipy import stats
+from sklearn.linear_model import LogisticRegression
+
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
 from sklearn.utils.multiclass import type_of_target
@@ -172,6 +175,82 @@ def _compute_intercept_based(df_scorecard):
         intercept += min_point
 
     return scaled_points, intercept
+
+
+def _resolve_penalty(estimator):
+    """The effective regularization penalty of a ``LogisticRegression``.
+
+    scikit-learn >= 1.8 deprecated the ``penalty`` constructor argument
+    in favor of ``l1_ratio`` (0 = L2, 1 = L1, in between = elastic-net),
+    but ``penalty`` remains authoritative for backward compatibility
+    when the caller sets it explicitly rather than leaving it at its
+    ``"deprecated"`` sentinel default.
+    """
+    penalty = getattr(estimator, "penalty", "l2")
+
+    if penalty in (None, "l1", "l2", "elasticnet"):
+        return penalty
+
+    l1_ratio = getattr(estimator, "l1_ratio", None)
+    if l1_ratio is None or l1_ratio == 0:
+        return "l2"
+    elif l1_ratio == 1:
+        return "l1"
+    else:
+        return "elasticnet"
+
+
+def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
+    """Wald test standard errors, z-scores and p-values for a fitted
+    binary ``LogisticRegression``.
+
+    Only defined for no penalty or an L2 penalty: L1/elastic-net have no
+    closed-form covariance matrix, so ``None`` is returned for those
+    instead of a misleading number (GH issue #224). With an L2 penalty,
+    the p-values are an approximation, since shrinkage biases the fit
+    toward "not significant" relative to an unregularized estimate.
+    """
+    penalty = _resolve_penalty(estimator)
+
+    if penalty in ("l1", "elasticnet"):
+        logger.warning(
+            "p-values are not available: the estimator's %s penalty "
+            "has no closed-form covariance matrix. Use an L2-penalized "
+            "or unregularized LogisticRegression to obtain p-values.",
+            penalty)
+        return None
+
+    p = estimator.predict_proba(X)[:, 1]
+    w = p * (1 - p)
+    if sample_weight is not None:
+        w = w * sample_weight
+
+    x = np.asarray(X)
+    x_design = np.column_stack([np.ones(len(x)), x])
+    hessian = x_design.T @ (x_design * w[:, np.newaxis])
+
+    if penalty == "l2":
+        # Ridge-penalized Hessian of the negative log-likelihood; the
+        # intercept is not penalized, matching scikit-learn's own
+        # convention.
+        n_features = x_design.shape[1] - 1
+        hessian[1:, 1:] += np.eye(n_features) / estimator.C
+
+    try:
+        cov = np.linalg.inv(hessian)
+    except np.linalg.LinAlgError:
+        logger.warning("p-values are not available: the Hessian of the "
+                       "fitted model is singular.")
+        return None
+
+    se = np.sqrt(np.diag(cov))
+    # self.estimator_.intercept_ is a shape-(1,) array, not a scalar
+    beta = np.concatenate([np.ravel(intercept), coefs])
+    z = beta / se
+    pvalues = 2 * (1 - stats.norm.cdf(np.abs(z)))
+
+    # first entry is the intercept; the rest align 1-1 with coefs
+    return se[1:], z[1:], pvalues[1:]
 
 
 class Scorecard(Base, BaseEstimator):
@@ -630,6 +709,16 @@ class Scorecard(Base, BaseEstimator):
             raise RuntimeError('The classifier does not expose '
                                '"coef_" attribute.')
 
+        # p-values of the explanatory variables (GH issue #224), only
+        # meaningful for a binary target fitted with LogisticRegression --
+        # any other estimator's objective does not correspond to this
+        # covariance formula.
+        pvalue_stats = None
+        if (self._target_dtype == "binary"
+                and isinstance(self.estimator_, LogisticRegression)):
+            pvalue_stats = _wald_pvalues(
+                self.estimator_, X_t, y, coefs, intercept, sample_weight)
+
         # Build scorecard
         time_build_scorecard = time.perf_counter()
 
@@ -661,6 +750,13 @@ class Scorecard(Base, BaseEstimator):
 
             binning_table.index.names = ['Bin id']
             binning_table.reset_index(level=0, inplace=True)
+
+            if pvalue_stats is not None:
+                se, z, pvalues = pvalue_stats
+                binning_table.loc[:, "Std. Error"] = se[i]
+                binning_table.loc[:, "Z-score"] = z[i]
+                binning_table.loc[:, "P-value"] = pvalues[i]
+
             binning_tables.append(binning_table)
 
         df_scorecard = pd.concat(binning_tables)

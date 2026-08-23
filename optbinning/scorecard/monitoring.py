@@ -16,7 +16,6 @@ import pandas as pd
 from scipy import stats
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
-from sklearn.utils.multiclass import type_of_target
 
 from ..binning.binning_statistics import bin_str_format
 from ..binning.metrics import jeffrey
@@ -256,22 +255,9 @@ class ScorecardMonitoring(BaseEstimator):
         # Check if scorecard is fitted
         self.scorecard._check_is_fitted()
 
-        target_dtype = type_of_target(y_actual)
-        target_dtype_e = type_of_target(y_expected)
-
-        if target_dtype not in ("binary", "continuous"):
-            raise ValueError("Target type (actual) {} is not supported."
-                             .format(target_dtype))
-
-        if target_dtype_e not in ("binary", "continuous"):
-            raise ValueError("Target type (expected) {} is not supported."
-                             .format(target_dtype_e))
-
-        if target_dtype != target_dtype_e:
-            raise ValueError("Target types must coincide; {} != {}."
-                             .format(target_dtype, target_dtype_e))
-
-        self._target_dtype = target_dtype
+        # Trust the already-fitted scorecard's own target type instead of
+        # re-inferring it from y_actual/y_expected (GH issue #296).
+        self._target_dtype = self.scorecard._target_dtype
 
         # Check variable names
         if list(X_actual.columns) != list(X_expected.columns):

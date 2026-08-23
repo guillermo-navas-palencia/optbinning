@@ -20,9 +20,13 @@ from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
+from optbinning.binning.binning_process import _check_selection_criteria
+from optbinning.binning.binning_process import resolve_target_dtype
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
+from sklearn.utils.multiclass import type_of_target
 from tests.datasets import load_boston
 
 
@@ -389,6 +393,52 @@ def test_default_transform_pandas():
 
     assert optb.transform(x, metric="woe") == approx(
         X_transform.values[:, 5], rel=1e-6)
+
+
+def test_target_dtype_autodetect_unchanged():
+    # type_of_target classifies an integer-valued continuous target
+    # (e.g. load_diabetes().target) as "multiclass". Auto-detection
+    # (target_dtype=None) must stay exactly as sklearn provides it. See
+    # GH issue #296.
+    data = load_diabetes()
+    y = data.target
+
+    assert type_of_target(y) == "multiclass"
+    assert resolve_target_dtype(y) == "multiclass"
+
+    with raises(ValueError):
+        _check_selection_criteria({"woe": {"min": 0.01}}, "multiclass")
+
+
+def test_target_dtype_explicit_override():
+    # target_dtype overrides auto-detection entirely. See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    assert resolve_target_dtype(y, "continuous") == "continuous"
+
+    selection_criteria = {"woe": {"min": 0.01}}
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria,
+                             target_dtype="continuous")
+    process.fit(X, y)
+
+    assert process._target_dtype == "continuous"
+    summary = process.summary()
+    assert "woe" in summary.columns
+
+    # An integer-dtype target (e.g. load_wine()) is unaffected.
+    y_wine = load_wine().target
+    assert y_wine.dtype.kind == "i"
+    assert resolve_target_dtype(y_wine) == "multiclass"
+
+
+def test_target_dtype_invalid():
+    with raises(ValueError):
+        process = BinningProcess(variable_names=[], target_dtype="bad_value")
+        process.fit(X, y)
 
 
 def test_default_transform_continuous():

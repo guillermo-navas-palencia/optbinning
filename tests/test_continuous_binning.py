@@ -277,3 +277,15 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def test_special_codes_dict_none_present():
+    # special_codes as a dict where none of the values occur in the
+    # data must not crash (GH #340: dict branch initialized the
+    # stat lists to None, then unconditionally .append()'d to them).
+    optb = ContinuousOptimalBinning(
+        name=variable, special_codes={'special': [-5, -6, -7, -9]})
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    optb.binning_table.build()

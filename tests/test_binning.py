@@ -565,6 +565,36 @@ def test_information():
     optb.information(print_level=2)
 
 
+def test_df_tests():
+    # BinningTable.df_tests exposes the per-adjacent-bin significance
+    # tests computed by analysis(), instead of only printing them. See
+    # GH issue #283.
+    optb = OptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value", "P[A > B]", "P[B > A]"]
+    assert len(df_tests) == len(table.n_event[:-2]) - 1
+
+    # returned frame is a defensive copy: mutating it must not affect the
+    # table's own state
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()
+
+    # Fisher exact test renames "t-statistic" to "odd ratio"
+    table.analysis(pvalue_test="fisher", print_output=False)
+    assert "odd ratio" in table.df_tests.columns
+
+
 def test_verbose():
     optb = OptimalBinning(verbose=True)
     optb.fit(x, y)

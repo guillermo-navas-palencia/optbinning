@@ -20,9 +20,12 @@ from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
+from sklearn.base import TransformerMixin, clone
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
 from tests.datasets import load_boston
 
 
@@ -337,6 +340,29 @@ def test_categorical_variables():
     df_summary = process.summary()
     assert df_summary[
         df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
+
+
+def test_transformer_mixin():
+    # BinningProcess is a proper sklearn TransformerMixin. See GH issue #343.
+    assert isinstance(BinningProcess(variable_names), TransformerMixin)
+
+    process = BinningProcess(variable_names)
+
+    # fit_transform keeps its own richer signature (metric, sample_weight),
+    # not TransformerMixin's naive fit(X, y).transform(X) default.
+    Xt = process.fit_transform(X, y, metric="woe")
+    assert Xt.shape == X.shape
+
+    # clone/get_params/set_params still work with the mixin added.
+    process2 = clone(process)
+    assert list(process2.get_params()["variable_names"]) == list(
+        variable_names)
+
+    # works as a Pipeline step
+    pipe = Pipeline([("bp", BinningProcess(variable_names)),
+                     ("clf", LogisticRegression())])
+    pipe.fit(X, y)
+    assert pipe.predict(X).shape == (X.shape[0],)
 
 
 def test_fit_params():

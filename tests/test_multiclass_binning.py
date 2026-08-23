@@ -5,6 +5,9 @@ MulticlassOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+from unittest import mock
+
+import numpy as np
 import pandas as pd
 
 from pytest import approx, raises
@@ -226,3 +229,59 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def _plot_missing_marker_values(table, **plot_kwargs):
+    # plot() shows/saves its figure internally, so intercept plt.savefig
+    # to read the markers off the live Axes first. The "Bin missing"
+    # markers (one per class) are always the last single-point lines.
+    import matplotlib.pyplot as plt
+
+    captured = {}
+
+    def fake_savefig(*args, **kwargs):
+        ax2 = plt.gcf().axes[-1]
+        single_point_lines = [
+            line for line in ax2.get_lines() if len(line.get_xdata()) == 1]
+        n_classes = len(table.classes)
+        captured["y"] = [
+            line.get_ydata()[0] for line in single_point_lines[-n_classes:]]
+
+    with mock.patch("matplotlib.pyplot.savefig", side_effect=fake_savefig):
+        table.plot(savefig="tests/results/_tmp_plot.png", **plot_kwargs)
+
+    return captured["y"]
+
+
+def test_plot_missing_metric_matches_regardless_of_add_special():
+    # See GH issue #376 / PR #377: pos_missing is a display position that
+    # shifts with add_special=False, but was used to index metric_values
+    # (event rate per class), whose entries stay at fixed trailing
+    # positions. The missing bin's plotted per-class values must equal
+    # metric_values[-1] regardless of add_special.
+    x_local = x.copy()
+    y_local = y.copy()
+
+    # Special group: forced to class 0 only.
+    x_local[:20] = -999
+    y_local[:20] = 0
+
+    # Missing group: forced to class 2 only, clearly different from the
+    # special group above.
+    x_local[20:40] = np.nan
+    y_local[20:40] = 2
+
+    optb = MulticlassOptimalBinning(name=variable, special_codes=[-999])
+    optb.fit(x_local, y_local)
+
+    table = optb.binning_table
+    table.build()
+
+    y_with_special = _plot_missing_marker_values(
+        table, add_special=True, add_missing=True)
+    y_without_special = _plot_missing_marker_values(
+        table, add_special=False, add_missing=True)
+
+    assert y_with_special == approx(list(table._event_rate[-1]), rel=1e-6)
+    assert y_without_special == approx(
+        list(table._event_rate[-1]), rel=1e-6)

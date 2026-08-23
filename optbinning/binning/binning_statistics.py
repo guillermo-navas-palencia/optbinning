@@ -778,7 +778,7 @@ class BinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:
@@ -1348,7 +1348,7 @@ class MulticlassBinningTable:
             label_missing = "Bin missing"
 
             for i, cl in enumerate(self.classes):
-                ax2.plot(pos_missing, metric_values[pos_missing, i],
+                ax2.plot(pos_missing, metric_values[-1, i],
                          marker="o", color=colors[i])
 
         if add_special and add_missing:
@@ -1858,7 +1858,7 @@ class ContinuousBinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:

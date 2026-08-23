@@ -5,6 +5,8 @@ ContinuousOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+from unittest import mock
+
 import numpy as np
 import pandas as pd
 
@@ -277,3 +279,57 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def _plot_missing_marker_value(table, **plot_kwargs):
+    # plot() shows/saves its figure internally, so intercept plt.savefig
+    # to read the marker off the live Axes first. The "Bin missing"
+    # marker is always the last single-point line plotted.
+    import matplotlib.pyplot as plt
+
+    captured = {}
+
+    def fake_savefig(*args, **kwargs):
+        ax2 = plt.gcf().axes[-1]
+        single_point_lines = [
+            line for line in ax2.get_lines() if len(line.get_xdata()) == 1]
+        captured["y"] = single_point_lines[-1].get_ydata()[0]
+
+    with mock.patch("matplotlib.pyplot.savefig", side_effect=fake_savefig):
+        table.plot(savefig="tests/results/_tmp_plot.png", **plot_kwargs)
+
+    return captured["y"]
+
+
+def test_plot_missing_metric_matches_regardless_of_add_special():
+    # See GH issue #376 / PR #377: pos_missing is a display position that
+    # shifts with add_special=False, but was used to index metric_values,
+    # whose special/missing entries stay at fixed trailing positions.
+    # The missing bin's plotted value must equal metric_values[-1]
+    # regardless of add_special.
+    rng = np.random.RandomState(0)
+
+    x_local = x.copy()
+    y_local = x_local * 2 + rng.normal(size=len(x_local))
+
+    # Special group: forced to a distinctive mean.
+    x_local[:30] = -999
+    y_local[:30] = 100.0
+
+    # Missing group: forced to a distinctive, different mean.
+    x_local[30:60] = np.nan
+    y_local[30:60] = -50.0
+
+    optb = ContinuousOptimalBinning(name=variable, special_codes=[-999])
+    optb.fit(x_local, y_local)
+
+    table = optb.binning_table
+    table.build()
+
+    y_with_special = _plot_missing_marker_value(
+        table, metric="mean", add_special=True, add_missing=True)
+    y_without_special = _plot_missing_marker_value(
+        table, metric="mean", add_special=False, add_missing=True)
+
+    assert y_with_special == approx(table._mean[-1], rel=1e-6)
+    assert y_without_special == approx(table._mean[-1], rel=1e-6)

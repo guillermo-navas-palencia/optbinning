@@ -391,6 +391,40 @@ def test_default_transform_pandas():
         X_transform.values[:, 5], rel=1e-6)
 
 
+def test_selection_criteria_iv_continuous():
+    # "iv" was not accepted as a selection_criteria metric for continuous
+    # targets, even though ContinuousBinningTable already exposes it via
+    # its .iv property (same as the binary case). See GH issue #307.
+    data = load_boston()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert "iv" in summary.columns
+
+    for name in variable_names:
+        optb = process.get_binned_variable(name)
+        row_iv = summary.loc[summary["name"] == name, "iv"].iloc[0]
+        assert row_iv == approx(optb.binning_table.iv, rel=1e-6)
+
+    # selection_criteria on "iv" must work for continuous targets exactly
+    # like it already does for binary/multiclass metrics.
+    selection_criteria = {"iv": {"min": 4.0}}
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert summary.loc[summary["selected"], "iv"].min() >= 4.0
+    assert summary.loc[~summary["selected"], "iv"].max() < 4.0
+    assert summary["selected"].sum() > 0
+    assert summary["selected"].sum() < len(summary)
+
+
 def test_default_transform_continuous():
     data = load_boston()
     variable_names = data.feature_names

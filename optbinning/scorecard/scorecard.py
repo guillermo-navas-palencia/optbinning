@@ -592,8 +592,15 @@ class Scorecard(Base, BaseEstimator):
         # Suppress binning process verbosity
         self.binning_process_.set_params(verbose=False)
 
+        # variable_names=None means "use all columns of X" (GH issue #343);
+        # only slice X when an explicit column subset was given.
+        if self.binning_process.variable_names is None:
+            X_bp = X
+        else:
+            X_bp = X[self.binning_process.variable_names]
+
         X_t = self.binning_process_.fit_transform(
-            X[self.binning_process.variable_names], y, sample_weight, metric,
+            X_bp, y, sample_weight, metric,
             metric_special, metric_missing, show_digits, check_input)
 
         self._time_binning_process = time.perf_counter() - time_binning_process
@@ -725,8 +732,11 @@ class Scorecard(Base, BaseEstimator):
     def _transform(self, X, metric, metric_special, metric_missing):
         self._check_is_fitted()
 
+        # binning_process_ is already fitted here, so its resolved
+        # _variable_names is always available (GH issue #343), unlike the
+        # possibly-None variable_names given at construction.
         X_t = self.binning_process_.transform(
-            X=X[self.binning_process_.variable_names], metric=metric,
+            X=X[self.binning_process_._variable_names], metric=metric,
             metric_special=metric_special, metric_missing=metric_missing)
 
         return X_t

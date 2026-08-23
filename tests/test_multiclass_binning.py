@@ -5,6 +5,7 @@ MulticlassOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import numpy as np
 import pandas as pd
 
 from pytest import approx, raises
@@ -219,6 +220,43 @@ def test_classes():
     optb.fit(x, y)
 
     assert optb.classes == approx([0, 1, 2])
+
+
+def test_transform_indices_and_bins():
+    # transform() gathers per-sample values via np.digitize indices
+    # instead of a per-bin masking loop (GH issue #388). Confirm
+    # "indices"/"bins" are valid and every sample's bin actually
+    # contains its value.
+    optb = MulticlassOptimalBinning(name=variable)
+    optb.fit(x, y)
+
+    splits = optb.splits
+    n_bins = len(splits) + 1
+
+    indices = optb.transform(x, metric="indices")
+    bins = optb.transform(x, metric="bins")
+
+    assert ((indices >= 0) & (indices < n_bins)).all()
+
+    bin_edges = np.concatenate([[-np.inf], splits, [np.inf]])
+    for xi, bi, idx in zip(x, bins, indices):
+        lo, hi = bin_edges[idx], bin_edges[idx + 1]
+        assert lo <= xi < hi
+
+
+def test_transform_no_splits():
+    # Edge case: a single-bin solution has no splits at all, so
+    # np.digitize is skipped and ``indices`` is built as a float array of
+    # zeros (see transform_multiclass_target). The vectorized gather must
+    # still handle this (it requires integer indices for fancy indexing).
+    optb = MulticlassOptimalBinning(name=variable, max_n_bins=1)
+    optb.fit(x, y)
+
+    assert len(optb.splits) == 0
+
+    for metric in ("mean_woe", "indices", "bins"):
+        x_transform = optb.transform(x, metric=metric)
+        assert len(np.unique(x_transform)) == 1
 
 
 def test_verbose():

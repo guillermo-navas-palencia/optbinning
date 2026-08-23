@@ -565,6 +565,97 @@ def test_information():
     optb.information(print_level=2)
 
 
+def test_numerical_transform_indices_and_bins():
+    # transform()'s numerical branch gathers per-sample values via
+    # np.digitize indices instead of a per-bin masking loop (GH issue
+    # #388). Cross-check "indices"/"bins" against "woe"/"event_rate" and
+    # the binning table itself, and confirm every sample's bin actually
+    # contains its value.
+    optb = OptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    splits = optb.splits
+    n_bins = len(splits) + 1
+
+    indices = optb.transform(x, metric="indices")
+    bins = optb.transform(x, metric="bins")
+    woe = optb.transform(x, metric="woe")
+    event_rate = optb.transform(x, metric="event_rate")
+
+    assert ((indices >= 0) & (indices < n_bins)).all()
+
+    table = optb.binning_table.build()
+    table_woe = table["WoE"].values[:n_bins].astype(float)
+    table_event_rate = table["Event rate"].values[:n_bins].astype(float)
+
+    assert woe == approx(table_woe[indices], rel=1e-6)
+    assert event_rate == approx(table_event_rate[indices], rel=1e-6)
+
+    bin_edges = np.concatenate([[-np.inf], splits, [np.inf]])
+    for xi, bi, idx in zip(x, bins, indices):
+        lo, hi = bin_edges[idx], bin_edges[idx + 1]
+        assert lo <= xi < hi
+        assert bi == table["Bin"].values[idx]
+
+
+def test_numerical_transform_no_splits():
+    # Edge case: a single-bin solution has no splits at all, so
+    # np.digitize is skipped and ``indices`` is built as a float array of
+    # zeros (see transform_binary_target). The vectorized gather must
+    # still handle this (it requires integer indices for fancy indexing).
+    optb = OptimalBinning(name=variable, dtype="numerical", max_n_bins=1)
+    optb.fit(x, y)
+
+    assert len(optb.splits) == 0
+
+    for metric in ("woe", "event_rate", "indices", "bins"):
+        x_transform = optb.transform(x, metric=metric)
+        assert len(np.unique(x_transform)) == 1
+
+
+def test_categorical_transform_indices_and_bins():
+    # transform()'s categorical branch resolves each sample's bin via
+    # pd.factorize instead of looping over bins and testing membership
+    # against the whole array each time (GH issue #388). Cross-check
+    # "indices" against "woe"/"event_rate" and the binning table, and
+    # exercise the edge cases the rewrite has to handle explicitly: a
+    # category never seen during fit, and a missing (NaN) value.
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randint(0, 2, 500)
+
+    optb = OptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    n_bins = len(optb.splits) + 1
+
+    x_test = np.concatenate([
+        x_cat[:50],
+        np.array(['unseen_cat'], dtype=object),
+        np.array([np.nan], dtype=object)])
+
+    indices = optb.transform(x_test, metric="indices")
+    woe = optb.transform(x_test, metric="woe")
+    event_rate = optb.transform(x_test, metric="event_rate")
+
+    table = optb.binning_table.build()
+    table_woe = table["WoE"].values[:n_bins].astype(float)
+    table_event_rate = table["Event rate"].values[:n_bins].astype(float)
+
+    # The known samples (first 50) fall in a real bin.
+    assert ((indices[:50] >= 0) & (indices[:50] < n_bins)).all()
+    assert woe[:50] == approx(table_woe[indices[:50]], rel=1e-6)
+    assert event_rate[:50] == approx(
+        table_event_rate[indices[:50]], rel=1e-6)
+
+    # Unseen category and missing value both fall back to cat_unknown /
+    # the missing-value handling rather than crashing or landing in a
+    # bin by accident.
+    default_woe = optb.transform(['unseen_cat'], metric="woe")[0]
+    assert woe[50] == approx(default_woe, rel=1e-6)
+    assert not np.isnan(woe[51])  # missing value has its own default
+
+
 def test_verbose():
     optb = OptimalBinning(verbose=True)
     optb.fit(x, y)

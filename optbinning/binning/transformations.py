@@ -179,22 +179,45 @@ def _apply_transform(x, dtype, special_codes, metric, metric_special,
                      n_special, cat_unknown):
 
     if dtype == "numerical":
-        if metric == "bins":
-            x_clean_transform = np.full(x_clean.shape, cat_unknown,
-                                        dtype=object)
+        # ``indices`` already gives each sample's bin (0..n_bins-1), so
+        # gather per-bin values in one vectorized index instead of looping
+        # over bins and masking each time. Cast to int first: the "no
+        # splits" shortcut above builds ``indices`` as floats, and fancy
+        # indexing needs integers.
+        if np.issubdtype(indices.dtype, np.integer):
+            idx = indices
         else:
-            x_clean_transform = np.full(x_clean.shape, cat_unknown)
-
-        for i in range(n_bins):
-            mask = (indices == i)
-            x_clean_transform[mask] = metric_value[i]
+            idx = indices.astype(int)
+        x_clean_transform = np.asarray(metric_value)[idx]
 
         x_transform[clean_mask] = x_clean_transform
     else:
-        x_p = pd.Series(x)
-        for i in range(n_bins):
-            mask = x_p.isin(bins[i])
-            x_transform[mask] = metric_value[i]
+        # Build a category -> bin index lookup once, then resolve every
+        # sample's bin via pd.factorize in a single vectorized pass instead
+        # of looping over bins and testing isin() each time. factorize beat
+        # Series.map/Categorical/searchsorted in benchmarking; -1 codes mark
+        # missing/unseen values.
+        cat_to_bin = {}
+        for i, b in enumerate(bins):
+            for cat in b:
+                cat_to_bin[cat] = i
+
+        codes, uniques = pd.factorize(x)
+        if len(uniques):
+            unique_bin_idx = np.fromiter(
+                (cat_to_bin.get(u, -1) for u in uniques), dtype=int,
+                count=len(uniques))
+        else:
+            unique_bin_idx = np.array([], dtype=int)
+        # Append a trailing -1 so that ``codes == -1`` (factorize's
+        # marker for NaN) maps to "no bin" via Python's -1 indexing,
+        # rather than wrapping around to the last real category.
+        code_to_bin = np.append(unique_bin_idx, -1)
+        sample_bin_idx = code_to_bin[codes]
+
+        known = sample_bin_idx >= 0
+        x_transform[known] = np.asarray(metric_value)[
+            sample_bin_idx[known]]
 
     if special_codes:
         if isinstance(special_codes, dict):

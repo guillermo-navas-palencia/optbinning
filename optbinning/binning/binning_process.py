@@ -48,7 +48,8 @@ _METRICS = {
         "quality_score": {"min": 0, "max": 1}
     },
     "continuous": {
-        "metrics": ["woe", "quality_score"],
+        "metrics": ["iv", "woe", "quality_score"],
+        "iv": {"min": 0, "max": np.inf},
         "woe": {"min": 0, "max": np.inf},
         "quality_score": {"min": 0, "max": 1}
     }
@@ -426,6 +427,7 @@ class BaseBinningProcess:
                     "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
                 metrics = {
+                    "iv": optb.binning_table.iv,
                     "woe": optb.binning_table.woe,
                     "quality_score": optb.binning_table.quality_score}
 

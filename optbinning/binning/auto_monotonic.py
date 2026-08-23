@@ -8,6 +8,7 @@ Automatic monotonic trend algorithm.
 import numpy as np
 
 from scipy.spatial import ConvexHull
+from scipy.spatial import QhullError
 
 
 def n_peaks_valleys(x):
@@ -128,7 +129,7 @@ def auto_monotonic_data(n_nonevent, n_event):
         try:
             hull = ConvexHull(points)
             p_convex_hull = hull.volume / rectangular_area
-        except:
+        except QhullError:
             p_convex_hull = 0
     else:
         p_convex_hull = 0
@@ -201,7 +202,7 @@ def auto_monotonic_data_continuous(n_records, sums):
         try:
             hull = ConvexHull(points)
             p_convex_hull = hull.volume / rectangular_area
-        except:
+        except QhullError:
             p_convex_hull = 0
     else:
         p_convex_hull = 0

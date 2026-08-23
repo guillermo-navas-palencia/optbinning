@@ -15,10 +15,10 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
-from sklearn.utils.multiclass import type_of_target
 
 from ..binning.base import Base
 from ..binning.binning_process import BinningProcess
+from ..binning.binning_process import resolve_target_dtype
 from ..logging import Logger
 from .rounding import RoundingMIP
 from .scorecard_information import print_scorecard_information
@@ -29,7 +29,7 @@ logger = Logger(__name__).logger
 
 def _check_parameters(binning_process, estimator, scaling_method,
                       scaling_method_params, intercept_based,
-                      reverse_scorecard, rounding, verbose):
+                      reverse_scorecard, rounding, target_dtype, verbose):
 
     if not isinstance(binning_process, BinningProcess):
         raise TypeError("binning_process must be a BinningProcess instance.")
@@ -64,6 +64,11 @@ def _check_parameters(binning_process, estimator, scaling_method,
     if rounding and scaling_method is None:
         raise ValueError("rounding is only applied if scaling method is "
                          "not None.")
+
+    if target_dtype is not None:
+        if target_dtype not in ("binary", "continuous"):
+            raise ValueError('target_dtype must be "binary", "continuous" '
+                             'or None; got {}.'.format(target_dtype))
 
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
@@ -215,6 +220,15 @@ class Scorecard(Base, BaseEstimator):
         minimum/maximum score after rounding. Otherwise, the scorecard points
         are round to the nearest integer.
 
+    target_dtype : str or None, optional (default=None)
+        The target type, one of "binary" or "continuous". If None,
+        inferred automatically via
+        ``sklearn.utils.multiclass.type_of_target``. Set explicitly to
+        override auto-detection, e.g. for an integer-valued continuous
+        target (see GH issue #296).
+
+        .. versionadded:: 0.21.0
+
     verbose : bool (default=False)
         Enable verbose output.
 
@@ -231,7 +245,8 @@ class Scorecard(Base, BaseEstimator):
     """
     def __init__(self, binning_process, estimator, scaling_method=None,
                  scaling_method_params=None, intercept_based=False,
-                 reverse_scorecard=False, rounding=False, verbose=False):
+                 reverse_scorecard=False, rounding=False, target_dtype=None,
+                 verbose=False):
 
         self.binning_process = binning_process
         self.estimator = estimator
@@ -240,6 +255,7 @@ class Scorecard(Base, BaseEstimator):
         self.intercept_based = intercept_based
         self.reverse_scorecard = reverse_scorecard
         self.rounding = rounding
+        self.target_dtype = target_dtype
         self.verbose = verbose
 
         # attributes
@@ -557,11 +573,14 @@ class Scorecard(Base, BaseEstimator):
             raise TypeError("X must be a pandas.DataFrame.")
 
         # Target type and metric
-        self._target_dtype = type_of_target(y)
+        self._target_dtype = resolve_target_dtype(y, self.target_dtype)
 
         if self._target_dtype not in ("binary", "continuous"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         _check_scorecard_scaling(self.scaling_method,
                                  self.scaling_method_params,
@@ -591,6 +610,9 @@ class Scorecard(Base, BaseEstimator):
         self.binning_process_ = clone(self.binning_process)
         # Suppress binning process verbosity
         self.binning_process_.set_params(verbose=False)
+        # Propagate the resolved target type so the wrapped BinningProcess
+        # does not re-detect it independently (GH issue #296).
+        self.binning_process_.set_params(target_dtype=self._target_dtype)
 
         X_t = self.binning_process_.fit_transform(
             X[self.binning_process.variable_names], y, sample_weight, metric,

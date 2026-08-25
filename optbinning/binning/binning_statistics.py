@@ -1236,7 +1236,7 @@ class BinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:
@@ -1651,8 +1651,9 @@ class MulticlassBinningTable:
         p_event = self.n_event / self.n_event.sum(axis=0)
         self._js = jensen_shannon_multivariate(p_event)
 
-        # Compute HHI
-        p_records_mask = p_records[mask]
+        # Compute HHI on valid bins only
+        valid_mask = n_records > 0
+        p_records_mask = p_records[valid_mask]
         if len(p_records_mask):
             self._hhi = hhi(p_records_mask)
             self._hhi_norm = hhi(p_records_mask, normalized=True)
@@ -1833,7 +1834,7 @@ class MulticlassBinningTable:
             label_missing = "Bin missing"
 
             for i, cl in enumerate(self.classes):
-                ax2.plot(pos_missing, metric_values[pos_missing, i],
+                ax2.plot(pos_missing, metric_values[-1, i],
                          marker="o", color=colors[i])
 
         if add_special and add_missing:
@@ -2377,7 +2378,7 @@ class ContinuousBinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:

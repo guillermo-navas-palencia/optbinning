@@ -5,11 +5,16 @@ MulticlassOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from pytest import approx, raises
 
 from optbinning import MulticlassOptimalBinning
+from optbinning.binning.binning_statistics import MulticlassBinningTable
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
 
@@ -119,7 +124,7 @@ def test_numerical_default():
     optb.binning_table.build()
     optb.binning_table.analysis()
     assert optb.binning_table.js == approx(0.10989515, rel=1e-6)
-    assert optb.binning_table.quality_score == approx(0.05279822, rel=1e-6)
+    assert optb.binning_table.quality_score == approx(0.05543813, rel=1e-6)
     optb.binning_table.plot(
         savefig="tests/results/test_multiclass_binning.png")
     optb.binning_table.plot(
@@ -141,6 +146,32 @@ def test_numerical_default_solvers():
         assert optb.status == "OPTIMAL"
         assert optb.splits == approx([2.1450001, 2.245, 2.31499994, 2.6049999,
                                       2.6450001], rel=1e-6)
+
+
+def test_missing_bin_plot_uses_last_metric_value_when_special_hidden():
+    table = MulticlassBinningTable(
+        name="test",
+        special_codes=None,
+        splits=np.array([1.0, 2.0]),
+        n_event=np.array([
+            [2, 0],
+            [1, 2],
+            [0, 0],
+            [4, 1],
+            [0, 0],
+        ]),
+        classes=[0, 1],
+    )
+
+    table.build(add_totals=False)
+    table.plot(add_special=False, add_missing=True, show_bin_labels=True)
+
+    ax2 = plt.gcf().axes[1]
+    missing_y = [line.get_ydata()[0] for line in ax2.lines[-len(table.classes):]]
+    expected = table._event_rate[-1, :].tolist()
+
+    assert missing_y == approx(expected)
+    plt.close("all")
 
 
 def test_numerical_user_splits_fixed():

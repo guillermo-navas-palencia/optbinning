@@ -642,8 +642,15 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_nonevent = np.array([self._t_n_nonevent])
-            n_event = np.array([self._t_n_event])
+            # bin_info() below adds missing/special as separate bins, so
+            # this single "no splits" bin must exclude them too, or their
+            # counts get double-counted (GH #368).
+            n_nonevent = np.array([self._t_n_nonevent -
+                                   (self._n_nonevent_missing +
+                                    self._n_nonevent_special)])
+            n_event = np.array([self._t_n_event -
+                                (self._n_event_missing +
+                                 self._n_event_special)])
 
         self._n_nonevent, self._n_event = bin_info(
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,

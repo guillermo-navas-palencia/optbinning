@@ -209,11 +209,20 @@ class BSketch:
         if not self._mergeable(bsketch):
             raise Exception("bsketch does not share signature.")
 
+        # Merge missing/special counts before any early return: a
+        # batch of only missing/special records has empty regular
+        # sketches but real counts that must not be dropped (GH #368).
+        self._count_missing_e += bsketch._count_missing_e
+        self._count_missing_ne += bsketch._count_missing_ne
+        self._count_special_e += bsketch._count_special_e
+        self._count_special_ne += bsketch._count_special_ne
+
         if bsketch._sketch_e.n == 0 and bsketch._sketch_ne.n == 0:
             return
 
         if self._sketch_e.n == 0 and self._sketch_ne.n == 0:
-            self._copy(bsketch)
+            self._sketch_e = bsketch._sketch_e
+            self._sketch_ne = bsketch._sketch_ne
             return
 
         # Merge sketches
@@ -223,12 +232,6 @@ class BSketch:
         elif self.sketch == "t-digest":
             self._sketch_e += bsketch._sketch_e
             self._sketch_ne += bsketch._sketch_ne
-
-        # Merge missing and special counts
-        self._count_missing_e += bsketch._count_missing_e
-        self._count_missing_ne += bsketch._count_missing_ne
-        self._count_special_e += bsketch._count_special_e
-        self._count_special_ne += bsketch._count_special_ne
 
     def merge_sketches(self) -> "BSketch":
         """Merge event and non-event data internal sketches."""

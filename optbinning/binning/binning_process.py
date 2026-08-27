@@ -1495,15 +1495,18 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             if self.binning_transform_params is not None:
                 params = self.binning_transform_params.get(name, {})
 
-            metric = params.get("metric", metric)
-            metric_missing = params.get("metric_missing", metric_missing)
-            metric_special = params.get("metric_special", metric_special)
+            # Resolve into new locals, not into metric/metric_special/
+            # metric_missing themselves -- overwriting those leaks this
+            # variable's override into every later variable (GH #355).
+            var_metric = params.get("metric", metric)
+            var_metric_missing = params.get("metric_missing", metric_missing)
+            var_metric_special = params.get("metric_special", metric_special)
 
             tparams = {
                 "x": x,
-                "metric": metric,
-                "metric_special": metric_special,
-                "metric_missing": metric_missing,
+                "metric": var_metric,
+                "metric_special": var_metric_special,
+                "metric_missing": var_metric_missing,
                 "check_input": check_input,
                 "show_digits": show_digits
                 }
@@ -1511,7 +1514,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             if isinstance(optb, _OPTBPW_TYPES):
                 tparams.pop("show_digits")
 
-            if metric is None:
+            if var_metric is None:
                 tparams.pop("metric")
 
             X_transform[:, i] = optb.transform(**tparams)
@@ -1593,22 +1596,27 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 if self.binning_transform_params is not None:
                     params = self.binning_transform_params.get(name, {})
 
-                metric = params.get("metric", metric)
-                metric_missing = params.get("metric_missing", metric_missing)
-                metric_special = params.get("metric_special", metric_special)
+                # Same fix as _transform() (GH #355) -- resolve into new
+                # locals so an override can't leak into the next variable
+                # or chunk.
+                var_metric = params.get("metric", metric)
+                var_metric_missing = params.get(
+                    "metric_missing", metric_missing)
+                var_metric_special = params.get(
+                    "metric_special", metric_special)
 
                 tparams = {
                     "x": chunk[name],
-                    "metric": metric,
-                    "metric_special": metric_special,
-                    "metric_missing": metric_missing,
+                    "metric": var_metric,
+                    "metric_special": var_metric_special,
+                    "metric_missing": var_metric_missing,
                     "show_digits": show_digits
                     }
 
                 if isinstance(optb, _OPTBPW_TYPES):
                     tparams.pop("show_digits")
 
-                if metric is None:
+                if var_metric is None:
                     tparams.pop("metric")
 
                 X_transform[:, i] = optb.transform(**tparams)

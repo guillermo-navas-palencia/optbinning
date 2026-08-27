@@ -362,15 +362,12 @@ def target_info_special_continuous(
         n_records_special = []
         sum_special = []
         n_zeros_special = []
-
-        if len(y):
-            std_special = []
-            min_target_special = []
-            max_target_special = []
-        else:
-            std_special = None
-            min_target_special = None
-            max_target_special = None
+        # Must always start as lists, never None: the loop below calls
+        # .append() on these per special-code group regardless of
+        # whether any group is empty (GH #340).
+        std_special = []
+        min_target_special = []
+        max_target_special = []
 
         xt = pd.Series(x)
         for s in special_codes.values():

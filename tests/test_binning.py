@@ -596,3 +596,42 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def test_to_json_read_json(tmp_path):
+    # A binning object reloaded via read_json must reproduce the same
+    # transform as the originally fitted object. See GH issue #387.
+    optb = OptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    path = str(tmp_path / "optb.json")
+    optb.to_json(path)
+
+    optb_loaded = OptimalBinning(name=variable, dtype="numerical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x) == approx(optb.transform(x), rel=1e-6)
+    assert (optb_loaded.transform(x, metric="bins") ==
+            optb.transform(x, metric="bins")).all()
+
+
+def test_to_json_read_json_categorical(tmp_path):
+    # categories/cat_others are pandas/numpy array-likes and must be made
+    # JSON-serializable before being written out, otherwise to_json raises
+    # (e.g. "Object of type ndarray/ArrowStringArray is not JSON
+    # serializable"). See GH issue #387.
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randint(0, 2, 500)
+
+    optb = OptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    path = str(tmp_path / "optb_cat.json")
+    optb.to_json(path)
+
+    optb_loaded = OptimalBinning(name="x_cat", dtype="categorical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x_cat) == approx(
+        optb.transform(x_cat), rel=1e-6)

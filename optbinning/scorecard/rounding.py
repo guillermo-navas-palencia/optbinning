@@ -6,6 +6,7 @@ Rounding strategy.
 # Copyright (C) 2020
 
 import numpy as np
+import pandas as pd
 
 from ortools.linear_solver import pywraplp
 
@@ -18,7 +19,7 @@ class RoundingMIP:
         self._nn = None
         self._p = None
 
-    def build_model(self, df_scorecard):
+    def build_model(self, df_scorecard: pd.DataFrame) -> None:
         # Parameters
         points = []
         mins = []
@@ -81,7 +82,7 @@ class RoundingMIP:
         self._nn = nn
         self._p = p
 
-    def solve(self):
+    def solve(self) -> tuple[str, list | None]:
         status = self.solver_.Solve()
 
         if status in (pywraplp.Solver.OPTIMAL, pywraplp.Solver.FEASIBLE):

@@ -6,6 +6,7 @@ Model data for optimal binning 2D formulations using CART pruning.
 # Copyright (C) 2021
 
 import numpy as np
+import numpy.typing as npt
 
 from ..metrics import jeffrey
 from ..metrics import jensen_shannon
@@ -14,7 +15,7 @@ from ..metrics import triangular
 from .model_data_2d import _connected_rectangles
 
 
-def refine_rectangles(rectangles):
+def refine_rectangles(rectangles: list) -> list:
     final_rectangles = []
     for rectangle in rectangles:
         rectangle_path = []
@@ -99,9 +100,22 @@ def get_auxiliary_matrices(tree, m, n, n_grid):
     return A, G
 
 
-def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
-                    scale, min_bin_size, max_bin_size, min_bin_n_event,
-                    max_bin_n_event, min_bin_n_nonevent, max_bin_n_nonevent):
+def model_data_cart(
+    tree,
+    divergence: str,
+    NE: npt.NDArray,
+    E: npt.NDArray,
+    monotonicity_x: str | None,
+    monotonicity_y: str | None,
+    scale: int,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+    min_bin_n_event: int | None,
+    max_bin_n_event: int | None,
+    min_bin_n_nonevent: int | None,
+    max_bin_n_nonevent: int | None,
+) -> tuple[int, int, list, dict, np.ndarray, dict | None, dict | None,
+           np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     m, n = E.shape
     n_grid = m * n
@@ -232,8 +246,18 @@ def model_data_cart(tree, divergence, NE, E, monotonicity_x, monotonicity_y,
             event_rate, n_event, n_nonevent, n_records)
 
 
-def continuous_model_data_cart(tree, R, S, SS, monotonicity_x, monotonicity_y,
-                               scale, min_bin_size, max_bin_size):
+def continuous_model_data_cart(
+    tree,
+    R: npt.NDArray,
+    S: npt.NDArray,
+    SS: npt.NDArray,
+    monotonicity_x: str | None,
+    monotonicity_y: str | None,
+    scale: int,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+) -> tuple[int, int, list, dict, np.ndarray, dict | None, dict | None,
+           np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
     # Compute all rectangles and event and non-event records
     m, n = R.shape

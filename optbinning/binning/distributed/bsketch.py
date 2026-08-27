@@ -8,6 +8,7 @@ Binning sketch.
 import numbers
 
 import numpy as np
+import numpy.typing as npt
 
 from ...binning.preprocessing import split_data
 from .gk import GK
@@ -19,7 +20,12 @@ except ImportError:
     TDIGEST_AVAILABLE = False
 
 
-def _check_parameters(sketch, eps, K, special_codes):
+def _check_parameters(
+    sketch: str,
+    eps: float,
+    K: int,
+    special_codes: list | npt.NDArray | None
+) -> None:
     if sketch not in ("gk", "t-digest"):
         raise ValueError('Invalid value for sketch. Allowed string '
                          'values are "gk" and "t-digest".')
@@ -43,7 +49,11 @@ def _check_parameters(sketch, eps, K, special_codes):
             raise TypeError("special_codes must be a list or numpy.ndarray.")
 
 
-def _indices_count(sketch_type, sketch, splits):
+def _indices_count(
+    sketch_type: str,
+    sketch: object,
+    splits: list | npt.NDArray,
+) -> tuple[np.ndarray, np.ndarray]:
     values = np.zeros(len(sketch))
     count = np.zeros(len(sketch))
 
@@ -82,7 +92,13 @@ class BSketch:
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
     """
-    def __init__(self, sketch="gk", eps=0.01, K=25, special_codes=None):
+    def __init__(
+        self,
+        sketch: str = "gk",
+        eps: float = 0.01,
+        K: int = 25,
+        special_codes: list | npt.NDArray | None = None
+    ) -> None:
         self.sketch = sketch
         self.eps = eps
         self.K = K
@@ -102,7 +118,12 @@ class BSketch:
             self._sketch_e = TDigest(eps, K)
             self._sketch_ne = TDigest(eps, K)
 
-    def add(self, x, y, check_input=False):
+    def add(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        check_input: bool = False
+    ) -> None:
         """Add arrays to the sketch.
 
         Parameters
@@ -117,8 +138,12 @@ class BSketch:
             Whether to check input arrays.
         """
         xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _ = split_data(
-            dtype=None, x=x, y=y, special_codes=self.special_codes,
-            check_input=check_input)
+            dtype=None,
+            x=x,
+            y=y,
+            special_codes=self.special_codes,
+            check_input=check_input,
+        )
 
         # Add values to sketch
         mask = yc == 1
@@ -145,7 +170,7 @@ class BSketch:
             self._count_special_e += np.count_nonzero(ys == 1)
             self._count_special_ne += np.count_nonzero(ys == 0)
 
-    def bins(self, splits):
+    def bins(self, splits: list | npt.NDArray) -> tuple[np.ndarray, ...]:
         """Event and non-events counts for each bin given a list of split
         points.
 
@@ -173,12 +198,12 @@ class BSketch:
 
         return bins_e, bins_ne
 
-    def merge(self, bsketch):
+    def merge(self, bsketch: "BSketch") -> None:
         """Merge current instance with another BSketch instance.
 
         Parameters
         ----------
-        bsketch : object
+        bsketch : BSketch
             BSketch instance.
         """
         if not self._mergeable(bsketch):
@@ -208,7 +233,7 @@ class BSketch:
             self._sketch_e += bsketch._sketch_e
             self._sketch_ne += bsketch._sketch_ne
 
-    def merge_sketches(self):
+    def merge_sketches(self) -> "BSketch":
         """Merge event and non-event data internal sketches."""
         if self.sketch == "gk":
             new_sketch = GK(self.eps)
@@ -220,7 +245,7 @@ class BSketch:
 
         return new_sketch
 
-    def _copy(self, bsketch):
+    def _copy(self, bsketch: "BSketch") -> None:
         self._sketch_e = bsketch._sketch_e
         self._sketch_ne = bsketch._sketch_ne
 
@@ -230,7 +255,7 @@ class BSketch:
         self._count_special_e = bsketch._count_special_e
         self._count_special_ne = bsketch._count_special_ne
 
-    def _mergeable(self, other):
+    def _mergeable(self, other: "BSketch") -> bool:
         special_eq = True
         if self.special_codes is not None and other.special_codes is not None:
             special_eq = set(self.special_codes) == set(other.special_codes)
@@ -239,7 +264,7 @@ class BSketch:
                 self.K == other.K and special_eq)
 
     @property
-    def n_event(self):
+    def n_event(self) -> int:
         """Event count.
 
         Returns
@@ -250,7 +275,7 @@ class BSketch:
         return count + self._count_missing_e + self._count_special_e
 
     @property
-    def n_nonevent(self):
+    def n_nonevent(self) -> int:
         """Non-event count.
 
         Returns
@@ -261,7 +286,7 @@ class BSketch:
         return count + self._count_missing_ne + self._count_special_ne
 
     @property
-    def n(self):
+    def n(self) -> int:
         """Records count.
 
         Returns
@@ -285,7 +310,11 @@ class BCatSketch:
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
     """
-    def __init__(self, cat_cutoff=None, special_codes=None):
+    def __init__(
+        self,
+        cat_cutoff: float | None = None,
+        special_codes: list | npt.NDArray | None = None
+    ) -> None:
         self.cat_cutoff = cat_cutoff
         self.special_codes = special_codes
 
@@ -307,7 +336,12 @@ class BCatSketch:
 
         self._d_categories = {}
 
-    def add(self, x, y, check_input=False):
+    def add(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        check_input: bool = False,
+    ) -> None:
         """Add arrays to the sketch.
 
         Parameters
@@ -322,8 +356,12 @@ class BCatSketch:
             Whether to check input arrays.
         """
         xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _ = split_data(
-            dtype=None, x=x, y=y, special_codes=self.special_codes,
-            check_input=check_input)
+            dtype=None,
+            x=x,
+            y=y,
+            special_codes=self.special_codes,
+            check_input=check_input,
+        )
 
         # Add values to sketch
         for i, c in enumerate(xc):
@@ -349,7 +387,8 @@ class BCatSketch:
             self._count_special_e += np.count_nonzero(ys == 1)
             self._count_special_ne += np.count_nonzero(ys == 0)
 
-    def bins(self):
+    def bins(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                            np.ndarray, int | list, int | list]:
         """Event and non-events counts for each bin given the current
         categories.
 
@@ -389,7 +428,7 @@ class BCatSketch:
         return (splits, categories, bin_ne, bin_e, cat_others, bin_ne_others,
                 bin_e_others)
 
-    def merge(self, bcatsketch):
+    def merge(self, bcatsketch: "BCatSketch") -> None:
         """Merge current instance with another BCatSketch instance.
 
         Parameters
@@ -412,14 +451,14 @@ class BCatSketch:
         self._count_special_e += bcatsketch._count_special_e
         self._count_special_ne += bcatsketch._count_special_ne
 
-    def _copy(self, bcatsketch):
+    def _copy(self, bcatsketch: "BCatSketch") -> None:
         self._d_categories = bcatsketch._d_categories
         self._count_missing_e = bcatsketch._count_missing_e
         self._count_missing_ne = bcatsketch._count_missing_ne
         self._count_special_e = bcatsketch._count_special_e
         self._count_special_ne = bcatsketch._count_special_ne
 
-    def _mergeable(self, other):
+    def _mergeable(self, other: "BCatSketch") -> bool:
         special_eq = True
         if self.special_codes is not None and other.special_codes is not None:
             special_eq = set(self.special_codes) == set(other.special_codes)
@@ -427,7 +466,7 @@ class BCatSketch:
         return special_eq
 
     @property
-    def n_event(self):
+    def n_event(self) -> int:
         """Event count.
 
         Returns
@@ -438,7 +477,7 @@ class BCatSketch:
         return count + self._count_missing_e + self._count_special_e
 
     @property
-    def n_nonevent(self):
+    def n_nonevent(self) -> int:
         """Non-event count.
 
         Returns
@@ -449,7 +488,7 @@ class BCatSketch:
         return count + self._count_missing_ne + self._count_special_ne
 
     @property
-    def n(self):
+    def n(self) -> int:
         """Records count.
 
         Returns

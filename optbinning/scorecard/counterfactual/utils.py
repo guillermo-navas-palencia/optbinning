@@ -10,7 +10,11 @@ import numpy as np
 from ropwr import RobustPWRegression
 
 
-def logistic_pw(min_p, max_p, n_bins):
+def logistic_pw(
+    min_p: float,
+    max_p: float,
+    n_bins: int,
+) -> tuple[list, np.ndarray]:
     xl = np.linspace(min_p, max_p, 100)
     yl = (1.0 / (1 + np.exp(-xl)))
 

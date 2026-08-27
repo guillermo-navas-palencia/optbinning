@@ -9,9 +9,11 @@ import numbers
 import pickle
 import time
 
+from typing import Any, Self
 from warnings import warn
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from joblib import Parallel, delayed, effective_n_jobs
@@ -22,7 +24,7 @@ from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
 from ..logging import Logger
-from .base import Base
+from .base import Base, BaseOptimalBinning
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
@@ -287,8 +289,8 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digits must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if binning_fit_params is not None:
@@ -314,7 +316,7 @@ def _check_variable_dtype(x):
 
 class BaseBinningProcess:
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> "BaseBinningProcess":
         """Load binning process from pickle file.
 
         Parameters
@@ -333,7 +335,7 @@ class BaseBinningProcess:
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         """Save binning process to pickle file.
 
         Parameters
@@ -347,7 +349,7 @@ class BaseBinningProcess:
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    def _support_selection_criteria(self):
+    def _support_selection_criteria(self) -> None:
         self._support = np.full(self._n_variables, True, dtype=bool)
 
         if self.selection_criteria is None:
@@ -394,7 +396,7 @@ class BaseBinningProcess:
                 idfv = list(self.variable_names).index(fv)
                 self._support[idfv] = True
 
-    def _binning_selection_criteria(self):
+    def _binning_selection_criteria(self) -> None:
         for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
             optb.binning_table.build()
@@ -488,19 +490,20 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         .. versionadded:: 0.12.1
 
+    categorical_variables : array-like or None, optional (default=None)
+        List of variables numerical variables to be considered categorical.
+        These are nominal variables. Not applicable when target type is
+        multiclass.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
-
-    categorical_variables : array-like or None, optional (default=None)
-        List of variables numerical variables to be considered categorical.
-        These are nominal variables. Not applicable when target type is
-        multiclass.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     binning_fit_params : dict or None, optional (default=None)
         Dictionary with optimal binning fitting options for specific variables.
@@ -552,15 +555,27 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         option ``"solver": "mip"`` via the ``binning_fit_params`` parameter.
 
     """
-    def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
-                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, max_pvalue=None,
-                 max_pvalue_policy="consecutive", selection_criteria=None,
-                 fixed_variables=None, categorical_variables=None,
-                 special_codes=None, split_digits=None,
-                 binning_fit_params=None, binning_transform_params=None,
-                 n_jobs=None, verbose=False):
-
+    def __init__(
+        self,
+        variable_names: npt.ArrayLike | list[str],
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        selection_criteria: dict[str, Any] = None,
+        fixed_variables: npt.ArrayLike | list[str] | None = None,
+        categorical_variables: npt.ArrayLike | list[str] | None = None,
+        special_codes: npt.ArrayLike | None = None,
+        split_digits: npt.ArrayLike | None = None,
+        binning_fit_params: dict[str, Any] | None = None,
+        binning_transform_params: dict[str, Any] | None = None,
+        n_jobs: int | None = None,
+        verbose: bool = False
+    ):
         self.variable_names = variable_names
 
         self.max_n_prebins = max_n_prebins
@@ -603,13 +618,19 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self._is_updated = False
         self._is_fitted = False
 
-    def fit(self, X, y, sample_weight=None, check_input=False):
+    def fit(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        y: npt.ArrayLike,
+        sample_weight: npt.ArrayLike | None = None,
+        check_input: bool = False
+    ) -> Self:
         """Fit the binning process. Fit the optimal binning to all variables
         according to the given training data.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
             .. versionchanged:: 0.4.0
@@ -634,7 +655,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         """
         return self._fit(X, y, sample_weight, check_input)
 
-    def fit_disk(self, input_path, target, **kwargs):
+    def fit_disk(self, input_path: str, target: str, **kwargs) -> Self:
         """Fit the binning process according to the given training data on
         disk.
 
@@ -657,7 +678,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         """
         return self._fit_disk(input_path, target, **kwargs)
 
-    def fit_from_dict(self, dict_optb):
+    def fit_from_dict(self, dict_optb: dict[str, object]) -> Self:
         """Fit the binning process from a dict of OptimalBinning objects
         already fitted.
 
@@ -674,15 +695,23 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         """
         return self._fit_from_dict(dict_optb)
 
-    def fit_transform(self, X, y, sample_weight=None, metric=None,
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit_transform(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        y: npt.ArrayLike,
+        sample_weight: npt.ArrayLike | None = None,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Fit the binning process according to the given training data, then
         transform it.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         y : array-like of shape (n_samples,)
@@ -730,9 +759,18 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             X, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def fit_transform_disk(self, input_path, output_path, target, chunksize,
-                           metric=None, metric_special=0, metric_missing=0,
-                           show_digits=2, **kwargs):
+    def fit_transform_disk(
+        self,
+        input_path: str,
+        output_path: str,
+        target: str,
+        chunksize: int,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        **kwargs
+    ) -> Self:
         """Fit the binning process according to the given training data on
         disk, then transform it and save to comma-separated values (csv) file.
 
@@ -747,7 +785,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         target : str
             Target column.
 
-        chunksize :
+        chunksize : int
             Rows to read, transform and write at a time.
 
         metric : str or None, (default=None)
@@ -786,14 +824,21 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             input_path, output_path, chunksize, metric, metric_special,
             metric_missing, show_digits, **kwargs)
 
-    def transform(self, X, metric=None, metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
+    def transform(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Transform given data to metric using bins from each fitted optimal
         binning.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         metric : str or None, (default=None)
@@ -834,9 +879,17 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         return self._transform(X, metric, metric_special, metric_missing,
                                show_digits, check_input)
 
-    def transform_disk(self, input_path, output_path, chunksize, metric=None,
-                       metric_special=0, metric_missing=0, show_digits=2,
-                       **kwargs):
+    def transform_disk(
+        self,
+        input_path: str,
+        output_path: str,
+        chunksize: int,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        **kwargs
+    ) -> Self:
         """Transform given data on disk to metric using bins from each fitted
         optimal binning. Save to comma-separated values (csv) file.
 
@@ -848,7 +901,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         output_path : str
             Any valid string path to a file with extension .csv.
 
-        chunksize :
+        chunksize : int
             Rows to read, transform and write at a time.
 
         metric : str or None, (default=None)
@@ -889,7 +942,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                                     metric_special, metric_missing,
                                     show_digits, **kwargs)
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -916,7 +969,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             self._target_dtype, n_numerical, n_categorical,
             self._n_selected, self._time_total, dict_user_options)
 
-    def summary(self):
+    def summary(self) -> pd.DataFrame:
         """Binning process summary with main statistics for all binned
         variables.
 
@@ -941,13 +994,18 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         return df_summary[columns]
 
-    def get_binned_variable(self, name):
+    def get_binned_variable(self, name: str) -> BaseOptimalBinning:
         """Return optimal binning object for a given variable name.
 
         Parameters
         ----------
-        name : string
+        name : str
             The variable name.
+
+        Returns
+        -------
+        optb : BaseOptimalBinning
+            Optimal binning class (binary or continuous).
         """
         self._check_is_fitted()
 
@@ -960,15 +1018,19 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
-    def update_binned_variable(self, name, optb):
+    def update_binned_variable(
+        self,
+        name: str,
+        optb: BaseOptimalBinning
+    ) -> None:
         """Update optimal binning object for a given variable.
 
         Parameters
         ----------
-        name : string
+        name : str
             The variable name.
 
-        optb : object
+        optb : BaseOptimalBinning
             The optimal binning object already fitted.
         """
         self._check_is_fitted()
@@ -1015,7 +1077,11 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self._binned_variables[name] = optb
         self._is_updated = True
 
-    def get_support(self, indices=False, names=False):
+    def get_support(
+        self,
+        indices: bool = False,
+        names: bool = False
+    ) -> np.ndarray:
         """Get a mask, or integer index, or names of the variables selected.
 
         Parameters

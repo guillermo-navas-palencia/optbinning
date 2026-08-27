@@ -11,6 +11,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from scipy import stats
@@ -60,7 +61,25 @@ COLORS_RGB = [
     (175, 147, 152), (98, 158, 153), (255, 255, 255), (0, 0, 0)]
 
 
-def bin_str_format(bins, show_digits):
+def bin_str_format(
+    bins: npt.NDArray | list,
+    show_digits: int | None
+) -> list[str]:
+    """Format bin boundaries into string representation.
+
+    Parameters
+    ----------
+    bins : numpy.ndarray or list
+        Array of bin boundaries.
+
+    show_digits : int or None
+        Number of decimal digits to display. If None, defaults to 2.
+
+    Returns
+    -------
+    bin_str : list of str
+        List of formatted bin labels.
+    """
     show_digits = 2 if show_digits is None else show_digits
 
     bin_str = []
@@ -77,7 +96,33 @@ def bin_str_format(bins, show_digits):
     return bin_str
 
 
-def bin_categorical(splits_categorical, categories, cat_others, user_splits):
+def bin_categorical(
+    splits_categorical: npt.NDArray | list,
+    categories: npt.NDArray | list,
+    cat_others: list | None,
+    user_splits: dict | None
+) -> list:
+    """Bin categorical variable based on splits.
+
+    Parameters
+    ----------
+    splits_categorical : numpy.ndarray or list
+        Split points for categorical binning.
+
+    categories : numpy.ndarray or list
+        Array of unique categories.
+
+    cat_others : list or None
+        Categories to group as "others" bin.
+
+    user_splits : dict or None
+        User-defined split information.
+
+    Returns
+    -------
+    bins : list
+        List of binned categories.
+    """
     splits = np.ceil(splits_categorical).astype(int)
     n_categories = len(categories)
 
@@ -109,7 +154,28 @@ def bin_categorical(splits_categorical, categories, cat_others, user_splits):
     return bins
 
 
-def target_info(y, cl=0):
+def target_info(
+    y: npt.NDArray,
+    cl: int = 0
+) -> tuple[int, int]:
+    """Compute target counts for binary classification.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Target array.
+
+    cl : int (default=0)
+        Class value to use as non-event.
+
+    Returns
+    -------
+    n_nonevent : int
+        Count of non-events.
+
+    n_event : int
+        Count of events.
+    """
     if not len(y):
         return 0, 0
     else:
@@ -120,7 +186,32 @@ def target_info(y, cl=0):
         return n_nonevent, n_event
 
 
-def target_info_samples(y, sw, cl=0):
+def target_info_samples(
+    y: npt.NDArray,
+    sw: npt.NDArray,
+    cl: int = 0
+) -> tuple[float, float]:
+    """Compute weighted target counts for binary classification.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Target array.
+
+    sw : numpy.ndarray
+        Sample weights array.
+
+    cl : int (default=0)
+        Class value to use as non-event.
+
+    Returns
+    -------
+    n_nonevent : float
+        Weighted count of non-events.
+
+    n_event : float
+        Weighted count of events.
+    """
     if not len(y):
         return 0, 0
     elif not len(sw):
@@ -133,7 +224,40 @@ def target_info_samples(y, sw, cl=0):
         return n_nonevent, n_event
 
 
-def target_info_special(special_codes, x, y, sw, cl=0):
+def target_info_special(
+    special_codes: dict | list | None,
+    x: npt.NDArray,
+    y: npt.NDArray,
+    sw: npt.NDArray,
+    cl: int = 0
+) -> tuple[list | int, list | int]:
+    """Compute target info for special codes.
+
+    Parameters
+    ----------
+    special_codes : dict, list, or None
+        Special codes to treat separately.
+
+    x : numpy.ndarray
+        Feature array.
+
+    y : numpy.ndarray
+        Target array.
+
+    sw : numpy.ndarray
+        Sample weights array.
+
+    cl : int (default=0)
+        Class value to use as non-event.
+
+    Returns
+    -------
+    n_nonevent : list or int
+        Non-event counts for special codes.
+
+    n_event : list or int
+        Event counts for special codes.
+    """
     if isinstance(special_codes, dict):
         n_nonevent = []
         n_event = []
@@ -150,7 +274,33 @@ def target_info_special(special_codes, x, y, sw, cl=0):
         return target_info_samples(y, sw, cl)
 
 
-def target_info_special_multiclass(special_codes, x, y, classes):
+def target_info_special_multiclass(
+    special_codes: dict | list | None,
+    x: npt.NDArray,
+    y: npt.NDArray,
+    classes: list
+) -> list[int]:
+    """Compute target info for special codes (multiclass).
+
+    Parameters
+    ----------
+    special_codes : dict, list, or None
+        Special codes to treat separately.
+
+    x : numpy.ndarray
+        Feature array.
+
+    y : numpy.ndarray
+        Target array.
+
+    classes : list
+        List of class values.
+
+    Returns
+    -------
+    n_event : list of int
+        Event counts for special codes by class.
+    """
     if isinstance(special_codes, dict):
         n_event = []
         xt = pd.Series(x)
@@ -165,7 +315,49 @@ def target_info_special_multiclass(special_codes, x, y, classes):
     return n_event
 
 
-def target_info_special_continuous(special_codes, x, y, sw):
+def target_info_special_continuous(
+    special_codes: dict | list | None,
+    x: npt.NDArray,
+    y: npt.NDArray,
+    sw: npt.NDArray
+) -> tuple[list | float, list | float, list | int, list | float | None,
+           list | float | None, list | float | None]:
+    """Compute target info for special codes (continuous target).
+
+    Parameters
+    ----------
+    special_codes : dict, list, or None
+        Special codes to treat separately.
+
+    x : numpy.ndarray
+        Feature array.
+
+    y : numpy.ndarray
+        Target array.
+
+    sw : numpy.ndarray
+        Sample weights array.
+
+    Returns
+    -------
+    n_records : list or float
+        Record counts for special codes.
+
+    sum_target : list or float
+        Sum of target values for special codes.
+
+    n_zeros : list or int
+        Count of zero values for special codes.
+
+    std_target : list of float or None
+        Standard deviation of target for special codes.
+
+    min_target : list of float or None
+        Minimum target value for special codes.
+
+    max_target : list of float or None
+        Maximum target value for special codes.
+    """
     if isinstance(special_codes, dict):
         n_records_special = []
         sum_special = []
@@ -222,9 +414,60 @@ def target_info_special_continuous(special_codes, x, y, sw):
             min_target_special, max_target_special)
 
 
-def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
-             n_event_missing, n_nonevent_special, n_event_special,
-             n_nonevent_cat_others, n_event_cat_others, cat_others):
+def bin_info(
+    solution: npt.NDArray | list,
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    n_nonevent_missing: int,
+    n_event_missing: int,
+    n_nonevent_special: int | list,
+    n_event_special: int | list,
+    n_nonevent_cat_others: int,
+    n_event_cat_others: int,
+    cat_others: list | None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute binning information for binary target.
+
+    Parameters
+    ----------
+    solution : numpy.ndarray or list
+        Solution array indicating selected bins.
+
+    n_nonevent : numpy.ndarray
+        Non-event counts per bin.
+
+    n_event : numpy.ndarray
+        Event counts per bin.
+
+    n_nonevent_missing : int
+        Non-event count for missing values.
+
+    n_event_missing : int
+        Event count for missing values.
+
+    n_nonevent_special : int or list
+        Non-event count(s) for special codes.
+
+    n_event_special : int or list
+        Event count(s) for special codes.
+
+    n_nonevent_cat_others : int
+        Non-event count for "others" category.
+
+    n_event_cat_others : int
+        Event count for "others" category.
+
+    cat_others : list or None
+        Categories grouped as "others".
+
+    Returns
+    -------
+    n_nonevent_final : numpy.ndarray
+        Final non-event counts.
+
+    n_event_final : numpy.ndarray
+        Final event counts.
+    """
 
     n_nev = []
     n_ev = []
@@ -261,8 +504,37 @@ def bin_info(solution, n_nonevent, n_event, n_nonevent_missing,
     return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
 
 
-def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
-                        n_event_special):
+def multiclass_bin_info(
+    solution: npt.NDArray | list,
+    n_classes: int,
+    n_event: npt.NDArray,
+    n_event_missing: npt.NDArray,
+    n_event_special: list | npt.NDArray
+) -> np.ndarray:
+    """Compute binning information for multiclass target.
+
+    Parameters
+    ----------
+    solution : numpy.ndarray or list
+        Solution array indicating selected bins.
+
+    n_classes : int
+        Number of classes.
+
+    n_event : numpy.ndarray
+        Event counts per bin and class.
+
+    n_event_missing : numpy.ndarray
+        Event counts for missing values by class.
+
+    n_event_special : list or numpy.ndarray
+        Event counts for special codes by class.
+
+    Returns
+    -------
+    n_event_final : numpy.ndarray
+        Final event counts organized by bin and class.
+    """
     n_ev = []
     accum_ev = np.zeros(n_classes)
     for i, selected in enumerate(solution):
@@ -285,18 +557,167 @@ def multiclass_bin_info(solution, n_classes, n_event, n_event_missing,
     return np.array(n_ev).astype(np.int64)
 
 
-def nstd(s, ss, records):
+def nstd(
+    s: float | npt.NDArray,
+    ss: float | npt.NDArray,
+    records: int | npt.NDArray
+) -> float | np.ndarray:
+    """Compute standard deviation from sum and sum of squares.
+
+    Parameters
+    ----------
+    s : float or numpy.ndarray
+        Sum of values.
+
+    ss : float or numpy.ndarray
+        Sum of squared values.
+
+    records : int or numpy.ndarray
+        Number of records.
+
+    Returns
+    -------
+    std : float or numpy.ndarray
+        Standard deviation.
+    """
     return np.sqrt(ss / records - (s / records) ** 2)
 
 
-def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
-                        max_target, n_zeros, n_records_missing, sum_missing,
-                        std_missing,  min_target_missing, max_target_missing,
-                        n_zeros_missing, n_records_special, sum_special,
-                        std_special, min_target_special, max_target_special,
-                        n_zeros_special, n_records_cat_others, sum_cat_others,
-                        std_cat_others, min_target_others, max_target_others,
-                        n_zeros_others, cat_others):
+def continuous_bin_info(
+    solution: npt.NDArray | list,
+    n_records: npt.NDArray,
+    sums: npt.NDArray,
+    ssums: npt.NDArray,
+    stds: npt.NDArray,
+    min_target: npt.NDArray,
+    max_target: npt.NDArray,
+    n_zeros: npt.NDArray,
+    n_records_missing: int,
+    sum_missing: float,
+    std_missing: float,
+    min_target_missing: float,
+    max_target_missing: float,
+    n_zeros_missing: int,
+    n_records_special: int | list,
+    sum_special: float | list,
+    std_special: float | list,
+    min_target_special: float | list,
+    max_target_special: float | list,
+    n_zeros_special: int | list,
+    n_records_cat_others: int,
+    sum_cat_others: float,
+    std_cat_others: float,
+    min_target_others: float,
+    max_target_others: float,
+    n_zeros_others: int,
+    cat_others: list | None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+           np.ndarray]:
+    """Compute binning information for continuous target.
+
+    Parameters
+    ----------
+    solution : numpy.ndarray or list
+        Solution array indicating selected bins.
+
+    n_records : numpy.ndarray
+        Record counts per bin.
+
+    sums : numpy.ndarray
+        Sum of target values per bin.
+
+    ssums : numpy.ndarray
+        Sum of squared target values per bin.
+
+    stds : numpy.ndarray
+        Standard deviation per bin.
+
+    min_target : numpy.ndarray
+        Minimum target value per bin.
+
+    max_target : numpy.ndarray
+        Maximum target value per bin.
+
+    n_zeros : numpy.ndarray
+        Count of zero values per bin.
+
+    n_records_missing : int
+        Record count for missing values.
+
+    sum_missing : float
+        Sum of target values for missing.
+
+    std_missing : float
+        Standard deviation for missing.
+
+    min_target_missing : float
+        Minimum target for missing.
+
+    max_target_missing : float
+        Maximum target for missing.
+
+    n_zeros_missing : int
+        Count of zeros for missing.
+
+    n_records_special : int or list
+        Record count(s) for special codes.
+
+    sum_special : float or list
+        Sum of target for special codes.
+
+    std_special : float or list
+        Standard deviation for special codes.
+
+    min_target_special : float or list
+        Minimum target for special codes.
+
+    max_target_special : float or list
+        Maximum target for special codes.
+
+    n_zeros_special : int or list
+        Count of zeros for special codes.
+
+    n_records_cat_others : int
+        Record count for "others" category.
+
+    sum_cat_others : float
+        Sum of target for "others".
+
+    std_cat_others : float
+        Standard deviation for "others".
+
+    min_target_others : float
+        Minimum target for "others".
+
+    max_target_others : float
+        Maximum target for "others".
+
+    n_zeros_others : int
+        Count of zeros for "others".
+
+    cat_others : list or None
+        Categories grouped as "others".
+
+    Returns
+    -------
+    n_records_final : numpy.ndarray
+        Final record counts.
+
+    sums_final : numpy.ndarray
+        Final sum of target values.
+
+    stds_final : numpy.ndarray
+        Final standard deviations.
+
+    min_target_final : numpy.ndarray
+        Final minimum target values.
+
+    max_target_final : numpy.ndarray
+        Final maximum target values.
+
+    n_zeros_final : numpy.ndarray
+        Final count of zeros.
+    """
     r = []
     s = []
     st = []
@@ -378,7 +799,10 @@ def continuous_bin_info(solution, n_records, sums, ssums, stds, min_target,
             np.array(max_t).astype(np.float64), np.array(z).astype(np.int64))
 
 
-def _check_build_parameters(show_digits, add_totals):
+def _check_build_parameters(
+    show_digits: int,
+    add_totals: bool
+) -> None:
     if (not isinstance(show_digits, numbers.Integral) or
             not 0 <= show_digits <= 8):
         raise ValueError("show_digits must be an integer in [0, 8]; "
@@ -389,21 +813,24 @@ def _check_build_parameters(show_digits, add_totals):
                         .format(add_totals))
 
 
-def _check_is_built(table):
+def _check_is_built(table: object) -> None:
     if not table._is_built:
         raise NotFittedError("This {} instance is not built yet. Call "
                              "'build' with appropriate arguments."
                              .format(table.__class__.__name__))
 
 
-def _check_is_analyzed(table):
+def _check_is_analyzed(table: object) -> None:
     if not table._is_analyzed:
         raise NotFittedError("This {} instance is not analyzed yet. Call "
                              "'analysis' with appropriate arguments."
                              .format(table.__class__.__name__))
 
 
-def _bin_str_label_format(bin_str, max_length=27):
+def _bin_str_label_format(
+    bin_str: list[str],
+    max_length: int = 27
+) -> list[str]:
     _bin_str = []
     for bs in bin_str:
         label = str(bs)
@@ -453,7 +880,7 @@ class BinningTable:
     cat_others : list, numpy.ndarray or None, optional (default=None)
         List of categories in others' bin.
 
-    user_splits: numpy.ndarray
+    user_splits: numpy.ndarray or None, optional (default=None)
         List of split points pass if prebins were passed by the user.
 
     Warning
@@ -462,9 +889,20 @@ class BinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, special_codes, splits, n_nonevent, n_event,
-                 min_x=None, max_x=None, categories=None, cat_others=None,
-                 user_splits=None):
+    def __init__(
+        self,
+        name: str,
+        dtype: str,
+        special_codes: dict | list | None,
+        splits: npt.NDArray,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray,
+        min_x: float | None = None,
+        max_x: float | None = None,
+        categories: npt.NDArray | list | None = None,
+        cat_others: npt.NDArray | list | None = None,
+        user_splits: npt.NDArray | None = None,
+    ) -> None:
 
         self.name = name
         self.dtype = dtype
@@ -495,7 +933,11 @@ class BinningTable:
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True):
+    def build(
+        self,
+        show_digits: int = 2,
+        add_totals: bool = True
+    ) -> pd.DataFrame:
         """Build the binning table.
 
         Parameters
@@ -555,11 +997,19 @@ class BinningTable:
         self._triangular = triangular(p_ev, p_nev, return_sum=True)
 
         # Compute KS
-        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+        if len(p_ev):
+            self._ks = np.abs(np.cumsum(p_ev) - np.cumsum(p_nev)).max()
+        else:
+            self._ks = 0.0
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Keep data for plotting
         self._n_records = n_records
@@ -607,9 +1057,17 @@ class BinningTable:
 
         return df
 
-    def plot(self, metric="woe", add_special=True, add_missing=True,
-             style="bin", show_bin_labels=False, savefig=None, figsize=None,
-             save_kwargs=None):
+    def plot(
+        self,
+        metric: str = "woe",
+        add_special: bool = True,
+        add_missing: bool = True,
+        style: str = "bin",
+        show_bin_labels: bool = False,
+        savefig: str | None = None,
+        figsize: tuple | None = None,
+        save_kwargs: dict | None = None,
+    ) -> None:
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -778,7 +1236,7 @@ class BinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:
@@ -876,7 +1334,12 @@ class BinningTable:
             plt.savefig(savefig, **save_kwargs)
             plt.close()
 
-    def analysis(self, pvalue_test="chi2", n_samples=100, print_output=True):
+    def analysis(
+        self,
+        pvalue_test: str = "chi2",
+        n_samples: int = 100,
+        print_output: bool = True
+    ) -> None:
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the statistics
@@ -1124,7 +1587,14 @@ class MulticlassBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, special_codes, splits, n_event, classes):
+    def __init__(
+        self,
+        name: str,
+        special_codes: dict | list | None,
+        splits: npt.NDArray,
+        n_event: npt.NDArray,
+        classes: list,
+    ) -> None:
         self.name = name
         self.special_codes = special_codes
         self.splits = splits
@@ -1143,7 +1613,11 @@ class MulticlassBinningTable:
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True):
+    def build(
+        self,
+        show_digits: int = 2,
+        add_totals: bool = True
+    ) -> pd.DataFrame:
         """Build the binning table.
 
         Parameters
@@ -1177,9 +1651,15 @@ class MulticlassBinningTable:
         p_event = self.n_event / self.n_event.sum(axis=0)
         self._js = jensen_shannon_multivariate(p_event)
 
-        # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        # Compute HHI on valid bins only
+        valid_mask = n_records > 0
+        p_records_mask = p_records[valid_mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Keep data for plotting
         self._n_records = n_records
@@ -1225,8 +1705,14 @@ class MulticlassBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, show_bin_labels=False,
-             savefig=None, figsize=None):
+    def plot(
+        self,
+        add_special: bool = True,
+        add_missing: bool = True,
+        show_bin_labels: bool = False,
+        savefig: str | None = None,
+        figsize: tuple | None = None,
+    ) -> None:
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1298,7 +1784,7 @@ class MulticlassBinningTable:
 
         p = []
         cum_size = np.zeros(n_bins)
-        for i, cl in enumerate(self.classes):
+        for i in range(len(self.classes)):
             p.append(ax1.bar(range(n_bins), _n_event[i],
                              color=colors[i], bottom=cum_size))
             cum_size += _n_event[i]
@@ -1348,7 +1834,7 @@ class MulticlassBinningTable:
             label_missing = "Bin missing"
 
             for i, cl in enumerate(self.classes):
-                ax2.plot(pos_missing, metric_values[pos_missing, i],
+                ax2.plot(pos_missing, metric_values[-1, i],
                          marker="o", color=colors[i])
 
         if add_special and add_missing:
@@ -1395,7 +1881,10 @@ class MulticlassBinningTable:
             plt.savefig(savefig)
             plt.close()
 
-    def analysis(self, print_output=True):
+    def analysis(
+        self,
+        print_output: bool = True
+    ) -> None:
         """Binning table analysis.
 
         Statistical analysis of the binning table, computing the Jensen-shannon
@@ -1565,7 +2054,7 @@ class ContinuousBinningTable:
     cat_others : list, numpy.ndarray or None, optional (default=None)
         List of categories in others' bin.
 
-    user_splits: numpy.ndarray
+    user_splits: numpy.ndarray or None, optional (default=None)
         List of split points pass if prebins were passed by the user.
 
     Warning
@@ -1574,9 +2063,24 @@ class ContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, dtype, special_codes, splits, n_records, sums,
-                 stds, min_target, max_target, n_zeros, min_x=None, max_x=None,
-                 categories=None, cat_others=None, user_splits=None):
+    def __init__(
+        self,
+        name: str,
+        dtype: str,
+        special_codes: dict | list | None,
+        splits: npt.NDArray,
+        n_records: npt.NDArray,
+        sums: npt.NDArray,
+        stds: npt.NDArray,
+        min_target: npt.NDArray,
+        max_target: npt.NDArray,
+        n_zeros: npt.NDArray,
+        min_x: float | None = None,
+        max_x: float | None = None,
+        categories: npt.NDArray | list | None = None,
+        cat_others: npt.NDArray | list | None = None,
+        user_splits: npt.NDArray | None = None,
+    ) -> None:
 
         self.name = name
         self.dtype = dtype
@@ -1608,9 +2112,12 @@ class ContinuousBinningTable:
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True):
-        """
-        Build the binning table.
+    def build(
+        self,
+        show_digits: int = 2,
+        add_totals: bool = True
+    ) -> pd.DataFrame:
+        """Build the binning table.
 
         Parameters
         ----------
@@ -1648,8 +2155,13 @@ class ContinuousBinningTable:
         self._t_mean = t_mean
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # special codes info
         if isinstance(self.special_codes, dict):
@@ -1697,8 +2209,16 @@ class ContinuousBinningTable:
 
         return df
 
-    def plot(self, add_special=True, add_missing=True, style="bin",
-             show_bin_labels=False, savefig=None, figsize=None, metric='mean'):
+    def plot(
+        self,
+        add_special: bool = True,
+        add_missing: bool = True,
+        style: str = "bin",
+        show_bin_labels: bool = False,
+        savefig: str | None = None,
+        figsize: tuple | None = None,
+        metric: str = 'mean'
+    ) -> None:
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -1858,7 +2378,7 @@ class ContinuousBinningTable:
                 handle_missing = mpatches.Patch(hatch="\\", alpha=0.1)
                 label_missing = "Bin missing"
 
-                ax2.plot(pos_missing, metric_values[pos_missing], marker="o",
+                ax2.plot(pos_missing, metric_values[-1], marker="o",
                          color="black")
 
             if add_special and add_missing:
@@ -1948,7 +2468,10 @@ class ContinuousBinningTable:
             plt.savefig(savefig)
             plt.close()
 
-    def analysis(self, print_output=True):
+    def analysis(
+        self,
+        print_output: bool = True
+    ) -> None:
         r"""Binning table analysis.
 
         Statistical analysis of the binning table, computing the Information

@@ -10,7 +10,10 @@ import numbers
 import pickle
 import time
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.base import BaseEstimator
@@ -229,9 +232,17 @@ class Scorecard(Base, BaseEstimator):
     intercept_ : float
         The intercept if ``intercept_based=True``.
     """
-    def __init__(self, binning_process, estimator, scaling_method=None,
-                 scaling_method_params=None, intercept_based=False,
-                 reverse_scorecard=False, rounding=False, verbose=False):
+    def __init__(
+        self,
+        binning_process: BinningProcess,
+        estimator: object,
+        scaling_method: str | None = None,
+        scaling_method_params: dict | None = None,
+        intercept_based: bool = False,
+        reverse_scorecard: bool = False,
+        rounding: bool = False,
+        verbose: bool = False,
+    ) -> None:
 
         self.binning_process = binning_process
         self.estimator = estimator
@@ -262,8 +273,16 @@ class Scorecard(Base, BaseEstimator):
 
         self._is_fitted = False
 
-    def fit(self, X, y, sample_weight=None, metric_special=0, metric_missing=0,
-            show_digits=2, check_input=False):
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: list | npt.NDArray,
+        sample_weight: list | npt.NDArray | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> Self:
         """Fit scorecard.
 
         Parameters
@@ -303,7 +322,7 @@ class Scorecard(Base, BaseEstimator):
         return self._fit(X, y, sample_weight, metric_special, metric_missing,
                          show_digits, check_input)
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -332,7 +351,7 @@ class Scorecard(Base, BaseEstimator):
             self._time_binning_process, self._time_estimator,
             self._time_build_scorecard, self._time_rounding, dict_user_options)
 
-    def predict(self, X):
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Predict using the fitted underlying estimator and the reduced
         dataset.
 
@@ -352,7 +371,7 @@ class Scorecard(Base, BaseEstimator):
 
         return self.estimator_.predict(X_t)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Predict class probabilities using the fitted underlying estimator
         and the reduced dataset.
 
@@ -372,7 +391,7 @@ class Scorecard(Base, BaseEstimator):
 
         return self.estimator_.predict_proba(X_t)
 
-    def decision_function(self, X):
+    def decision_function(self, X: pd.DataFrame) -> np.ndarray:
         """Predict confidence scores for samples.
         The confidence score for a sample is proportional to the signed
         distance of that sample to the hyperplane.
@@ -393,7 +412,7 @@ class Scorecard(Base, BaseEstimator):
 
         return self.estimator_.decision_function(X_t)
 
-    def score(self, X):
+    def score(self, X: pd.DataFrame) -> np.ndarray:
         """Score of the dataset.
 
         Parameters
@@ -420,7 +439,7 @@ class Scorecard(Base, BaseEstimator):
 
         return score_ + self.intercept_
 
-    def table(self, style="summary"):
+    def table(self, style: str = "summary") -> pd.DataFrame:
         """Scorecard table.
 
         Parameters
@@ -451,8 +470,8 @@ class Scorecard(Base, BaseEstimator):
             columns = main_columns + rest_columns
 
         return self._df_scorecard[columns]
-    
-    def transform(self, X):
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Transform the dataset in to scores.
 
         Parameters
@@ -496,7 +515,7 @@ class Scorecard(Base, BaseEstimator):
         selected_variables = self.binning_process_.get_support(names=True)
         score_ = {
             feature: (
-                self._df_scorecard[self._df_scorecard.Variable==feature]
+                self._df_scorecard[self._df_scorecard.Variable == feature]
                 .Points
                 .values[X_t[feature]]
             ) for feature in selected_variables
@@ -504,7 +523,7 @@ class Scorecard(Base, BaseEstimator):
         return pd.DataFrame(score_)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> "Scorecard":
         """Load scorecard from pickle file.
 
         Parameters
@@ -523,7 +542,7 @@ class Scorecard(Base, BaseEstimator):
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         """Save scorecard to pickle file.
 
         Parameters

@@ -972,7 +972,6 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if len(y_others):
             if len(sw_others):
-                print(y_others.dtype, sw_others.dtype)
                 y_others = y_others * sw_others
 
             self._n_records_cat_others = np.sum(sw_others)

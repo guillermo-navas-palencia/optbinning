@@ -257,3 +257,19 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def test_to_json_read_json(tmp_path):
+    # A binning object reloaded via read_json must reproduce the same
+    # transform as the originally fitted object. See GH issue #387.
+    optb = MulticlassOptimalBinning(name=variable)
+    optb.fit(x, y)
+
+    path = str(tmp_path / "optb.json")
+    optb.to_json(path)
+
+    optb_loaded = MulticlassOptimalBinning(name=variable)
+    optb_loaded.read_json(path)
+
+    assert (optb_loaded.transform(x, metric="mean_woe") ==
+            approx(optb.transform(x, metric="mean_woe"), rel=1e-5))

@@ -13,7 +13,7 @@ from sklearn.exceptions import NotFittedError
 
 
 class Base:
-    def _check_is_fitted(self):
+    def _check_is_fitted(self) -> None:
         if not self._is_fitted:
             raise NotFittedError("This {} instance is not fitted yet. Call "
                                  "'fit' with appropriate arguments."

@@ -277,3 +277,51 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def test_to_json_read_json(tmp_path):
+    # A binning object reloaded via read_json must reproduce the same
+    # transform as the originally fitted object. See GH issue #387.
+    optb = ContinuousOptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    path = str(tmp_path / "optb.json")
+    optb.to_json(path)
+
+    optb_loaded = ContinuousOptimalBinning(name=variable, dtype="numerical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x) == approx(optb.transform(x), rel=1e-6)
+
+
+def test_to_json_read_json_categorical(tmp_path):
+    # categories/cat_others are pandas/numpy array-likes and must be made
+    # JSON-serializable before being written out, otherwise to_json raises
+    # (e.g. "Object of type ndarray/ArrowStringArray is not JSON
+    # serializable"). See GH issue #387.
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randn(500)
+
+    optb = ContinuousOptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    path = str(tmp_path / "optb_cat.json")
+    optb.to_json(path)
+
+    optb_loaded = ContinuousOptimalBinning(name="x_cat", dtype="categorical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x_cat) == approx(
+        optb.transform(x_cat), rel=1e-6)
+
+def test_special_codes_dict_none_present():
+    # special_codes as a dict where none of the values occur in the
+    # data must not crash (GH #340: dict branch initialized the
+    # stat lists to None, then unconditionally .append()'d to them).
+    optb = ContinuousOptimalBinning(
+        name=variable, special_codes={'special': [-5, -6, -7, -9]})
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    optb.binning_table.build()

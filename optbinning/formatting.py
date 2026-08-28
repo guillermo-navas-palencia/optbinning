@@ -11,7 +11,7 @@ import textwrap
 import pandas as pd
 
 
-def dataframe_to_string(df, tab=None):
+def dataframe_to_string(df: pd.DataFrame, tab: int | None = None) -> str:
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas.DataFrame.")
 

@@ -6,6 +6,7 @@ Model data for optimal binning 2D formulations.
 # Copyright (C) 2020
 
 import numpy as np
+import numpy.typing as npt
 
 from ..metrics import jeffrey
 from ..metrics import jensen_shannon
@@ -13,8 +14,17 @@ from ..metrics import hellinger
 from ..metrics import triangular
 
 
-def _connected_rectangles(m, n, n_rectangles, monotonicity_x, monotonicity_y,
-                          rows, cols, outer_x, outer_y):
+def _connected_rectangles(
+    m: int,
+    n: int,
+    n_rectangles: int,
+    monotonicity_x: str | None,
+    monotonicity_y: str | None,
+    rows,
+    cols,
+    outer_x,
+    outer_y,
+) -> tuple[dict | None, dict | None]:
 
     d_connected_x = None
     d_connected_y = None
@@ -46,9 +56,21 @@ def _connected_rectangles(m, n, n_rectangles, monotonicity_x, monotonicity_y,
     return d_connected_x, d_connected_y
 
 
-def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
-               min_bin_size, max_bin_size, min_bin_n_event, max_bin_n_event,
-               min_bin_n_nonevent, max_bin_n_nonevent):
+def model_data(
+    divergence: str,
+    NE: npt.NDArray,
+    E: npt.NDArray,
+    monotonicity_x: str | None,
+    monotonicity_y: str | None,
+    scale: int,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+    min_bin_n_event: int | None,
+    max_bin_n_event: int | None,
+    min_bin_n_nonevent: int | None,
+    max_bin_n_nonevent: int | None,
+) -> tuple[int, int, list, dict, np.ndarray, dict | None, dict | None,
+           np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # Compute all rectangles and event and non-event records
     m, n = E.shape
     n_grid = m * n
@@ -166,8 +188,17 @@ def model_data(divergence, NE, E, monotonicity_x, monotonicity_y, scale,
             event_rate, n_event, n_nonevent, n_records)
 
 
-def continuous_model_data(R, S, SS, monotonicity_x, monotonicity_y, scale,
-                          min_bin_size, max_bin_size):
+def continuous_model_data(
+    R: npt.NDArray,
+    S: npt.NDArray,
+    SS: npt.NDArray,
+    monotonicity_x: str | None,
+    monotonicity_y: str | None,
+    scale: int,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+) -> tuple[int, int, list, dict, np.ndarray, dict | None, dict | None,
+           np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # Compute all rectangles and event and non-event records
     m, n = R.shape
     n_grid = m * n

@@ -6,6 +6,7 @@ Metrics to asses performance of regression models.
 # Copyright (C) 2021
 
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import mean_absolute_error
@@ -14,7 +15,10 @@ from sklearn.metrics import median_absolute_error
 from sklearn.metrics import r2_score
 
 
-def mean_absolute_percentage_error(y_true, y_pred):
+def mean_absolute_percentage_error(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> float:
     """Compute the mean absolute percentage error (MAPE).
 
     Parameters
@@ -32,7 +36,10 @@ def mean_absolute_percentage_error(y_true, y_pred):
     return np.abs((y_true - y_pred) / y_true).mean()
 
 
-def median_absolute_percentage_error(y_true, y_pred):
+def median_absolute_percentage_error(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> float:
     """Compute the median absolute percentage error (MdAPE).
 
     Parameters
@@ -50,7 +57,10 @@ def median_absolute_percentage_error(y_true, y_pred):
     return np.median(np.abs((y_true - y_pred) / y_true))
 
 
-def mean_percentage_error(y_true, y_pred):
+def mean_percentage_error(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> float:
     """Compute the mean percentage error (MPE).
 
     Parameters
@@ -68,7 +78,10 @@ def mean_percentage_error(y_true, y_pred):
     return ((y_true - y_pred) / y_true).mean()
 
 
-def symmetric_mean_absolute_percentage_error(y_true, y_pred):
+def symmetric_mean_absolute_percentage_error(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> float:
     """Compute the symmetric mean absolute percentage error (SMAPE).
 
     Parameters
@@ -87,7 +100,10 @@ def symmetric_mean_absolute_percentage_error(y_true, y_pred):
     return (e / (np.abs(y_true) + np.abs(y_pred))).mean()
 
 
-def symmetric_median_absolute_percentage_error(y_true, y_pred):
+def symmetric_median_absolute_percentage_error(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> float:
     """Compute the symmetric median absolute percentage error (SMdAPE).
 
     Parameters
@@ -106,7 +122,10 @@ def symmetric_median_absolute_percentage_error(y_true, y_pred):
     return np.median(e / (np.abs(y_true) + np.abs(y_pred)))
 
 
-def regression_metrics(y_true, y_pred):
+def regression_metrics(
+    y_true: npt.NDArray | list,
+    y_pred: npt.NDArray | list
+) -> dict[str, float]:
     """Compute regression metrics.
 
     Parameters

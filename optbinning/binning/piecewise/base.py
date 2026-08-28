@@ -8,7 +8,10 @@ Optimal piecewise continuous binning algorithm.
 import numbers
 import time
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from ropwr import RobustPWRegression
 from sklearn.base import BaseEstimator
@@ -22,6 +25,7 @@ from ...binning.preprocessing import split_data
 from ...logging import Logger
 from .binning_information import print_binning_information
 from .binning_information import retrieve_status
+from .binning_statistics import PWBinningTable
 
 
 logger = Logger(__name__).logger
@@ -172,8 +176,8 @@ def _check_parameters(name, estimator, objective, degree, continuous,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digist must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if solver not in ("auto", "ecos", "osqp", "direct", "scs", "highs"):
@@ -283,7 +287,14 @@ class BasePWBinning(Base, BaseEstimator):
 
         self._is_fitted = False
 
-    def fit(self, x, y, lb=None, ub=None, check_input=False):
+    def fit(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        lb: float | None = None,
+        ub: float | None = None,
+        check_input: bool = False,
+    ) -> Self:
         """Fit the optimal piecewise binning according to the given training
         data.
 
@@ -305,7 +316,7 @@ class BasePWBinning(Base, BaseEstimator):
         """
         return self._fit(x, y, lb, ub, check_input)
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings, problem
         statistics, and the solution of the computation.
 
@@ -486,22 +497,21 @@ class BasePWBinning(Base, BaseEstimator):
                         .format(self._time_solver))
 
     @property
-    def binning_table(self):
+    def binning_table(self) -> PWBinningTable:
         """Return an instantiated binning table. Please refer to
         :ref:`Binning table: binary target`.
 
         Returns
         -------
-        binning_table : BinningTable.
+        binning_table : PWBinningTable.
         """
         self._check_is_fitted()
 
         return self._binning_table
 
     @property
-    def splits(self):
-        """List of optimal split points when ``dtype`` is set to "numerical" or
-        list of optimal bins when ``dtype`` is set to "categorical".
+    def splits(self) -> np.ndarray:
+        """List of optimal split points.
 
         Returns
         -------
@@ -512,7 +522,7 @@ class BasePWBinning(Base, BaseEstimator):
         return self._optb.splits
 
     @property
-    def status(self):
+    def status(self) -> str:
         """The status of the underlying optimization solver.
 
         Returns

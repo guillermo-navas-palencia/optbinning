@@ -6,6 +6,7 @@ Optimal binning metrics.
 # Copyright (C) 2019
 
 import numpy as np
+import numpy.typing as npt
 
 from scipy import special
 from scipy import stats
@@ -13,7 +14,7 @@ from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
 
 
-def _check_x_y(x, y):
+def _check_x_y(x: npt.ArrayLike, y: npt.ArrayLike) -> tuple[np.ndarray, ...]:
     x = check_array(x, ensure_2d=False, ensure_all_finite=True)
     y = check_array(y, ensure_2d=False, ensure_all_finite=True)
 
@@ -22,7 +23,7 @@ def _check_x_y(x, y):
     return x, y
 
 
-def entropy(x):
+def entropy(x: npt.ArrayLike) -> float:
     """Calculate the entropy of a discrete probability distribution.
 
     Parameters
@@ -38,7 +39,7 @@ def entropy(x):
     return -special.xlogy(x, x).sum()
 
 
-def gini(event, nonevent):
+def gini(event: npt.ArrayLike, nonevent: npt.ArrayLike) -> float:
     """Calculate the Gini coefficient given the number of events and
     non-events.
 
@@ -78,7 +79,11 @@ def gini(event, nonevent):
         return 1.0 - np.dot(ev, ne + s) / (te * tne)
 
 
-def kullback_leibler(x, y, return_sum=False):
+def kullback_leibler(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    return_sum: bool = False
+) -> float | np.ndarray:
     """Calculate the Kullback-Leibler divergence between two distributions.
 
     Parameters
@@ -104,7 +109,11 @@ def kullback_leibler(x, y, return_sum=False):
         return special.xlogy(x, x / y)
 
 
-def jeffrey(x, y, return_sum=False):
+def jeffrey(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    return_sum: bool = False
+) -> float | np.ndarray:
     """Calculate the Jeffrey's divergence between two distributions.
 
     Parameters
@@ -132,7 +141,11 @@ def jeffrey(x, y, return_sum=False):
         return j
 
 
-def jensen_shannon(x, y, return_sum=False):
+def jensen_shannon(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    return_sum: bool = False
+) -> float | np.ndarray:
     """Calculate the Jensen-Shannon divergence between two distributions.
 
     Parameters
@@ -157,7 +170,10 @@ def jensen_shannon(x, y, return_sum=False):
                   kullback_leibler(y, m, return_sum))
 
 
-def jensen_shannon_multivariate(X, weights=None):
+def jensen_shannon_multivariate(
+    X: npt.NDArray,
+    weights: npt.ArrayLike | None = None
+) -> float:
     """Calculate Jensen-Shannon divergence between several distributions.
 
     Parameters
@@ -196,7 +212,11 @@ def jensen_shannon_multivariate(X, weights=None):
     return js
 
 
-def hellinger(x, y, return_sum=False):
+def hellinger(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    return_sum: bool = False
+) -> float | np.ndarray:
     """Calculate the Hellinger discrimination between two distributions.
 
     Parameters
@@ -224,7 +244,11 @@ def hellinger(x, y, return_sum=False):
         return h
 
 
-def triangular(x, y, return_sum=False):
+def triangular(
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    return_sum: bool = False
+) -> float | np.ndarray:
     """Calculate the LeCam or triangular discrimination between two
     distributions.
 
@@ -253,7 +277,12 @@ def triangular(x, y, return_sum=False):
         return t
 
 
-def test_proportions(e1, ne1, e2, ne2):
+def test_proportions(
+    e1: int,
+    ne1: int,
+    e2: int,
+    ne2: int
+) -> tuple[float, float]:
     n1 = e1 + ne1
     n2 = e2 + ne2
     p1 = e1 / n1
@@ -268,7 +297,10 @@ def test_proportions(e1, ne1, e2, ne2):
     return statistic, 2 * pvalue
 
 
-def frequentist_pvalue(obs, pvalue_method):
+def frequentist_pvalue(
+    obs: npt.ArrayLike,
+    pvalue_method: str
+) -> tuple[float, float]:
     if pvalue_method == "chi2":
         t, p, _, _ = stats.chi2_contingency(obs, correction=False)
         return t, p
@@ -277,23 +309,29 @@ def frequentist_pvalue(obs, pvalue_method):
         return oddratio, p
 
 
-def chi2_cramer_v(n_nev, n_ev):
+def chi2_cramer_v(
+    n_nev: npt.ArrayLike,
+    n_ev: npt.ArrayLike
+) -> tuple[float, float]:
     obs = np.array([n_nev, n_ev])
-    t, p, _, _ = stats.chi2_contingency(obs, correction=False)
+    t, _, _, _ = stats.chi2_contingency(obs, correction=False)
     cramer_v = (t / (n_nev.sum() + n_ev.sum())) ** 0.5
 
     return t, cramer_v
 
 
-def chi2_cramer_v_multi(n_ev):
+def chi2_cramer_v_multi(n_ev: npt.NDArray) -> tuple[float, float]:
     r, k = n_ev.shape
-    t, p, _, _ = stats.chi2_contingency(n_ev, correction=False)
+    t, _, _, _ = stats.chi2_contingency(n_ev, correction=False)
     cramer_v = (t / n_ev.sum() / min(k - 1, r - 1)) ** 0.5
 
     return t, cramer_v
 
 
-def bayesian_probability(obs, n_samples):
+def bayesian_probability(
+    obs: npt.NDArray,
+    n_samples: int
+) -> tuple[float, float]:
     aA, aB, bA, bB = obs.ravel()
 
     r = np.arange(1, n_samples + 1)
@@ -304,7 +342,7 @@ def bayesian_probability(obs, n_samples):
     return p, 1 - p
 
 
-def hhi(s, normalized=False):
+def hhi(s: npt.ArrayLike, normalized: bool = False) -> float:
     """Compute the Herfindahl–Hirschman Index (HHI).
 
     Parameters
@@ -314,6 +352,10 @@ def hhi(s, normalized=False):
 
     normalized : bool (default=False)
         Whether to compute the normalized HHI.
+
+    Returns
+    -------
+    hhi : float
     """
     s = np.asarray(s)
     h = np.sum(s ** 2)
@@ -329,7 +371,11 @@ def hhi(s, normalized=False):
     return h
 
 
-def binning_quality_score(iv, p_values, hhi_norm):
+def binning_quality_score(
+    iv: float,
+    p_values: npt.ArrayLike,
+    hhi_norm: float
+) -> float:
     # Score 1: Information value
     c = 0.39573882184806863
     score_1 = iv * np.exp(1/2 * (1 - (iv / c) ** 2)) / c
@@ -344,13 +390,22 @@ def binning_quality_score(iv, p_values, hhi_norm):
     return score_1 * score_2 * score_3
 
 
-def multiclass_binning_quality_score(js, n_classes, p_values, hhi_norm):
+def multiclass_binning_quality_score(
+    js: float,
+    n_classes: int,
+    p_values: npt.ArrayLike,
+    hhi_norm: float
+) -> float:
     js_norm = js / np.log(n_classes)
 
     return binning_quality_score(js_norm, p_values, hhi_norm)
 
 
-def continuous_binning_quality_score(rwoe, p_values, hhi_norm):
+def continuous_binning_quality_score(
+    rwoe: float,
+    p_values: npt.ArrayLike,
+    hhi_norm: float
+) -> float:
     # Score 1: ratio sum absolute WoEs / mean
     if rwoe == 0:
         score_1 = 0

@@ -6,6 +6,7 @@ Binning 2D transformations.
 # Copyright (C) 2021
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.utils import check_array
@@ -105,11 +106,25 @@ def _apply_transform(dtype_x, dtype_y, splits_x, splits_y, special_codes_x,
     return z_transform
 
 
-def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
-                            n_nonevent, n_event, special_codes_x,
-                            special_codes_y, categories_x, categories_y,
-                            metric, metric_special, metric_missing,
-                            show_digits, check_input=False):
+def transform_binary_target(
+    dtype_x: str,
+    dtype_y: str,
+    splits_x,
+    splits_y,
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    special_codes_x: list | npt.NDArray | None,
+    special_codes_y: list | npt.NDArray | None,
+    categories_x,
+    categories_y,
+    metric: str,
+    metric_special: float | str,
+    metric_missing: float | str,
+    show_digits: int,
+    check_input: bool = False,
+) -> np.ndarray:
 
     if metric not in ("event_rate", "woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -183,11 +198,25 @@ def transform_binary_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
     return z_transform
 
 
-def transform_continuous_target(dtype_x, dtype_y, splits_x, splits_y, x, y,
-                                n_records, sums, special_codes_x,
-                                special_codes_y, categories_x, categories_y,
-                                metric, metric_special, metric_missing,
-                                show_digits, check_input=False):
+def transform_continuous_target(
+    dtype_x: str,
+    dtype_y: str,
+    splits_x,
+    splits_y,
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    n_records: npt.NDArray,
+    sums: npt.NDArray,
+    special_codes_x: list | npt.NDArray | None,
+    special_codes_y: list | npt.NDArray | None,
+    categories_x,
+    categories_y,
+    metric: str,
+    metric_special: float | str,
+    metric_missing: float | str,
+    show_digits: int,
+    check_input: bool = False,
+) -> np.ndarray:
 
     if metric not in ("mean", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '

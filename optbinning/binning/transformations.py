@@ -43,7 +43,7 @@ def transform_event_rate_to_woe(
     # event_rate of 0 or 1 is a legitimate (pure) bin, not an error; it
     # only yields +/-inf WoE, which is the correct value. Silence the
     # resulting RuntimeWarning instead of the underlying computation.
-    with np.errstate(invalid='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         return np.log((1. / event_rate - 1) * n_event / n_nonevent)
 
 

@@ -25,7 +25,7 @@ class BaseCounterfactual(Base, BaseEstimator, metaclass=ABCMeta):
         """Generate counterfactual explanations."""
 
     @abstractmethod
-    def display(self) -> None:
+    def display(self) -> object:
         """Display counterfactual explanations."""
 
     @property

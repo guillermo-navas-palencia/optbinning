@@ -77,7 +77,7 @@ setup(
     license="Apache Licence 2.0",
     url="https://github.com/guillermo-navas-palencia/optbinning",
     cmdclass={'clean': CleanCommand},
-    python_requires='>=3.9',
+    python_requires='>=3.11',
     install_requires=install_requires,
     extras_require=extras_require,
     classifiers=[
@@ -89,8 +89,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',

@@ -314,6 +314,7 @@ def test_to_json_read_json_categorical(tmp_path):
 
     assert optb_loaded.transform(x_cat) == approx(
         optb.transform(x_cat), rel=1e-6)
+
 def test_special_codes_dict_none_present():
     # special_codes as a dict where none of the values occur in the
     # data must not crash (GH #340: dict branch initialized the

@@ -1323,5 +1323,5 @@ class OptimalBinning(BaseOptimalBinning):
         self._splits_optimal = bin_table_attr['splits']
         self._n_nonevent = bin_table_attr['n_nonevent']
         self._n_event = bin_table_attr['n_event']
-        self._categories = bin_table_attr['categories']
-        self._cat_others = bin_table_attr['cat_others']
+        self._categories = bin_table_attr.get('categories')
+        self._cat_others = bin_table_attr.get('cat_others')

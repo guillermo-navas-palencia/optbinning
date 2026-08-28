@@ -495,6 +495,29 @@ def test_binning_transform_params():
         X_transform = process.fit_transform(X[:, :3], y)
 
 
+def test_binning_transform_params_no_leak():
+    # A per-variable override in binning_transform_params must not leak
+    # into the next variable's default. See GH #355.
+    X3 = X[:, :3].copy()
+    X3[:5, 1] = np.nan  # only variable_names[1] has missing values
+
+    btp = {variable_names[0]: {"metric_missing": 99.0}}
+
+    process = BinningProcess(variable_names[:3],
+                             binning_transform_params=btp)
+    process.fit(X3, y)
+    x_transform = process.transform(X3, metric="woe")
+
+    baseline = BinningProcess(variable_names[:3])
+    baseline.fit(X3, y)
+    x_transform_baseline = baseline.transform(X3, metric="woe")
+
+    # variable_names[1]'s missing rows must use the global default
+    # (metric_missing=0), not variable_names[0]'s 99.0 override.
+    assert x_transform[:5, 1] == approx(x_transform_baseline[:5, 1])
+    assert (x_transform[:5, 1] == 0).all()
+
+
 def test_update_binned_variable():
     process = BinningProcess(variable_names)
     process.fit(X, y, check_input=True)

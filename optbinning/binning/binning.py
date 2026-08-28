@@ -1267,9 +1267,11 @@ class OptimalBinning(BaseOptimalBinning):
         opt_bin_dict['min_x'] = table.min_x
         opt_bin_dict['max_x'] = table.max_x
         opt_bin_dict['categories'] = (
-            list(table.categories) if table.categories is not None else None)
+            np.asarray(table.categories).tolist()
+            if table.categories is not None else None)
         opt_bin_dict['cat_others'] = (
-            list(table.cat_others) if table.cat_others is not None else None)
+            np.asarray(table.cat_others).tolist()
+            if table.cat_others is not None else None)
         opt_bin_dict['user_splits'] = (
             list(table.user_splits) if table.user_splits is not None
             else None)
@@ -1295,8 +1297,9 @@ class OptimalBinning(BaseOptimalBinning):
 
     def read_json(self, path: str) -> None:
         """
-        Read json file containing split points and set them as the new split
-        points.
+        Load a fitted binning object previously saved with ``to_json``,
+        restoring the state required to call ``transform`` and to inspect
+        ``binning_table``.
 
         Parameters
         ----------

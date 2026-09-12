@@ -18,13 +18,13 @@ sys.path.insert(0, os.path.abspath('../..'))
 # -- Project information -----------------------------------------------------
 
 project = 'optbinning'
-copyright = '2019 - 2025, Guillermo Navas-Palencia'
+copyright = '2019 - 2026, Guillermo Navas-Palencia'
 author = 'Guillermo Navas-Palencia'
 
 # The short X.Y version
-version = '0.21.0'
+version = '1.0.0'
 # The full version, including alpha/beta/rc tags
-release = '0.21.0'
+release = '1.0.0'
 
 
 # -- General configuration ---------------------------------------------------

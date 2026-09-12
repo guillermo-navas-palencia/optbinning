@@ -1,6 +1,9 @@
 Installation
 ============
 
+OptBinning 1.0.0 requires Python 3.11 or newer. The legacy ``setup.py``
+installation workflow is no longer supported; use ``pip install`` instead.
+
 Install release
 ---------------
 

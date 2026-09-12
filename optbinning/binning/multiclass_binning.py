@@ -9,7 +9,7 @@ import numbers
 import time
 import json
 
-from typing import Self
+from typing_extensions import Self
 
 import numpy as np
 import numpy.typing as npt

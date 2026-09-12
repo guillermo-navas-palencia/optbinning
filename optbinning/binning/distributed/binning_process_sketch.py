@@ -8,7 +8,7 @@ Binning process sketch.
 import numbers
 import time
 
-from typing import Self
+from typing_extensions import Self
 from warnings import warn
 
 import numpy as np

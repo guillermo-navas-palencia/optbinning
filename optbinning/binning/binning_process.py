@@ -9,8 +9,10 @@ import numbers
 import pickle
 import time
 
-from typing import Any, Self
+from typing import Any
 from warnings import warn
+
+from typing_extensions import Self
 
 import numpy as np
 import numpy.typing as npt

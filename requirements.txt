@@ -5,3 +5,4 @@ pandas
 ropwr>=1.0.0
 scikit-learn>=1.6.0
 scipy>=1.6.0
+typing_extensions>=4.5.0

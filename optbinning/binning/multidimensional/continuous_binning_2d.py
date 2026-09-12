@@ -8,7 +8,7 @@ Optimal binning 2D algorithm for continuous target.
 import numbers
 import time
 
-from typing import Self
+from typing_extensions import Self
 
 import numpy as np
 import numpy.typing as npt

@@ -991,8 +991,9 @@ class MulticlassOptimalBinning(OptimalBinning):
 
     def read_json(self, path: str) -> None:
         """
-        Read json file containing split points and set them as the new split
-        points.
+        Load a fitted binning object previously saved with ``to_json``,
+        restoring the state required to call ``transform`` and to inspect
+        ``binning_table``.
 
         Parameters
         ----------
@@ -1010,5 +1011,12 @@ class MulticlassOptimalBinning(OptimalBinning):
         for key in multi_table_attr.keys():
             if isinstance(multi_table_attr[key], list):
                 multi_table_attr[key] = np.array(multi_table_attr[key])
+
+        # Restore the internal state used by ``transform``. Without this,
+        # a binning object reloaded via ``read_json`` raises a TypeError
+        # on ``transform`` because these attributes are only set during
+        # ``fit`` and remain None otherwise.
+        self._splits_optimal = multi_table_attr['splits']
+        self._n_event = multi_table_attr['n_event']
 
         self._binning_table = MulticlassBinningTable(**multi_table_attr)

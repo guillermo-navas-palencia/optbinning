@@ -972,7 +972,6 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if len(y_others):
             if len(sw_others):
-                print(y_others.dtype, sw_others.dtype)
                 y_others = y_others * sw_others
 
             self._n_records_cat_others = np.sum(sw_others)
@@ -1126,17 +1125,22 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         opt_bin_dict['min_x'] = table.min_x
         opt_bin_dict['max_x'] = table.max_x
-        opt_bin_dict['categories'] = table.categories
-        opt_bin_dict['cat_others'] = table.cat_others
-        opt_bin_dict['user_splits'] = table.user_splits
+        opt_bin_dict['categories'] = (
+            list(table.categories) if table.categories is not None else None)
+        opt_bin_dict['cat_others'] = (
+            list(table.cat_others) if table.cat_others is not None else None)
+        opt_bin_dict['user_splits'] = (
+            list(table.user_splits) if table.user_splits is not None
+            else None)
 
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
 
     def read_json(self, path: str) -> None:
         """
-        Read json file containing split points and set them as the new split
-        points.
+        Load a fitted binning object previously saved with ``to_json``,
+        restoring the state required to call ``transform`` and to inspect
+        ``binning_table``.
 
         Parameters
         ----------
@@ -1156,3 +1160,13 @@ class ContinuousOptimalBinning(OptimalBinning):
                 cont_table_attr[key] = np.array(cont_table_attr[key])
 
         self._binning_table = ContinuousBinningTable(**cont_table_attr)
+
+        # Restore the internal state used by ``transform``. Without this,
+        # a binning object reloaded via ``read_json`` raises a TypeError
+        # on ``transform`` because these attributes are only set during
+        # ``fit`` and remain None otherwise.
+        self._splits_optimal = cont_table_attr['splits']
+        self._n_records = cont_table_attr['n_records']
+        self._sums = cont_table_attr['sums']
+        self._categories = cont_table_attr['categories']
+        self._cat_others = cont_table_attr['cat_others']

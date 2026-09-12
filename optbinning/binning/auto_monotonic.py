@@ -9,6 +9,7 @@ import numpy as np
 import numpy.typing as npt
 
 from scipy.spatial import ConvexHull
+from scipy.spatial import QhullError
 
 
 def n_peaks_valleys(x: npt.NDArray) -> int:
@@ -165,7 +166,7 @@ def auto_monotonic_data(
         try:
             hull = ConvexHull(points)
             p_convex_hull = hull.volume / rectangular_area
-        except:
+        except QhullError:
             p_convex_hull = 0
     else:
         p_convex_hull = 0
@@ -254,7 +255,7 @@ def auto_monotonic_data_continuous(
         try:
             hull = ConvexHull(points)
             p_convex_hull = hull.volume / rectangular_area
-        except:
+        except QhullError:
             p_convex_hull = 0
     else:
         p_convex_hull = 0

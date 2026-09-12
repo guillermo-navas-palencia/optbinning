@@ -6,6 +6,7 @@ Preprocessing 2D functions.
 # Copyright (C) 2021
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.utils import check_array
@@ -14,8 +15,16 @@ from sklearn.utils import check_consistent_length
 from ..preprocessing import categorical_transform
 
 
-def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
-                  special_codes_y=None, check_input=True):
+def split_data_2d(
+    dtype_x: str,
+    dtype_y: str,
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    z: list | npt.NDArray,
+    special_codes_x: list | npt.NDArray | None = None,
+    special_codes_y: list | npt.NDArray | None = None,
+    check_input: bool = True,
+) -> tuple[np.ndarray, ...]:
     """Split 2d data into clean, missing and special values data.
 
     Parameters
@@ -50,6 +59,40 @@ def split_data_2d(dtype_x, dtype_y, x, y, z, special_codes_x=None,
 
     Returns
     -------
+    x_clean : ndarray, shape = (n_clean_samples,)
+        Clean values of variable x.
+
+    y_clean : ndarray, shape = (n_clean_samples,)
+        Clean values of variable y.
+
+    z_clean : ndarray, shape = (n_clean_samples,)
+        Clean values of target z.
+
+    x_missing : ndarray, shape = (n_missing_samples,)
+        Missing values of variable x.
+
+    y_missing : ndarray, shape = (n_missing_samples,)
+        Missing values of variable y.
+
+    z_missing : ndarray, shape = (n_missing_samples,)
+        Missing values of target z.
+
+    x_special : ndarray, shape = (n_special_samples,)
+        Special values of variable x.
+
+    y_special : ndarray, shape = (n_special_samples,)
+        Special values of variable y.
+
+    z_special : ndarray, shape = (n_special_samples,)
+        Special values of target z.
+
+    x_categories : list
+        List of categories for variable x if dtype_x is "categorical".
+        Otherwise, an empty list.
+
+    y_categories : list
+        List of categories for variable y if dtype_y is "categorical".
+        Otherwise, an empty list.
     """
     if check_input:
         x = check_array(x, ensure_2d=False, dtype=None,

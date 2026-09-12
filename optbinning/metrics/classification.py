@@ -6,13 +6,17 @@ Metrics to asses performance of classification models.
 # Copyright (C) 2021
 
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.metrics import auc
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve
 
 
-def gini(y_true, y_pred_proba):
+def gini(
+    y_true: list | npt.NDArray,
+    y_pred_proba: list | npt.NDArray
+) -> float:
     """Compute the Gini Index or Accuracy Ration (AR).
 
     Parameters
@@ -31,7 +35,10 @@ def gini(y_true, y_pred_proba):
     return 2 * auc(fpr, tpr) - 1
 
 
-def ks(y_true, y_pred_proba):
+def ks(
+    y_true: list | npt.NDArray,
+    y_pred_proba: list | npt.NDArray
+) -> tuple[float, int]:
     """Compute the Kolmogorov-Smirnov (KS).
 
     Parameters
@@ -67,7 +74,10 @@ def ks(y_true, y_pred_proba):
     return ks_score, ks_max_idx
 
 
-def imbalanced_classification_metrics(y_true, y_pred):
+def imbalanced_classification_metrics(
+    y_true: list | npt.NDArray,
+    y_pred: list | npt.NDArray
+) -> dict[str, float]:
     """Compute imbalanced binary classification metrics.
 
     Parameters

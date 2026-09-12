@@ -11,17 +11,17 @@ from ...information import print_solver_statistics
 from ...options import counterfactual_default_options
 
 
-def print_status(status):
+def print_status(status: str) -> None:
     print("  Status  : {:<32}\n".format(status))
 
 
-def print_main_info(status, time_total):
+def print_main_info(status: str, time_total: float) -> None:
     print_status(status)
 
     print("  Time    : {:<7.4f} sec\n".format(time_total))
 
 
-def print_objectives(objectives):
+def print_objectives(objectives: dict) -> None:
     str_objectives = "  Objectives\n"
 
     for objname, objexp in objectives.items():
@@ -35,7 +35,12 @@ def print_objectives(objectives):
     print(str_objectives)
 
 
-def print_timing(time_total, time_fit, time_solver, time_postprocessing):
+def print_timing(
+    time_total: float,
+    time_fit: float,
+    time_solver: float,
+    time_postprocessing: float,
+) -> None:
     p_fit = time_fit / time_total
     p_solver = time_solver / time_total
     p_postprocessing = time_postprocessing / time_solver
@@ -52,9 +57,17 @@ def print_timing(time_total, time_fit, time_solver, time_postprocessing):
     print(time_stats)
 
 
-def print_counterfactual_information(print_level, status, solver, objectives,
-                                     time_total, time_fit, time_solver,
-                                     time_postprocessing, dict_user_options):
+def print_counterfactual_information(
+    print_level: int,
+    status: str,
+    solver: dict | None,
+    objectives: dict | None,
+    time_total: float,
+    time_fit: float,
+    time_solver: float,
+    time_postprocessing: float,
+    dict_user_options: dict,
+) -> None:
 
     print_header()
 

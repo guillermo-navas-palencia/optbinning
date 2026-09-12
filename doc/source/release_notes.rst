@@ -1,5 +1,55 @@
 Release Notes
 =============
+Version 1.0.0 (2026-09-12)
+---------------------------
+
+This release starts the 1.x series and drops support for Python 3.10.
+
+New features:
+
+   - Add support for Python 3.13 (`Issue 314 <https://github.com/guillermo-navas-palencia/optbinning/issues/314>`_).
+   - Add JSON serialization and deserialization for optimal binning objects (`Issue 387 <https://github.com/guillermo-navas-palencia/optbinning/issues/387>`_).
+   - Add negative ``split_digits`` values to round split points to the left of the decimal point (`Issue 319 <https://github.com/guillermo-navas-palencia/optbinning/issues/319>`_).
+
+Improvements:
+
+   - Make CP-SAT optimization deterministic.
+   - Calculate HHI and KS statistics using valid records only (`Issue 369 <https://github.com/guillermo-navas-palencia/optbinning/issues/369>`_).
+   - Improve typing annotations and API docstrings throughout the package.
+
+Bugfixes:
+
+   - Fix missing-bin indexes in binning plots and valid-bin HHI masking.
+   - Fix per-variable ``metric_special`` and ``metric_missing`` overrides in scorecard points tables.
+   - Fix record counts in ``OptimalBinningSketch`` (`Issue 368 <https://github.com/guillermo-navas-palencia/optbinning/issues/368>`_).
+   - Fix ``ContinuousOptimalBinning`` when special codes are not present (`Issue 340 <https://github.com/guillermo-navas-palencia/optbinning/issues/340>`_).
+   - Fix ``binning_transform_params`` leaking between variables (`Issue 355 <https://github.com/guillermo-navas-palencia/optbinning/issues/355>`_).
+   - Fix JSON state restoration required by ``transform`` (`Issue 387 <https://github.com/guillermo-navas-palencia/optbinning/issues/387>`_).
+   - Silence expected runtime warnings during event-rate to WoE conversion.
+
+Packaging and dependencies:
+
+   - Replace ``setup.py`` with a PEP 621 ``pyproject.toml`` (`Issue 350 <https://github.com/guillermo-navas-palencia/optbinning/issues/350>`_).
+   - Require Python 3.11 or newer and update the continuous integration matrix.
+   - Update the minimum OR-Tools version to 9.15.
+
+Documentation:
+
+   - Refresh installation instructions for the modern ``pip install .`` workflow.
+   - Update version information and copyright notices for the 1.0.0 release.
+
+Contributors:
+
+   - `Uvindu <https://github.com/Uvindu>`_: author of the PEP 621 packaging
+     migration pull request (`#386 <https://github.com/guillermo-navas-palencia/optbinning/pull/386>`_).
+   - `detrin <https://github.com/detrin>`_: original proposer of the PEP 621
+     packaging migration (`Issue 350 <https://github.com/guillermo-navas-palencia/optbinning/issues/350>`_).
+   - `Lucas Morin <https://github.com/lcrmorin>`_:
+     JSON serialization fixes, scorecard metric overrides, sketch record
+     counts, special-code handling, parameter isolation, warning cleanup, and
+     convex-hull maintenance.
+
+
 Version 0.21.0 (2025-10-26)
 ---------------------------
 

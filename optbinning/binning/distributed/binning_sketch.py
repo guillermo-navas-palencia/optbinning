@@ -8,8 +8,11 @@ Optimal binning sketch algorithm.
 import numbers
 import time
 
+from typing import Self
+
 import numpy as np
 import pandas as pd
+import numpy.typing as npt
 
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
@@ -205,8 +208,8 @@ def _check_parameters(name, dtype, sketch, eps, K, solver, divergence,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digits must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if mip_solver not in ("bop", "cbc"):
@@ -341,8 +344,9 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     mip_solver : str, optional (default="bop")
         The mixed-integer programming solver. Supported solvers are "bop" to
@@ -366,17 +370,38 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
     recommended algorithm when handling partitions. **Besides, GK is
     deterministic, therefore returning reproducible results.**
     """
-    def __init__(self, name="", dtype="numerical", sketch="gk", eps=1e-4, K=25,
-                 solver="cp", divergence="iv", max_n_prebins=20,
-                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, min_bin_n_nonevent=None,
-                 max_bin_n_nonevent=None, min_bin_n_event=None,
-                 max_bin_n_event=None, monotonic_trend="auto",
-                 min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", gamma=0, cat_cutoff=None,
-                 cat_unknown=None, cat_heuristic=False, special_codes=None,
-                 split_digits=None, mip_solver="bop", time_limit=100,
-                 verbose=False):
+    def __init__(
+        self,
+        name: str = "",
+        dtype: str = "numerical",
+        sketch: str = "gk",
+        eps: float = 1e-4,
+        K: int = 25,
+        solver: str = "cp",
+        divergence: str = "iv",
+        max_n_prebins: int = 20,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        min_bin_n_nonevent: int | None = None,
+        max_bin_n_nonevent: int | None = None,
+        min_bin_n_event: int | None = None,
+        max_bin_n_event: int | None = None,
+        monotonic_trend: str | None = "auto",
+        min_event_rate_diff: float = 0,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        gamma: float = 0,
+        cat_cutoff: float | None = None,
+        cat_unknown: int | str | None = None,
+        cat_heuristic: bool = False,
+        special_codes: list | npt.NDArray | None = None,
+        split_digits: int | None = None,
+        mip_solver: str = "bop",
+        time_limit: float = 100,
+        verbose: bool = False,
+    ) -> None:
 
         self.name = name
         self.dtype = dtype
@@ -458,7 +483,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         # Check parameters
         _check_parameters(**self.get_params())
 
-    def add(self, x, y, check_input=False):
+    def add(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        check_input: bool = False,
+    ) -> None:
         """Add new data x, y to the binning sketch.
 
         Parameters
@@ -490,7 +520,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         if self.verbose:
             logger.info("Sketch: added new data.")
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings, problem
         statistics, and the solution of the computation.
 
@@ -530,7 +560,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                                   self._n_solve, self._time_streaming_solve,
                                   memory_usage, dict_user_options)
 
-    def merge(self, optbsketch):
+    def merge(self, optbsketch: "OptimalBinningSketch") -> None:
         """Merge current instance with another OptimalBinningSketch instance.
 
         Parameters
@@ -546,7 +576,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         if self.verbose:
             logger.info("Sketch: current sketch was merged.")
 
-    def mergeable(self, optbsketch):
+    def mergeable(self, optbsketch: "OptimalBinningSketch") -> bool:
         """Check whether two OptimalBinningSketch instances can be merged.
 
         Parameters
@@ -560,14 +590,14 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         """
         return self.get_params() == optbsketch.get_params()
 
-    def plot_progress(self):
+    def plot_progress(self) -> None:
         """Plot divergence measure progress."""
         self._check_is_solved()
 
         df = pd.DataFrame.from_dict(self._solve_stats).T
         plot_progress_divergence(df, self.divergence)
 
-    def solve(self):
+    def solve(self) -> Self:
         """Solve optimal binning using added data.
 
         Returns
@@ -612,8 +642,15 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            n_nonevent = np.array([self._t_n_nonevent])
-            n_event = np.array([self._t_n_event])
+            # bin_info() below adds missing/special as separate bins, so
+            # this single "no splits" bin must exclude them too, or their
+            # counts get double-counted (GH #368).
+            n_nonevent = np.array([self._t_n_nonevent -
+                                   (self._n_nonevent_missing +
+                                    self._n_nonevent_special)])
+            n_event = np.array([self._t_n_event -
+                                (self._n_event_missing +
+                                 self._n_event_special)])
 
         self._n_nonevent, self._n_event = bin_info(
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,
@@ -646,8 +683,15 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         return self
 
-    def transform(self, x, metric="woe", metric_special=0,
-                  metric_missing=0, show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data to Weight of Evidence (WoE) or event rate using
         bins from the current fitted optimal binning.
 
@@ -699,7 +743,8 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                                        metric, metric_special, metric_missing,
                                        None, show_digits, check_input)
 
-    def _prebinning_data(self):
+    def _prebinning_data(self) -> tuple[np.ndarray | list,
+                                        np.ndarray, np.ndarray]:
         self._n_nonevent_missing = self._bsketch._count_missing_ne
         self._n_nonevent_special = self._bsketch._count_special_ne
         self._n_event_missing = self._bsketch._count_missing_e
@@ -740,7 +785,10 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         return splits, n_nonevent, n_event
 
-    def _compute_prebins(self, splits):
+    def _compute_prebins(
+        self,
+        splits: list | npt.NDArray
+    ) -> tuple[list | npt.NDArray, np.ndarray, np.ndarray]:
         self._n_refinements = 0
 
         n_event, n_nonevent = self._bsketch.bins(splits)
@@ -760,7 +808,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         return splits, n_nonevent, n_event
 
-    def _compute_cat_prebins(self, splits, categories, n_nonevent, n_event):
+    def _compute_cat_prebins(
+        self, splits: list | npt.NDArray,
+        categories: npt.NDArray,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray
+    ) -> tuple[list | np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._n_refinements = 0
         mask_remove = (n_nonevent == 0) | (n_event == 0)
 
@@ -805,7 +858,12 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         return splits, categories, n_nonevent, n_event
 
-    def _fit_optimizer(self, splits, n_nonevent, n_event):
+    def _fit_optimizer(
+        self,
+        splits: list | npt.NDArray,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray
+    ) -> None:
         if self.verbose:
             logger.info("Optimizer started.")
 
@@ -941,7 +999,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
             logger.info("Optimizer terminated. Time: {:.4f}s"
                         .format(self._time_solver))
 
-    def _update_streaming_stats(self):
+    def _update_streaming_stats(self) -> None:
         self._binning_table.build()
 
         if self.divergence == "iv":
@@ -960,7 +1018,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         }
 
     @property
-    def binning_table(self):
+    def binning_table(self) -> BinningTable:
         """Return an instantiated binning table. Please refer to
         :ref:`Binning table: binary target`.
 
@@ -973,7 +1031,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         return self._binning_table
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of optimal split points when ``dtype`` is set to "numerical" or
         list of optimal bins when ``dtype`` is set to "categorical".
 
@@ -990,7 +1048,7 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                                    self._cat_others, None)
 
     @property
-    def status(self):
+    def status(self) -> str:
         """The status of the underlying optimization solver.
 
         Returns

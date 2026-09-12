@@ -10,16 +10,28 @@ from ..binning.binning_information import print_optional_parameters
 from ..options import scorecard_monitoring_default_options
 
 
-def print_main_info(n_records_a, n_records_e, n_variables, time_total):
+def print_main_info(
+    n_records_a: int,
+    n_records_e: int,
+    n_variables: int,
+    time_total: float,
+) -> None:
+
     print("  Number of records A : {}".format(n_records_a))
     print("  Number of records E : {}".format(n_records_e))
     print("  Number of variables : {}".format(n_variables))
     print("  Time                : {:<7.4f} sec\n".format(time_total))
 
 
-def print_monitoring_statistics(n_records_a, n_records_e, n_variables,
-                                target_dtype, time_total, time_system,
-                                time_variables):
+def print_monitoring_statistics(
+    n_records_a: int,
+    n_records_e: int,
+    n_variables: int,
+    target_dtype: str,
+    time_total: float,
+    time_system: float,
+    time_variables: float,
+) -> None:
 
     stats = (
         "  Statistics\n"
@@ -45,10 +57,17 @@ def print_monitoring_statistics(n_records_a, n_records_e, n_variables,
     print(time_stats)
 
 
-def print_monitoring_information(print_level, n_records_a, n_records_e,
-                                 n_variables, target_dtype, time_total,
-                                 time_system, time_variables,
-                                 dict_user_options):
+def print_monitoring_information(
+    print_level: int,
+    n_records_a: int,
+    n_records_e: int,
+    n_variables: int,
+    target_dtype: str,
+    time_total: float,
+    time_system: float,
+    time_variables: float,
+    dict_user_options: dict,
+) -> None:
 
     print_header()
 

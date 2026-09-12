@@ -1,6 +1,9 @@
 Installation
 ============
 
+OptBinning 1.0.0 requires Python 3.11 or newer. The legacy ``setup.py``
+installation workflow is no longer supported; use ``pip install`` instead.
+
 Install release
 ---------------
 
@@ -16,7 +19,8 @@ using
 
 .. code-block:: text
 
-   python setup.py install
+   cd optbinning-<release>
+   pip install .
 
 Install from source
 -------------------
@@ -26,4 +30,4 @@ To install from source, download or clone the git repository https://github.com/
 .. code-block:: text
 
    cd optbinning
-   python setup.py install
+   pip install .

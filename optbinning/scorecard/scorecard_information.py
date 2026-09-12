@@ -10,17 +10,29 @@ from ..information import print_optional_parameters
 from ..options import scorecard_default_options
 
 
-def print_main_info(n_records, n_variables, time_total):
+def print_main_info(
+    n_records: int,
+    n_variables: int,
+    time_total: float,
+) -> None:
     print("  Number of records   : {}".format(n_records))
     print("  Number of variables : {}".format(n_variables))
     print("  Time                : {:<7.4f} sec\n".format(time_total))
 
 
-def print_scorecard_statistics(n_records, n_variables, target_dtype,
-                               n_numerical, n_categorical, n_selected,
-                               time_total, time_binning_process,
-                               time_estimator, time_build_scorecard,
-                               time_rounding):
+def print_scorecard_statistics(
+    n_records: int,
+    n_variables: int,
+    target_dtype: str,
+    n_numerical: int,
+    n_categorical: int,
+    n_selected: int,
+    time_total: float,
+    time_binning_process: float,
+    time_estimator: float,
+    time_build_scorecard: float,
+    time_rounding: float,
+) -> None:
 
     stats = (
         "  Statistics\n"
@@ -54,11 +66,21 @@ def print_scorecard_statistics(n_records, n_variables, target_dtype,
     print(time_stats)
 
 
-def print_scorecard_information(print_level, n_records, n_variables,
-                                target_dtype, n_numerical, n_categorical,
-                                n_selected, time_total, time_binning_process,
-                                time_estimator, time_build_scorecard,
-                                time_rounding, dict_user_options):
+def print_scorecard_information(
+    print_level: int,
+    n_records: int,
+    n_variables: int,
+    target_dtype: str,
+    n_numerical: int,
+    n_categorical: int,
+    n_selected: int,
+    time_total: float,
+    time_binning_process: float,
+    time_estimator: float,
+    time_build_scorecard: float,
+    time_rounding: float,
+    dict_user_options: dict,
+) -> None:
     print_header()
 
     if print_level == 2:

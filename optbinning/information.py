@@ -18,16 +18,19 @@ except ImportError:
     LOCALSOLVER_AVAILABLE = False
 
 
-def print_header():
+def print_header() -> None:
     header = (
         "optbinning (Version {})\n"
-        "Copyright (c) 2019-2025 Guillermo Navas-Palencia, Apache License 2.0"
+        "Copyright (c) 2019-2026 Guillermo Navas-Palencia, Apache License 2.0"
         "\n".format(__version__))
 
     print(header)
 
 
-def print_optional_parameters(dict_default_options, dict_user_options):
+def print_optional_parameters(
+    dict_default_options: dict,
+    dict_user_options: dict,
+) -> None:
     option_format = "    {:<24} {:>15}   * {}\n"
     str_options = "  Begin options\n"
     for key, value in dict_default_options.items():
@@ -51,7 +54,10 @@ def print_optional_parameters(dict_default_options, dict_user_options):
     print(str_options)
 
 
-def solver_statistics(solver_type, solver):
+def solver_statistics(
+    solver_type: str,
+    solver: object,
+) -> tuple[dict, float | None]:
     time_optimizer = None
     d_solver = {}
 
@@ -88,7 +94,10 @@ def solver_statistics(solver_type, solver):
     return d_solver, time_optimizer
 
 
-def print_solver_statistics(solver_type, d_solver):
+def print_solver_statistics(
+    solver_type: str,
+    d_solver: dict,
+) -> None:
     if solver_type == "cp":
         solver_stats = (
             "  Solver statistics\n"

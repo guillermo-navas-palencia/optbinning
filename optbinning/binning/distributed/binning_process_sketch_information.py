@@ -10,7 +10,12 @@ from ...information import print_optional_parameters
 from ...options import binning_process_sketch_default_options
 
 
-def print_main_info(n_records, n_variables, time_add, time_solve):
+def print_main_info(
+    n_records: int,
+    n_variables: int,
+    time_add: float,
+    time_solve: float
+) -> None:
     print("  Number of records   : {}".format(n_records))
     print("  Number of variables : {}".format(n_variables))
     print("  Time add            : {:<10.4f} sec".format(time_add))
@@ -18,8 +23,17 @@ def print_main_info(n_records, n_variables, time_add, time_solve):
 
 
 def print_binning_process_sketch_statistics(
-        n_records, n_variables, target_dtype, n_numerical, n_categorical,
-        n_selected, n_add, time_add, n_solve, time_solve):
+    n_records: int,
+    n_variables: int,
+    target_dtype: str,
+    n_numerical: int,
+    n_categorical: int,
+    n_selected: int,
+    n_add: int,
+    time_add: float,
+    n_solve: int,
+    time_solve: float
+) -> None:
 
     r_add = time_add / n_add
     r_solve = time_solve / n_solve
@@ -53,9 +67,19 @@ def print_binning_process_sketch_statistics(
 
 
 def print_binning_process_sketch_information(
-        print_level, n_records, n_variables, target_dtype, n_numerical,
-        n_categorical, n_selected, n_add, time_add, n_solve, time_solve,
-        dict_user_options):
+    print_level: int,
+    n_records: int,
+    n_variables: int,
+    target_dtype: str,
+    n_numerical: int,
+    n_categorical: int,
+    n_selected: int,
+    n_add: int,
+    time_add: float,
+    n_solve: int,
+    time_solve: float,
+    dict_user_options: dict
+) -> None:
 
     print_header()
 

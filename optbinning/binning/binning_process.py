@@ -17,6 +17,7 @@ from typing import Self
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from pandas.api.types import is_string_dtype
 
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
@@ -313,7 +314,7 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
 
 def _check_variable_dtype(x):
-    return "categorical" if x.dtype == object else "numerical"
+    return "categorical" if is_string_dtype(x.dtype) else "numerical"
 
 
 class BaseBinningProcess:

@@ -8,6 +8,7 @@ Module with plots for visualizing model performance.
 
 
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import roc_curve, roc_auc_score
@@ -48,8 +49,16 @@ def _check_parameters(title, xlabel, ylabel, savefig, fname):
         raise ValueError("fname must be provided if savefig is True.")
 
 
-def plot_auc_roc(y, y_pred, title=None, xlabel=None, ylabel=None,
-                 savefig=False, fname=None, **kwargs):
+def plot_auc_roc(
+    y: list | npt.NDArray,
+    y_pred: list | npt.NDArray,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    savefig: bool = False,
+    fname: str | None = None,
+    **kwargs: object,
+) -> None:
     """Plot Area Under the Receiver Operating Characteristic Curve (AUC ROC).
 
     Parameters
@@ -107,8 +116,16 @@ def plot_auc_roc(y, y_pred, title=None, xlabel=None, ylabel=None,
         plt.close()
 
 
-def plot_cap(y, y_pred, title=None, xlabel=None, ylabel=None,
-             savefig=False, fname=None, **kwargs):
+def plot_cap(
+    y: list | npt.NDArray,
+    y_pred: list | npt.NDArray,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    savefig: bool = False,
+    fname: str | None = None,
+    **kwargs: object,
+) -> None:
     """Plot Cumulative Accuracy Profile (CAP).
 
     Parameters
@@ -178,8 +195,16 @@ def plot_cap(y, y_pred, title=None, xlabel=None, ylabel=None,
         plt.close()
 
 
-def plot_ks(y, y_pred, title=None, xlabel=None, ylabel=None,
-            savefig=False, fname=None, **kwargs):
+def plot_ks(
+    y: list | npt.NDArray,
+    y_pred: list | npt.NDArray,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    savefig: bool = False,
+    fname: str | None = None,
+    **kwargs: object,
+) -> None:
     """Plot Kolmogorov-Smirnov (KS).
 
     Parameters

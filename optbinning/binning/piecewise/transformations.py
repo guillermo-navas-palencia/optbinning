@@ -6,6 +6,7 @@ Piecewise binning transformations.
 # Copyright (C) 2020
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.utils import check_array
@@ -15,10 +16,24 @@ from ...binning.transformations import _check_metric_special_missing
 from ...binning.transformations import _mask_special_missing
 
 
-def _apply_transform(x, c, lb, ub, special_codes, metric_special,
-                     metric_missing, clean_mask, special_mask, missing_mask,
-                     indices, x_clean, n_bins, n_special, event_rate_special,
-                     event_rate_missing):
+def _apply_transform(
+    x: list | npt.NDArray,
+    c: npt.NDArray,
+    lb: float | None,
+    ub: float | None,
+    special_codes: list | npt.NDArray | dict | None,
+    metric_special: str | float,
+    metric_missing: str | float,
+    clean_mask: npt.NDArray,
+    special_mask: npt.NDArray,
+    missing_mask: npt.NDArray,
+    indices: npt.NDArray,
+    x_clean: npt.NDArray,
+    n_bins: int,
+    n_special: int,
+    event_rate_special: npt.NDArray | float,
+    event_rate_missing: npt.NDArray | float,
+) -> np.ndarray:
 
     x_transform = np.zeros(x.shape)
     x_clean_transform = np.zeros(x_clean.shape)
@@ -58,11 +73,24 @@ def _apply_transform(x, c, lb, ub, special_codes, metric_special,
     return x_transform
 
 
-def transform_binary_target(splits, x, c, lb, ub, n_nonevent, n_event,
-                            n_event_special, n_nonevent_special,
-                            n_event_missing, n_nonevent_missing,
-                            special_codes, metric, metric_special,
-                            metric_missing, check_input=False):
+def transform_binary_target(
+    splits: list | npt.NDArray,
+    x: list | npt.NDArray,
+    c: npt.NDArray,
+    lb: float | None,
+    ub: float | None,
+    n_nonevent: int,
+    n_event: int,
+    n_event_special: list | npt.NDArray,
+    n_nonevent_special: list | npt.NDArray,
+    n_event_missing: int,
+    n_nonevent_missing: int,
+    special_codes: list | npt.NDArray | dict | None,
+    metric: str,
+    metric_special: str | float,
+    metric_missing: str | float,
+    check_input: bool = False,
+) -> np.ndarray:
 
     if metric not in ("event_rate", "woe"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -135,10 +163,21 @@ def transform_binary_target(splits, x, c, lb, ub, n_nonevent, n_event,
     return x_transform
 
 
-def transform_continuous_target(splits, x, c, lb, ub, n_records_special,
-                                sum_special, n_records_missing, sum_missing,
-                                special_codes, metric_special, metric_missing,
-                                check_input=False):
+def transform_continuous_target(
+    splits: list | npt.NDArray,
+    x: list | npt.NDArray,
+    c: npt.NDArray,
+    lb: float | None,
+    ub: float | None,
+    n_records_special: list | npt.NDArray,
+    sum_special: list | npt.NDArray,
+    n_records_missing: int,
+    sum_missing: float,
+    special_codes: list | npt.NDArray | dict | None,
+    metric_special: str | float,
+    metric_missing: str | float,
+    check_input: bool = False,
+) -> np.ndarray:
 
     _check_metric_special_missing(metric_special, metric_missing)
 

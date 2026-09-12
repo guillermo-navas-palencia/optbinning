@@ -12,7 +12,7 @@ from ...binning.binning_information import print_main_info
 from ...options import optimal_pw_binning_options
 
 
-def print_prebinning_statistics(n_prebins):
+def print_prebinning_statistics(n_prebins: int) -> None:
     prebinning_stats = (
         "  Pre-binning statistics\n"
         "    Number of bins                {:>10}\n"
@@ -21,7 +21,7 @@ def print_prebinning_statistics(n_prebins):
     print(prebinning_stats)
 
 
-def print_solver_statistics(solver_type, solver):
+def print_solver_statistics(solver_type: str, solver) -> None:
     if isinstance(solver.stats, list):
         n_constraints = sum(info["n_constraints"] for info in solver.stats)
         n_variables = sum(info["n_variables"] for info in solver.stats)
@@ -39,9 +39,16 @@ def print_solver_statistics(solver_type, solver):
     print(solver_stats)
 
 
-def print_timing(solver_type, solver, time_total, time_preprocessing,
-                 time_estimator, time_prebinning, time_solver,
-                 time_postprocessing):
+def print_timing(
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_preprocessing: float,
+    time_estimator: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_postprocessing: float,
+) -> None:
 
     p_preprocessing = time_preprocessing / time_total
     p_estimator = time_estimator / time_total
@@ -64,7 +71,7 @@ def print_timing(solver_type, solver, time_total, time_preprocessing,
     print(time_stats)
 
 
-def retrieve_status(status):
+def retrieve_status(status: str | list) -> str:
     if isinstance(status, list):
         n_status = len(status)
         n_optimal = 0
@@ -101,11 +108,21 @@ def retrieve_status(status):
             return "UNBOUNDED"
 
 
-def print_binning_information(print_level, name, status, solver_type, solver,
-                              time_total, time_preprocessing, time_estimator,
-                              time_prebinning, time_solver,
-                              time_postprocessing, n_prebins,
-                              dict_user_options):
+def print_binning_information(
+    print_level: int,
+    name: str,
+    status: str,
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_preprocessing: float,
+    time_estimator: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_postprocessing: float,
+    n_prebins: int,
+    dict_user_options: dict,
+) -> None:
 
     print_header()
 

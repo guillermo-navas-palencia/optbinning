@@ -9,7 +9,10 @@ import numbers
 import time
 import json
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.utils import check_array
 
@@ -31,13 +34,30 @@ from .transformations import transform_multiclass_target
 logger = Logger(__name__).logger
 
 
-def _check_parameters(name, prebinning_method, solver, max_n_prebins,
-                      min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
-                      max_bin_size, monotonic_trend, min_event_rate_diff,
-                      max_pvalue, max_pvalue_policy, outlier_detector,
-                      outlier_params, user_splits, user_splits_fixed,
-                      special_codes, split_digits, mip_solver, time_limit,
-                      verbose):
+def _check_parameters(
+    name: str,
+    prebinning_method: str,
+    solver: str,
+    max_n_prebins: int,
+    min_prebin_size: float,
+    min_n_bins: int | None,
+    max_n_bins: int | None,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+    monotonic_trend: str | list | None,
+    min_event_rate_diff: float,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    outlier_detector: str | None,
+    outlier_params: dict | None,
+    user_splits: npt.NDArray | list | None,
+    user_splits_fixed: npt.NDArray | list | None,
+    special_codes: npt.NDArray | dict | list | None,
+    split_digits: int | None,
+    mip_solver: str,
+    time_limit: int,
+    verbose: bool
+) -> None:
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -167,8 +187,8 @@ def _check_parameters(name, prebinning_method, solver, max_n_prebins,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digist must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if mip_solver not in ("bop", "cbc"):
@@ -278,8 +298,9 @@ class MulticlassOptimalBinning(OptimalBinning):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     mip_solver : str, optional (default="bop")
         The mixed-integer programming solver. Supported solvers are "bop" to
@@ -308,15 +329,32 @@ class MulticlassOptimalBinning(OptimalBinning):
     counts of non-events or events by merging those pure prebins. Pure bins
     produce infinity WoE and event rates.
     """
-    def __init__(self, name="", prebinning_method="cart", solver="cp",
-                 max_n_prebins=20, min_prebin_size=0.05,
-                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, monotonic_trend="auto",
-                 min_event_rate_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", outlier_detector=None,
-                 outlier_params=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, mip_solver="bop",
-                 time_limit=100, verbose=False, **prebinning_kwargs):
+    def __init__(
+        self,
+        name: str = "",
+        prebinning_method: str = "cart",
+        solver: str = "cp",
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        monotonic_trend: str | list | None = "auto",
+        min_event_rate_diff: float = 0,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        outlier_detector: str | None = None,
+        outlier_params: dict | None = None,
+        user_splits: npt.NDArray | list | None = None,
+        user_splits_fixed: npt.NDArray | list | None = None,
+        special_codes: npt.NDArray | dict | list | None = None,
+        split_digits: int | None = None,
+        mip_solver: str = "bop",
+        time_limit: int = 100,
+        verbose: bool = False,
+        **prebinning_kwargs
+    ) -> None:
 
         self.name = name
         self.dtype = "numerical"
@@ -378,7 +416,12 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, check_input=False):
+    def fit(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        check_input: bool = False
+    ) -> Self:
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -399,8 +442,16 @@ class MulticlassOptimalBinning(OptimalBinning):
         """
         return self._fit(x, y, check_input)
 
-    def fit_transform(self, x, y, metric="mean_woe", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        metric: str = "mean_woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -439,15 +490,22 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        x_new : numpy array, shape = (n_samples,)
+        x_new : numpy.ndarray, shape = (n_samples,)
             Transformed array.
         """
         return self.fit(x, y, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, metric="mean_woe", metric_special=0,
-                  metric_missing=0, show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: npt.NDArray | list,
+        metric: str = "mean_woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Transform given data to mean Weight of Evidence (WoE) or weighted
         mean WoE using bins from the fitted optimal binning.
 
@@ -483,7 +541,7 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        x_new : numpy array, shape = (n_samples,)
+        x_new : numpy.ndarray, shape = (n_samples,)
             Transformed array.
         """
         self._check_is_fitted()
@@ -494,7 +552,12 @@ class MulticlassOptimalBinning(OptimalBinning):
                                            metric_missing, show_digits,
                                            check_input)
 
-    def _fit(self, x, y, check_input):
+    def _fit(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        check_input: bool
+    ) -> Self:
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -638,10 +701,20 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         return self
 
-    def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               x_special, y_special, y_others=None,
-                               sw_clean=None, sw_missing=None, sw_special=None,
-                               sw_others=None):
+    def _prebinning_refinement(
+        self,
+        splits_prebinning: np.ndarray,
+        x: npt.NDArray,
+        y: npt.NDArray,
+        y_missing: npt.NDArray,
+        x_special: npt.NDArray,
+        y_special: npt.NDArray,
+        y_others: npt.NDArray | None = None,
+        sw_clean: npt.NDArray | None = None,
+        sw_missing: npt.NDArray | None = None,
+        sw_special: npt.NDArray | None = None,
+        sw_others: npt.NDArray | None = None
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         self._classes = np.unique(y)
         self._n_classes = len(self._classes)
@@ -668,7 +741,12 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         return splits_prebinning, n_nonevent, n_event
 
-    def _fit_optimizer(self, splits, n_nonevent, n_event):
+    def _fit_optimizer(
+        self,
+        splits: npt.NDArray,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray
+    ) -> None:
         if self.verbose:
             logger.info("Optimizer started.")
 
@@ -787,7 +865,12 @@ class MulticlassOptimalBinning(OptimalBinning):
             logger.info("Optimizer terminated. Time: {:.4f}s"
                         .format(self._time_solver))
 
-    def _compute_prebins(self, splits_prebinning, x, y):
+    def _compute_prebins(
+        self,
+        splits_prebinning: npt.NDArray,
+        x: npt.NDArray,
+        y: npt.NDArray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         n_splits = len(splits_prebinning)
 
         if not n_splits:
@@ -844,7 +927,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         return splits_prebinning, n_nonevent, n_event
 
     @property
-    def binning_table(self):
+    def binning_table(self) -> MulticlassBinningTable:
         """Return an instantiated binning table. Please refer to
         :ref:`Binning table: multiclass target`.
 
@@ -857,7 +940,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         return self._binning_table
 
     @property
-    def classes(self):
+    def classes(self) -> np.ndarray:
         """List of classes.
 
         Returns
@@ -869,7 +952,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         return self._classes
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of optimal split points.
 
         Returns
@@ -880,14 +963,15 @@ class MulticlassOptimalBinning(OptimalBinning):
 
         return self._splits_optimal
 
-    def to_json(self, path):
+    def to_json(self, path: str) -> None:
         """
         Save optimal bins and/or splits points and transformation depending on
         the target type.
 
         Parameters
         ----------
-        path: The path where the json is going to be saved.
+        path : str
+            The path where the json is going to be saved.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
@@ -905,14 +989,16 @@ class MulticlassOptimalBinning(OptimalBinning):
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
 
-    def read_json(self, path):
+    def read_json(self, path: str) -> None:
         """
-        Read json file containing split points and set them as the new split
-        points.
+        Load a fitted binning object previously saved with ``to_json``,
+        restoring the state required to call ``transform`` and to inspect
+        ``binning_table``.
 
         Parameters
         ----------
-        path: The path of the json file.
+        path : str
+            The path of the json file.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
@@ -925,5 +1011,12 @@ class MulticlassOptimalBinning(OptimalBinning):
         for key in multi_table_attr.keys():
             if isinstance(multi_table_attr[key], list):
                 multi_table_attr[key] = np.array(multi_table_attr[key])
+
+        # Restore the internal state used by ``transform``. Without this,
+        # a binning object reloaded via ``read_json`` raises a TypeError
+        # on ``transform`` because these attributes are only set during
+        # ``fit`` and remain None otherwise.
+        self._splits_optimal = multi_table_attr['splits']
+        self._n_event = multi_table_attr['n_event']
 
         self._binning_table = MulticlassBinningTable(**multi_table_attr)

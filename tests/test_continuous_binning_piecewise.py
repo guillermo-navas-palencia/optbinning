@@ -49,7 +49,7 @@ def test_fit_transform():
 
 def test_special_codes():
     variable = "INDUS"
-    x = df[variable].values
+    x = df[variable].values.copy()
 
     x[:50] = -9
     x[50:100] = -8

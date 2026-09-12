@@ -8,7 +8,10 @@ Optimal binning 2D algorithm for continuous target.
 import numbers
 import time
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from joblib import effective_n_jobs
 from sklearn.tree import DecisionTreeRegressor
@@ -145,8 +148,8 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digits must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
     if n_jobs is not None:
         if not isinstance(n_jobs, numbers.Integral):
@@ -270,8 +273,9 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     n_jobs : int or None, optional (default=None)
         Number of cores to run in parallel while binning variables.
@@ -283,15 +287,35 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, name_x="", name_y="", dtype_x="numerical",
-                 dtype_y="numerical", prebinning_method="cart",
-                 strategy="grid", solver="cp", max_n_prebins_x=5,
-                 max_n_prebins_y=5, min_prebin_size_x=0.05,
-                 min_prebin_size_y=0.05, min_n_bins=None, max_n_bins=None,
-                 min_bin_size=None, max_bin_size=None, monotonic_trend_x=None,
-                 monotonic_trend_y=None, min_mean_diff_x=0, min_mean_diff_y=0,
-                 gamma=0, special_codes_x=None, special_codes_y=None,
-                 split_digits=None, n_jobs=1, time_limit=100, verbose=False):
+    def __init__(
+        self,
+        name_x: str = "",
+        name_y: str = "",
+        dtype_x: str = "numerical",
+        dtype_y: str = "numerical",
+        prebinning_method: str = "cart",
+        strategy: str = "grid",
+        solver: str = "cp",
+        max_n_prebins_x: int = 5,
+        max_n_prebins_y: int = 5,
+        min_prebin_size_x: float = 0.05,
+        min_prebin_size_y: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        monotonic_trend_x: str | None = None,
+        monotonic_trend_y: str | None = None,
+        min_mean_diff_x: float = 0,
+        min_mean_diff_y: float = 0,
+        gamma: float = 0,
+        special_codes_x: list | npt.NDArray | None = None,
+        special_codes_y: list | npt.NDArray | None = None,
+        split_digits: int | None = None,
+        n_jobs: int = 1,
+        time_limit: float = 100,
+        verbose: bool = False,
+    ) -> None:
 
         self.name_x = name_x
         self.name_y = name_y
@@ -358,18 +382,24 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
         self._is_fitted = False
 
-    def fit(self, x, y, z, check_input=False):
+    def fit(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        z: list | npt.NDArray,
+        check_input: bool = False,
+    ) -> Self:
         """Fit the optimal binning 2D according to the given training data.
 
         Parameters
         ----------
-        x : array-like, shape = (n_samples,)
+        x : list | npt.NDArray, shape = (n_samples,)
             Training vector x, where n_samples is the number of samples.
 
-        y : array-like, shape = (n_samples,)
+        y : list | npt.NDArray, shape = (n_samples,)
             Training vector y, where n_samples is the number of samples.
 
-        z : array-like, shape = (n_samples,)
+        z : list | npt.NDArray, shape = (n_samples,)
             Target vector relative to x and y.
 
         check_input : bool (default=False)
@@ -382,20 +412,29 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         """
         return self._fit(x, y, z, check_input)
 
-    def fit_transform(self, x, y, z, metric="mean", metric_special=0,
-                      metric_missing=0, show_digits=2, check_input=False):
+    def fit_transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        z: list | npt.NDArray,
+        metric: str = "mean",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Fit the optimal binning 2D according to the given training data,
         then transform it.
 
         Parameters
         ----------
-        x : array-like, shape = (n_samples,)
+        x : list | npt.NDArray, shape = (n_samples,)
             Training vector x, where n_samples is the number of samples.
 
-        y : array-like, shape = (n_samples,)
+        y : list | npt.NDArray, shape = (n_samples,)
             Training vector y, where n_samples is the number of samples.
 
-        z : array-like, shape = (n_samples,)
+        z : list | npt.NDArray, shape = (n_samples,)
             Target vector relative to x and y.
 
         metric : str (default="mean")
@@ -430,17 +469,25 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             x, y, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, y, metric="mean", metric_special=0,
-                  metric_missing=0, show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        metric: str = "mean",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data to mean using bins from the fitted optimal
         binning 2D.
 
         Parameters
         ----------
-        x : array-like, shape = (n_samples,)
+        x : list | npt.NDArray, shape = (n_samples,)
             Training vector x, where n_samples is the number of samples.
 
-        y : array-like, shape = (n_samples,)
+        y : list | npt.NDArray, shape = (n_samples,)
             Training vector y, where n_samples is the number of samples.
 
         metric : str (default="mean")

@@ -6,6 +6,7 @@ Optimal piecewise binning metrics.
 # Copyright (C) 2020
 
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import brier_score_loss
@@ -21,8 +22,19 @@ from .transformations import transform_binary_target
 from .transformations import transform_continuous_target
 
 
-def _fun_divergence(fun, n, pi, qi, pi_special, qi_special, pi_missing,
-                    qi_missing, flag_special, flag_missing, n_special):
+def _fun_divergence(
+    fun,
+    n: int,
+    pi: npt.NDArray | float,
+    qi: npt.NDArray | float,
+    pi_special: npt.NDArray,
+    qi_special: npt.NDArray,
+    pi_missing: float,
+    qi_missing: float,
+    flag_special: bool,
+    flag_missing: bool,
+    n_special: int,
+) -> float:
 
     div_value = fun(pi, qi, return_sum=True) / n
 
@@ -35,9 +47,15 @@ def _fun_divergence(fun, n, pi, qi, pi_special, qi_special, pi_missing,
     return float(div_value)
 
 
-def divergences_asymptotic(event_rate, n_nonevent_special, n_event_special,
-                           n_nonevent_missing, n_event_missing, t_n_nonevent,
-                           t_n_event):
+def divergences_asymptotic(
+    event_rate: npt.NDArray,
+    n_nonevent_special: list | npt.NDArray,
+    n_event_special: list | npt.NDArray,
+    n_nonevent_missing: int,
+    n_event_missing: int,
+    t_n_nonevent: int,
+    t_n_event: int,
+) -> dict:
 
     n = t_n_nonevent + t_n_event
     p = t_n_event / n
@@ -83,9 +101,19 @@ def divergences_asymptotic(event_rate, n_nonevent_special, n_event_special,
     return d_divergences
 
 
-def binary_metrics(x, y, splits, c, t_n_nonevent, t_n_event,
-                   n_nonevent_special, n_event_special, n_nonevent_missing,
-                   n_event_missing, special_codes):
+def binary_metrics(
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    splits: list | npt.NDArray,
+    c: list | npt.NDArray,
+    t_n_nonevent: int,
+    t_n_event: int,
+    n_nonevent_special: list | npt.NDArray,
+    n_event_special: list | npt.NDArray,
+    n_nonevent_missing: int,
+    n_event_missing: int,
+    special_codes: list | npt.NDArray | None,
+) -> dict:
 
     d_metrics = {}
 
@@ -118,8 +146,19 @@ def binary_metrics(x, y, splits, c, t_n_nonevent, t_n_event,
     return d_metrics
 
 
-def continuous_metrics(x, y, splits, c, lb, ub, n_records_special, sum_special,
-                       n_records_missing, sum_missing, special_codes):
+def continuous_metrics(
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    splits: list | npt.NDArray,
+    c: list | npt.NDArray,
+    lb: float | None,
+    ub: float | None,
+    n_records_special: list | npt.NDArray,
+    sum_special: list | npt.NDArray,
+    n_records_missing: int,
+    sum_missing: float,
+    special_codes: list | npt.NDArray | None,
+) -> dict:
 
     y_pred = transform_continuous_target(
         splits, x, c, lb, ub, n_records_special, sum_special,

@@ -5,7 +5,10 @@ Pre-binning class.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.tree import _tree
@@ -20,7 +23,7 @@ class PreBinning:
 
     Parameters
     ----------
-    problem_type:
+    problem_type: str
         The problem type depending on the target type.
 
     method : str
@@ -31,6 +34,13 @@ class PreBinning:
 
     min_bin_size : int, float
         The minimum bin size.
+
+    class_weight : dict, "balanced" or None, optional (default=None)
+        Weights associated with classes in the form ``{class_label: weight}``.
+        If None, all classes are supposed to have weight one. Check
+        `sklearn.tree.DecisionTreeClassifier
+        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
+        DecisionTreeClassifier.html>`_.
 
     **kwargs : keyword arguments
         Keyword arguments for prebinning method. See notes.
@@ -48,8 +58,15 @@ class PreBinning:
         * ``method="mdlp"``: optbinning.binning.mdlp.MDLP.
 
     """
-    def __init__(self, problem_type, method, n_bins, min_bin_size,
-                 class_weight=None, **kwargs):
+    def __init__(
+        self,
+        problem_type: str,
+        method: str,
+        n_bins: int,
+        min_bin_size: int | float,
+        class_weight: dict[str, float] | str | None = None,
+        **kwargs
+    ):
 
         self.problem_type = problem_type
         self.method = method
@@ -60,7 +77,12 @@ class PreBinning:
 
         self._splits = None
 
-    def fit(self, x, y, sample_weight=None):
+    def fit(
+        self,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
+        sample_weight: npt.ArrayLike | None = None
+    ) -> Self:
         """Fit PreBinning algorithm.
 
         Parameters
@@ -106,11 +128,12 @@ class PreBinning:
                         "min_samples_leaf": self.min_bin_size,
                         "max_leaf_nodes": self.n_bins}
             else:
-                # https://scikit-learn.org/stable/modules/tree.html#tips-on-practical-use
-                # If the samples are weighted, it will be easier to optimize the tree 
-                # structure using weight-based pre-pruning criterion such as 
-                # min_weight_fraction_leaf, which ensure that leaf nodes contain at 
-                # least a fraction of the overall sum of the sample weights.
+                # https://scikit-learn.org/stable/modules/tree.html#tips-on-practical-use  # noqa:501
+                # If the samples are weighted, it will be easier to optimize
+                # the tree structure using weight-based pre-pruning criterion
+                # such as min_weight_fraction_leaf, which ensure that leaf
+                # nodes contain at least a fraction of the overall sum of the
+                # sample weights.
                 cart_kwargs = {
                     "min_weight_fraction_leaf": min(
                         0.5, self.min_bin_size / np.sum(sample_weight)
@@ -142,7 +165,7 @@ class PreBinning:
         return self
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of split points
 
         Returns

@@ -8,6 +8,7 @@ Optimal piecewise binning for continuous target.
 import time
 
 import numpy as np
+import numpy.typing as npt
 
 from ...binning.binning_statistics import target_info_special_continuous
 from ...logging import Logger
@@ -129,8 +130,9 @@ class ContinuousOptimalPWBinning(BasePWBinning):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     solver : str, optional (default="auto")
         The optimizer to solve the underlying mathematical optimization
@@ -169,16 +171,39 @@ class ContinuousOptimalPWBinning(BasePWBinning):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, name="", objective="l2", degree=1, continuous=True,
-                 continuous_deriv=True, prebinning_method="cart",
-                 max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
-                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
-                 monotonic_trend="auto", n_subsamples=None, max_pvalue=None,
-                 max_pvalue_policy="consecutive", outlier_detector=None,
-                 outlier_params=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, solver="auto",
-                 h_epsilon=1.35, quantile=0.5, regularization=None, reg_l1=1.0,
-                 reg_l2=1.0, random_state=None, verbose=False):
+    def __init__(
+        self,
+        name: str = "",
+        objective: str = "l2",
+        degree: int = 1,
+        continuous: bool = True,
+        continuous_deriv: bool = True,
+        prebinning_method: str = "cart",
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        monotonic_trend: str | None = "auto",
+        n_subsamples: int | None = None,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        outlier_detector: str | None = None,
+        outlier_params: dict | None = None,
+        user_splits: list | npt.NDArray | None = None,
+        user_splits_fixed: list[bool] | npt.NDArray | None = None,
+        special_codes: list | npt.NDArray | dict | None = None,
+        split_digits: int | None = None,
+        solver: str = "auto",
+        h_epsilon: float = 1.35,
+        quantile: float = 0.5,
+        regularization: str | None = None,
+        reg_l1: float = 1.0,
+        reg_l2: float = 1.0,
+        random_state: int | None = None,
+        verbose: bool = False,
+    ) -> None:
 
         super().__init__(name, None, objective, degree, continuous,
                          continuous_deriv, prebinning_method, max_n_prebins,
@@ -205,8 +230,16 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         self._n_zeros_missing = None
         self._n_zeros_special = None
 
-    def fit_transform(self, x, y, metric_special=0, metric_missing=0,
-                      lb=None, ub=None, check_input=False):
+    def fit_transform(
+        self,
+        x: list | npt.NDArray,
+        y: list | npt.NDArray,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        lb: float | None = None,
+        ub: float | None = None,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Fit the optimal piecewise binning according to the given training
         data, then transform it.
 
@@ -245,8 +278,15 @@ class ContinuousOptimalPWBinning(BasePWBinning):
         return self.fit(x, y, check_input).transform(
             x, metric_special, metric_missing, lb, ub, check_input)
 
-    def transform(self, x, metric_special=0, metric_missing=0,
-                  lb=None, ub=None, check_input=False):
+    def transform(
+        self,
+        x: list | npt.NDArray,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        lb: float | None = None,
+        ub: float | None = None,
+        check_input: bool = False,
+    ) -> np.ndarray:
         """Transform given data using bins from the fitted optimal piecewise
         binning.
 

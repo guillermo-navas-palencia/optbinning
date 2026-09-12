@@ -6,9 +6,16 @@ Counterfactual problem data.
 # Copyright (C) 2021
 
 import numpy as np
+import pandas as pd
+
+from ..scorecard import Scorecard
 
 
-def problem_data(scorecard, X):
+def problem_data(
+    scorecard: Scorecard,
+    X: pd.DataFrame,
+) -> tuple[float, np.ndarray, float, float, np.ndarray, np.ndarray,
+           np.ndarray]:
     s_vars = X.columns
     n_vars = X.shape[1]
 

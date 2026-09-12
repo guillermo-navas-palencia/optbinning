@@ -93,7 +93,7 @@ OptBinning[distributed] requires additional packages
 Getting started
 ===============
 
-Please visit the OptBinning documentation (**current** release) http://gnpalencia.org/optbinning/. If your are new to OptBinning, you can get started following the `tutorials <http://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
+Please visit the OptBinning documentation (**current** release) https://gnpalencia.org/optbinning/. If you are new to OptBinning, you can get started by following the `tutorials <https://gnpalencia.org/optbinning/tutorials.html>`_ and checking the API references.
 
 Tutorials
 ---------
@@ -233,8 +233,8 @@ Print overview information about the options settings, problem statistics, and t
 
 .. code-block:: text
 
-   optbinning (Version 0.21.0)
-   Copyright (c) 2019-2025 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 1.0.0)
+   Copyright (c) 2019-2026 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        name                         mean radius   * U
@@ -401,8 +401,8 @@ and the number of selected variables after the binning process.
 
 .. code-block:: text
 
-   optbinning (Version 0.21.0)
-   Copyright (c) 2019-2025 Guillermo Navas-Palencia, Apache License 2.0
+   optbinning (Version 1.0.0)
+   Copyright (c) 2019-2026 Guillermo Navas-Palencia, Apache License 2.0
 
      Begin options
        binning_process                      yes   * U

@@ -42,7 +42,7 @@ def _fun_divergence(
         div_value += fun(pi_special, qi_special, return_sum=True) / n_special
 
     if flag_missing:
-        div_value += fun([pi_missing], [qi_missing])
+        div_value += fun([pi_missing], [qi_missing], return_sum=True)
 
     return float(div_value)
 

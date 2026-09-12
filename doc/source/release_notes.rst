@@ -40,10 +40,10 @@ Documentation:
 
 Contributors:
 
-    - `Uvindu <https://github.com/Uvindu>`_: author of the PEP 621 packaging
-       migration pull request (`#386 <https://github.com/guillermo-navas-palencia/optbinning/pull/386>`_).
-    - `detrin <https://github.com/detrin>`_: original proposer of the PEP 621
-       packaging migration (`Issue 350 <https://github.com/guillermo-navas-palencia/optbinning/issues/350>`_).
+   - `Uvindu <https://github.com/Uvindu>`_: author of the PEP 621 packaging
+     migration pull request (`#386 <https://github.com/guillermo-navas-palencia/optbinning/pull/386>`_).
+   - `detrin <https://github.com/detrin>`_: original proposer of the PEP 621
+     packaging migration (`Issue 350 <https://github.com/guillermo-navas-palencia/optbinning/issues/350>`_).
    - `Lucas Morin <https://github.com/lcrmorin>`_:
      JSON serialization fixes, scorecard metric overrides, sketch record
      counts, special-code handling, parameter isolation, warning cleanup, and

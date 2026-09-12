@@ -8,7 +8,7 @@ optimal binning.
 
 import numbers
 import time
-from typing_extensions import Self
+from typing import Self
 
 import numpy as np
 import numpy.typing as npt

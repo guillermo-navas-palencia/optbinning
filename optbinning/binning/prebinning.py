@@ -5,7 +5,7 @@ Pre-binning class.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
-from typing_extensions import Self
+from typing import Self
 
 import numpy as np
 import numpy.typing as npt

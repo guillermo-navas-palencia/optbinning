@@ -7,7 +7,7 @@ Scorecard monitoring (System stability report)
 
 import numbers
 import time
-from typing_extensions import Self
+from typing import Self
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick

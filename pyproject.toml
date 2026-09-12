@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Guillermo Navas-Palencia", email = "g.navas-palencia@gmail.com" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "matplotlib",
     "numpy>=1.16.1",
@@ -21,7 +21,6 @@ dependencies = [
     "ropwr>=1.0.0",
     "scikit-learn>=1.6.0",
     "scipy>=1.6.0",
-    "typing_extensions>=4.5.0",
 ]
 classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -31,7 +30,6 @@ classifiers = [
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

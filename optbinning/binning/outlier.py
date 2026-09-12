@@ -7,8 +7,7 @@ Univariate outlier detection methods.
 
 import numbers
 
-from typing import Any
-from typing_extensions import Self
+from typing import Any, Self
 
 import numpy as np
 import numpy.typing as npt

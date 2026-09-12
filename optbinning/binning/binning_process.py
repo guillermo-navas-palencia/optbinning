@@ -12,7 +12,7 @@ import time
 from typing import Any
 from warnings import warn
 
-from typing_extensions import Self
+from typing import Self
 
 import numpy as np
 import numpy.typing as npt

@@ -7,7 +7,7 @@ Minimum Description Length Principle (MDLP)
 
 import numbers
 
-from typing_extensions import Self
+from typing import Self
 
 import numpy as np
 import numpy.typing as npt

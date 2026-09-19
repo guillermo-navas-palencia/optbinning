@@ -463,6 +463,75 @@ def test_verbose():
             scorecard.fit(X, y)
 
 
+def test_pvalues():
+    # Scorecard.table(style="detailed") exposes Wald-test p-values for
+    # each explanatory variable when the estimator is a LogisticRegression
+    # with no penalty or an L2 penalty. See GH issue #224.
+    data = load_breast_cancer()
+    X = pd.DataFrame(data.data[:, :5], columns=data.feature_names[:5])
+    y = data.target
+
+    binning_process = BinningProcess(variable_names=list(X.columns))
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(penalty=None, max_iter=2000),
+        scaling_method=None).fit(X, y)
+
+    detailed = scorecard.table(style="detailed")
+    assert "P-value" in detailed.columns
+    assert "Std. Error" in detailed.columns
+    assert "Z-score" in detailed.columns
+
+    # p-values are per-variable, not per-bin -- constant within a variable
+    pvalues = detailed.groupby("Variable")["P-value"].nunique()
+    assert (pvalues == 1).all()
+
+    # a known-significant variable in this reduced feature set
+    pvalue_by_var = detailed.groupby("Variable")["P-value"].first()
+    assert pvalue_by_var["mean texture"] < 0.01
+
+    # cross-check against the classical Wald test computed independently
+    # (statsmodels is not a dependency; this recomputes the same formula
+    # directly instead of importing it)
+    from scipy import stats as scipy_stats
+    X_t = scorecard.binning_process_.transform(X, metric="woe")
+    x_design = np.column_stack([np.ones(len(X_t)), X_t.values])
+    clf = scorecard.estimator_
+    p = clf.predict_proba(X_t)[:, 1]
+    w = p * (1 - p)
+    hessian = x_design.T @ (x_design * w[:, np.newaxis])
+    se = np.sqrt(np.diag(np.linalg.inv(hessian)))
+    beta = np.concatenate([np.ravel(clf.intercept_), clf.coef_.flatten()])
+    expected_pvalues = 2 * (1 - scipy_stats.norm.cdf(np.abs(beta / se)))
+    # align by variable name: X_t's column order (fit/selection order) may
+    # differ from groupby's alphabetically-sorted order
+    expected_by_var = pd.Series(expected_pvalues[1:], index=X_t.columns)
+
+    for variable in pvalue_by_var.index:
+        assert pvalue_by_var[variable] == approx(
+            expected_by_var[variable], rel=1e-6)
+
+    # summary style never includes the p-value columns
+    summary = scorecard.table(style="summary")
+    assert "P-value" not in summary.columns
+
+    # not defined for L1/elastic-net penalties: no error, no columns
+    scorecard_l1 = Scorecard(
+        binning_process=BinningProcess(variable_names=list(X.columns)),
+        estimator=LogisticRegression(penalty="l1", solver="liblinear"),
+        scaling_method=None).fit(X, y)
+    assert "P-value" not in scorecard_l1.table(style="detailed").columns
+
+    # not defined for a continuous target / non-LogisticRegression
+    # estimator: no error, no columns
+    y_cont = X["mean radius"].values + 1.0
+    scorecard_cont = Scorecard(
+        binning_process=BinningProcess(variable_names=list(X.columns)),
+        estimator=LinearRegression(),
+        scaling_method=None).fit(X, y_cont)
+    assert "P-value" not in scorecard_cont.table(style="detailed").columns
+
+
 def test_missing_metrics():
     data = pd.DataFrame(
         {'target': np.hstack(

@@ -21,7 +21,8 @@ example. Unused panels are hidden.
 
 Metric y-axes share a common scale by default, covering all plotted variables.
 Use ``share_metric=False`` for independent metric scales. Bin-count axes and
-x-axes remain independent.
+x-axes remain independent. One shared legend is displayed below the grid;
+use ``share_legend=False`` to keep individual panel legends.
 
 Choose a subset and its order with ``variable_names=["age", "income"]``.
 The grid supports standard binary, continuous and multiclass binning tables,

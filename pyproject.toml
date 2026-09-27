@@ -14,7 +14,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "matplotlib",
+    "matplotlib>=3.7",
     "numpy>=1.16.1",
     "ortools>=9.15",
     "pandas",

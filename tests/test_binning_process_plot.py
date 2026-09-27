@@ -37,7 +37,8 @@ def test_grid(process, tmp_path):
     assert not axes[1, 1].get_visible()
     assert len(fig.axes) == 7  # Four primary axes and three metric axes.
     fig.canvas.draw()
-    assert sum(ax.get_legend() is not None for ax in fig.axes) == 3
+    assert all(ax.get_legend() is None for ax in fig.axes)
+    assert len(fig.legends) == 1
     fig.savefig(tmp_path / "grid.png")
     plt.close(fig)
 
@@ -78,6 +79,8 @@ def test_supplied_axes_ownership(process, tmp_path):
 
 def test_validation(process):
     figures = plt.get_fignums()
+    with raises(TypeError, match="share_legend"):
+        process.plot(share_legend="yes")
     with raises(TypeError, match="share_metric"):
         process.plot(share_metric="yes")
     for ncols in [0, -1, 1.5, True]:
@@ -181,4 +184,27 @@ def test_shared_metric_axes(process):
     for metric in metrics:
         assert metric.get_ylim() == (-100, 100)
     assert [ax.get_ylim() for ax in axes.flat] == counts
+    plt.close(fig)
+
+
+def test_shared_legend(process):
+    fig, axes = process.plot(share_legend=False)
+    legends = [ax.get_legend() for ax in fig.axes
+               if ax.get_legend() is not None]
+    expected = [text.get_text() for text in legends[0].get_texts()]
+    assert len(legends) == 3
+    assert not fig.legends
+    plt.close(fig)
+
+    fig, axes = process.plot()
+    assert all(ax.get_legend() is None for ax in fig.axes)
+    assert len(fig.legends) == 1
+    assert [text.get_text() for text in fig.legends[0].get_texts()] == expected
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    legend_box = fig.legends[0].get_window_extent(renderer)
+    assert fig.bbox.contains(legend_box.x0, legend_box.y0)
+    assert fig.bbox.contains(legend_box.x1, legend_box.y1)
+    assert all(not legend_box.overlaps(ax.get_window_extent(renderer))
+               for ax in axes.flat if ax.get_visible())
     plt.close(fig)

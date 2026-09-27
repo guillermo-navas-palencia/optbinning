@@ -15,6 +15,7 @@ from warnings import warn
 from typing import Self
 
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -1630,9 +1631,17 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         return self
 
-    def plot(self, variable_names=None, ncols=None, figsize=None,
-             add_special=True, add_missing=True, show_bin_labels=False,
-             share_metric=True):
+    def plot(
+        self,
+        variable_names: list[str] | tuple[str, ...] | npt.NDArray | None = None,
+        ncols: int | None = None,
+        figsize: tuple[float, float] | None = None,
+        add_special: bool = True,
+        add_missing: bool = True,
+        show_bin_labels: bool = False,
+        share_metric: bool = True,
+        share_legend: bool = True,
+    ) -> tuple[Figure, npt.NDArray]:
         """Plot fitted variables in a grid using their existing binning plots.
 
         Parameters
@@ -1654,6 +1663,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         share_metric : bool (default=True)
             Share the secondary metric y-axis across panels, using limits that
             cover all plotted variables. Count axes remain independent.
+        share_legend : bool (default=True)
+            Show one legend for the whole figure instead of a legend per panel.
 
         Returns
         -------
@@ -1670,6 +1681,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         the existing default metrics and standard bin layout for each type.
         """
         self._check_is_fitted()
+        if not isinstance(share_legend, bool):
+            raise TypeError("share_legend must be a boolean.")
         if not isinstance(share_metric, bool):
             raise TypeError("share_metric must be a boolean.")
         if ncols is not None and (
@@ -1712,6 +1725,21 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                            show_bin_labels=show_bin_labels)
                 # Each standard table plot adds one secondary metric axis.
                 metric_axes.append(fig.axes[-1])
+            if share_legend:
+                handles, labels = [], []
+                for metric_ax in metric_axes:
+                    legend = metric_ax.get_legend()
+                    if legend is not None:
+                        for handle, text in zip(
+                                legend.legend_handles, legend.get_texts()):
+                            label = text.get_text()
+                            if label not in labels:
+                                handles.append(handle)
+                                labels.append(label)
+                        legend.remove()
+                if handles:
+                    fig.legend(handles, labels, loc="outside lower center",
+                               ncol=min(len(labels), 4), fontsize=12)
             if share_metric:
                 limits = [ax.get_ylim() for ax in metric_axes]
                 for metric_ax in metric_axes[1:]:

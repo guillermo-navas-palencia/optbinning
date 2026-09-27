@@ -47,7 +47,8 @@ def _json_compatible(value):
     if isinstance(value, np.generic):
         return value.item()
     if isinstance(value, dict):
-        return {key: _json_compatible(item) for key, item in value.items()}
+        return {_json_compatible(key): _json_compatible(item)
+                for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_compatible(item) for item in value]
     return value
@@ -1269,6 +1270,7 @@ class OptimalBinning(BaseOptimalBinning):
         opt_bin_dict['name'] = table.name
         opt_bin_dict['dtype'] = table.dtype
         opt_bin_dict['special_codes'] = table.special_codes
+        opt_bin_dict['cat_unknown'] = self.cat_unknown
 
         if table.dtype == 'numerical':
             opt_bin_dict['splits'] = table.splits.tolist()
@@ -1327,9 +1329,10 @@ class OptimalBinning(BaseOptimalBinning):
         for key, value in bin_table_attr.items():
             if isinstance(value, list) and key not in (
                     "special_codes", "user_splits"):
-                dtype = object if key == "categories" else None
+                dtype = object if key in ("categories", "cat_others") else None
                 bin_table_attr[key] = np.array(value, dtype=dtype)
 
+        self.cat_unknown = bin_table_attr.pop('cat_unknown', None)
         self.name = bin_table_attr['name']
         self.dtype = bin_table_attr['dtype']
         self.special_codes = bin_table_attr['special_codes']

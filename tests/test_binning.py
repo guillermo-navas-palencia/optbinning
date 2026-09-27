@@ -726,3 +726,57 @@ def test_read_json_1_0_0_fixture():
     assert loaded.dtype == "categorical"
     assert loaded.special_codes == {"flagged": ["special"]}
     assert loaded.user_splits == [["a", "b"], ["c", "d"]]
+    assert loaded.cat_unknown is None
+
+
+def test_json_numpy_special_key(tmp_path):
+    values = np.repeat([1., 2., 3., -999.], 100)
+    target = np.concatenate([np.r_[np.zeros(100-n), np.ones(n)]
+                             for n in [10, 30, 80, 20]])
+    fitted = OptimalBinning(special_codes={np.int64(1): [-999]}).fit(
+        values, target)
+    path = str(tmp_path / "numpy_key.json")
+    fitted.to_json(path)
+    restored = OptimalBinning()
+    restored.read_json(path)
+    np.testing.assert_allclose(
+        restored.transform(values, metric_special="empirical"),
+        fitted.transform(values, metric_special="empirical"))
+
+
+def test_json_mixed_cat_others(tmp_path):
+    values = np.array(["a"] * 100 + ["b"] * 100 + [1] * 10 + ["1"] * 10,
+                      dtype=object)
+    target = np.concatenate([np.r_[np.zeros(100-n), np.ones(n)]
+                             for n in [20, 80]] + [np.tile([0, 1], 10)])
+    fitted = OptimalBinning(dtype="categorical", cat_cutoff=0.1).fit(
+        values, target)
+    path = str(tmp_path / "mixed_others.json")
+    fitted.to_json(path)
+    restored = OptimalBinning()
+    restored.read_json(path)
+    for metric in ["indices", "woe", "event_rate"]:
+        np.testing.assert_allclose(restored.transform(values, metric=metric),
+                                   fitted.transform(values, metric=metric))
+    assert set(map(type, restored._cat_others)) == {int, str}
+
+
+@mark.parametrize("unknown", [999, "unseen"])
+def test_json_cat_unknown(tmp_path, unknown):
+    values = np.repeat(["a", "b"], 100)
+    target = np.r_[np.tile([0, 0, 0, 1], 25), np.tile([0, 1, 1, 1], 25)]
+    fitted = OptimalBinning(dtype="categorical", cat_unknown=unknown).fit(
+        values, target)
+    path = str(tmp_path / "unknown.json")
+    fitted.to_json(path)
+    restored = OptimalBinning()
+    restored.read_json(path)
+    assert restored.cat_unknown == unknown
+    metrics = (["bins"] if isinstance(unknown, str)
+               else ["indices", "woe", "event_rate"])
+    # This test covers the unknown replacement, not category label formatting.
+    sample = ["new"] if isinstance(unknown, str) else ["a", "new"]
+    for metric in metrics:
+        np.testing.assert_array_equal(
+            restored.transform(sample, metric=metric),
+            fitted.transform(sample, metric=metric))

@@ -5,8 +5,8 @@ Model data for optimal binning formulations.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2019
 
-
 import numpy as np
+import numpy.typing as npt
 
 from scipy import stats
 
@@ -16,7 +16,13 @@ from .metrics import hellinger
 from .metrics import triangular
 
 
-def test_proportions(e1, ne1, e2, ne2, zscore):
+def test_proportions(
+    e1: int,
+    ne1: int,
+    e2: int,
+    ne2: int,
+    zscore: float,
+) -> bool:
     n1 = e1 + ne1
     n2 = e2 + ne2
     p1 = e1 / n1
@@ -27,7 +33,13 @@ def test_proportions(e1, ne1, e2, ne2, zscore):
     return abs(z) < zscore
 
 
-def find_pvalue_violation_indices(n, E, NE, max_pvalue, max_pvalue_policy):
+def find_pvalue_violation_indices(
+    n: int,
+    E: list[int],
+    NE: list[int],
+    max_pvalue: float,
+    max_pvalue_policy: str,
+) -> list:
     pvalue_violation_indices = []
     zscore = stats.norm.ppf(1.0 - max_pvalue / 2)
 
@@ -57,8 +69,14 @@ def find_pvalue_violation_indices(n, E, NE, max_pvalue, max_pvalue_policy):
     return pvalue_violation_indices
 
 
-def find_pvalue_violation_indices_continuous(n, U, S, R, max_pvalue,
-                                             max_pvalue_policy):
+def find_pvalue_violation_indices_continuous(
+    n: int,
+    U: list[float],
+    S: list[float],
+    R: list[int],
+    max_pvalue: float,
+    max_pvalue_policy: str,
+) -> list:
     pvalue_violation_indices = []
 
     if max_pvalue_policy == "all":
@@ -93,7 +111,11 @@ def find_pvalue_violation_indices_continuous(n, U, S, R, max_pvalue,
     return pvalue_violation_indices
 
 
-def find_min_diff_violation_indices(n, X, min_diff):
+def find_min_diff_violation_indices(
+    n: int,
+    X: list[int | float],
+    min_diff: int | float,
+) -> list:
     min_diff_violation_indices = []
 
     for i in range(n - 1):
@@ -107,8 +129,16 @@ def find_min_diff_violation_indices(n, X, min_diff):
     return min_diff_violation_indices
 
 
-def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
-               min_event_rate_diff, scale=None, return_nonevent_event=False):
+def model_data(
+    divergence: str,
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    min_event_rate_diff: float,
+    scale: int | float | None = None,
+    return_nonevent_event: bool = False,
+) -> tuple[list, ...]:
     n = len(n_nonevent)
 
     t_n_event = n_event.sum()
@@ -174,8 +204,14 @@ def model_data(divergence, n_nonevent, n_event, max_pvalue, max_pvalue_policy,
     return D, V, pvalue_violation_indices, min_diff_violation_indices
 
 
-def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
-                          min_event_rate_diff, scale=None):
+def multiclass_model_data(
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    min_event_rate_diff: float,
+    scale: int | float | None = None,
+) -> tuple[list, ...]:
 
     n, n_classes = n_nonevent.shape
 
@@ -242,8 +278,15 @@ def multiclass_model_data(n_nonevent, n_event, max_pvalue, max_pvalue_policy,
     return DD, VV, PV, MD
 
 
-def continuous_model_data(n_records, sums, ssums, max_pvalue,
-                          max_pvalue_policy, min_mean_diff, scale=None):
+def continuous_model_data(
+    n_records: npt.NDArray,
+    sums: npt.NDArray,
+    ssums: npt.NDArray,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    min_mean_diff: float,
+    scale: int | float | None = None,
+) -> tuple[list, ...]:
 
     n = len(n_records)
 

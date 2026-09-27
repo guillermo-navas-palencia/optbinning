@@ -9,6 +9,7 @@ import numbers
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from scipy import stats
@@ -68,8 +69,18 @@ class PWBinningTable(BinningTable):
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, special_codes, splits, coef, n_nonevent, n_event,
-                 min_x, max_x, d_metrics):
+    def __init__(
+        self,
+        name: str,
+        special_codes: list | npt.NDArray | dict | None,
+        splits: npt.NDArray,
+        coef: npt.NDArray,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray,
+        min_x: float,
+        max_x: float,
+        d_metrics: dict,
+    ) -> None:
         self.name = name
         self.special_codes = special_codes
         self.splits = splits
@@ -95,7 +106,11 @@ class PWBinningTable(BinningTable):
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True):
+    def build(
+        self,
+        show_digits: int = 2,
+        add_totals: bool = True,
+    ) -> pd.DataFrame:
         """Build the binning table.
 
         Parameters
@@ -136,8 +151,13 @@ class PWBinningTable(BinningTable):
         self._ks = self.d_metrics["KS"]
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)
@@ -442,9 +462,24 @@ class PWContinuousBinningTable:
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name, special_codes, splits, coef, n_records, sums,
-                 stds, min_target, max_target, n_zeros, lb, ub, min_x, max_x,
-                 d_metrics):
+    def __init__(
+        self,
+        name: str,
+        special_codes: list | npt.NDArray | dict | None,
+        splits: npt.NDArray,
+        coef: npt.NDArray,
+        n_records: npt.NDArray,
+        sums: npt.NDArray,
+        stds: npt.NDArray,
+        min_target: npt.NDArray,
+        max_target: npt.NDArray,
+        n_zeros: npt.NDArray,
+        lb: float | None,
+        ub: float | None,
+        min_x: float,
+        max_x: float,
+        d_metrics: dict,
+    ) -> None:
 
         self.name = name
         self.special_codes = special_codes
@@ -471,7 +506,11 @@ class PWContinuousBinningTable:
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, add_totals=True):
+    def build(
+        self,
+        show_digits: int = 2,
+        add_totals: bool = True,
+    ) -> pd.DataFrame:
         """Build the binning table.
 
         Parameters
@@ -497,8 +536,13 @@ class PWContinuousBinningTable:
         self._mean[mask] = self.sums[mask] / self.n_records[mask]
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         bins = np.concatenate([[-np.inf], self.splits, [np.inf]])
         bin_str = bin_str_format(bins, show_digits)

@@ -8,9 +8,11 @@ Binning process sketch.
 import numbers
 import time
 
+from typing import Self
 from warnings import warn
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.base import BaseEstimator
@@ -104,8 +106,8 @@ def _check_parameters(variable_names, max_n_prebins, min_n_bins, max_n_bins,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digits must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if binning_fit_params is not None:
@@ -165,8 +167,9 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     categorical_variables : array-like or None, optional (default=None)
         List of variables numerical variables to be considered categorical.
@@ -217,13 +220,24 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         option ``"solver": "mip"`` via the binning_fit_params parameter.
 
     """
-    def __init__(self, variable_names, max_n_prebins=20, min_n_bins=None,
-                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
-                 max_pvalue=None, max_pvalue_policy="consecutive",
-                 selection_criteria=None, categorical_variables=None,
-                 special_codes=None, split_digits=None,
-                 binning_fit_params=None, binning_transform_params=None,
-                 verbose=False):
+    def __init__(
+        self,
+        variable_names: list | npt.NDArray,
+        max_n_prebins: int = 20,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        selection_criteria: dict | None = None,
+        categorical_variables: list | npt.NDArray | None = None,
+        special_codes: list | npt.NDArray | None = None,
+        split_digits: int | None = None,
+        binning_fit_params: dict | None = None,
+        binning_transform_params: dict | None = None,
+        verbose: bool = False,
+    ) -> None:
 
         self.variable_names = variable_names
 
@@ -275,7 +289,12 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         # Check parameters
         _check_parameters(**self.get_params())
 
-    def add(self, X, y, check_input=False):
+    def add(
+        self,
+        X: pd.DataFrame,
+        y: list | npt.NDArray,
+        check_input: bool = False,
+    ) -> Self:
         """Add new data X, y to the binning sketch of each variable.
 
         Parameters
@@ -366,7 +385,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         return self
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -391,7 +410,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
             self._n_selected, self._n_add, self._time_streaming_add,
             self._n_solve, self._time_streaming_solve, dict_user_options)
 
-    def summary(self):
+    def summary(self) -> pd.DataFrame:
         """Binning process summary with main statistics for all binned
         variables.
 
@@ -412,7 +431,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         return df_summary[columns]
 
-    def merge(self, bpsketch):
+    def merge(self, bpsketch: 'BinningProcessSketch') -> None:
         """Merge current instance with another BinningProcessSketch instance.
 
         Parameters
@@ -430,7 +449,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         if self.verbose:
             logger.info("Sketch: current sketch was merged.")
 
-    def mergeable(self, bpsketch):
+    def mergeable(self, bpsketch: 'BinningProcessSketch') -> bool:
         """Check whether two BinningProcessSketch instances can be merged.
 
         Parameters
@@ -444,7 +463,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         """
         return self.get_params() == bpsketch.get_params()
 
-    def solve(self):
+    def solve(self) -> Self:
         """Solve optimal binning for all variables using added data.
 
         Returns
@@ -479,8 +498,15 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         return self
 
-    def transform(self, X, metric="woe", metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
+    def transform(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        metric: str = "woe",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False,
+    ) -> pd.DataFrame:
         """Transform given data to metric using bins from each fitted optimal
         binning.
 
@@ -584,7 +610,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
         return pd.DataFrame(X_transform, columns=selected_variables)
 
-    def get_binned_variable(self, name):
+    def get_binned_variable(self, name: str) -> OptimalBinningSketch:
         """Return optimal binning sketch object for a given variable name.
 
         Parameters
@@ -603,7 +629,11 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
-    def get_support(self, indices=False, names=False):
+    def get_support(
+        self,
+        indices: bool = False,
+        names: bool = False,
+    ) -> np.ndarray | list[str]:
         """Get a mask, or integer index, or names of the variables selected.
 
         Parameters

@@ -7,7 +7,10 @@ Minimum Description Length Principle (MDLP)
 
 import numbers
 
+from typing import Self
+
 import numpy as np
+import numpy.typing as npt
 
 from scipy import special
 from sklearn.base import BaseEstimator
@@ -15,7 +18,11 @@ from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
 
 
-def _check_parameters(min_samples_split, min_samples_leaf, max_candidates):
+def _check_parameters(
+    min_samples_split: int,
+    min_samples_leaf: int,
+    max_candidates: int
+) -> None:
     if (not isinstance(min_samples_split, numbers.Integral) or
             min_samples_split < 2):
         raise ValueError("min_samples_split must be a positive integer >= 2; "
@@ -67,9 +74,12 @@ class MDLP(BaseEstimator):
                  Proceedings of the 2001 IEEE International Conference on Data
                  Mining, 91-98, 2001.
     """
-    def __init__(self, min_samples_split=2, min_samples_leaf=2,
-                 max_candidates=32):
-
+    def __init__(
+        self,
+        min_samples_split: int = 2,
+        min_samples_leaf: int = 2,
+        max_candidates: int = 32
+    ):
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
         self.max_candidates = max_candidates
@@ -79,7 +89,7 @@ class MDLP(BaseEstimator):
 
         self._is_fitted = None
 
-    def fit(self, x, y):
+    def fit(self, x: npt.ArrayLike, y: npt.ArrayLike) -> Self:
         """Fit MDLP discretization algorithm.
 
         Parameters
@@ -96,7 +106,7 @@ class MDLP(BaseEstimator):
         """
         return self._fit(x, y)
 
-    def _fit(self, x, y):
+    def _fit(self, x: npt.ArrayLike, y: npt.ArrayLike) -> Self:
         _check_parameters(**self.get_params())
 
         x = check_array(x, ensure_2d=False, ensure_all_finite=True)
@@ -112,7 +122,7 @@ class MDLP(BaseEstimator):
 
         return self
 
-    def _recurse(self, x, y, id):
+    def _recurse(self, x: npt.NDArray, y: npt.NDArray, id: int) -> None:
         u_x = np.unique(x)
         n_x = len(u_x)
         n_y = len(np.bincount(y))
@@ -127,7 +137,12 @@ class MDLP(BaseEstimator):
                 self._recurse(x[:t], y[:t], id + 1)
                 self._recurse(x[t:], y[t:], id + 2)
 
-    def _find_split(self, u_x, x, y):
+    def _find_split(
+        self,
+        u_x: npt.NDArray,
+        x: npt.NDArray,
+        y: npt.NDArray
+    ) -> float:
         n_x = len(x)
         u_x = np.unique(0.5 * (x[1:] + x[:-1])[(y[1:] - y[:-1]) != 0])
 
@@ -153,14 +168,19 @@ class MDLP(BaseEstimator):
 
         return best_split
 
-    def _entropy(self, x):
+    def _entropy(self, x: npt.NDArray) -> float:
         n = len(x)
         ns1 = np.sum(x)
         ns0 = n - ns1
         p = np.array([ns0, ns1]) / n
         return -special.xlogy(p, p).sum()
 
-    def _entropy_gain(self, y, y1, y2):
+    def _entropy_gain(
+        self,
+        y: npt.NDArray,
+        y1: npt.NDArray,
+        y2: npt.NDArray
+    ) -> float:
         n = len(y)
         n1 = len(y1)
         n2 = n - n1
@@ -169,7 +189,14 @@ class MDLP(BaseEstimator):
         ent_y2 = self._entropy(y2)
         return ent_y - (n1 * ent_y1 + n2 * ent_y2) / n
 
-    def _terminate(self, n_x, n_y, y, y1, y2):
+    def _terminate(
+        self,
+        n_x: int,
+        n_y: int,
+        y: npt.NDArray,
+        y1: npt.NDArray,
+        y2: npt.NDArray
+    ) -> bool:
         splittable = (n_x >= self.min_samples_split) and (n_y >= 2)
 
         n = len(y)
@@ -193,7 +220,7 @@ class MDLP(BaseEstimator):
         return gain <= (np.log(n - 1) + delta) / n or not splittable
 
     @property
-    def splits(self):
+    def splits(self) -> np.ndarray:
         """List of split points
 
         Returns

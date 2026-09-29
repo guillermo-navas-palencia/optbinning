@@ -10,6 +10,7 @@ import numbers
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from matplotlib.axes import Axes
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -1064,7 +1065,8 @@ class BinningTable:
         savefig: str | None = None,
         figsize: tuple | None = None,
         save_kwargs: dict | None = None,
-    ) -> None:
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -1101,8 +1103,20 @@ class BinningTable:
 
         save_kwargs : dict or None (default=None)
             Additional keyword arguments to be passed to `plt.savefig`.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if metric not in ("event_rate", "woe", "iv"):
             raise ValueError('Invalid value for metric. Allowed string '
@@ -1154,7 +1168,12 @@ class BinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         if style == "bin":
             n_bins = len(self._n_records)
@@ -1306,18 +1325,19 @@ class BinningTable:
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
@@ -1328,8 +1348,12 @@ class BinningTable:
                 if not isinstance(save_kwargs, dict):
                     raise TypeError("save_kwargs must be a dictionary; got {}."
                                     .format(save_kwargs))
-            plt.savefig(savefig, **save_kwargs)
-            plt.close()
+            fig.savefig(savefig, **save_kwargs)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,
@@ -1709,7 +1733,8 @@ class MulticlassBinningTable:
         show_bin_labels: bool = False,
         savefig: str | None = None,
         figsize: tuple | None = None,
-    ) -> None:
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1733,8 +1758,20 @@ class MulticlassBinningTable:
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if not isinstance(add_special, bool):
             raise TypeError("add_special must be a boolean; got {}."
@@ -1756,7 +1793,12 @@ class MulticlassBinningTable:
         n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         colors = COLORS_RGB[:n_classes]
         colors = [tuple(c / 255. for c in color) for color in colors]
@@ -1859,24 +1901,29 @@ class MulticlassBinningTable:
             ax1.set_xticks(np.arange(len(bin_str)))
             ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, self._bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
-            plt.close()
+            fig.savefig(savefig)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,
@@ -2214,8 +2261,9 @@ class ContinuousBinningTable:
         show_bin_labels: bool = False,
         savefig: str | None = None,
         figsize: tuple | None = None,
-        metric: str = 'mean'
-    ) -> None:
+        metric: str = 'mean',
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -2251,8 +2299,20 @@ class ContinuousBinningTable:
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if not isinstance(add_special, bool):
             raise TypeError("add_special must be a boolean; got {}."
@@ -2304,7 +2364,12 @@ class ContinuousBinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         if style == "bin":
             n_bins = len(self.n_records)
@@ -2446,24 +2511,29 @@ class ContinuousBinningTable:
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
-            plt.close()
+            fig.savefig(savefig)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,

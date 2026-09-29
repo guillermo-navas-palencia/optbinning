@@ -14,6 +14,8 @@ from warnings import warn
 
 from typing import Self
 
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -1628,3 +1630,126 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))
 
         return self
+
+    def plot(
+        self,
+        variable_names: list[str] | tuple[str, ...] | npt.NDArray | None = None,
+        ncols: int | None = None,
+        figsize: tuple[float, float] | None = None,
+        add_special: bool = True,
+        add_missing: bool = True,
+        show_bin_labels: bool = False,
+        share_metric: bool = True,
+        share_legend: bool = True,
+    ) -> tuple[Figure, npt.NDArray]:
+        """Plot fitted variables in a grid using their existing binning plots.
+
+        Parameters
+        ----------
+        variable_names : list of str or None (default=None)
+            Fitted variables to plot, in order. By default, plot the selected
+            variables returned by get_support(names=True).
+        ncols : int or None (default=None)
+            Maximum number of columns in the grid. By default, use the ceiling
+            of the square root of the number of plotted variables.
+        figsize : tuple or None (default=None)
+            Figure size. By default, allocate 6 by 4.5 inches per panel.
+        add_special : bool (default=True)
+            Whether to include special-code bins.
+        add_missing : bool (default=True)
+            Whether to include missing-value bins.
+        show_bin_labels : bool (default=False)
+            Whether to show bin labels instead of bin IDs.
+        share_metric : bool (default=True)
+            Share the secondary metric y-axis across panels, using limits that
+            cover all plotted variables. Count axes remain independent.
+        share_legend : bool (default=True)
+            Show one legend for the whole figure instead of a legend per panel.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure, which is neither shown nor closed automatically.
+        axes : numpy.ndarray
+            Two-dimensional array of primary axes. Unused panels are hidden;
+            each populated panel also has its existing secondary metric axis.
+
+        Notes
+        -----
+        Supports standard binary, continuous and multiclass binning tables.
+        Tables are built with default parameters if not already built. Uses
+        the existing default metrics and standard bin layout for each type.
+        """
+        self._check_is_fitted()
+        if not isinstance(share_legend, bool):
+            raise TypeError("share_legend must be a boolean.")
+        if not isinstance(share_metric, bool):
+            raise TypeError("share_metric must be a boolean.")
+        if ncols is not None and (
+                isinstance(ncols, bool) or
+                not isinstance(ncols, numbers.Integral) or ncols < 1):
+            raise ValueError("ncols must be a positive integer or None.")
+        if variable_names is None:
+            names = list(self.get_support(names=True))
+        else:
+            if not isinstance(variable_names, (list, tuple, np.ndarray)):
+                raise TypeError("variable_names must be a sequence of names.")
+            names = list(variable_names)
+        if not names:
+            raise ValueError("No variables to plot.")
+        if len(set(names)) != len(names):
+            raise ValueError("variable_names must not contain duplicates.")
+        tables = []
+        for name in names:
+            optb = self.get_binned_variable(name)
+            if isinstance(optb, _OPTBPW_TYPES):
+                raise TypeError("Piecewise binning plots are not supported.")
+            table = optb.binning_table
+            if not table._is_built:
+                table.build()
+            tables.append(table)
+
+        if ncols is None:
+            ncols = int(np.ceil(np.sqrt(len(names))))
+        ncols = min(ncols, len(names))
+        nrows = (len(names) + ncols - 1) // ncols
+        fig, axes = plt.subplots(
+            nrows, ncols, squeeze=False,
+            figsize=figsize if figsize is not None else (6*ncols, 4.5*nrows),
+            layout="constrained")
+        try:
+            metric_axes = []
+            for ax, table in zip(axes.flat, tables):
+                table.plot(ax=ax, add_special=add_special,
+                           add_missing=add_missing,
+                           show_bin_labels=show_bin_labels)
+                # Each standard table plot adds one secondary metric axis.
+                metric_axes.append(fig.axes[-1])
+            if share_legend:
+                handles, labels = [], []
+                for metric_ax in metric_axes:
+                    legend = metric_ax.get_legend()
+                    if legend is not None:
+                        for handle, text in zip(
+                                legend.legend_handles, legend.get_texts()):
+                            label = text.get_text()
+                            if label not in labels:
+                                handles.append(handle)
+                                labels.append(label)
+                        legend.remove()
+                if handles:
+                    fig.legend(handles, labels, loc="outside lower center",
+                               ncol=min(len(labels), 4), fontsize=12)
+            if share_metric:
+                limits = [ax.get_ylim() for ax in metric_axes]
+                for metric_ax in metric_axes[1:]:
+                    metric_ax.sharey(metric_axes[0])
+                metric_axes[0].set_ylim(
+                    min(low for low, high in limits),
+                    max(high for low, high in limits))
+            for ax in list(axes.flat)[len(tables):]:
+                ax.set_visible(False)
+        except Exception:
+            plt.close(fig)
+            raise
+        return fig, axes

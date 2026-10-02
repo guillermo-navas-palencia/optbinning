@@ -366,7 +366,7 @@ class BaseBinningProcess:
             Transformed feature names, i.e., the names of the selected
             variables.
         """
-        self._check_is_fitted()
+        # get_support performs the appropriate fitted/solved-state check
 
         return self.get_support(names=True)
 

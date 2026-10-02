@@ -40,6 +40,20 @@ from .transformations import transform_binary_target
 logger = Logger(__name__).logger
 
 
+def _json_compatible(value):
+    """Convert nested NumPy arrays/scalars to JSON-compatible values."""
+    if isinstance(value, np.ndarray):
+        return _json_compatible(value.tolist())
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {_json_compatible(key): _json_compatible(item)
+                for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_compatible(item) for item in value]
+    return value
+
+
 def _check_parameters(name, dtype, prebinning_method, solver, divergence,
                       max_n_prebins, min_prebin_size, min_n_bins, max_n_bins,
                       min_bin_size, max_bin_size, min_bin_n_nonevent,
@@ -1256,6 +1270,7 @@ class OptimalBinning(BaseOptimalBinning):
         opt_bin_dict['name'] = table.name
         opt_bin_dict['dtype'] = table.dtype
         opt_bin_dict['special_codes'] = table.special_codes
+        opt_bin_dict['cat_unknown'] = self.cat_unknown
 
         if table.dtype == 'numerical':
             opt_bin_dict['splits'] = table.splits.tolist()
@@ -1277,7 +1292,7 @@ class OptimalBinning(BaseOptimalBinning):
             list(table.user_splits) if table.user_splits is not None
             else None)
 
-        return opt_bin_dict
+        return _json_compatible(opt_bin_dict)
 
     def to_json(self, path: str) -> None:
         """
@@ -1306,14 +1321,22 @@ class OptimalBinning(BaseOptimalBinning):
         ----------
         path: The path of the json file.
         """
-        self._is_fitted = True
-
         with open(path, "r") as read_file:
             bin_table_attr = json.load(read_file)
 
-        for key in bin_table_attr.keys():
-            if isinstance(bin_table_attr[key], list):
-                bin_table_attr[key] = np.array(bin_table_attr[key])
+        # Keep constructor settings as lists. Categories may contain
+        # unequal-sized user groups, which require an object array.
+        for key, value in bin_table_attr.items():
+            if isinstance(value, list) and key not in (
+                    "special_codes", "user_splits"):
+                dtype = object if key in ("categories", "cat_others") else None
+                bin_table_attr[key] = np.array(value, dtype=dtype)
+
+        self.cat_unknown = bin_table_attr.pop('cat_unknown', None)
+        self.name = bin_table_attr['name']
+        self.dtype = bin_table_attr['dtype']
+        self.special_codes = bin_table_attr['special_codes']
+        self.user_splits = bin_table_attr.get('user_splits')
 
         self._binning_table = BinningTable(**bin_table_attr)
 
@@ -1326,3 +1349,4 @@ class OptimalBinning(BaseOptimalBinning):
         self._n_event = bin_table_attr['n_event']
         self._categories = bin_table_attr.get('categories')
         self._cat_others = bin_table_attr.get('cat_others')
+        self._is_fitted = True

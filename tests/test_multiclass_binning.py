@@ -273,3 +273,28 @@ def test_to_json_read_json(tmp_path):
 
     assert (optb_loaded.transform(x, metric="mean_woe") ==
             approx(optb.transform(x, metric="mean_woe"), rel=1e-5))
+
+
+def test_df_tests():
+    # MulticlassBinningTable.df_tests exposes the per-adjacent-bin
+    # significance tests computed by analysis(), instead of only
+    # printing them. See GH issue #283.
+    optb = MulticlassOptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    assert len(df_tests) > 0
+
+    # returned frame is a defensive copy
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()

@@ -9,10 +9,17 @@ import numbers
 import pickle
 import time
 
+from typing import Any
 from warnings import warn
 
+from typing import Self
+
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+from pandas.api.types import is_string_dtype
 
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
@@ -23,7 +30,7 @@ from sklearn.utils import check_consistent_length
 from sklearn.utils.multiclass import type_of_target
 
 from ..logging import Logger
-from .base import Base
+from .base import Base, BaseOptimalBinning
 from .binning import OptimalBinning
 from .binning_process_information import print_binning_process_information
 from .continuous_binning import ContinuousOptimalBinning
@@ -49,7 +56,8 @@ _METRICS = {
         "quality_score": {"min": 0, "max": 1}
     },
     "continuous": {
-        "metrics": ["woe", "quality_score"],
+        "metrics": ["iv", "woe", "quality_score"],
+        "iv": {"min": 0, "max": np.inf},
         "woe": {"min": 0, "max": np.inf},
         "quality_score": {"min": 0, "max": 1}
     }
@@ -288,8 +296,8 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digits must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if binning_fit_params is not None:
@@ -310,12 +318,12 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
 
 def _check_variable_dtype(x):
-    return "categorical" if x.dtype == object else "numerical"
+    return "categorical" if is_string_dtype(x.dtype) else "numerical"
 
 
 class BaseBinningProcess:
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> "BaseBinningProcess":
         """Load binning process from pickle file.
 
         Parameters
@@ -334,7 +342,7 @@ class BaseBinningProcess:
         with open(path, "rb") as f:
             return pickle.load(f)
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         """Save binning process to pickle file.
 
         Parameters
@@ -348,7 +356,25 @@ class BaseBinningProcess:
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    def _support_selection_criteria(self):
+    def get_feature_names_out(self, input_features=None):
+        """Get output feature names for transformation.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, optional (default=None)
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Transformed feature names, i.e., the names of the selected
+            variables.
+        """
+        # get_support performs the appropriate fitted/solved-state check
+
+        return self.get_support(names=True)
+
+    def _support_selection_criteria(self) -> None:
         self._support = np.full(self._n_variables, True, dtype=bool)
 
         if self.selection_criteria is None:
@@ -395,7 +421,7 @@ class BaseBinningProcess:
                 idfv = list(self.variable_names).index(fv)
                 self._support[idfv] = True
 
-    def _binning_selection_criteria(self):
+    def _binning_selection_criteria(self) -> None:
         for i, name in enumerate(self.variable_names):
             optb = self._binned_variables[name]
             optb.binning_table.build()
@@ -427,6 +453,7 @@ class BaseBinningProcess:
                     "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
                 metrics = {
+                    "iv": optb.binning_table.iv,
                     "woe": optb.binning_table.woe,
                     "quality_score": optb.binning_table.quality_score}
 
@@ -490,19 +517,20 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
 
         .. versionadded:: 0.12.1
 
+    categorical_variables : array-like or None, optional (default=None)
+        List of variables numerical variables to be considered categorical.
+        These are nominal variables. Not applicable when target type is
+        multiclass.
+
     special_codes : array-like or None, optional (default=None)
         List of special codes. Use special codes to specify the data values
         that must be treated separately.
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
-
-    categorical_variables : array-like or None, optional (default=None)
-        List of variables numerical variables to be considered categorical.
-        These are nominal variables. Not applicable when target type is
-        multiclass.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     binning_fit_params : dict or None, optional (default=None)
         Dictionary with optimal binning fitting options for specific variables.
@@ -554,15 +582,27 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         option ``"solver": "mip"`` via the ``binning_fit_params`` parameter.
 
     """
-    def __init__(self, variable_names, max_n_prebins=20, min_prebin_size=0.05,
-                 min_n_bins=None, max_n_bins=None, min_bin_size=None,
-                 max_bin_size=None, max_pvalue=None,
-                 max_pvalue_policy="consecutive", selection_criteria=None,
-                 fixed_variables=None, categorical_variables=None,
-                 special_codes=None, split_digits=None,
-                 binning_fit_params=None, binning_transform_params=None,
-                 n_jobs=None, verbose=False):
-
+    def __init__(
+        self,
+        variable_names: npt.ArrayLike | list[str],
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        selection_criteria: dict[str, Any] | None = None,
+        fixed_variables: npt.ArrayLike | list[str] | None = None,
+        categorical_variables: npt.ArrayLike | list[str] | None = None,
+        special_codes: npt.ArrayLike | None = None,
+        split_digits: int | None = None,
+        binning_fit_params: dict[str, Any] | None = None,
+        binning_transform_params: dict[str, Any] | None = None,
+        n_jobs: int | None = None,
+        verbose: bool = False
+    ):
         self.variable_names = variable_names
 
         self.max_n_prebins = max_n_prebins
@@ -605,13 +645,19 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         self._is_updated = False
         self._is_fitted = False
 
-    def fit(self, X, y, sample_weight=None, check_input=False):
+    def fit(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        y: npt.ArrayLike,
+        sample_weight: npt.ArrayLike | None = None,
+        check_input: bool = False
+    ) -> Self:
         """Fit the binning process. Fit the optimal binning to all variables
         according to the given training data.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
             .. versionchanged:: 0.4.0
@@ -636,7 +682,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         """
         return self._fit(X, y, sample_weight, check_input)
 
-    def fit_disk(self, input_path, target, **kwargs):
+    def fit_disk(self, input_path: str, target: str, **kwargs) -> Self:
         """Fit the binning process according to the given training data on
         disk.
 
@@ -659,7 +705,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         """
         return self._fit_disk(input_path, target, **kwargs)
 
-    def fit_from_dict(self, dict_optb):
+    def fit_from_dict(self, dict_optb: dict[str, object]) -> Self:
         """Fit the binning process from a dict of OptimalBinning objects
         already fitted.
 
@@ -676,15 +722,23 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         """
         return self._fit_from_dict(dict_optb)
 
-    def fit_transform(self, X, y, sample_weight=None, metric=None,
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit_transform(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        y: npt.ArrayLike,
+        sample_weight: npt.ArrayLike | None = None,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Fit the binning process according to the given training data, then
         transform it.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         y : array-like of shape (n_samples,)
@@ -732,9 +786,18 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             X, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def fit_transform_disk(self, input_path, output_path, target, chunksize,
-                           metric=None, metric_special=0, metric_missing=0,
-                           show_digits=2, **kwargs):
+    def fit_transform_disk(
+        self,
+        input_path: str,
+        output_path: str,
+        target: str,
+        chunksize: int,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        **kwargs
+    ) -> Self:
         """Fit the binning process according to the given training data on
         disk, then transform it and save to comma-separated values (csv) file.
 
@@ -749,7 +812,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         target : str
             Target column.
 
-        chunksize :
+        chunksize : int
             Rows to read, transform and write at a time.
 
         metric : str or None, (default=None)
@@ -788,14 +851,21 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             input_path, output_path, chunksize, metric, metric_special,
             metric_missing, show_digits, **kwargs)
 
-    def transform(self, X, metric=None, metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
+    def transform(
+        self,
+        X: npt.NDArray | pd.DataFrame,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Transform given data to metric using bins from each fitted optimal
         binning.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : numpy.ndarray or pandas.DataFrame of shape (n_samples, n_features)
             Training vector, where n_samples is the number of samples.
 
         metric : str or None, (default=None)
@@ -836,9 +906,17 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         return self._transform(X, metric, metric_special, metric_missing,
                                show_digits, check_input)
 
-    def transform_disk(self, input_path, output_path, chunksize, metric=None,
-                       metric_special=0, metric_missing=0, show_digits=2,
-                       **kwargs):
+    def transform_disk(
+        self,
+        input_path: str,
+        output_path: str,
+        chunksize: int,
+        metric: str | None = None,
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        **kwargs
+    ) -> Self:
         """Transform given data on disk to metric using bins from each fitted
         optimal binning. Save to comma-separated values (csv) file.
 
@@ -850,7 +928,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         output_path : str
             Any valid string path to a file with extension .csv.
 
-        chunksize :
+        chunksize : int
             Rows to read, transform and write at a time.
 
         metric : str or None, (default=None)
@@ -891,7 +969,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
                                     metric_special, metric_missing,
                                     show_digits, **kwargs)
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -918,7 +996,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             self._target_dtype, n_numerical, n_categorical,
             self._n_selected, self._time_total, dict_user_options)
 
-    def summary(self):
+    def summary(self) -> pd.DataFrame:
         """Binning process summary with main statistics for all binned
         variables.
 
@@ -943,13 +1021,18 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
 
         return df_summary[columns]
 
-    def get_binned_variable(self, name):
+    def get_binned_variable(self, name: str) -> BaseOptimalBinning:
         """Return optimal binning object for a given variable name.
 
         Parameters
         ----------
-        name : string
+        name : str
             The variable name.
+
+        Returns
+        -------
+        optb : BaseOptimalBinning
+            Optimal binning class (binary or continuous).
         """
         self._check_is_fitted()
 
@@ -962,15 +1045,19 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
-    def update_binned_variable(self, name, optb):
+    def update_binned_variable(
+        self,
+        name: str,
+        optb: BaseOptimalBinning
+    ) -> None:
         """Update optimal binning object for a given variable.
 
         Parameters
         ----------
-        name : string
+        name : str
             The variable name.
 
-        optb : object
+        optb : BaseOptimalBinning
             The optimal binning object already fitted.
         """
         self._check_is_fitted()
@@ -1017,7 +1104,11 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         self._binned_variables[name] = optb
         self._is_updated = True
 
-    def get_support(self, indices=False, names=False):
+    def get_support(
+        self,
+        indices: bool = False,
+        names: bool = False
+    ) -> np.ndarray:
         """Get a mask, or integer index, or names of the variables selected.
 
         Parameters
@@ -1431,15 +1522,18 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             if self.binning_transform_params is not None:
                 params = self.binning_transform_params.get(name, {})
 
-            metric = params.get("metric", metric)
-            metric_missing = params.get("metric_missing", metric_missing)
-            metric_special = params.get("metric_special", metric_special)
+            # Resolve into new locals, not into metric/metric_special/
+            # metric_missing themselves -- overwriting those leaks this
+            # variable's override into every later variable (GH #355).
+            var_metric = params.get("metric", metric)
+            var_metric_missing = params.get("metric_missing", metric_missing)
+            var_metric_special = params.get("metric_special", metric_special)
 
             tparams = {
                 "x": x,
-                "metric": metric,
-                "metric_special": metric_special,
-                "metric_missing": metric_missing,
+                "metric": var_metric,
+                "metric_special": var_metric_special,
+                "metric_missing": var_metric_missing,
                 "check_input": check_input,
                 "show_digits": show_digits
                 }
@@ -1447,7 +1541,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             if isinstance(optb, _OPTBPW_TYPES):
                 tparams.pop("show_digits")
 
-            if metric is None:
+            if var_metric is None:
                 tparams.pop("metric")
 
             X_transform[:, i] = optb.transform(**tparams)
@@ -1529,22 +1623,27 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
                 if self.binning_transform_params is not None:
                     params = self.binning_transform_params.get(name, {})
 
-                metric = params.get("metric", metric)
-                metric_missing = params.get("metric_missing", metric_missing)
-                metric_special = params.get("metric_special", metric_special)
+                # Same fix as _transform() (GH #355) -- resolve into new
+                # locals so an override can't leak into the next variable
+                # or chunk.
+                var_metric = params.get("metric", metric)
+                var_metric_missing = params.get(
+                    "metric_missing", metric_missing)
+                var_metric_special = params.get(
+                    "metric_special", metric_special)
 
                 tparams = {
                     "x": chunk[name],
-                    "metric": metric,
-                    "metric_special": metric_special,
-                    "metric_missing": metric_missing,
+                    "metric": var_metric,
+                    "metric_special": var_metric_special,
+                    "metric_missing": var_metric_missing,
                     "show_digits": show_digits
                     }
 
                 if isinstance(optb, _OPTBPW_TYPES):
                     tparams.pop("show_digits")
 
-                if metric is None:
+                if var_metric is None:
                     tparams.pop("metric")
 
                 X_transform[:, i] = optb.transform(**tparams)
@@ -1553,3 +1652,126 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))
 
         return self
+
+    def plot(
+        self,
+        variable_names: list[str] | tuple[str, ...] | npt.NDArray | None = None,
+        ncols: int | None = None,
+        figsize: tuple[float, float] | None = None,
+        add_special: bool = True,
+        add_missing: bool = True,
+        show_bin_labels: bool = False,
+        share_metric: bool = True,
+        share_legend: bool = True,
+    ) -> tuple[Figure, npt.NDArray]:
+        """Plot fitted variables in a grid using their existing binning plots.
+
+        Parameters
+        ----------
+        variable_names : list of str or None (default=None)
+            Fitted variables to plot, in order. By default, plot the selected
+            variables returned by get_support(names=True).
+        ncols : int or None (default=None)
+            Maximum number of columns in the grid. By default, use the ceiling
+            of the square root of the number of plotted variables.
+        figsize : tuple or None (default=None)
+            Figure size. By default, allocate 6 by 4.5 inches per panel.
+        add_special : bool (default=True)
+            Whether to include special-code bins.
+        add_missing : bool (default=True)
+            Whether to include missing-value bins.
+        show_bin_labels : bool (default=False)
+            Whether to show bin labels instead of bin IDs.
+        share_metric : bool (default=True)
+            Share the secondary metric y-axis across panels, using limits that
+            cover all plotted variables. Count axes remain independent.
+        share_legend : bool (default=True)
+            Show one legend for the whole figure instead of a legend per panel.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure, which is neither shown nor closed automatically.
+        axes : numpy.ndarray
+            Two-dimensional array of primary axes. Unused panels are hidden;
+            each populated panel also has its existing secondary metric axis.
+
+        Notes
+        -----
+        Supports standard binary, continuous and multiclass binning tables.
+        Tables are built with default parameters if not already built. Uses
+        the existing default metrics and standard bin layout for each type.
+        """
+        self._check_is_fitted()
+        if not isinstance(share_legend, bool):
+            raise TypeError("share_legend must be a boolean.")
+        if not isinstance(share_metric, bool):
+            raise TypeError("share_metric must be a boolean.")
+        if ncols is not None and (
+                isinstance(ncols, bool) or
+                not isinstance(ncols, numbers.Integral) or ncols < 1):
+            raise ValueError("ncols must be a positive integer or None.")
+        if variable_names is None:
+            names = list(self.get_support(names=True))
+        else:
+            if not isinstance(variable_names, (list, tuple, np.ndarray)):
+                raise TypeError("variable_names must be a sequence of names.")
+            names = list(variable_names)
+        if not names:
+            raise ValueError("No variables to plot.")
+        if len(set(names)) != len(names):
+            raise ValueError("variable_names must not contain duplicates.")
+        tables = []
+        for name in names:
+            optb = self.get_binned_variable(name)
+            if isinstance(optb, _OPTBPW_TYPES):
+                raise TypeError("Piecewise binning plots are not supported.")
+            table = optb.binning_table
+            if not table._is_built:
+                table.build()
+            tables.append(table)
+
+        if ncols is None:
+            ncols = int(np.ceil(np.sqrt(len(names))))
+        ncols = min(ncols, len(names))
+        nrows = (len(names) + ncols - 1) // ncols
+        fig, axes = plt.subplots(
+            nrows, ncols, squeeze=False,
+            figsize=figsize if figsize is not None else (6*ncols, 4.5*nrows),
+            layout="constrained")
+        try:
+            metric_axes = []
+            for ax, table in zip(axes.flat, tables):
+                table.plot(ax=ax, add_special=add_special,
+                           add_missing=add_missing,
+                           show_bin_labels=show_bin_labels)
+                # Each standard table plot adds one secondary metric axis.
+                metric_axes.append(fig.axes[-1])
+            if share_legend:
+                handles, labels = [], []
+                for metric_ax in metric_axes:
+                    legend = metric_ax.get_legend()
+                    if legend is not None:
+                        for handle, text in zip(
+                                legend.legend_handles, legend.get_texts()):
+                            label = text.get_text()
+                            if label not in labels:
+                                handles.append(handle)
+                                labels.append(label)
+                        legend.remove()
+                if handles:
+                    fig.legend(handles, labels, loc="outside lower center",
+                               ncol=min(len(labels), 4), fontsize=12)
+            if share_metric:
+                limits = [ax.get_ylim() for ax in metric_axes]
+                for metric_ax in metric_axes[1:]:
+                    metric_ax.sharey(metric_axes[0])
+                metric_axes[0].set_ylim(
+                    min(low for low, high in limits),
+                    max(high for low, high in limits))
+            for ax in list(axes.flat)[len(tables):]:
+                ax.set_visible(False)
+        except Exception:
+            plt.close(fig)
+            raise
+        return fig, axes

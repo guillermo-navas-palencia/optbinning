@@ -3,7 +3,6 @@ Scorecard
 
 .. autoclass:: optbinning.scorecard.Scorecard
    :members:
-   :inherited-members:
    :show-inheritance:
 
 
@@ -12,7 +11,6 @@ Monitoring
 
 .. autoclass:: optbinning.scorecard.ScorecardMonitoring
    :members:
-   :inherited-members:
    :show-inheritance:
 
 

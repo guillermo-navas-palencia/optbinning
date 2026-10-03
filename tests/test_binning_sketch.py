@@ -271,3 +271,43 @@ def test_verbose():
     optb.solve()
 
     assert optb.status == "OPTIMAL"
+
+
+def test_no_splits_missing_special_not_double_counted():
+    # When the optimizer finds no splits, missing and special record
+    # counts must not be folded into the (-inf, inf) bin's total on top
+    # of also being reported in their own separate rows -- otherwise the
+    # binning table's total record count is inflated. See GH issue #368.
+    x_small = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, -999.0, np.nan])
+    y_small = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0])
+
+    optb = OptimalBinningSketch(name="x", special_codes=[-999.0])
+    optb.add(x_small, y_small)
+    optb.solve()
+
+    assert len(optb.splits) == 0
+
+    table = optb.binning_table.build()
+    counts = table["Count"].values[:-1].astype(float)
+
+    assert counts[0] == 7  # (-inf, inf) bin: only the 7 regular records
+    assert counts.sum() == 9  # 7 regular + 1 special + 1 missing
+
+
+def test_merge_missing_special_only_batch():
+    # A batch that contains only missing and/or special records (no
+    # "regular" values at all) must not have its counts silently dropped
+    # when merged into another sketch. See GH issue #368.
+    optb1 = OptimalBinningSketch(name="x", special_codes=[-999.0])
+    optb1.add(np.array([1.0, 2.0, 3.0, 4.0]), np.array([0, 1, 0, 1]))
+
+    optb2 = OptimalBinningSketch(name="x", special_codes=[-999.0])
+    optb2.add(np.array([-999.0, np.nan]), np.array([1, 0]))
+
+    optb1.merge(optb2)
+    optb1.solve()
+
+    table = optb1.binning_table.build()
+    counts = table["Count"].values[:-1].astype(float)
+
+    assert counts.sum() == 6  # 4 regular + 1 special + 1 missing

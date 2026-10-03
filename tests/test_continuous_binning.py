@@ -204,7 +204,7 @@ def test_categorical_user_splits():
 
 
 def test_dtype_autodetect():
-    # dtype=None (the new default) infers the variable type from the data.
+    # Explicit dtype=None infers the variable type from the data.
     # See GH issue #316.
     np.random.seed(0)
     n = 300
@@ -212,24 +212,24 @@ def test_dtype_autodetect():
         ["Working", "Pensioner", "Student"], size=n).astype(object)
     y_cat = np.random.normal(size=n)
 
-    # default constructor now uses dtype=None
-    optb = ContinuousOptimalBinning()
+    # automatic detection is opt-in
+    optb = ContinuousOptimalBinning(dtype=None)
     assert optb.dtype is None
 
     # numerical data is inferred as "numerical"
-    optb = ContinuousOptimalBinning()
+    optb = ContinuousOptimalBinning(dtype=None)
     optb.fit(x, y)
     assert optb._dtype == "numerical"
 
     # object-dtype string array is inferred as "categorical"
-    optb = ContinuousOptimalBinning()
+    optb = ContinuousOptimalBinning(dtype=None)
     optb.fit(x_cat, y_cat)
     assert optb._dtype == "categorical"
 
     # plain numpy unicode string array (not dtype=object) is also
     # inferred as "categorical"
     x_cat_unicode = np.array(x_cat, dtype=str)
-    optb = ContinuousOptimalBinning()
+    optb = ContinuousOptimalBinning(dtype=None)
     optb.fit(x_cat_unicode, y_cat)
     assert optb._dtype == "categorical"
 
@@ -237,7 +237,7 @@ def test_dtype_autodetect():
     # "categorical", not "numerical"
     x_coded = pd.Series(pd.Categorical(
         np.random.choice([1, 2, 3], size=n)))
-    optb = ContinuousOptimalBinning()
+    optb = ContinuousOptimalBinning(dtype=None)
     optb.fit(x_coded, y_cat)
     assert optb._dtype == "categorical"
 
@@ -326,3 +326,51 @@ def test_verbose():
     optb.fit(x, y)
 
     assert optb.status == "OPTIMAL"
+
+
+def test_to_json_read_json(tmp_path):
+    # A binning object reloaded via read_json must reproduce the same
+    # transform as the originally fitted object. See GH issue #387.
+    optb = ContinuousOptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    path = str(tmp_path / "optb.json")
+    optb.to_json(path)
+
+    optb_loaded = ContinuousOptimalBinning(name=variable, dtype="numerical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x) == approx(optb.transform(x), rel=1e-6)
+
+
+def test_to_json_read_json_categorical(tmp_path):
+    # categories/cat_others are pandas/numpy array-likes and must be made
+    # JSON-serializable before being written out, otherwise to_json raises
+    # (e.g. "Object of type ndarray/ArrowStringArray is not JSON
+    # serializable"). See GH issue #387.
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randn(500)
+
+    optb = ContinuousOptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    path = str(tmp_path / "optb_cat.json")
+    optb.to_json(path)
+
+    optb_loaded = ContinuousOptimalBinning(name="x_cat", dtype="categorical")
+    optb_loaded.read_json(path)
+
+    assert optb_loaded.transform(x_cat) == approx(
+        optb.transform(x_cat), rel=1e-6)
+
+def test_special_codes_dict_none_present():
+    # special_codes as a dict where none of the values occur in the
+    # data must not crash (GH #340: dict branch initialized the
+    # stat lists to None, then unconditionally .append()'d to them).
+    optb = ContinuousOptimalBinning(
+        name=variable, special_codes={'special': [-5, -6, -7, -9]})
+    optb.fit(x, y)
+
+    assert optb.status == "OPTIMAL"
+    optb.binning_table.build()

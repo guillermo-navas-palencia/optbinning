@@ -7,6 +7,7 @@ Optimal binning algorithm 2D.
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -54,8 +55,15 @@ def bin_categorical(bins, categories):
     return bins_cat
 
 
-def bin_xy_str_format(dtype_x, dtype_y, bins_x, bins_y, show_digits,
-                      categories_x=None, categories_y=None):
+def bin_xy_str_format(
+    dtype_x: str,
+    dtype_y: str,
+    bins_x,
+    bins_y,
+    show_digits: int,
+    categories_x: npt.NDArray | list | None = None,
+    categories_y: npt.NDArray | list | None = None,
+) -> list[str]:
 
     show_digits = 2 if show_digits is None else show_digits
 
@@ -76,7 +84,12 @@ def bin_xy_str_format(dtype_x, dtype_y, bins_x, bins_y, show_digits,
     return bins_xy
 
 
-def bin_str_format(dtype, bins, show_digits, categories=None):
+def bin_str_format(
+    dtype: str,
+    bins,
+    show_digits: int,
+    categories: npt.NDArray | None = None,
+) -> list[str]:
     show_digits = 2 if show_digits is None else show_digits
 
     bin_str = []
@@ -180,9 +193,23 @@ class BinningTable2D(BinningTable):
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_nonevent, n_event, D, P, categories_x=None,
-                 categories_y=None):
+    def __init__(
+        self,
+        name_x: str,
+        name_y: str,
+        dtype_x: str,
+        dtype_y: str,
+        splits_x: npt.NDArray,
+        splits_y: npt.NDArray,
+        m: int,
+        n: int,
+        n_nonevent: npt.NDArray,
+        n_event: npt.NDArray,
+        D: npt.NDArray,
+        P: npt.NDArray,
+        categories_x: npt.NDArray | list | None = None,
+        categories_y: npt.NDArray | list | None = None,
+    ) -> None:
 
         self.name_x = name_x
         self.name_y = name_y
@@ -275,11 +302,19 @@ class BinningTable2D(BinningTable):
         self._W = W
 
         # Compute KS
-        self._ks = np.abs(p_event.cumsum() - p_nonevent.cumsum()).max()
+        if len(p_ev):
+            self._ks = np.abs(np.cumsum(p_ev) - np.cumsum(p_nev)).max()
+        else:
+            self._ks = 0.0
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Compute paths. This is required for both plot and analysis
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)
@@ -616,9 +651,24 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
     preferable to use the class returned by the property ``binning_table``
     available in all optimal binning classes.
     """
-    def __init__(self, name_x, name_y, dtype_x, dtype_y, splits_x, splits_y,
-                 m, n, n_records, sums, stds, D, P, categories_x=None,
-                 categories_y=None):
+    def __init__(
+        self,
+        name_x: str,
+        name_y: str,
+        dtype_x: str,
+        dtype_y: str,
+        splits_x: npt.NDArray,
+        splits_y: npt.NDArray,
+        m: int,
+        n: int,
+        n_records: npt.NDArray,
+        sums: npt.NDArray,
+        stds: npt.NDArray,
+        D: npt.NDArray,
+        P: npt.NDArray,
+        categories_x: npt.NDArray | list | None = None,
+        categories_y: npt.NDArray | list | None = None,
+    ) -> None:
 
         self.name_x = name_x
         self.name_y = name_y
@@ -639,7 +689,12 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._is_built = False
         self._is_analyzed = False
 
-    def build(self, show_digits=2, show_bin_xy=False, add_totals=True):
+    def build(
+        self,
+        show_digits: int = 2,
+        show_bin_xy: bool = False,
+        add_totals: bool = True,
+    ) -> pd.DataFrame:
         """Build the binning table.
 
         Parameters
@@ -683,8 +738,13 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self._t_mean = t_mean
 
         # Compute HHI
-        self._hhi = hhi(p_records)
-        self._hhi_norm = hhi(p_records, normalized=True)
+        p_records_mask = p_records[mask]
+        if len(p_records_mask):
+            self._hhi = hhi(p_records_mask)
+            self._hhi_norm = hhi(p_records_mask, normalized=True)
+        else:
+            self._hhi = 0.0
+            self._hhi_norm = 0.0
 
         # Compute paths. This is required for both plot and analysis
         self._paths_x, self._paths_y = get_paths(self.m, self.n, self.P)

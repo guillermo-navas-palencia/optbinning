@@ -14,8 +14,15 @@ from ...information import print_solver_statistics
 from ...options import optimal_binning_sketch_options
 
 
-def print_timing(solver_type, solver, time_total, time_prebinning, time_solver,
-                 time_optimizer, time_postprocessing):
+def print_timing(
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_optimizer: float,
+    time_postprocessing: float
+) -> None:
 
     p_prebinning = time_prebinning / time_total
     p_solver = time_solver / time_total
@@ -51,8 +58,14 @@ def print_timing(solver_type, solver, time_total, time_prebinning, time_solver,
     print(time_stats)
 
 
-def print_streaming_timing(memory_usage, n_records, n_add, time_add, n_solve,
-                           time_solve):
+def print_streaming_timing(
+    memory_usage: float,
+    n_records: int,
+    n_add: int,
+    time_add: float,
+    n_solve: int,
+    time_solve: float
+) -> None:
     r_add = time_add / n_add
     r_solve = time_solve / n_solve
 
@@ -74,12 +87,28 @@ def print_streaming_timing(memory_usage, n_records, n_add, time_add, n_solve,
     print(time_stats)
 
 
-def print_binning_information(binning_type, print_level, name, status,
-                              solver_type, solver, time_total, time_prebinning,
-                              time_solver, time_optimizer, time_postprocessing,
-                              n_prebins, n_refinements, n_records, n_add,
-                              time_add, n_solve, time_solve, memory_usage,
-                              dict_user_options):
+def print_binning_information(
+    binning_type: str,
+    print_level: int,
+    name: str,
+    status: str,
+    solver_type: str,
+    solver: object,
+    time_total: float,
+    time_prebinning: float,
+    time_solver: float,
+    time_optimizer: float,
+    time_postprocessing: float,
+    n_prebins: int,
+    n_refinements: int,
+    n_records: int,
+    n_add: int,
+    time_add: float,
+    n_solve: int,
+    time_solve: float,
+    memory_usage: float,
+    dict_user_options: dict
+) -> None:
 
     print_header()
 

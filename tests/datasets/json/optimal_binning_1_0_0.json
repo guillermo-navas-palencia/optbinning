@@ -1,0 +1,1 @@
+{"name": "legacy_category", "dtype": "categorical", "special_codes": {"flagged": ["special"]}, "splits": [0, 1], "n_nonevent": [170, 50, 60, 70, 50], "n_event": [30, 150, 40, 30, 50], "min_x": null, "max_x": null, "categories": [["a", "b"], ["c", "d"]], "cat_others": ["other"], "user_splits": [["a", "b"], ["c", "d"]]}

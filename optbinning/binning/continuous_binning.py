@@ -9,10 +9,13 @@ import numbers
 import time
 import json
 
-from sklearn.utils import check_array
+from typing import Self
 
 import numpy as np
 import pandas as pd
+import numpy.typing as npt
+
+from sklearn.utils import check_array
 
 from ..information import solver_statistics
 from ..logging import Logger
@@ -32,13 +35,32 @@ from .transformations import transform_continuous_target
 logger = Logger(__name__).logger
 
 
-def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
-                      min_prebin_size, min_n_bins, max_n_bins, min_bin_size,
-                      max_bin_size, monotonic_trend, min_mean_diff, max_pvalue,
-                      max_pvalue_policy, gamma, outlier_detector,
-                      outlier_params, cat_cutoff, cat_unknown, user_splits,
-                      user_splits_fixed, special_codes, split_digits,
-                      time_limit, verbose):
+def _check_parameters(
+    name: str,
+    dtype: str,
+    prebinning_method: str,
+    max_n_prebins: int,
+    min_prebin_size: float,
+    min_n_bins: int | None,
+    max_n_bins: int | None,
+    min_bin_size: float | None,
+    max_bin_size: float | None,
+    monotonic_trend: str | None,
+    min_mean_diff: float,
+    max_pvalue: float | None,
+    max_pvalue_policy: str,
+    gamma: float,
+    outlier_detector: str | None,
+    outlier_params: dict | None,
+    cat_cutoff: float | None,
+    cat_unknown: float | str | None,
+    user_splits: npt.NDArray | list | None,
+    user_splits_fixed: npt.NDArray | list | None,
+    special_codes: npt.NDArray | dict | list | None,
+    split_digits: int | None,
+    time_limit: int,
+    verbose: bool
+) -> None:
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -172,8 +194,8 @@ def _check_parameters(name, dtype, prebinning_method, max_n_prebins,
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
-                not 0 <= split_digits <= 8):
-            raise ValueError("split_digist must be an integer in [0, 8]; "
+                split_digits > 8):
+            raise ValueError("split_digits must be an integer <= 8; "
                              "got {}.".format(split_digits))
 
     if not isinstance(time_limit, numbers.Number) or time_limit < 0:
@@ -193,16 +215,15 @@ class ContinuousOptimalBinning(OptimalBinning):
     name : str, optional (default="")
         The variable name.
 
-    dtype : str or None, optional (default=None)
+    dtype : str or None, optional (default="numerical")
         The variable data type. Supported data types are "numerical" for
         continuous and ordinal variables and "categorical" for categorical
         and nominal variables. If None, the data type is inferred from
         ``x`` at fit time: "categorical" for an object, string or pandas
         ``category`` dtype, "numerical" otherwise.
 
-        .. versionchanged:: 0.21.0
-           ``dtype`` is now optional; the default changed from
-           ``"numerical"`` to auto-detection.
+        .. versionadded:: 1.1.0
+           Set ``dtype=None`` to opt into automatic dtype detection.
 
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
@@ -308,8 +329,9 @@ class ContinuousOptimalBinning(OptimalBinning):
 
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
-        to 0, the split points are integers. If None, then all significant
-        digits in the split points are considered.
+        to 0, the split points are integers. Negative values round to the
+        left of the decimal point (e.g., -2 rounds to the nearest 100). If
+        None, then all significant digits in the split points are considered.
 
     time_limit : int (default=100)
         The maximum time in seconds to run the optimization solver.
@@ -332,15 +354,34 @@ class ContinuousOptimalBinning(OptimalBinning):
     The pre-binning refinement phase guarantee that no prebin has zero number
     of records by merging those pure prebins. Pure bins produce infinity mean.
     """
-    def __init__(self, name="", dtype=None, prebinning_method="cart",
-                 max_n_prebins=20, min_prebin_size=0.05, min_n_bins=None,
-                 max_n_bins=None, min_bin_size=None, max_bin_size=None,
-                 monotonic_trend="auto", min_mean_diff=0, max_pvalue=None,
-                 max_pvalue_policy="consecutive", gamma=0,
-                 outlier_detector=None, outlier_params=None, cat_cutoff=None,
-                 cat_unknown=None, user_splits=None, user_splits_fixed=None,
-                 special_codes=None, split_digits=None, time_limit=100,
-                 verbose=False, **prebinning_kwargs):
+    def __init__(
+        self,
+        name: str = "",
+        dtype: str | None = "numerical",
+        prebinning_method: str = "cart",
+        max_n_prebins: int = 20,
+        min_prebin_size: float = 0.05,
+        min_n_bins: int | None = None,
+        max_n_bins: int | None = None,
+        min_bin_size: float | None = None,
+        max_bin_size: float | None = None,
+        monotonic_trend: str | None = "auto",
+        min_mean_diff: float = 0,
+        max_pvalue: float | None = None,
+        max_pvalue_policy: str = "consecutive",
+        gamma: float = 0,
+        outlier_detector: str | None = None,
+        outlier_params: dict | None = None,
+        cat_cutoff: float | None = None,
+        cat_unknown: float | str | None = None,
+        user_splits: npt.NDArray | list | None = None,
+        user_splits_fixed: npt.NDArray | list | None = None,
+        special_codes: npt.NDArray | dict | list | None = None,
+        split_digits: int | None = None,
+        time_limit: int = 100,
+        verbose: bool = False,
+        **prebinning_kwargs
+    ) -> None:
 
         self.name = name
         self.dtype = dtype
@@ -427,7 +468,13 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         self._is_fitted = False
 
-    def fit(self, x, y, sample_weight=None, check_input=False):
+    def fit(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        sample_weight: npt.NDArray | list | None = None,
+        check_input: bool = False
+    ) -> Self:
         """Fit the optimal binning according to the given training data.
 
         Parameters
@@ -453,9 +500,17 @@ class ContinuousOptimalBinning(OptimalBinning):
         """
         return self._fit(x, y, sample_weight, check_input)
 
-    def fit_transform(self, x, y, sample_weight=None, metric="mean",
-                      metric_special=0, metric_missing=0, show_digits=2,
-                      check_input=False):
+    def fit_transform(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        sample_weight: npt.NDArray | list | None = None,
+        metric: str = "mean",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Fit the optimal binning according to the given training data, then
         transform it.
 
@@ -472,7 +527,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             If not provided, then each sample is given unit weight.
             Only applied if ``prebinning_method="cart"``.
 
-        metric : str (default="mean"):
+        metric : str (default="mean")
             The metric used to transform the input vector. Supported metrics
             are "mean" to choose the mean, "indices" to assign the
             corresponding indices of the bins and "bins" to assign the
@@ -497,15 +552,22 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        x_new : numpy array, shape = (n_samples,)
+        x_new : numpy.ndarray, shape = (n_samples,)
             Transformed array.
         """
         return self.fit(x, y, sample_weight, check_input).transform(
             x, metric, metric_special, metric_missing, show_digits,
             check_input)
 
-    def transform(self, x, metric="mean", metric_special=0, metric_missing=0,
-                  show_digits=2, check_input=False):
+    def transform(
+        self,
+        x: npt.NDArray | list,
+        metric: str = "mean",
+        metric_special: float | str = 0,
+        metric_missing: float | str = 0,
+        show_digits: int = 2,
+        check_input: bool = False
+    ) -> np.ndarray:
         """Transform given data to mean using bins from the fitted
         optimal binning.
 
@@ -514,7 +576,7 @@ class ContinuousOptimalBinning(OptimalBinning):
         x : array-like, shape = (n_samples,)
             Training vector, where n_samples is the number of samples.
 
-        metric : str (default="mean"):
+        metric : str (default="mean")
             The metric used to transform the input vector. Supported metrics
             are "mean" to choose the mean, "indices" to assign the
             corresponding indices of the bins and "bins" to assign the
@@ -539,7 +601,7 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         Returns
         -------
-        x_new : numpy array, shape = (n_samples,)
+        x_new : numpy.ndarray, shape = (n_samples,)
             Transformed array.
 
         Notes
@@ -558,7 +620,13 @@ class ContinuousOptimalBinning(OptimalBinning):
                                            self.user_splits, show_digits,
                                            check_input)
 
-    def _fit(self, x, y, sample_weight, check_input):
+    def _fit(
+        self,
+        x: npt.NDArray | list,
+        y: npt.NDArray | list,
+        sample_weight: npt.NDArray | None,
+        check_input: bool
+    ) -> Self:
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -579,14 +647,19 @@ class ContinuousOptimalBinning(OptimalBinning):
             logger.info("Pre-processing started.")
 
         self._n_samples = len(x)
-        self._n_samples_weighted = sum(sample_weight) if sample_weight is not None else len(x)
+
+        if sample_weight is not None:
+            self._n_samples_weighted = sum(sample_weight)
+        else:
+            self._n_samples_weighted = len(x)
 
         if self.verbose:
             if self._n_samples == self._n_samples_weighted:
                 logger.info("Pre-processing: number of samples: {}"
                             .format(self._n_samples))
             else:
-                logger.info("Pre-processing: number of samples: {}. Weighted samples: {}"
+                logger.info("Pre-processing: number of samples: {}. "
+                            "Weighted samples: {}"
                             .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
@@ -763,7 +836,14 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         return self
 
-    def _fit_optimizer(self, splits, n_records, sums, ssums, stds):
+    def _fit_optimizer(
+        self,
+        splits: np.ndarray,
+        n_records: np.ndarray,
+        sums: np.ndarray,
+        ssums: np.ndarray,
+        stds: np.ndarray
+    ) -> None:
         if self.verbose:
             logger.info("Optimizer started.")
 
@@ -782,12 +862,14 @@ class ContinuousOptimalBinning(OptimalBinning):
             return
 
         if self.min_bin_size is not None:
-            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples_weighted))
+            min_bin_size = int(
+                np.ceil(self.min_bin_size * self._n_samples_weighted))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples_weighted))
+            max_bin_size = int(
+                np.ceil(self.max_bin_size * self._n_samples_weighted))
         else:
             max_bin_size = self.max_bin_size
 
@@ -870,9 +952,21 @@ class ContinuousOptimalBinning(OptimalBinning):
             logger.info("Optimizer terminated. Time: {:.4f}s"
                         .format(self._time_solver))
 
-    def _prebinning_refinement(self, splits_prebinning, x, y, y_missing,
-                               x_special, y_special, y_others, sw_clean,
-                               sw_missing, sw_special, sw_others):
+    def _prebinning_refinement(
+        self,
+        splits_prebinning: np.ndarray,
+        x: npt.NDArray,
+        y: npt.NDArray,
+        y_missing: npt.NDArray,
+        x_special: npt.NDArray,
+        y_special: npt.NDArray,
+        y_others: npt.NDArray,
+        sw_clean: npt.NDArray,
+        sw_missing: npt.NDArray,
+        sw_special: npt.NDArray,
+        sw_others: npt.NDArray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+               np.ndarray, np.ndarray, np.ndarray]:
 
         # Compute n_records, sum and std for special, missing and others
         [self._n_records_special, self._sum_special, self._n_zeros_special,
@@ -893,7 +987,6 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         if len(y_others):
             if len(sw_others):
-                print(y_others.dtype, sw_others.dtype)
                 y_others = y_others * sw_others
 
             self._n_records_cat_others = np.sum(sw_others)
@@ -919,11 +1012,19 @@ class ContinuousOptimalBinning(OptimalBinning):
         return (splits_prebinning, n_records, sums, ssums, stds, min_t, max_t,
                 n_zeros)
 
-    def _compute_prebins(self, splits_prebinning, x, y, sw):
+    def _compute_prebins(
+        self,
+        splits_prebinning: npt.NDArray,
+        x: npt.NDArray,
+        y: npt.NDArray,
+        sw: npt.NDArray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+               np.ndarray, np.ndarray, np.ndarray]:
         n_splits = len(splits_prebinning)
         if not n_splits:
-            return (splits_prebinning, np.array([]), np.array([]), np.array([]),
-                    np.array([]), np.array([]), np.array([]), np.array([]))
+            return (splits_prebinning, np.array([]), np.array([]),
+                    np.array([]), np.array([]), np.array([]), np.array([]),
+                    np.array([]))
 
         if self._dtype == "categorical" and self.user_splits is not None:
             indices = np.digitize(x, splits_prebinning, right=True)
@@ -993,7 +1094,7 @@ class ContinuousOptimalBinning(OptimalBinning):
                 n_zeros)
 
     @property
-    def binning_table(self):
+    def binning_table(self) -> ContinuousBinningTable:
         """Return an instantiated binning table. Please refer to
         :ref:`Binning table: continuous target`.
 
@@ -1005,14 +1106,15 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         return self._binning_table
 
-    def to_json(self, path):
+    def to_json(self, path: str) -> None:
         """
         Save optimal bins and/or splits points and transformation depending on
         the target type.
 
         Parameters
         ----------
-        path: The path where the json is going to be saved.
+        path : str
+            The path where the json is going to be saved.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
@@ -1038,21 +1140,27 @@ class ContinuousOptimalBinning(OptimalBinning):
 
         opt_bin_dict['min_x'] = table.min_x
         opt_bin_dict['max_x'] = table.max_x
-        opt_bin_dict['categories'] = table.categories
-        opt_bin_dict['cat_others'] = table.cat_others
-        opt_bin_dict['user_splits'] = table.user_splits
+        opt_bin_dict['categories'] = (
+            list(table.categories) if table.categories is not None else None)
+        opt_bin_dict['cat_others'] = (
+            list(table.cat_others) if table.cat_others is not None else None)
+        opt_bin_dict['user_splits'] = (
+            list(table.user_splits) if table.user_splits is not None
+            else None)
 
         with open(path, "w") as write_file:
             json.dump(opt_bin_dict, write_file)
 
-    def read_json(self, path):
+    def read_json(self, path: str) -> None:
         """
-        Read json file containing split points and set them as the new split
-        points.
+        Load a fitted binning object previously saved with ``to_json``,
+        restoring the state required to call ``transform`` and to inspect
+        ``binning_table``.
 
         Parameters
         ----------
-        path: The path of the json file.
+        path : str
+            The path of the json file.
         """
         if path is None:
             raise ValueError('Specify the path for the json file.')
@@ -1067,3 +1175,15 @@ class ContinuousOptimalBinning(OptimalBinning):
                 cont_table_attr[key] = np.array(cont_table_attr[key])
 
         self._binning_table = ContinuousBinningTable(**cont_table_attr)
+
+        # Restore the internal state used by ``transform``. Without this,
+        # a binning object reloaded via ``read_json`` raises a TypeError
+        # on ``transform`` because these attributes are only set during
+        # ``fit`` and remain None otherwise.
+        self._splits_optimal = cont_table_attr['splits']
+        self.dtype = cont_table_attr['dtype']
+        self._dtype = self.dtype
+        self._n_records = cont_table_attr['n_records']
+        self._sums = cont_table_attr['sums']
+        self._categories = cont_table_attr['categories']
+        self._cat_others = cont_table_attr['cat_others']

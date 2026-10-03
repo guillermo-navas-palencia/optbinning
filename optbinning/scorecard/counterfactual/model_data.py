@@ -5,8 +5,14 @@ Counterfactual model data.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
+import numpy.typing as npt
 
-def model_data(scorecard, x, special_missing):
+
+def model_data(
+    scorecard: object,
+    x: list | npt.NDArray,
+    special_missing: bool,
+) -> tuple[list, ...]:
     s_vars = scorecard.binning_process_.get_support(names=True)
 
     sc = scorecard.table(style="detailed")

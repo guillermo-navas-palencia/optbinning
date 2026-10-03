@@ -8,6 +8,7 @@ Preprocessing functions.
 import numbers
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
@@ -21,7 +22,10 @@ from .outlier import RangeDetector
 from .outlier import YQuantileDetector
 
 
-def categorical_transform(x, y):
+def categorical_transform(
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+) -> tuple[np.ndarray, ...]:
     event_rate = pd.Series(y).groupby(x).mean()
     sorted_categories = event_rate.sort_values().index.values
     d = dict(map(reversed, enumerate(sorted_categories)))
@@ -29,7 +33,11 @@ def categorical_transform(x, y):
     return sorted_categories, pd.Series(x).map(d).values
 
 
-def categorical_cutoff(x, y, cutoff=0.01):
+def categorical_cutoff(
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    cutoff: float = 0.01,
+) -> tuple[np.ndarray, ...]:
     cutoff_count = np.ceil(cutoff * len(x))
     cat_count = pd.Series(x).value_counts()
     cat_others = cat_count[cat_count < cutoff_count].index.values
@@ -42,10 +50,24 @@ def categorical_cutoff(x, y, cutoff=0.01):
     return mask_others, cat_others
 
 
-def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
-               user_splits=None, check_input=True, outlier_detector=None,
-               outlier_params=None, fix_lb=None, fix_ub=None,
-               class_weight=None, sample_weight=None):
+def split_data(
+    dtype: str | None,
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    special_codes: list | npt.NDArray | dict | None = None,
+    cat_cutoff: float | None = None,
+    user_splits: list | npt.NDArray | None = None,
+    check_input: bool = True,
+    outlier_detector: str | None = None,
+    outlier_params: dict | None = None,
+    fix_lb: float | None = None,
+    fix_ub: float | None = None,
+    class_weight: str | dict | None = None,
+    sample_weight: list | npt.NDArray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+           np.ndarray | list, np.ndarray | list, np.ndarray | list,
+           np.ndarray | list, np.ndarray | list, np.ndarray | list,
+           np.ndarray | list, np.ndarray | list, np.ndarray | list]:
     """Split data into clean, missing and special values data.
 
     Parameters
@@ -285,7 +307,13 @@ def split_data(dtype, x, y, special_codes=None, cat_cutoff=None,
                 [], [], [], sw_clean, sw_missing, sw_special, [])
 
 
-def split_data_scenarios(X, Y, weights, special_codes, check_input):
+def split_data_scenarios(
+    X: list,
+    Y: list,
+    weights: list | None,
+    special_codes: list | npt.NDArray | dict | None,
+    check_input: bool,
+) -> tuple[list, list, list, list, list, list, list | None]:
     n_scenarios = len(X)
 
     x_clean = []
@@ -318,8 +346,13 @@ def split_data_scenarios(X, Y, weights, special_codes, check_input):
     return x_clean, y_clean, x_missing, y_missing, x_special, y_special, w
 
 
-def preprocessing_user_splits_categorical(user_splits, x, y,
-                                          sample_weight=None):
+def preprocessing_user_splits_categorical(
+    user_splits: npt.NDArray,
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    sample_weight: list | npt.NDArray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+           np.ndarray, list | np.ndarray, list | np.ndarray, np.ndarray]:
     categories = pd.Series(x).unique()
 
     n_user_splits = len(user_splits)

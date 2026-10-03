@@ -10,6 +10,7 @@ import numbers
 import pickle
 import time
 
+from copy import copy
 from typing import Self
 
 import numpy as np
@@ -757,8 +758,17 @@ class Scorecard(Base, BaseEstimator):
     def _transform(self, X, metric, metric_special, metric_missing):
         self._check_is_fitted()
 
-        X_t = self.binning_process_.transform(
-            X=X[self.binning_process_.variable_names], metric=metric,
+        binning_process = self.binning_process_
+        if metric == "indices":
+            # Points lookup requires actual bin indices, not per-variable
+            # training metrics or special/missing replacements (GH #412).
+            # A shallow copy retains fitted bins and validation without
+            # mutating the process used by prediction or concurrent calls.
+            binning_process = copy(binning_process)
+            binning_process.binning_transform_params = None
+
+        X_t = binning_process.transform(
+            X=X[binning_process.variable_names], metric=metric,
             metric_special=metric_special, metric_missing=metric_missing)
 
         return X_t

@@ -8,7 +8,7 @@ Scorecard testing.
 import pandas as pd
 import numpy as np
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from contextlib import redirect_stdout
 
@@ -675,3 +675,121 @@ def test_woe_points_consistency():
     for _, row in radius_table.iterrows():
         assert row['Points'] == approx(row['WoE'] * row['Coefficient'],
                                        rel=1e-6)
+
+
+@mark.parametrize("scaling_method", [None, "min_max"])
+@mark.parametrize("target_dtype", ["binary", "continuous"])
+@mark.parametrize("explicit_metric", [False, True])
+@mark.parametrize("special_codes", [
+    [-999, -888], {"unknown": [-999], "other": [-888]}])
+def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
+                                            special_codes, scaling_method):
+    # Scoring needs actual bin indices, even when training overrides use
+    # WoE/means or integer values for special/missing observations (GH #412).
+    X = pd.DataFrame({
+        "x": np.repeat([20., 35., 50., -999., -888., np.nan], 100)})
+    y = np.concatenate([
+        np.r_[np.zeros(100 - events), np.ones(events)]
+        for events in [10, 30, 70, 20, 40, 60]])
+    if target_dtype == "continuous":
+        y = y + np.linspace(0.01, 0.09, len(y))
+        estimator = LinearRegression()
+        metric = "mean"
+    else:
+        estimator = LogisticRegression()
+        metric = "woe"
+
+    params = {"metric_special": 0, "metric_missing": 0}
+    if explicit_metric:
+        params["metric"] = metric
+    process = BinningProcess(
+        variable_names=["x"],
+        binning_fit_params={"x": {
+            "user_splits": [30, 40], "user_splits_fixed": [True, True],
+            "special_codes": special_codes}},
+        binning_transform_params={"x": params})
+    card = Scorecard(
+        binning_process=process, estimator=estimator,
+        scaling_method=scaling_method,
+        scaling_method_params=(
+            {"min": 0, "max": 100} if scaling_method else None)).fit(X, y)
+    sample = pd.DataFrame({"x": [20., 35., 50., -999., -888., np.nan]})
+    table = card.table(style="detailed")
+    n_specials = len(special_codes) if isinstance(special_codes, dict) else 1
+    # Known fixed splits and special groups provide an independent oracle.
+    expected_ids = [0, 1, 2, 3, 3 + (n_specials == 2), 3 + n_specials]
+    expected = table.set_index("Bin id").loc[expected_ids, "Points"].to_numpy()
+    before = card.binning_process_.transform(sample)
+    prediction = card.predict(sample)
+    saved_params = card.binning_process_.binning_transform_params
+
+    np.testing.assert_allclose(card.score(sample), expected + card.intercept_)
+    np.testing.assert_allclose(card.transform(sample)["x"], expected)
+    np.testing.assert_allclose(card.score(sample), expected + card.intercept_)
+    assert card.binning_process_.binning_transform_params is saved_params
+    assert saved_params == {"x": params}
+    pd.testing.assert_frame_equal(
+        card.binning_process_.transform(sample), before)
+    np.testing.assert_allclose(card.predict(sample), prediction)
+
+
+def test_per_variable_metrics_end_to_end():
+    # GH #380: different variables need empirical, zero and nonzero
+    # replacements, while a variable without overrides uses fit defaults.
+    rng = np.random.default_rng(380)
+    names = ["age", "income", "credit_score", "fallback"]
+    X = pd.DataFrame(rng.choice([20., 40., 60.], (1200, 4)), columns=names)
+    probability = 1 / (1 + np.exp(-(X.sum(axis=1) - 160) / 40))
+    y = rng.binomial(1, probability)
+    specials = {"age": [31, 36], "income": [-1, -999],
+                "credit_score": [0], "fallback": [-888]}
+    for i, name in enumerate(names):
+        X.loc[i * 100:i * 100 + 49, name] = specials[name][0]
+        X.loc[i * 100 + 50:i * 100 + 99, name] = np.nan
+    overrides = {
+        "age": {"metric": "woe", "metric_special": "empirical",
+                "metric_missing": "empirical"},
+        "income": {"metric": "woe", "metric_special": 0,
+                   "metric_missing": 0},
+        "credit_score": {"metric": "woe", "metric_special": -0.5,
+                         "metric_missing": 0.25}}
+    process = BinningProcess(
+        variable_names=names,
+        binning_fit_params={name: {
+            "special_codes": specials[name], "user_splits": [30, 50],
+            "user_splits_fixed": [True, True]} for name in names},
+        binning_transform_params=overrides)
+    card = Scorecard(process, LogisticRegression()).fit(
+        X, y, metric_special=0.75, metric_missing=-0.25)
+    sample = pd.DataFrame({
+        "age": [20., 31., 36., np.nan],
+        "income": [40., -1., -999., np.nan],
+        "credit_score": [60., 0., 0., np.nan],
+        "fallback": [20., -888., -888., np.nan]})
+    table = card.table(style="detailed")
+    # All variables have three fixed regular bins and one special bin.
+    regular_ids = [0, 1, 2, 0]
+    expected_woe = np.empty(sample.shape)
+    expected_points = np.empty(sample.shape)
+    for i, name in enumerate(names):
+        rows = table[table.Variable == name].set_index("Bin id")
+        ids = [regular_ids[i], 3, 3, 4]
+        special = overrides.get(name, {}).get("metric_special", 0.75)
+        missing = overrides.get(name, {}).get("metric_missing", -0.25)
+        special = rows.loc[3, "WoE"] if special == "empirical" else special
+        missing = rows.loc[4, "WoE"] if missing == "empirical" else missing
+        expected_woe[:, i] = [rows.loc[ids[0], "WoE"], special,
+                              special, missing]
+        expected_points[:, i] = rows.loc[ids, "Points"]
+    coefs = card.estimator_.coef_.ravel()
+    assert np.all(np.abs(coefs) > 1e-6)
+    np.testing.assert_allclose(expected_points, expected_woe * coefs)
+    np.testing.assert_allclose(card.transform(sample), expected_points)
+    np.testing.assert_allclose(
+        card.score(sample), expected_points.sum(axis=1) + card.intercept_)
+    decision = expected_woe @ coefs + card.estimator_.intercept_[0]
+    np.testing.assert_allclose(card.decision_function(sample), decision)
+    np.testing.assert_allclose(
+        card.predict_proba(sample)[:, 1], 1 / (1 + np.exp(-decision)))
+    np.testing.assert_array_equal(
+        card.predict(sample), (decision > 0).astype(int))

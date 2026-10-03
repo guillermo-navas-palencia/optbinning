@@ -348,8 +348,7 @@ def test_transformer_mixin():
 
     process = BinningProcess(variable_names)
 
-    # fit_transform keeps its own richer signature (metric, sample_weight),
-    # not TransformerMixin's naive fit(X, y).transform(X) default.
+    # Preserve the existing fit_transform options, including metric and weights.
     Xt = process.fit_transform(X, y, metric="woe")
     assert Xt.shape == X.shape
 
@@ -364,6 +363,31 @@ def test_transformer_mixin():
     pipe.fit(X, y)
     assert pipe.predict(X).shape == (X.shape[0],)
 
+
+
+def test_transformer_mixin_pandas_output():
+    names = list(variable_names[:2])
+    frame = pd.DataFrame(X[:, :2], columns=names,
+                         index=pd.Index(range(1000, 1000 + len(y)), name="row"))
+    process = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).set_output(transform="pandas")
+    transformed = process.fit_transform(frame, y, metric="event_rate")
+    assert isinstance(transformed, pd.DataFrame)
+    assert list(transformed.columns) == list(process.get_support(names=True))
+    assert transformed.shape == (len(y), 1)
+    pd.testing.assert_index_equal(transformed.index, frame.index)
+    expected = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).fit_transform(frame, y, metric="event_rate")
+    pd.testing.assert_frame_equal(transformed, expected)
+
+    pipeline = Pipeline([("binning", BinningProcess(names)),
+                         ("classifier", LogisticRegression())])
+    pipeline.set_output(transform="pandas")
+    pipeline.fit(frame, y)
+    assert list(pipeline.named_steps["classifier"].feature_names_in_) == names
+    assert pipeline.predict(frame).shape == (len(y),)
 
 def test_fit_params():
     binning_fit_params = {"mean radius": {"max_n_bins": 4}}

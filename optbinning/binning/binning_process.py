@@ -23,6 +23,7 @@ from pandas.api.types import is_string_dtype
 
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
@@ -462,7 +463,8 @@ class BaseBinningProcess:
         self._support_selection_criteria()
 
 
-class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
+class BinningProcess(Base, TransformerMixin, BaseEstimator,
+                     BaseBinningProcess):
     """Binning process to compute optimal binning of variables in a dataset,
     given a binary, continuous or multiclass target dtype.
 

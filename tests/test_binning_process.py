@@ -339,6 +339,41 @@ def test_categorical_variables():
         df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
 
 
+def test_variable_names_none_dataframe():
+    # variable_names=None infers column names from a DataFrame at fit time.
+    # See GH issue #343.
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    process = BinningProcess(variable_names=None)
+    process.fit(df, y)
+
+    assert process._variable_names == list(data.feature_names)
+
+    optb = process.get_binned_variable("mean radius")
+    assert optb.status == "OPTIMAL"
+
+
+def test_variable_names_none_array():
+    # variable_names=None with a plain ndarray falls back to x0, x1, ...
+    process = BinningProcess(variable_names=None)
+    process.fit(X, y)
+
+    expected = ["x{}".format(i) for i in range(X.shape[1])]
+    assert process._variable_names == expected
+
+    optb = process.get_binned_variable("x0")
+    assert optb.status == "OPTIMAL"
+
+
+def test_variable_names_none_disk():
+    # fit_disk cannot infer variable_names from a file path.
+    process = BinningProcess(variable_names=None)
+
+    with raises(ValueError):
+        process.fit_disk(input_path="tests/data/breast_cancer.csv",
+                         target="target")
+
+
 def test_fit_params():
     binning_fit_params = {"mean radius": {"max_n_bins": 4}}
 

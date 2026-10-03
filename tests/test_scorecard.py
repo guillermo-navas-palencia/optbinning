@@ -210,6 +210,29 @@ def test_default_continuous():
     assert sc_max == approx(100.28829019286185, rel=1e-6)
 
 
+def test_binning_process_variable_names_none():
+    # Scorecard must work when its BinningProcess infers variable_names
+    # from X instead of receiving them explicitly. See GH issue #343.
+    data = load_breast_cancer()
+    X = pd.DataFrame(data.data, columns=data.feature_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names=None)
+    estimator = LogisticRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None)
+    scorecard.fit(X, y)
+
+    assert scorecard.binning_process_._variable_names == list(X.columns)
+
+    X_t = scorecard.transform(X)
+    assert X_t.shape == X.shape
+
+    table = scorecard.table()
+    assert len(table) > 0
+
+
 def test_scaling_method_pdo_odd():
     data = load_breast_cancer()
     variable_names = data.feature_names

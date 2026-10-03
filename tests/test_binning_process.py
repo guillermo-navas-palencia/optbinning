@@ -426,6 +426,40 @@ def test_default_transform_pandas():
         X_transform.values[:, 5], rel=1e-6)
 
 
+def test_selection_criteria_iv_continuous():
+    # "iv" was not accepted as a selection_criteria metric for continuous
+    # targets, even though ContinuousBinningTable already exposes it via
+    # its .iv property (same as the binary case). See GH issue #307.
+    data = load_boston()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert "iv" in summary.columns
+
+    for name in variable_names:
+        optb = process.get_binned_variable(name)
+        row_iv = summary.loc[summary["name"] == name, "iv"].iloc[0]
+        assert row_iv == approx(optb.binning_table.iv, rel=1e-6)
+
+    # selection_criteria on "iv" must work for continuous targets exactly
+    # like it already does for binary/multiclass metrics.
+    selection_criteria = {"iv": {"min": 4.0}}
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert summary.loc[summary["selected"], "iv"].min() >= 4.0
+    assert summary.loc[~summary["selected"], "iv"].max() < 4.0
+    assert summary["selected"].sum() > 0
+    assert summary["selected"].sum() < len(summary)
+
+
 def test_default_transform_continuous():
     data = load_boston()
     variable_names = data.feature_names
@@ -528,6 +562,29 @@ def test_binning_transform_params():
 
     with raises(ValueError):
         X_transform = process.fit_transform(X[:, :3], y)
+
+
+def test_binning_transform_params_no_leak():
+    # A per-variable override in binning_transform_params must not leak
+    # into the next variable's default. See GH #355.
+    X3 = X[:, :3].copy()
+    X3[:5, 1] = np.nan  # only variable_names[1] has missing values
+
+    btp = {variable_names[0]: {"metric_missing": 99.0}}
+
+    process = BinningProcess(variable_names[:3],
+                             binning_transform_params=btp)
+    process.fit(X3, y)
+    x_transform = process.transform(X3, metric="woe")
+
+    baseline = BinningProcess(variable_names[:3])
+    baseline.fit(X3, y)
+    x_transform_baseline = baseline.transform(X3, metric="woe")
+
+    # variable_names[1]'s missing rows must use the global default
+    # (metric_missing=0), not variable_names[0]'s 99.0 override.
+    assert x_transform[:5, 1] == approx(x_transform_baseline[:5, 1])
+    assert (x_transform[:5, 1] == 0).all()
 
 
 def test_update_binned_variable():
@@ -633,3 +690,63 @@ def test_dataframe_index():
     X_train = pd.DataFrame(X, columns=variable_names, index=[2 * i for i in range(len(X))])
     X_transform = process.fit_transform(X_train, y, metric="indices")
     pd.testing.assert_index_equal(X_train.index, X_transform.index)
+
+
+def test_get_feature_names_out():
+    """Test get_feature_names_out method for sklearn compatibility (issue #382)."""
+    process = BinningProcess(variable_names)
+
+    # Should raise NotFittedError before fitting
+    with raises(NotFittedError):
+        process.get_feature_names_out()
+
+    process.fit(X, y)
+
+    # Test basic functionality
+    feature_names_out = process.get_feature_names_out()
+    assert isinstance(feature_names_out, np.ndarray)
+    assert feature_names_out.dtype.kind in ('U', 'O')  # string or object dtype
+
+    # Should return same result as get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # With no selection criteria, all variables should be selected
+    assert len(feature_names_out) == len(variable_names)
+
+
+def test_get_feature_names_out_with_selection():
+    """Test get_feature_names_out with selection_criteria."""
+    selection_criteria = {"iv": {"min": 0.1, "max": 0.6,
+                                 "strategy": "highest", "top": 10}}
+
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    feature_names_out = process.get_feature_names_out()
+
+    # Should match get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # Number of features should match selection criteria
+    assert len(feature_names_out) == np.count_nonzero(process.get_support())
+
+    # Verify specific selected features
+    expected_names = [
+        'mean fractal dimension', 'texture error', 'smoothness error',
+        'symmetry error', 'fractal dimension error',
+        'worst fractal dimension']
+    assert all(feature_names_out == expected_names)
+
+
+def test_get_feature_names_out_input_features_ignored():
+    """Test that input_features parameter is ignored (sklearn API consistency)."""
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    # input_features should be ignored
+    result_none = process.get_feature_names_out(input_features=None)
+    result_with_input = process.get_feature_names_out(
+        input_features=["a", "b", "c"])
+
+    assert all(result_none == result_with_input)

@@ -7,9 +7,10 @@ Binning sketch plots.
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
-def plot_progress_divergence(df, divergence):
+def plot_progress_divergence(df: pd.DataFrame, divergence: str) -> None:
     n = len(df)
     n_add = df.n_add
     n_records = df.n_records

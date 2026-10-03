@@ -7,10 +7,12 @@ Scorecard monitoring (System stability report)
 
 import numbers
 import time
+from typing import Self
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from scipy import stats
@@ -38,8 +40,14 @@ PSI_VERDICT_MSG = {0: "No significant change",
                    2: "Significance change"}
 
 
-def _check_parameters(scorecard, psi_method, psi_n_bins,
-                      psi_min_bin_size, show_digits, verbose):
+def _check_parameters(
+    scorecard: Scorecard,
+    psi_method: str,
+    psi_n_bins: int | None,
+    psi_min_bin_size: float | None,
+    show_digits: int,
+    verbose: bool,
+) -> None:
 
     if not isinstance(scorecard, Scorecard):
         raise TypeError("scorecard must be a Scorecard instance.")
@@ -70,7 +78,7 @@ def _check_parameters(scorecard, psi_method, psi_n_bins,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def print_psi_report(df_psi):
+def print_psi_report(df_psi: pd.DataFrame) -> None:
     t_psi = df_psi.PSI.values[-1]
     psi = df_psi.PSI.values[:-1]
 
@@ -102,7 +110,7 @@ def print_psi_report(df_psi):
     print(psi_stats)
 
 
-def print_tests_report(df_tests):
+def print_tests_report(df_tests: pd.DataFrame) -> None:
     pvalues = df_tests["p-value"].values
 
     splits = [0.05, 0.1, 0.5]
@@ -130,7 +138,7 @@ def print_tests_report(df_tests):
     print(tests_stats)
 
 
-def print_target_report(df_target):
+def print_target_report(df_target: pd.DataFrame) -> None:
     df_target_string = dataframe_to_string(df_target, tab=4)
 
     target_stats = (
@@ -140,7 +148,7 @@ def print_target_report(df_target):
     print(target_stats)
 
 
-def print_performance_report(df_performance):
+def print_performance_report(df_performance: pd.DataFrame) -> None:
     df_performance_string = dataframe_to_string(df_performance, tab=4)
 
     performance_stats = (
@@ -151,7 +159,12 @@ def print_performance_report(df_performance):
     print(performance_stats)
 
 
-def print_system_report(df_psi, df_tests, df_target_analysis, df_performance):
+def print_system_report(
+    df_psi: pd.DataFrame,
+    df_tests: pd.DataFrame,
+    df_target_analysis: pd.DataFrame,
+    df_performance: pd.DataFrame
+) -> None:
 
     print("-----------------------------------\n"
           "Monitoring: System Stability Report\n"
@@ -192,8 +205,15 @@ class ScorecardMonitoring(BaseEstimator):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, scorecard, psi_method="cart", psi_n_bins=20,
-                 psi_min_bin_size=0.05, show_digits=2, verbose=False):
+    def __init__(
+        self,
+        scorecard: Scorecard,
+        psi_method: str = "cart",
+        psi_n_bins: int = 20,
+        psi_min_bin_size: float = 0.05,
+        show_digits: int = 2,
+        verbose: bool = False,
+    ) -> None:
 
         self.scorecard = scorecard
 
@@ -222,7 +242,13 @@ class ScorecardMonitoring(BaseEstimator):
         # flags
         self._is_fitted = False
 
-    def fit(self, X_actual, y_actual, X_expected, y_expected):
+    def fit(
+        self,
+        X_actual: pd.DataFrame,
+        y_actual: list | npt.NDArray,
+        X_expected: pd.DataFrame,
+        y_expected: list | npt.NDArray,
+    ) -> Self:
         """Fit monitoring with actual and expected data.
 
         Parameters
@@ -313,7 +339,7 @@ class ScorecardMonitoring(BaseEstimator):
 
         return self
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -338,7 +364,7 @@ class ScorecardMonitoring(BaseEstimator):
                                      self._time_variable,
                                      dict_user_options)
 
-    def system_stability_report(self):
+    def system_stability_report(self) -> None:
         """Print overview information and statistics about system stability.
         It includes qualitative suggestions regarding the necessity of
         scorecard updates.
@@ -348,7 +374,7 @@ class ScorecardMonitoring(BaseEstimator):
         print_system_report(self._df_psi, self._df_tests,
                             self._df_target_analysis, self._df_performance)
 
-    def psi_table(self):
+    def psi_table(self) -> pd.DataFrame:
         """System Population Stability Index (PSI) table.
 
         Returns
@@ -359,7 +385,11 @@ class ScorecardMonitoring(BaseEstimator):
 
         return self._df_psi
 
-    def psi_variable_table(self, name=None, style="summary"):
+    def psi_variable_table(
+        self,
+        name: str | None = None,
+        style: str = "summary",
+    ) -> pd.DataFrame:
         """Population Stability Index (PSI) at variable level.
 
         Parameters
@@ -405,7 +435,7 @@ class ScorecardMonitoring(BaseEstimator):
         elif style == "detailed":
             return self._df_psi_variable
 
-    def tests_table(self):
+    def tests_table(self) -> pd.DataFrame:
         """Compute statistical tests to determine if event rate (Chi-square
         test - binary target) or mean (Student's t-test - continuous target)
         are significantly different. Null hypothesis (actual == expected).
@@ -418,7 +448,7 @@ class ScorecardMonitoring(BaseEstimator):
 
         return self._df_tests
 
-    def psi_plot(self, savefig=None):
+    def psi_plot(self, savefig: str | None = None) -> None:
         """Plot Population Stability Index (PSI).
 
         Parameters
@@ -823,7 +853,7 @@ class ScorecardMonitoring(BaseEstimator):
                                  .format(self.__class__.__name__))
 
     @property
-    def psi_splits(self):
+    def psi_splits(self) -> np.ndarray:
         """List of splits points used to compute system PSI.
 
         Returns

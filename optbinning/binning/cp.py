@@ -265,6 +265,8 @@ class BinningCP:
     def solve(self):
         self.solver_ = cp_model.CpSolver()
         self.solver_.parameters.max_time_in_seconds = self.time_limit
+        self.solver_.parameters.random_seed = 0
+        self.solver_.parameters.num_search_workers = 1
 
         status = self.solver_.Solve(self._model)
         status_name = self.solver_.StatusName(status)

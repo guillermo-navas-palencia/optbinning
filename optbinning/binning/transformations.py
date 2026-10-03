@@ -8,6 +8,7 @@ Binning transformations.
 import numbers
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from sklearn.utils import check_array
@@ -16,12 +17,16 @@ from .binning_statistics import bin_categorical
 from .binning_statistics import bin_str_format
 
 
-def transform_event_rate_to_woe(event_rate, n_nonevent, n_event):
+def transform_event_rate_to_woe(
+    event_rate: float | npt.NDArray,
+    n_nonevent: int,
+    n_event: int
+) -> float | np.ndarray:
     """Transform event rate to WoE.
 
     Parameters
     ----------
-    event_rate : array-like or float
+    event_rate : float or numpy.ndarray
         Event rate.
 
     n_nonevent : int
@@ -35,10 +40,18 @@ def transform_event_rate_to_woe(event_rate, n_nonevent, n_event):
     woe : numpy.ndarray or float
         Weight of evidence.
     """
-    return np.log((1. / event_rate - 1) * n_event / n_nonevent)
+    # event_rate of 0 or 1 is a legitimate (pure) bin, not an error; it
+    # only yields +/-inf WoE, which is the correct value. Silence the
+    # resulting RuntimeWarning instead of the underlying computation.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        return np.log((1. / event_rate - 1) * n_event / n_nonevent)
 
 
-def transform_woe_to_event_rate(woe, n_nonevent, n_event):
+def transform_woe_to_event_rate(
+    woe: float | npt.NDArray,
+    n_nonevent: int,
+    n_event: int
+) -> float | np.ndarray:
     """Transform WoE to event rate.
 
     Parameters
@@ -60,7 +73,10 @@ def transform_woe_to_event_rate(woe, n_nonevent, n_event):
     return 1.0 / (1.0 + n_nonevent / n_event * np.exp(woe))
 
 
-def _check_metric_special_missing(metric_special, metric_missing):
+def _check_metric_special_missing(
+    metric_special: str | dict | numbers.Number,
+    metric_missing: str | numbers.Number
+) -> None:
     if isinstance(metric_special, str):
         if metric_special != "empirical":
             raise ValueError('Invalid value for metric_special. Allowed '
@@ -90,14 +106,17 @@ def _check_metric_special_missing(metric_special, metric_missing):
                          .format(metric_missing))
 
 
-def _check_show_digits(show_digits):
+def _check_show_digits(show_digits: int) -> None:
     if (not isinstance(show_digits, numbers.Integral) or
             not 0 <= show_digits <= 8):
         raise ValueError("show_digits must be an integer in [0, 8]; "
                          "got {}.".format(show_digits))
 
 
-def _check_cat_unknown(metric, cat_unknown):
+def _check_cat_unknown(
+    metric: str,
+    cat_unknown: str | int | numbers.Number | None
+) -> None:
     if cat_unknown is not None:
         if not isinstance(cat_unknown, str) and metric == "bins":
             raise ValueError("Invalid value for cat_unknown. cat_unknown "
@@ -114,7 +133,7 @@ def _check_cat_unknown(metric, cat_unknown):
                                  .format(metric))
 
 
-def _retrieve_special_codes(special_codes):
+def _retrieve_special_codes(special_codes: dict) -> list[int | float | str]:
     _special_codes = []
     for s in special_codes.values():
         if isinstance(s, (list, np.ndarray)):
@@ -125,7 +144,10 @@ def _retrieve_special_codes(special_codes):
     return _special_codes
 
 
-def _mask_special_missing(x, special_codes):
+def _mask_special_missing(
+    x: npt.NDArray,
+    special_codes: dict | list | None
+) -> tuple[np.ndarray | None, np.ndarray, np.ndarray, int]:
     if np.issubdtype(x.dtype, np.number):
         missing_mask = np.isnan(x)
     else:
@@ -149,8 +171,15 @@ def _mask_special_missing(x, special_codes):
     return special_mask, missing_mask, clean_mask, n_special
 
 
-def _transform_metric_indices_bins(x, special_codes, metric, n_bins,
-                                   n_special, bins_str, cat_unknown):
+def _transform_metric_indices_bins(
+    x: npt.NDArray,
+    special_codes: dict | list | None,
+    metric: str,
+    n_bins: int,
+    n_special: int,
+    bins_str: list,
+    cat_unknown: str | int | numbers.Number | None
+) -> tuple[np.ndarray | list, np.ndarray]:
 
     if cat_unknown is None:
         if metric == 'indices':
@@ -173,10 +202,25 @@ def _transform_metric_indices_bins(x, special_codes, metric, n_bins,
     return metric_value, x_transform
 
 
-def _apply_transform(x, dtype, special_codes, metric, metric_special,
-                     metric_missing, metric_value, clean_mask, special_mask,
-                     missing_mask, indices, x_transform, x_clean, bins, n_bins,
-                     n_special, cat_unknown):
+def _apply_transform(
+    x: npt.NDArray,
+    dtype: str,
+    special_codes: dict | list | None,
+    metric: str,
+    metric_special: str | numbers.Number,
+    metric_missing: str | numbers.Number,
+    metric_value: npt.NDArray | list,
+    clean_mask: npt.NDArray,
+    special_mask: npt.NDArray | None,
+    missing_mask: npt.NDArray,
+    indices: npt.NDArray | None,
+    x_transform: npt.NDArray,
+    x_clean: npt.NDArray,
+    bins: npt.NDArray | list,
+    n_bins: int,
+    n_special: int,
+    cat_unknown: str | int | numbers.Number | None
+) -> np.ndarray:
 
     if dtype == "numerical":
         if metric == "bins":
@@ -227,10 +271,23 @@ def _apply_transform(x, dtype, special_codes, metric, metric_special,
     return x_transform
 
 
-def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
-                            special_codes, categories, cat_others, cat_unknown,
-                            metric, metric_special, metric_missing,
-                            user_splits, show_digits, check_input=False):
+def transform_binary_target(
+    splits: npt.NDArray | list,
+    dtype: str,
+    x: npt.NDArray | list,
+    n_nonevent: npt.NDArray,
+    n_event: npt.NDArray,
+    special_codes: dict | list | None,
+    categories: list | None,
+    cat_others: str | None,
+    cat_unknown: str | int | numbers.Number | None,
+    metric: str,
+    metric_special: str | numbers.Number,
+    metric_missing: str | numbers.Number,
+    user_splits: dict | None,
+    show_digits: int | None,
+    check_input: bool = False
+) -> np.ndarray:
 
     if metric not in ("event_rate", "woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -316,9 +373,17 @@ def transform_binary_target(splits, dtype, x, n_nonevent, n_event,
     return x_transform
 
 
-def transform_multiclass_target(splits, x, n_event, special_codes, metric,
-                                metric_special, metric_missing, show_digits,
-                                check_input=False):
+def transform_multiclass_target(
+    splits: npt.NDArray | list,
+    x: npt.NDArray | list,
+    n_event: npt.NDArray,
+    special_codes: dict | list | None,
+    metric: str,
+    metric_special: str | numbers.Number,
+    metric_missing: str | numbers.Number,
+    show_digits: int | None,
+    check_input: bool = False
+) -> np.ndarray:
 
     if metric not in ("mean_woe", "weighted_mean_woe", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '
@@ -385,11 +450,23 @@ def transform_multiclass_target(splits, x, n_event, special_codes, metric,
     return x_transform
 
 
-def transform_continuous_target(splits, dtype, x, n_records, sums,
-                                special_codes, categories, cat_others,
-                                cat_unknown, metric, metric_special,
-                                metric_missing, user_splits, show_digits,
-                                check_input):
+def transform_continuous_target(
+    splits: npt.NDArray | list,
+    dtype: str,
+    x: npt.NDArray | list,
+    n_records: npt.NDArray,
+    sums: npt.NDArray,
+    special_codes: dict | list | None,
+    categories: list | None,
+    cat_others: str | None,
+    cat_unknown: str | int | numbers.Number | None,
+    metric: str,
+    metric_special: str | numbers.Number,
+    metric_missing: str | numbers.Number,
+    user_splits: dict | None,
+    show_digits: int | None,
+    check_input: bool
+) -> np.ndarray:
 
     if metric not in ("mean", "indices", "bins"):
         raise ValueError('Invalid value for metric. Allowed string '

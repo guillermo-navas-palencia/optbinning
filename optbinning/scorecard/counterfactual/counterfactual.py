@@ -7,8 +7,10 @@ Counterfactual explanations for scorecard models.
 
 import numbers
 import time
+from typing import Self
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from ...information import solver_statistics
@@ -44,7 +46,12 @@ SOFT_CONSTRAINTS = {
 }
 
 
-def _check_parameters(scorecard, special_missing, n_jobs, verbose):
+def _check_parameters(
+    scorecard: Scorecard,
+    special_missing: bool,
+    n_jobs: int,
+    verbose: bool,
+) -> None:
     # Check scorecard
     if not isinstance(scorecard, Scorecard):
         raise TypeError("scorecard must be a Scorecard instance.")
@@ -63,9 +70,20 @@ def _check_parameters(scorecard, special_missing, n_jobs, verbose):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def _check_generate_params(query, y, outcome_type, n_cf, method, objectives,
-                           max_changes, actionable_features, hard_constraints,
-                           soft_constraints, variable_names, target_dtype):
+def _check_generate_params(
+    query: dict | pd.DataFrame,
+    y: int | float,
+    outcome_type: str,
+    n_cf: int,
+    method: str,
+    objectives: dict | None,
+    max_changes: int | None,
+    actionable_features: list[str] | None,
+    hard_constraints: list[str] | None,
+    soft_constraints: dict[str, float] | None,
+    variable_names: list | npt.NDArray,
+    target_dtype: str,
+) -> None:
 
     # Check query
     if not isinstance(query, (dict, pd.DataFrame)):
@@ -120,8 +138,13 @@ def _check_generate_params(query, y, outcome_type, n_cf, method, objectives,
         outcome_type)
 
 
-def _check_objectives_method_constraints(method, objectives, hard_constraints,
-                                         soft_constraints, outcome_type):
+def _check_objectives_method_constraints(
+    method: str,
+    objectives: dict[str, float] | None,
+    hard_constraints: list[str] | None,
+    soft_constraints: dict[str, float] | None,
+    outcome_type: str
+) -> None:
 
     # Check types
     if method not in ("weighted", "hierarchical"):
@@ -216,8 +239,13 @@ class Counterfactual(BaseCounterfactual):
     verbose : bool (default=False)
         Enable verbose output.
     """
-    def __init__(self, scorecard, special_missing=False, n_jobs=1,
-                 verbose=False):
+    def __init__(
+        self,
+        scorecard: Scorecard,
+        special_missing: bool = False,
+        n_jobs: int = 1,
+        verbose: bool = False,
+    ) -> None:
         self.scorecard = scorecard
         self.special_missing = special_missing
         self.n_jobs = n_jobs
@@ -240,7 +268,7 @@ class Counterfactual(BaseCounterfactual):
         self._is_fitted = False
         self._is_generated = False
 
-    def fit(self, X):
+    def fit(self, X: pd.DataFrame) -> Self:
         """Fit counterfactual. Compute problem data to generate counterfactual
         explanations.
 
@@ -300,7 +328,7 @@ class Counterfactual(BaseCounterfactual):
 
         return self
 
-    def information(self, print_level=1):
+    def information(self, print_level: int = 1) -> None:
         """Print overview information about the options settings and
         statistics.
 
@@ -333,10 +361,21 @@ class Counterfactual(BaseCounterfactual):
             self._time_fit, time_solver, self._time_postprocessing,
             dict_user_options)
 
-    def generate(self, query, y, outcome_type, n_cf, method="weighted",
-                 objectives=None, max_changes=None, actionable_features=None,
-                 hard_constraints=None, soft_constraints=None,
-                 priority_tol=0.1, time_limit=10):
+    def generate(
+        self,
+        query: dict | pd.DataFrame,
+        y: int | float,
+        outcome_type: str,
+        n_cf: int,
+        method: str = "weighted",
+        objectives: dict | None = None,
+        max_changes: int | None = None,
+        actionable_features: list[str] | None = None,
+        hard_constraints: list[str] | None = None,
+        soft_constraints: dict[str, float] | None = None,
+        priority_tol: float = 0.1,
+        time_limit: int = 10,
+    ) -> Self:
         """Generate counterfactual explanations given objectives and
         constraints.
 
@@ -538,7 +577,11 @@ class Counterfactual(BaseCounterfactual):
 
         return self
 
-    def display(self, show_only_changes=False, show_outcome=False):
+    def display(
+        self,
+        show_only_changes: bool = False,
+        show_outcome: bool = False,
+    ) -> pd.DataFrame:
         """Display the generatedcounterfactual explanations.
 
         Parameters
@@ -656,7 +699,7 @@ class Counterfactual(BaseCounterfactual):
         return non_actionable
 
     @property
-    def status(self):
+    def status(self) -> str:
         """The status of the underlying optimization solver.
 
         Returns

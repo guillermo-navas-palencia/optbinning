@@ -22,11 +22,14 @@ from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
 from optbinning.binning.binning_process import _check_selection_criteria
 from optbinning.binning.binning_process import resolve_target_dtype
+from sklearn.base import TransformerMixin, clone
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_diabetes
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.multiclass import type_of_target
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
 from tests.datasets import load_boston
 
 
@@ -342,6 +345,53 @@ def test_categorical_variables():
     assert df_summary[
         df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
 
+
+def test_transformer_mixin():
+    # BinningProcess is a proper sklearn TransformerMixin. See GH issue #343.
+    assert isinstance(BinningProcess(variable_names), TransformerMixin)
+
+    process = BinningProcess(variable_names)
+
+    # Preserve the existing fit_transform options, including metric and weights.
+    Xt = process.fit_transform(X, y, metric="woe")
+    assert Xt.shape == X.shape
+
+    # clone/get_params/set_params still work with the mixin added.
+    process2 = clone(process)
+    assert list(process2.get_params()["variable_names"]) == list(
+        variable_names)
+
+    # works as a Pipeline step
+    pipe = Pipeline([("bp", BinningProcess(variable_names)),
+                     ("clf", LogisticRegression())])
+    pipe.fit(X, y)
+    assert pipe.predict(X).shape == (X.shape[0],)
+
+
+
+def test_transformer_mixin_pandas_output():
+    names = list(variable_names[:2])
+    frame = pd.DataFrame(X[:, :2], columns=names,
+                         index=pd.Index(range(1000, 1000 + len(y)), name="row"))
+    process = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).set_output(transform="pandas")
+    transformed = process.fit_transform(frame, y, metric="event_rate")
+    assert isinstance(transformed, pd.DataFrame)
+    assert list(transformed.columns) == list(process.get_support(names=True))
+    assert transformed.shape == (len(y), 1)
+    pd.testing.assert_index_equal(transformed.index, frame.index)
+    expected = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).fit_transform(frame, y, metric="event_rate")
+    pd.testing.assert_frame_equal(transformed, expected)
+
+    pipeline = Pipeline([("binning", BinningProcess(names)),
+                         ("classifier", LogisticRegression())])
+    pipeline.set_output(transform="pandas")
+    pipeline.fit(frame, y)
+    assert list(pipeline.named_steps["classifier"].feature_names_in_) == names
+    assert pipeline.predict(frame).shape == (len(y),)
 
 def test_fit_params():
     binning_fit_params = {"mean radius": {"max_n_bins": 4}}

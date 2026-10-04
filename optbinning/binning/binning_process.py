@@ -19,10 +19,10 @@ from matplotlib.figure import Figure
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from pandas.api.types import is_string_dtype
 
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
@@ -36,6 +36,7 @@ from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
 from .piecewise.binning import OptimalPWBinning
 from .piecewise.continuous_binning import ContinuousOptimalPWBinning
+from .preprocessing import _check_variable_dtype
 
 
 logger = Logger(__name__).logger
@@ -378,10 +379,6 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
 
 
-def _check_variable_dtype(x):
-    return "categorical" if is_string_dtype(x.dtype) else "numerical"
-
-
 class BaseBinningProcess:
     @classmethod
     def load(cls, path: str) -> "BaseBinningProcess":
@@ -487,14 +484,11 @@ class BaseBinningProcess:
             optb = self._binned_variables[name]
             optb.binning_table.build()
 
-            n_bins = len(optb.splits)
-            if isinstance(optb, OptimalPWBinning) or optb.dtype == "numerical":
-                n_bins += 1
-
-            if isinstance(optb, OptimalPWBinning):
+            if isinstance(optb, (OptimalPWBinning, ContinuousOptimalPWBinning)):
                 dtype = "numerical"
             else:
-                dtype = optb.dtype
+                dtype = getattr(optb, "_dtype", optb.dtype)
+            n_bins = len(optb.splits) + (dtype == "numerical")
 
             info = {"dtype": dtype,
                     "status": optb.status,
@@ -524,7 +518,8 @@ class BaseBinningProcess:
         self._support_selection_criteria()
 
 
-class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
+class BinningProcess(Base, TransformerMixin, BaseEstimator,
+                     BaseBinningProcess):
     """Binning process to compute optimal binning of variables in a dataset,
     given a binary, continuous or multiclass target dtype.
 
@@ -1499,7 +1494,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self._n_variables = len(self.variable_names)
 
         for name, optb in dict_optb.items():
-            self._variable_dtypes[name] = optb.dtype
+            self._variable_dtypes[name] = getattr(optb, "_dtype", optb.dtype)
             self._binned_variables[name] = optb
 
         # Compute binning statistics and decide whether a variable is selected

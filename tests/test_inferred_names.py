@@ -53,3 +53,19 @@ def test_failed_refit_does_not_reuse_old_fit(sample):
         process.fit("invalid", y)
     with pytest.raises(NotFittedError):
         process.transform(X)
+
+
+def test_inferred_names_pipeline_pandas_output(sample):
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+
+    X, y = sample
+    pipeline = Pipeline([('binning', BinningProcess()),
+                         ('classifier', LogisticRegression())])
+    pipeline.set_output(transform='pandas')
+    pipeline.fit(X, y)
+    transformed = pipeline.named_steps['binning'].transform(X)
+    assert list(transformed.columns) == list(X.columns)
+    pd.testing.assert_index_equal(transformed.index, X.index)
+    assert list(pipeline.named_steps['classifier'].feature_names_in_) == list(X.columns)
+    assert pipeline.predict(X).shape == y.shape

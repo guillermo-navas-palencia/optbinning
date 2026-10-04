@@ -211,6 +211,27 @@ def test_default_continuous():
     assert sc_max == approx(100.28829019286185, rel=1e-6)
 
 
+def test_binning_process_variable_names_none():
+    # Scorecard must work when its BinningProcess infers variable_names
+    # from X instead of receiving them explicitly. See GH issue #343.
+    data = load_breast_cancer()
+    X = pd.DataFrame(data.data, columns=data.feature_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names=None)
+    estimator = LogisticRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None)
+    scorecard.fit(X, y)
+
+    assert scorecard.binning_process_._variable_names == list(X.columns)
+
+    X_t = scorecard.transform(X)
+    assert X_t.shape == X.shape
+
+    table = scorecard.table()
+    assert len(table) > 0
 def test_target_dtype_autodetect_unchanged():
     # An integer-valued continuous target (e.g. load_diabetes().target)
     # is classified "multiclass" by type_of_target, which Scorecard
@@ -731,13 +752,15 @@ def test_woe_points_consistency():
                                        rel=1e-6)
 
 
+@mark.parametrize("infer_names", [False, True])
 @mark.parametrize("scaling_method", [None, "min_max"])
 @mark.parametrize("target_dtype", ["binary", "continuous"])
 @mark.parametrize("explicit_metric", [False, True])
 @mark.parametrize("special_codes", [
     [-999, -888], {"unknown": [-999], "other": [-888]}])
 def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
-                                            special_codes, scaling_method):
+                                            special_codes, scaling_method,
+                                            infer_names):
     # Scoring needs actual bin indices, even when training overrides use
     # WoE/means or integer values for special/missing observations (GH #412).
     X = pd.DataFrame({
@@ -757,7 +780,7 @@ def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
     if explicit_metric:
         params["metric"] = metric
     process = BinningProcess(
-        variable_names=["x"],
+        variable_names=None if infer_names else ["x"],
         binning_fit_params={"x": {
             "user_splits": [30, 40], "user_splits_fixed": [True, True],
             "special_codes": special_codes}},

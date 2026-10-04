@@ -15,6 +15,7 @@ from contextlib import redirect_stdout
 from optbinning import BinningProcess
 from optbinning import Scorecard
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
@@ -208,6 +209,59 @@ def test_default_continuous():
 
     assert sc_min == approx(-43.261900687199045, rel=1e-6)
     assert sc_max == approx(100.28829019286185, rel=1e-6)
+
+
+def test_target_dtype_autodetect_unchanged():
+    # An integer-valued continuous target (e.g. load_diabetes().target)
+    # is classified "multiclass" by type_of_target, which Scorecard
+    # doesn't support, so fit() raises unless target_dtype is passed
+    # explicitly (see next test). See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LinearRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None)
+
+    with raises(ValueError):
+        scorecard.fit(X, y)
+
+
+def test_target_dtype_explicit_override():
+    # target_dtype overrides auto-detection entirely. See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LinearRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None,
+                          target_dtype="continuous")
+    scorecard.fit(X, y)
+
+    assert scorecard._target_dtype == "continuous"
+
+
+def test_target_dtype_invalid():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    with raises(ValueError):
+        scorecard = Scorecard(binning_process=binning_process,
+                              estimator=estimator, target_dtype="bad_value")
+        scorecard.fit(X, y)
 
 
 def test_scaling_method_pdo_odd():

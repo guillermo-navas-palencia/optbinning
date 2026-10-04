@@ -71,6 +71,61 @@ _OPTB_TYPES = (OptimalBinning, ContinuousOptimalBinning,
 _OPTBPW_TYPES = (OptimalPWBinning, ContinuousOptimalPWBinning)
 
 
+# type_of_target cannot tell an integer-valued continuous target (e.g.
+# sklearn.datasets.load_diabetes().target) from an integer-coded
+# classification target -- it always returns "multiclass" for both
+# (see GH issue #296). This is intentional sklearn behaviour, so
+# auto-detection is left as-is; target_dtype is the explicit override.
+def resolve_target_dtype(
+    y: npt.ArrayLike, target_dtype: str | None = None
+) -> str:
+    """Determine the target type.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        Target vector.
+
+    target_dtype : str or None, default=None
+        If None, inferred via ``sklearn.utils.multiclass.type_of_target``.
+        Otherwise used directly, skipping inference (see GH issue #296).
+
+    Returns
+    -------
+    target_dtype : str
+    """
+    if target_dtype is None:
+        return type_of_target(y)
+    _validate_target_dtype(y, target_dtype)
+    return target_dtype
+
+
+def _validate_target_dtype(y, target_dtype, allow_single_class=False) -> None:
+    """Validate an override without changing automatic target inference."""
+    if target_dtype not in ("binary", "continuous", "multiclass"):
+        raise ValueError("Invalid target_dtype.")
+    values = np.asarray(y)
+    if values.ndim != 1 or not values.size:
+        raise ValueError("y must be a non-empty one-dimensional target.")
+    if pd.isna(values).any():
+        raise ValueError("y must not contain missing values.")
+    if target_dtype == "continuous":
+        check_array(values, ensure_2d=False, dtype="numeric",
+                    ensure_all_finite=True)
+    else:
+        detected = type_of_target(values)
+        if detected not in ("binary", "multiclass"):
+            raise ValueError("Classification targets must contain class labels.")
+        classes = np.unique(values)
+        if len(classes) < 2 and not allow_single_class:
+            raise ValueError("A classification target requires two classes.")
+        if target_dtype == "binary":
+            if not np.isin(classes, [0, 1]).all():
+                raise ValueError("Binary targets must be encoded as 0 and 1.")
+            if len(classes) != 2 and not allow_single_class:
+                raise ValueError("A binary target requires two classes.")
+
+
 def _read_column(input_path, extension, column, **kwargs):
     if extension == "csv":
         x = pd.read_csv(input_path, engine='c', usecols=[column],
@@ -212,7 +267,8 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       max_pvalue, max_pvalue_policy, selection_criteria,
                       fixed_variables, categorical_variables, special_codes,
                       split_digits, binning_fit_params,
-                      binning_transform_params, n_jobs, verbose):
+                      binning_transform_params, target_dtype, n_jobs,
+                      verbose):
 
     if not isinstance(variable_names, (np.ndarray, list)):
         raise TypeError("variable_names must be a list or numpy.ndarray.")
@@ -307,6 +363,12 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
     if binning_transform_params is not None:
         if not isinstance(binning_transform_params, dict):
             raise TypeError("binning_transform_params must be a dict.")
+
+    if target_dtype is not None:
+        if target_dtype not in ("binary", "continuous", "multiclass"):
+            raise ValueError('target_dtype must be "binary", "continuous", '
+                             '"multiclass" or None; got {}.'
+                             .format(target_dtype))
 
     if n_jobs is not None:
         if not isinstance(n_jobs, numbers.Integral):
@@ -533,6 +595,15 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         Dictionary with optimal binning transform options for specific
         variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
 
+    target_dtype : str or None, optional (default=None)
+        The target type, one of "binary", "continuous" or "multiclass".
+        If None, inferred automatically via
+        ``sklearn.utils.multiclass.type_of_target``. Set explicitly to
+        override auto-detection, e.g. for an integer-valued continuous
+        target (see GH issue #296).
+
+        .. versionadded:: 1.1.0
+
     n_jobs : int or None, optional (default=None)
         Number of cores to run in parallel while binning variables.
         ``None`` means 1 core. ``-1`` means using all processors.
@@ -594,7 +665,8 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         binning_fit_params: dict[str, Any] | None = None,
         binning_transform_params: dict[str, Any] | None = None,
         n_jobs: int | None = None,
-        verbose: bool = False
+        verbose: bool = False,
+        target_dtype: str | None = None
     ):
         self.variable_names = variable_names
 
@@ -616,6 +688,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         self.special_codes = special_codes
         self.split_digits = split_digits
         self.categorical_variables = categorical_variables
+        self.target_dtype = target_dtype
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -1153,11 +1226,14 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
 
         # check target dtype
-        self._target_dtype = type_of_target(y)
+        self._target_dtype = resolve_target_dtype(y, self.target_dtype)
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         # check sample weight
         if sample_weight is not None and self._target_dtype != "binary":
@@ -1297,11 +1373,14 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
 
         # Retrieve target and check dtype
         y = _read_column(input_path, extension, target, **kwargs)
-        self._target_dtype = type_of_target(y)
+        self._target_dtype = resolve_target_dtype(y, self.target_dtype)
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         if self.selection_criteria is not None:
             _check_selection_criteria(self.selection_criteria,

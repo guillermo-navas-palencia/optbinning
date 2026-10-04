@@ -374,3 +374,28 @@ def test_special_codes_dict_none_present():
 
     assert optb.status == "OPTIMAL"
     optb.binning_table.build()
+
+
+def test_df_tests():
+    # ContinuousBinningTable.df_tests exposes the per-adjacent-bin
+    # significance tests computed by analysis(), instead of only
+    # printing them. See GH issue #283.
+    optb = ContinuousOptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    assert len(df_tests) > 0
+
+    # returned frame is a defensive copy
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()

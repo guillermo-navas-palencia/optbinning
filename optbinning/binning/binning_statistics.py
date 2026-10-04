@@ -926,6 +926,7 @@ class BinningTable:
         self._n_specials = None
         self._quality_score = None
         self._ks = None
+        self._df_tests = None
 
         self._bin_str = False
         self._is_built = False
@@ -1445,6 +1446,8 @@ class BinningTable:
         if pvalue_test == "fisher":
             df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
 
+        self._df_tests = df_tests
+
         tab = 4
         if len(df_tests):
             df_tests_string = dataframe_to_string(df_tests, tab)
@@ -1583,6 +1586,31 @@ class BinningTable:
 
         return self._quality_score
 
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" (or
+        "odd ratio" when ``pvalue_test="fisher"``), "p-value", "P[A > B]"
+        and "P[B > A]" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()
+
 
 class MulticlassBinningTable:
     """Binning table to summarize optimal binning of a numerical variable with
@@ -1629,6 +1657,7 @@ class MulticlassBinningTable:
         self._hhi_norm = None
         self._n_specials = None
         self._quality_score = None
+        self._df_tests = None
 
         self._bin_str = False
         self._is_built = False
@@ -1975,6 +2004,8 @@ class MulticlassBinningTable:
                 "p-value": p_values
             })
 
+        self._df_tests = df_tests
+
         tab = 4
         if len(df_tests):
             df_tests_string = dataframe_to_string(df_tests, tab)
@@ -2045,6 +2076,30 @@ class MulticlassBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
+
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" and
+        "p-value" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()
 
 
 class ContinuousBinningTable:
@@ -2151,6 +2206,7 @@ class ContinuousBinningTable:
         self._hhi = None
         self._hhi_norm = None
         self._n_specials = None
+        self._df_tests = None
 
         self._bin_str = None
         self._is_built = False
@@ -2595,6 +2651,8 @@ class ContinuousBinningTable:
                 "p-value": p_values
             })
 
+        self._df_tests = df_tests
+
         tab = 4
         if len(df_tests):
             df_tests_string = dataframe_to_string(df_tests, tab)
@@ -2687,3 +2745,27 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
+
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" and
+        "p-value" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()

@@ -63,12 +63,12 @@ _METRICS = {
     }
 }
 
-
 _OPTB_TYPES = (OptimalBinning, ContinuousOptimalBinning,
                MulticlassOptimalBinning)
 
-
 _OPTBPW_TYPES = (OptimalPWBinning, ContinuousOptimalPWBinning)
+
+_SAMPLE_WEIGHT_TARGETS = ("binary", "continuous")
 
 
 # type_of_target cannot tell an integer-valued continuous target (e.g.
@@ -115,7 +115,8 @@ def _validate_target_dtype(y, target_dtype, allow_single_class=False) -> None:
     else:
         detected = type_of_target(values)
         if detected not in ("binary", "multiclass"):
-            raise ValueError("Classification targets must contain class labels.")
+            raise ValueError(
+                "Classification targets must contain class labels.")
         classes = np.unique(values)
         if len(classes) < 2 and not allow_single_class:
             raise ValueError("A classification target requires two classes.")
@@ -487,7 +488,7 @@ class BaseBinningProcess:
             optb = self._binned_variables[name]
             optb.binning_table.build()
 
-            if isinstance(optb, (OptimalPWBinning, ContinuousOptimalPWBinning)):
+            if isinstance(optb, _OPTBPW_TYPES):
                 dtype = "numerical"
             else:
                 dtype = getattr(optb, "_dtype", optb.dtype)
@@ -746,7 +747,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Only applied if ``prebinning_method="cart"``. This option is only
-            available for a binary target.
+            available for binary and continuous targets.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -824,7 +825,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Only applied if ``prebinning_method="cart"``. This option is only
-            available for a binary target.
+            available binary and continuous targets.
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default
@@ -1255,7 +1256,8 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
                 .format(self._target_dtype))
 
         # check sample weight
-        if sample_weight is not None and self._target_dtype != "binary":
+        if (sample_weight is not None and
+                self._target_dtype not in _SAMPLE_WEIGHT_TARGETS):
             raise ValueError("Target type {} does not support sample weight."
                              .format(self._target_dtype))
 
@@ -1266,7 +1268,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         # check X and y data
         if check_input:
             check_array(X, ensure_2d=False, dtype=None,
-                            ensure_all_finite='allow-nan')
+                        ensure_all_finite='allow-nan')
 
             y = check_array(y, ensure_2d=False, dtype=None,
                             ensure_all_finite=True)

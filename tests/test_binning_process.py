@@ -849,3 +849,11 @@ def test_target_dtype_invalid():
     with raises(ValueError):
         process = BinningProcess(variable_names=[], target_dtype="bad_value")
         process.fit(X, y)
+
+
+def test_reject_multiclass_sample_weight():
+    X = pd.DataFrame({'x': np.tile(np.arange(3), 40)})
+    y = np.tile(np.arange(3), 40)
+
+    with raises(ValueError, match="does not support sample weight"):
+        BinningProcess(['x']).fit(X, y, sample_weight=np.ones(y.size))

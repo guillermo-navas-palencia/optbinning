@@ -563,10 +563,6 @@ def test_missing_metrics():
 
 
 def test_per_variable_metric_special():
-    # A variable's own binning_transform_params entry can override the
-    # global metric_special passed to Scorecard.fit(). The Points shown
-    # for that variable's "Special" bin(s) must reflect the per-variable
-    # override, not the global value. See GH issue #380 / PR #379.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture', 'mean perimeter']
     X = pd.DataFrame(data.data[:, :3], columns=variable_names)
@@ -594,7 +590,6 @@ def test_per_variable_metric_special():
         estimator=LogisticRegression(),
     )
 
-    # Global metric_special=0 must be overridden per-variable below.
     scorecard.fit(X_with_specials, y, metric_special=0)
 
     table = scorecard.table(style='detailed')
@@ -607,14 +602,11 @@ def test_per_variable_metric_special():
     assert len(radius_special) == 1
     assert len(texture_special) == 1
 
-    # 'mean radius': metric_special='empirical' -> Points = WoE * coef.
     woe_value = radius_special['WoE'].iloc[0]
     coef_value = radius_special['Coefficient'].iloc[0]
     assert radius_special['Points'].iloc[0] == approx(
         woe_value * coef_value, rel=1e-6)
 
-    # 'mean texture': metric_special=0.5 -> Points = 0.5 * coef, and must
-    # NOT equal the global override (0) that would have applied pre-fix.
     coef_value = texture_special['Coefficient'].iloc[0]
     assert texture_special['Points'].iloc[0] == approx(
         0.5 * coef_value, rel=1e-6)
@@ -622,8 +614,6 @@ def test_per_variable_metric_special():
 
 
 def test_per_variable_metric_special_backward_compatibility():
-    # A variable with no binning_transform_params entry at all must keep
-    # using the global metric_special, unaffected by this feature.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture']
     X = pd.DataFrame(data.data[:, :2], columns=variable_names)
@@ -661,10 +651,6 @@ def test_per_variable_metric_special_backward_compatibility():
 
 
 def test_per_variable_metric_missing():
-    # Same as test_per_variable_metric_special but for metric_missing,
-    # using categorical variables (categorical_variables passed
-    # explicitly since dtype auto-detection misses string columns on
-    # newer pandas).
     data = pd.DataFrame({
         'target': np.hstack((np.tile(np.array([0, 1]), 50),
                              np.array([0] * 90 + [1] * 10))),
@@ -686,7 +672,6 @@ def test_per_variable_metric_missing():
         estimator=LogisticRegression(),
     )
 
-    # Global metric_missing=0 must be overridden per-variable below.
     scorecard.fit(data[['var1', 'var2']], data.target, metric_missing=0)
 
     table = scorecard.table(style='detailed')
@@ -699,14 +684,11 @@ def test_per_variable_metric_missing():
     assert len(var1_missing) == 1
     assert len(var2_missing) == 1
 
-    # 'var1': metric_missing='empirical' -> Points = WoE * coef.
     woe_value = var1_missing['WoE'].iloc[0]
     coef_value = var1_missing['Coefficient'].iloc[0]
     assert var1_missing['Points'].iloc[0] == approx(
         woe_value * coef_value, rel=1e-6)
 
-    # 'var2': metric_missing=0.25 -> Points = 0.25 * coef, and must NOT
-    # equal the global override (0) that would have applied pre-fix.
     coef_value = var2_missing['Coefficient'].iloc[0]
     assert var2_missing['Points'].iloc[0] == approx(
         0.25 * coef_value, rel=1e-6)
@@ -714,10 +696,6 @@ def test_per_variable_metric_missing():
 
 
 def test_woe_points_consistency():
-    # For every bin of a variable using metric_special='empirical', Points
-    # must equal WoE * Coefficient across the whole table, not just the
-    # regular bins -- i.e. the special bin's Points must be consistent
-    # with its own WoE once the per-variable override is respected.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture']
     X = pd.DataFrame(data.data[:, :2], columns=variable_names)
@@ -793,6 +771,7 @@ def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
     sample = pd.DataFrame({"x": [20., 35., 50., -999., -888., np.nan]})
     table = card.table(style="detailed")
     n_specials = len(special_codes) if isinstance(special_codes, dict) else 1
+
     # Known fixed splits and special groups provide an independent oracle.
     expected_ids = [0, 1, 2, 3, 3 + (n_specials == 2), 3 + n_specials]
     expected = table.set_index("Bin id").loc[expected_ids, "Points"].to_numpy()
@@ -811,8 +790,6 @@ def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
 
 
 def test_per_variable_metrics_end_to_end():
-    # GH #380: different variables need empirical, zero and nonzero
-    # replacements, while a variable without overrides uses fit defaults.
     rng = np.random.default_rng(380)
     names = ["age", "income", "credit_score", "fallback"]
     X = pd.DataFrame(rng.choice([20., 40., 60.], (1200, 4)), columns=names)
@@ -870,3 +847,22 @@ def test_per_variable_metrics_end_to_end():
         card.predict_proba(sample)[:, 1], 1 / (1 + np.exp(-decision)))
     np.testing.assert_array_equal(
         card.predict(sample), (decision > 0).astype(int))
+
+
+def test_continuous_sample_weight_supported():
+    x = np.linspace(-1, 1, 120)
+    X = pd.DataFrame({'x': x})
+    y = x ** 2 + 0.2 * x
+    sample_weight = np.linspace(0.5, 2, x.size)
+
+    process = BinningProcess(['x'], target_dtype='continuous')
+    process.fit(X, y, sample_weight=sample_weight)
+    assert process._binned_variables['x']._n_samples_weighted == approx(
+        sample_weight.sum())
+
+    scorecard = Scorecard(
+        BinningProcess(['x'], target_dtype='continuous'),
+        LinearRegression()).fit(X, y, sample_weight=sample_weight)
+    assert scorecard.binning_process_._binned_variables[
+        'x']._n_samples_weighted == approx(sample_weight.sum())
+    assert np.isfinite(scorecard.predict(X)).all()

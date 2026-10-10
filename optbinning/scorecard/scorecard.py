@@ -31,6 +31,9 @@ from .scorecard_information import print_scorecard_information
 logger = Logger(__name__).logger
 
 
+_SAMPLE_WEIGHT_TARGETS = ("binary", "continuous")
+
+
 def _check_parameters(binning_process, estimator, scaling_method,
                       scaling_method_params, intercept_based,
                       reverse_scorecard, rounding, target_dtype, verbose):
@@ -313,7 +316,7 @@ class Scorecard(Base, BaseEstimator):
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            This option is only available for a binary target.
+            This option is only available for binary and continuous targets.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -610,7 +613,8 @@ class Scorecard(Base, BaseEstimator):
                                  self._target_dtype)
 
         # Check sample weight
-        if sample_weight is not None and self._target_dtype != "binary":
+        if (sample_weight is not None and
+                self._target_dtype not in _SAMPLE_WEIGHT_TARGETS):
             raise ValueError("Target type {} does not support sample weight."
                              .format(self._target_dtype))
 

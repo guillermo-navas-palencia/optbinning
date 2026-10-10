@@ -653,7 +653,7 @@ def test_categorical_transform_indices_and_bins():
     optb = OptimalBinning(name="x_cat", dtype="categorical")
     optb.fit(x_cat, y_cat)
 
-    n_bins = len(optb.splits) + 1
+    n_bins = len(optb.splits)
 
     x_test = np.concatenate([
         x_cat[:50],

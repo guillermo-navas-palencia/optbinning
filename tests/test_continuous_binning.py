@@ -203,6 +203,55 @@ def test_categorical_user_splits():
         assert optb.status == "OPTIMAL"
 
 
+def test_dtype_autodetect():
+    # Explicit dtype=None infers the variable type from the data.
+    # See GH issue #316.
+    np.random.seed(0)
+    n = 300
+    x_cat = np.random.choice(
+        ["Working", "Pensioner", "Student"], size=n).astype(object)
+    y_cat = np.random.normal(size=n)
+
+    # automatic detection is opt-in
+    optb = ContinuousOptimalBinning(dtype=None)
+    assert optb.dtype is None
+
+    # numerical data is inferred as "numerical"
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # object-dtype string array is inferred as "categorical"
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_cat, y_cat)
+    assert optb._dtype == "categorical"
+
+    # plain numpy unicode string array (not dtype=object) is also
+    # inferred as "categorical"
+    x_cat_unicode = np.array(x_cat, dtype=str)
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_cat_unicode, y_cat)
+    assert optb._dtype == "categorical"
+
+    # pandas category dtype with *numeric* categories is inferred as
+    # "categorical", not "numerical"
+    x_coded = pd.Series(pd.Categorical(
+        np.random.choice([1, 2, 3], size=n)))
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_coded, y_cat)
+    assert optb._dtype == "categorical"
+
+    # explicit dtype still overrides auto-detection
+    optb = ContinuousOptimalBinning(dtype="numerical")
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # invalid explicit dtype values are still rejected
+    with raises(ValueError):
+        optb = ContinuousOptimalBinning(dtype="nominal")
+        optb.fit(x, y)
+
+
 def test_numerical_max_pvalue():
     optb0 = ContinuousOptimalBinning(max_pvalue=0.05,
                                      max_pvalue_policy="consecutive")
@@ -406,3 +455,28 @@ def test_special_codes_dict_none_present():
 
     assert optb.status == "OPTIMAL"
     optb.binning_table.build()
+
+
+def test_df_tests():
+    # ContinuousBinningTable.df_tests exposes the per-adjacent-bin
+    # significance tests computed by analysis(), instead of only
+    # printing them. See GH issue #283.
+    optb = ContinuousOptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    assert len(df_tests) > 0
+
+    # returned frame is a defensive copy
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()

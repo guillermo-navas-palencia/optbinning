@@ -8,13 +8,14 @@ Scorecard testing.
 import pandas as pd
 import numpy as np
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from contextlib import redirect_stdout
 
 from optbinning import BinningProcess
 from optbinning import Scorecard
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
@@ -208,6 +209,80 @@ def test_default_continuous():
 
     assert sc_min == approx(-43.261900687199045, rel=1e-6)
     assert sc_max == approx(100.28829019286185, rel=1e-6)
+
+
+def test_binning_process_variable_names_none():
+    # Scorecard must work when its BinningProcess infers variable_names
+    # from X instead of receiving them explicitly. See GH issue #343.
+    data = load_breast_cancer()
+    X = pd.DataFrame(data.data, columns=data.feature_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names=None)
+    estimator = LogisticRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None)
+    scorecard.fit(X, y)
+
+    assert scorecard.binning_process_._variable_names == list(X.columns)
+
+    X_t = scorecard.transform(X)
+    assert X_t.shape == X.shape
+
+    table = scorecard.table()
+    assert len(table) > 0
+def test_target_dtype_autodetect_unchanged():
+    # An integer-valued continuous target (e.g. load_diabetes().target)
+    # is classified "multiclass" by type_of_target, which Scorecard
+    # doesn't support, so fit() raises unless target_dtype is passed
+    # explicitly (see next test). See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LinearRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None)
+
+    with raises(ValueError):
+        scorecard.fit(X, y)
+
+
+def test_target_dtype_explicit_override():
+    # target_dtype overrides auto-detection entirely. See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LinearRegression()
+
+    scorecard = Scorecard(binning_process=binning_process,
+                          estimator=estimator, scaling_method=None,
+                          target_dtype="continuous")
+    scorecard.fit(X, y)
+
+    assert scorecard._target_dtype == "continuous"
+
+
+def test_target_dtype_invalid():
+    data = load_breast_cancer()
+    variable_names = data.feature_names
+    X = pd.DataFrame(data.data, columns=variable_names)
+    y = data.target
+
+    binning_process = BinningProcess(variable_names)
+    estimator = LogisticRegression()
+
+    with raises(ValueError):
+        scorecard = Scorecard(binning_process=binning_process,
+                              estimator=estimator, target_dtype="bad_value")
+        scorecard.fit(X, y)
 
 
 def test_scaling_method_pdo_odd():
@@ -488,10 +563,6 @@ def test_missing_metrics():
 
 
 def test_per_variable_metric_special():
-    # A variable's own binning_transform_params entry can override the
-    # global metric_special passed to Scorecard.fit(). The Points shown
-    # for that variable's "Special" bin(s) must reflect the per-variable
-    # override, not the global value. See GH issue #380 / PR #379.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture', 'mean perimeter']
     X = pd.DataFrame(data.data[:, :3], columns=variable_names)
@@ -519,7 +590,6 @@ def test_per_variable_metric_special():
         estimator=LogisticRegression(),
     )
 
-    # Global metric_special=0 must be overridden per-variable below.
     scorecard.fit(X_with_specials, y, metric_special=0)
 
     table = scorecard.table(style='detailed')
@@ -532,14 +602,11 @@ def test_per_variable_metric_special():
     assert len(radius_special) == 1
     assert len(texture_special) == 1
 
-    # 'mean radius': metric_special='empirical' -> Points = WoE * coef.
     woe_value = radius_special['WoE'].iloc[0]
     coef_value = radius_special['Coefficient'].iloc[0]
     assert radius_special['Points'].iloc[0] == approx(
         woe_value * coef_value, rel=1e-6)
 
-    # 'mean texture': metric_special=0.5 -> Points = 0.5 * coef, and must
-    # NOT equal the global override (0) that would have applied pre-fix.
     coef_value = texture_special['Coefficient'].iloc[0]
     assert texture_special['Points'].iloc[0] == approx(
         0.5 * coef_value, rel=1e-6)
@@ -547,8 +614,6 @@ def test_per_variable_metric_special():
 
 
 def test_per_variable_metric_special_backward_compatibility():
-    # A variable with no binning_transform_params entry at all must keep
-    # using the global metric_special, unaffected by this feature.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture']
     X = pd.DataFrame(data.data[:, :2], columns=variable_names)
@@ -586,10 +651,6 @@ def test_per_variable_metric_special_backward_compatibility():
 
 
 def test_per_variable_metric_missing():
-    # Same as test_per_variable_metric_special but for metric_missing,
-    # using categorical variables (categorical_variables passed
-    # explicitly since dtype auto-detection misses string columns on
-    # newer pandas).
     data = pd.DataFrame({
         'target': np.hstack((np.tile(np.array([0, 1]), 50),
                              np.array([0] * 90 + [1] * 10))),
@@ -611,7 +672,6 @@ def test_per_variable_metric_missing():
         estimator=LogisticRegression(),
     )
 
-    # Global metric_missing=0 must be overridden per-variable below.
     scorecard.fit(data[['var1', 'var2']], data.target, metric_missing=0)
 
     table = scorecard.table(style='detailed')
@@ -624,14 +684,11 @@ def test_per_variable_metric_missing():
     assert len(var1_missing) == 1
     assert len(var2_missing) == 1
 
-    # 'var1': metric_missing='empirical' -> Points = WoE * coef.
     woe_value = var1_missing['WoE'].iloc[0]
     coef_value = var1_missing['Coefficient'].iloc[0]
     assert var1_missing['Points'].iloc[0] == approx(
         woe_value * coef_value, rel=1e-6)
 
-    # 'var2': metric_missing=0.25 -> Points = 0.25 * coef, and must NOT
-    # equal the global override (0) that would have applied pre-fix.
     coef_value = var2_missing['Coefficient'].iloc[0]
     assert var2_missing['Points'].iloc[0] == approx(
         0.25 * coef_value, rel=1e-6)
@@ -639,10 +696,6 @@ def test_per_variable_metric_missing():
 
 
 def test_woe_points_consistency():
-    # For every bin of a variable using metric_special='empirical', Points
-    # must equal WoE * Coefficient across the whole table, not just the
-    # regular bins -- i.e. the special bin's Points must be consistent
-    # with its own WoE once the per-variable override is respected.
     data = load_breast_cancer()
     variable_names = ['mean radius', 'mean texture']
     X = pd.DataFrame(data.data[:, :2], columns=variable_names)
@@ -675,3 +728,141 @@ def test_woe_points_consistency():
     for _, row in radius_table.iterrows():
         assert row['Points'] == approx(row['WoE'] * row['Coefficient'],
                                        rel=1e-6)
+
+
+@mark.parametrize("infer_names", [False, True])
+@mark.parametrize("scaling_method", [None, "min_max"])
+@mark.parametrize("target_dtype", ["binary", "continuous"])
+@mark.parametrize("explicit_metric", [False, True])
+@mark.parametrize("special_codes", [
+    [-999, -888], {"unknown": [-999], "other": [-888]}])
+def test_scoring_ignores_per_variable_metrics(target_dtype, explicit_metric,
+                                            special_codes, scaling_method,
+                                            infer_names):
+    # Scoring needs actual bin indices, even when training overrides use
+    # WoE/means or integer values for special/missing observations (GH #412).
+    X = pd.DataFrame({
+        "x": np.repeat([20., 35., 50., -999., -888., np.nan], 100)})
+    y = np.concatenate([
+        np.r_[np.zeros(100 - events), np.ones(events)]
+        for events in [10, 30, 70, 20, 40, 60]])
+    if target_dtype == "continuous":
+        y = y + np.linspace(0.01, 0.09, len(y))
+        estimator = LinearRegression()
+        metric = "mean"
+    else:
+        estimator = LogisticRegression()
+        metric = "woe"
+
+    params = {"metric_special": 0, "metric_missing": 0}
+    if explicit_metric:
+        params["metric"] = metric
+    process = BinningProcess(
+        variable_names=None if infer_names else ["x"],
+        binning_fit_params={"x": {
+            "user_splits": [30, 40], "user_splits_fixed": [True, True],
+            "special_codes": special_codes}},
+        binning_transform_params={"x": params})
+    card = Scorecard(
+        binning_process=process, estimator=estimator,
+        scaling_method=scaling_method,
+        scaling_method_params=(
+            {"min": 0, "max": 100} if scaling_method else None)).fit(X, y)
+    sample = pd.DataFrame({"x": [20., 35., 50., -999., -888., np.nan]})
+    table = card.table(style="detailed")
+    n_specials = len(special_codes) if isinstance(special_codes, dict) else 1
+
+    # Known fixed splits and special groups provide an independent oracle.
+    expected_ids = [0, 1, 2, 3, 3 + (n_specials == 2), 3 + n_specials]
+    expected = table.set_index("Bin id").loc[expected_ids, "Points"].to_numpy()
+    before = card.binning_process_.transform(sample)
+    prediction = card.predict(sample)
+    saved_params = card.binning_process_.binning_transform_params
+
+    np.testing.assert_allclose(card.score(sample), expected + card.intercept_)
+    np.testing.assert_allclose(card.transform(sample)["x"], expected)
+    np.testing.assert_allclose(card.score(sample), expected + card.intercept_)
+    assert card.binning_process_.binning_transform_params is saved_params
+    assert saved_params == {"x": params}
+    pd.testing.assert_frame_equal(
+        card.binning_process_.transform(sample), before)
+    np.testing.assert_allclose(card.predict(sample), prediction)
+
+
+def test_per_variable_metrics_end_to_end():
+    rng = np.random.default_rng(380)
+    names = ["age", "income", "credit_score", "fallback"]
+    X = pd.DataFrame(rng.choice([20., 40., 60.], (1200, 4)), columns=names)
+    probability = 1 / (1 + np.exp(-(X.sum(axis=1) - 160) / 40))
+    y = rng.binomial(1, probability)
+    specials = {"age": [31, 36], "income": [-1, -999],
+                "credit_score": [0], "fallback": [-888]}
+    for i, name in enumerate(names):
+        X.loc[i * 100:i * 100 + 49, name] = specials[name][0]
+        X.loc[i * 100 + 50:i * 100 + 99, name] = np.nan
+    overrides = {
+        "age": {"metric": "woe", "metric_special": "empirical",
+                "metric_missing": "empirical"},
+        "income": {"metric": "woe", "metric_special": 0,
+                   "metric_missing": 0},
+        "credit_score": {"metric": "woe", "metric_special": -0.5,
+                         "metric_missing": 0.25}}
+    process = BinningProcess(
+        variable_names=names,
+        binning_fit_params={name: {
+            "special_codes": specials[name], "user_splits": [30, 50],
+            "user_splits_fixed": [True, True]} for name in names},
+        binning_transform_params=overrides)
+    card = Scorecard(process, LogisticRegression()).fit(
+        X, y, metric_special=0.75, metric_missing=-0.25)
+    sample = pd.DataFrame({
+        "age": [20., 31., 36., np.nan],
+        "income": [40., -1., -999., np.nan],
+        "credit_score": [60., 0., 0., np.nan],
+        "fallback": [20., -888., -888., np.nan]})
+    table = card.table(style="detailed")
+    # All variables have three fixed regular bins and one special bin.
+    regular_ids = [0, 1, 2, 0]
+    expected_woe = np.empty(sample.shape)
+    expected_points = np.empty(sample.shape)
+    for i, name in enumerate(names):
+        rows = table[table.Variable == name].set_index("Bin id")
+        ids = [regular_ids[i], 3, 3, 4]
+        special = overrides.get(name, {}).get("metric_special", 0.75)
+        missing = overrides.get(name, {}).get("metric_missing", -0.25)
+        special = rows.loc[3, "WoE"] if special == "empirical" else special
+        missing = rows.loc[4, "WoE"] if missing == "empirical" else missing
+        expected_woe[:, i] = [rows.loc[ids[0], "WoE"], special,
+                              special, missing]
+        expected_points[:, i] = rows.loc[ids, "Points"]
+    coefs = card.estimator_.coef_.ravel()
+    assert np.all(np.abs(coefs) > 1e-6)
+    np.testing.assert_allclose(expected_points, expected_woe * coefs)
+    np.testing.assert_allclose(card.transform(sample), expected_points)
+    np.testing.assert_allclose(
+        card.score(sample), expected_points.sum(axis=1) + card.intercept_)
+    decision = expected_woe @ coefs + card.estimator_.intercept_[0]
+    np.testing.assert_allclose(card.decision_function(sample), decision)
+    np.testing.assert_allclose(
+        card.predict_proba(sample)[:, 1], 1 / (1 + np.exp(-decision)))
+    np.testing.assert_array_equal(
+        card.predict(sample), (decision > 0).astype(int))
+
+
+def test_continuous_sample_weight_supported():
+    x = np.linspace(-1, 1, 120)
+    X = pd.DataFrame({'x': x})
+    y = x ** 2 + 0.2 * x
+    sample_weight = np.linspace(0.5, 2, x.size)
+
+    process = BinningProcess(['x'], target_dtype='continuous')
+    process.fit(X, y, sample_weight=sample_weight)
+    assert process._binned_variables['x']._n_samples_weighted == approx(
+        sample_weight.sum())
+
+    scorecard = Scorecard(
+        BinningProcess(['x'], target_dtype='continuous'),
+        LinearRegression()).fit(X, y, sample_weight=sample_weight)
+    assert scorecard.binning_process_._binned_variables[
+        'x']._n_samples_weighted == approx(sample_weight.sum())
+    assert np.isfinite(scorecard.predict(X)).all()

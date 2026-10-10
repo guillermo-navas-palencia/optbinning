@@ -10,6 +10,7 @@ import numbers
 import pickle
 import time
 
+from copy import copy
 from typing import Self
 
 import numpy as np
@@ -18,10 +19,10 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
-from sklearn.utils.multiclass import type_of_target
 
 from ..binning.base import Base
 from ..binning.binning_process import BinningProcess
+from ..binning.binning_process import resolve_target_dtype
 from ..logging import Logger
 from .rounding import RoundingMIP
 from .scorecard_information import print_scorecard_information
@@ -30,9 +31,12 @@ from .scorecard_information import print_scorecard_information
 logger = Logger(__name__).logger
 
 
+_SAMPLE_WEIGHT_TARGETS = ("binary", "continuous")
+
+
 def _check_parameters(binning_process, estimator, scaling_method,
                       scaling_method_params, intercept_based,
-                      reverse_scorecard, rounding, verbose):
+                      reverse_scorecard, rounding, target_dtype, verbose):
 
     if not isinstance(binning_process, BinningProcess):
         raise TypeError("binning_process must be a BinningProcess instance.")
@@ -67,6 +71,11 @@ def _check_parameters(binning_process, estimator, scaling_method,
     if rounding and scaling_method is None:
         raise ValueError("rounding is only applied if scaling method is "
                          "not None.")
+
+    if target_dtype is not None:
+        if target_dtype not in ("binary", "continuous"):
+            raise ValueError('target_dtype must be "binary", "continuous" '
+                             'or None; got {}.'.format(target_dtype))
 
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
@@ -218,6 +227,15 @@ class Scorecard(Base, BaseEstimator):
         minimum/maximum score after rounding. Otherwise, the scorecard points
         are round to the nearest integer.
 
+    target_dtype : str or None, optional (default=None)
+        The target type, one of "binary" or "continuous". If None, uses
+        ``binning_process.target_dtype`` when supplied, otherwise inferred via
+        ``sklearn.utils.multiclass.type_of_target``. Set explicitly to
+        override auto-detection, e.g. for an integer-valued continuous
+        target (see GH issue #296).
+
+        .. versionadded:: 1.1.0
+
     verbose : bool (default=False)
         Enable verbose output.
 
@@ -242,6 +260,7 @@ class Scorecard(Base, BaseEstimator):
         reverse_scorecard: bool = False,
         rounding: bool = False,
         verbose: bool = False,
+        target_dtype: str | None = None,
     ) -> None:
 
         self.binning_process = binning_process
@@ -251,6 +270,7 @@ class Scorecard(Base, BaseEstimator):
         self.intercept_based = intercept_based
         self.reverse_scorecard = reverse_scorecard
         self.rounding = rounding
+        self.target_dtype = target_dtype
         self.verbose = verbose
 
         # attributes
@@ -296,7 +316,7 @@ class Scorecard(Base, BaseEstimator):
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            This option is only available for a binary target.
+            This option is only available for binary and continuous targets.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.
@@ -576,11 +596,16 @@ class Scorecard(Base, BaseEstimator):
             raise TypeError("X must be a pandas.DataFrame.")
 
         # Target type and metric
-        self._target_dtype = type_of_target(y)
+        override = (self.target_dtype if self.target_dtype is not None
+                    else self.binning_process.target_dtype)
+        self._target_dtype = resolve_target_dtype(y, override)
 
         if self._target_dtype not in ("binary", "continuous"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         _check_scorecard_scaling(self.scaling_method,
                                  self.scaling_method_params,
@@ -588,7 +613,8 @@ class Scorecard(Base, BaseEstimator):
                                  self._target_dtype)
 
         # Check sample weight
-        if sample_weight is not None and self._target_dtype != "binary":
+        if (sample_weight is not None and
+                self._target_dtype not in _SAMPLE_WEIGHT_TARGETS):
             raise ValueError("Target type {} does not support sample weight."
                              .format(self._target_dtype))
 
@@ -610,9 +636,19 @@ class Scorecard(Base, BaseEstimator):
         self.binning_process_ = clone(self.binning_process)
         # Suppress binning process verbosity
         self.binning_process_.set_params(verbose=False)
+        # Propagate the resolved target type so the wrapped BinningProcess
+        # does not re-detect it independently (GH issue #296).
+        self.binning_process_.set_params(target_dtype=self._target_dtype)
+
+        # variable_names=None means "use all columns of X" (GH issue #343);
+        # only slice X when an explicit column subset was given.
+        if self.binning_process.variable_names is None:
+            X_bp = X
+        else:
+            X_bp = X[self.binning_process.variable_names]
 
         X_t = self.binning_process_.fit_transform(
-            X[self.binning_process.variable_names], y, sample_weight, metric,
+            X_bp, y, sample_weight, metric,
             metric_special, metric_missing, show_digits, check_input)
 
         self._time_binning_process = time.perf_counter() - time_binning_process
@@ -757,8 +793,17 @@ class Scorecard(Base, BaseEstimator):
     def _transform(self, X, metric, metric_special, metric_missing):
         self._check_is_fitted()
 
-        X_t = self.binning_process_.transform(
-            X=X[self.binning_process_.variable_names], metric=metric,
+        binning_process = self.binning_process_
+        if metric == "indices":
+            # Points lookup requires actual bin indices, not per-variable
+            # training metrics or special/missing replacements (GH #412).
+            # A shallow copy retains fitted bins and validation without
+            # mutating the process used by prediction or concurrent calls.
+            binning_process = copy(binning_process)
+            binning_process.binning_transform_params = None
+
+        X_t = binning_process.transform(
+            X=X[binning_process._variable_names], metric=metric,
             metric_special=metric_special, metric_missing=metric_missing)
 
         return X_t

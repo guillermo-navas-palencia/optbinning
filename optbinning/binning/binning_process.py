@@ -14,13 +14,15 @@ from warnings import warn
 
 from typing import Self
 
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from pandas.api.types import is_string_dtype
 
 from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
@@ -34,6 +36,7 @@ from .continuous_binning import ContinuousOptimalBinning
 from .multiclass_binning import MulticlassOptimalBinning
 from .piecewise.binning import OptimalPWBinning
 from .piecewise.continuous_binning import ContinuousOptimalPWBinning
+from .preprocessing import _check_variable_dtype
 
 
 logger = Logger(__name__).logger
@@ -53,18 +56,75 @@ _METRICS = {
         "quality_score": {"min": 0, "max": 1}
     },
     "continuous": {
-        "metrics": ["woe", "quality_score"],
+        "metrics": ["iv", "woe", "quality_score"],
+        "iv": {"min": 0, "max": np.inf},
         "woe": {"min": 0, "max": np.inf},
         "quality_score": {"min": 0, "max": 1}
     }
 }
 
-
 _OPTB_TYPES = (OptimalBinning, ContinuousOptimalBinning,
                MulticlassOptimalBinning)
 
-
 _OPTBPW_TYPES = (OptimalPWBinning, ContinuousOptimalPWBinning)
+
+_SAMPLE_WEIGHT_TARGETS = ("binary", "continuous")
+
+
+# type_of_target cannot tell an integer-valued continuous target (e.g.
+# sklearn.datasets.load_diabetes().target) from an integer-coded
+# classification target -- it always returns "multiclass" for both
+# (see GH issue #296). This is intentional sklearn behaviour, so
+# auto-detection is left as-is; target_dtype is the explicit override.
+def resolve_target_dtype(
+    y: npt.ArrayLike, target_dtype: str | None = None
+) -> str:
+    """Determine the target type.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        Target vector.
+
+    target_dtype : str or None, default=None
+        If None, inferred via ``sklearn.utils.multiclass.type_of_target``.
+        Otherwise used directly, skipping inference (see GH issue #296).
+
+    Returns
+    -------
+    target_dtype : str
+    """
+    if target_dtype is None:
+        return type_of_target(y)
+    _validate_target_dtype(y, target_dtype)
+    return target_dtype
+
+
+def _validate_target_dtype(y, target_dtype, allow_single_class=False) -> None:
+    """Validate an override without changing automatic target inference."""
+    if target_dtype not in ("binary", "continuous", "multiclass"):
+        raise ValueError("Invalid target_dtype.")
+    values = np.asarray(y)
+    if values.ndim != 1 or not values.size:
+        raise ValueError("y must be a non-empty one-dimensional target.")
+    if pd.isna(values).any():
+        raise ValueError("y must not contain missing values.")
+    if target_dtype == "continuous":
+        check_array(values, ensure_2d=False, dtype="numeric",
+                    ensure_all_finite=True)
+    else:
+        detected = type_of_target(values)
+        if detected not in ("binary", "multiclass"):
+            raise ValueError(
+                "Classification targets must contain class labels.")
+        classes = np.unique(values)
+        if len(classes) < 2 and not allow_single_class:
+            raise ValueError("A classification target requires two classes.")
+        if target_dtype == "binary":
+            if not np.isin(classes, [0, 1]).all():
+                raise ValueError("Binary targets must be encoded as 0 and 1.")
+            if len(classes) != 2 and not allow_single_class:
+                raise ValueError("A binary target requires two classes.")
 
 
 def _read_column(input_path, extension, column, **kwargs):
@@ -125,7 +185,7 @@ def _fit_variable(x, y, name, target_dtype, categorical_variables,
 
     optb.set_params(**params)
 
-    if target_dtype == "binary":
+    if target_dtype in _SAMPLE_WEIGHT_TARGETS:
         optb.fit(x, y, sample_weight)
     else:
         optb.fit(x, y)
@@ -208,10 +268,13 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
                       max_pvalue, max_pvalue_policy, selection_criteria,
                       fixed_variables, categorical_variables, special_codes,
                       split_digits, binning_fit_params,
-                      binning_transform_params, n_jobs, verbose):
+                      binning_transform_params, target_dtype, n_jobs,
+                      verbose):
 
-    if not isinstance(variable_names, (np.ndarray, list)):
-        raise TypeError("variable_names must be a list or numpy.ndarray.")
+    if (variable_names is not None
+            and not isinstance(variable_names, (np.ndarray, list))):
+        raise TypeError("variable_names must be a list, numpy.ndarray or "
+                        "None.")
 
     if not isinstance(max_n_prebins, numbers.Integral) or max_n_prebins <= 1:
         raise ValueError("max_prebins must be an integer greater than 1; "
@@ -304,6 +367,12 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
         if not isinstance(binning_transform_params, dict):
             raise TypeError("binning_transform_params must be a dict.")
 
+    if target_dtype is not None:
+        if target_dtype not in ("binary", "continuous", "multiclass"):
+            raise ValueError('target_dtype must be "binary", "continuous", '
+                             '"multiclass" or None; got {}.'
+                             .format(target_dtype))
+
     if n_jobs is not None:
         if not isinstance(n_jobs, numbers.Integral):
             raise ValueError("n_jobs must be an integer or None; got {}."
@@ -311,10 +380,6 @@ def _check_parameters(variable_names, max_n_prebins, min_prebin_size,
 
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be a boolean; got {}.".format(verbose))
-
-
-def _check_variable_dtype(x):
-    return "categorical" if is_string_dtype(x.dtype) else "numerical"
 
 
 class BaseBinningProcess:
@@ -351,6 +416,24 @@ class BaseBinningProcess:
 
         with open(path, "wb") as f:
             pickle.dump(self, f)
+
+    def get_feature_names_out(self, input_features=None):
+        """Get output feature names for transformation.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, optional (default=None)
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Transformed feature names, i.e., the names of the selected
+            variables.
+        """
+        # get_support performs the appropriate fitted/solved-state check
+
+        return self.get_support(names=True)
 
     def _support_selection_criteria(self) -> None:
         self._support = np.full(self._n_variables, True, dtype=bool)
@@ -394,24 +477,22 @@ class BaseBinningProcess:
                     self._support &= support
 
         # Fixed variables
-        if self.fixed_variables is not None:
+        if getattr(self, "fixed_variables", None) is not None:
             for fv in self.fixed_variables:
-                idfv = list(self.variable_names).index(fv)
+                idfv = list(self._variable_names).index(fv)
                 self._support[idfv] = True
 
     def _binning_selection_criteria(self) -> None:
-        for i, name in enumerate(self.variable_names):
+        names = getattr(self, "_variable_names", self.variable_names)
+        for i, name in enumerate(names):
             optb = self._binned_variables[name]
             optb.binning_table.build()
 
-            n_bins = len(optb.splits)
-            if isinstance(optb, OptimalPWBinning) or optb.dtype == "numerical":
-                n_bins += 1
-
-            if isinstance(optb, OptimalPWBinning):
+            if isinstance(optb, _OPTBPW_TYPES):
                 dtype = "numerical"
             else:
-                dtype = optb.dtype
+                dtype = getattr(optb, "_dtype", optb.dtype)
+            n_bins = len(optb.splits) + (dtype == "numerical")
 
             info = {"dtype": dtype,
                     "status": optb.status,
@@ -431,6 +512,7 @@ class BaseBinningProcess:
                     "quality_score": optb.binning_table.quality_score}
             elif self._target_dtype == "continuous":
                 metrics = {
+                    "iv": optb.binning_table.iv,
                     "woe": optb.binning_table.woe,
                     "quality_score": optb.binning_table.quality_score}
 
@@ -440,14 +522,21 @@ class BaseBinningProcess:
         self._support_selection_criteria()
 
 
-class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
+class BinningProcess(Base, TransformerMixin, BaseEstimator,
+                     BaseBinningProcess):
     """Binning process to compute optimal binning of variables in a dataset,
     given a binary, continuous or multiclass target dtype.
 
     Parameters
     ----------
-    variable_names : array-like
-        List of variable names.
+    variable_names : array-like or None, optional (default=None)
+        List of variable names. If None, names are inferred from ``X`` at
+        fit time: column names for a ``pandas.DataFrame``, or
+        ``"x0", "x1", ...`` for a ``numpy.ndarray``. Required (cannot be
+        None) when using ``fit_disk``.
+
+        .. versionchanged:: 1.1.0
+           ``variable_names`` is now optional.
 
     max_n_prebins : int (default=20)
         The maximum number of bins after pre-binning (prebins).
@@ -516,6 +605,15 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         Dictionary with optimal binning transform options for specific
         variables. Example ``{"variable_1": {"metric": "event_rate"}}``.
 
+    target_dtype : str or None, optional (default=None)
+        The target type, one of "binary", "continuous" or "multiclass".
+        If None, inferred automatically via
+        ``sklearn.utils.multiclass.type_of_target``. Set explicitly to
+        override auto-detection, e.g. for an integer-valued continuous
+        target (see GH issue #296).
+
+        .. versionadded:: 1.1.0
+
     n_jobs : int or None, optional (default=None)
         Number of cores to run in parallel while binning variables.
         ``None`` means 1 core. ``-1`` means using all processors.
@@ -560,7 +658,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
     """
     def __init__(
         self,
-        variable_names: npt.ArrayLike | list[str],
+        variable_names: npt.ArrayLike | list[str] | None = None,
         max_n_prebins: int = 20,
         min_prebin_size: float = 0.05,
         min_n_bins: int | None = None,
@@ -577,7 +675,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         binning_fit_params: dict[str, Any] | None = None,
         binning_transform_params: dict[str, Any] | None = None,
         n_jobs: int | None = None,
-        verbose: bool = False
+        verbose: bool = False,
+        target_dtype: str | None = None
     ):
         self.variable_names = variable_names
 
@@ -599,12 +698,14 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         self.special_codes = special_codes
         self.split_digits = split_digits
         self.categorical_variables = categorical_variables
+        self.target_dtype = target_dtype
         self.n_jobs = n_jobs
         self.verbose = verbose
 
         # auxiliary
         self._n_samples = None
         self._n_variables = None
+        self._variable_names = None
         self._target_dtype = None
         self._n_numerical = None
         self._n_categorical = None
@@ -646,7 +747,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Only applied if ``prebinning_method="cart"``. This option is only
-            available for a binary target.
+            available for binary and continuous targets.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -724,7 +825,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Only applied if ``prebinning_method="cart"``. This option is only
-            available for a binary target.
+            available binary and continuous targets.
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default
@@ -1015,7 +1116,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if not isinstance(name, str):
             raise TypeError("name must be a string.")
 
-        if name in self.variable_names:
+        if name in self._variable_names:
             return self._binned_variables[name]
         else:
             raise ValueError("name {} does not match a binned variable."
@@ -1041,7 +1142,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if not isinstance(name, str):
             raise TypeError("name must be a string.")
 
-        if name not in self.variable_names:
+        if name not in self._variable_names:
             raise ValueError("name {} does not match a binned variable."
                              .format(name))
 
@@ -1118,11 +1219,20 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if indices:
             return np.where(mask)[0]
         elif names:
-            return np.asarray(self.variable_names)[mask]
+            return np.asarray(self._variable_names)[mask]
         else:
             return mask
 
+    def _reset_fit_state(self) -> None:
+        self._is_fitted = False
+        self._is_updated = False
+        self._binned_variables = {}
+        self._variable_dtypes = {}
+        self._variable_stats = {}
+        self._support = None
+
     def _fit(self, X, y, sample_weight, check_input):
+        self._reset_fit_state()
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -1136,14 +1246,18 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             raise TypeError("X must be a pandas.DataFrame or numpy.ndarray.")
 
         # check target dtype
-        self._target_dtype = type_of_target(y)
+        self._target_dtype = resolve_target_dtype(y, self.target_dtype)
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         # check sample weight
-        if sample_weight is not None and self._target_dtype != "binary":
+        if (sample_weight is not None and
+                self._target_dtype not in _SAMPLE_WEIGHT_TARGETS):
             raise ValueError("Target type {} does not support sample weight."
                              .format(self._target_dtype))
 
@@ -1153,8 +1267,8 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         # check X and y data
         if check_input:
-            X = check_array(X, ensure_2d=False, dtype=None,
-                            ensure_all_finite='allow-nan')
+            check_array(X, ensure_2d=False, dtype=None,
+                        ensure_all_finite='allow-nan')
 
             y = check_array(y, ensure_2d=False, dtype=None,
                             ensure_all_finite=True)
@@ -1163,7 +1277,16 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         self._n_samples, self._n_variables = X.shape
 
-        if self._n_variables != len(self.variable_names):
+        if self.variable_names is None:
+            if isinstance(X, pd.DataFrame):
+                self._variable_names = list(X.columns)
+            else:
+                self._variable_names = ["x{}".format(i)
+                                        for i in range(self._n_variables)]
+        else:
+            self._variable_names = list(self.variable_names)
+
+        if self._n_variables != len(self._variable_names):
             raise ValueError("The number of columns must be equal to the"
                              "length of variable_names.")
 
@@ -1182,7 +1305,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                         .format(n_jobs))
 
         if n_jobs == 1:
-            for i, name in enumerate(self.variable_names):
+            for i, name in enumerate(self._variable_names):
                 if self.verbose:
                     logger.info("Binning variable ({} / {}): {}."
                                 .format(i, self._n_variables, name))
@@ -1207,9 +1330,9 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 self._variable_dtypes[name] = dtype
                 self._binned_variables[name] = optb
         else:
-            ids = np.arange(len(self.variable_names))
+            ids = np.arange(len(self._variable_names))
             id_blocks = np.array_split(ids, n_jobs)
-            names = np.asarray(self.variable_names)
+            names = np.asarray(self._variable_names)
 
             if isinstance(X, np.ndarray):
                 blocks = Parallel(n_jobs=n_jobs, prefer="threads")(
@@ -1258,6 +1381,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         return self
 
     def _fit_disk(self, input_path, target, **kwargs):
+        self._reset_fit_state()
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -1265,6 +1389,13 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             logger.info("Options: check parameters.")
 
         _check_parameters(**self.get_params())
+
+        # variable_names cannot be inferred from a file path; unlike fit(),
+        # fit_disk() requires it explicitly.
+        if self.variable_names is None:
+            raise ValueError("variable_names cannot be None when using "
+                             "fit_disk.")
+        self._variable_names = list(self.variable_names)
 
         # Input file extension
         extension = input_path.split(".")[1]
@@ -1280,11 +1411,14 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         # Retrieve target and check dtype
         y = _read_column(input_path, extension, target, **kwargs)
-        self._target_dtype = type_of_target(y)
+        self._target_dtype = resolve_target_dtype(y, self.target_dtype)
 
         if self._target_dtype not in ("binary", "continuous", "multiclass"):
-            raise ValueError("Target type {} is not supported."
-                             .format(self._target_dtype))
+            raise ValueError(
+                "Target type {} is not supported. If auto-detection is "
+                "incorrect for your target (e.g. a continuous target with "
+                "integer values), pass target_dtype explicitly."
+                .format(self._target_dtype))
 
         if self.selection_criteria is not None:
             _check_selection_criteria(self.selection_criteria,
@@ -1292,12 +1426,12 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
 
         if self.fixed_variables is not None:
             for fv in self.fixed_variables:
-                if fv not in self.variable_names:
+                if fv not in self._variable_names:
                     raise ValueError("Variable {} to be fixed is not a valid "
                                      "variable name.".format(fv))
 
         self._n_samples = len(y)
-        self._n_variables = len(self.variable_names)
+        self._n_variables = len(self._variable_names)
 
         if self.verbose:
             logger.info("Dataset: number of samples: {}."
@@ -1306,7 +1440,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             logger.info("Dataset: number of variables: {}."
                         .format(self._n_variables))
 
-        for name in self.variable_names:
+        for name in self._variable_names:
             x = _read_column(input_path, extension, name, **kwargs)
 
             dtype, optb = _fit_variable(
@@ -1337,6 +1471,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         return self
 
     def _fit_from_dict(self, dict_optb):
+        self._reset_fit_state()
         time_init = time.perf_counter()
 
         if self.verbose:
@@ -1348,8 +1483,15 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
         if not isinstance(dict_optb, dict):
             raise TypeError("dict_optb must be a dict.")
 
+        # variable_names cannot be inferred here; unlike fit(), this
+        # method requires it explicitly.
+        if self.variable_names is None:
+            raise ValueError("variable_names cannot be None when using "
+                             "_fit_from_dict.")
+        self._variable_names = list(self.variable_names)
+
         # Check variable names
-        if set(dict_optb.keys()) != set(self.variable_names):
+        if set(dict_optb.keys()) != set(self._variable_names):
             raise ValueError("dict_optb keys and variable names must "
                              "coincide.")
 
@@ -1395,10 +1537,10 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                                       self._target_dtype)
 
         self._n_samples = 0
-        self._n_variables = len(self.variable_names)
+        self._n_variables = len(self._variable_names)
 
         for name, optb in dict_optb.items():
-            self._variable_dtypes[name] = optb.dtype
+            self._variable_dtypes[name] = getattr(optb, "_dtype", optb.dtype)
             self._binned_variables[name] = optb
 
         # Compute binning statistics and decide whether a variable is selected
@@ -1463,7 +1605,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
                 metrics.add(metric)
 
             for idx in indices_selected_variables:
-                name = self.variable_names[idx]
+                name = self._variable_names[idx]
                 params = self.binning_transform_params.get(name, {})
                 metrics.add(params.get("metric", metric))
 
@@ -1486,7 +1628,7 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             X_transform = np.zeros((n_samples, n_selected_variables))
 
         for i, idx in enumerate(indices_selected_variables):
-            name = self.variable_names[idx]
+            name = self._variable_names[idx]
             optb = self._binned_variables[name]
 
             if isinstance(X, np.ndarray):
@@ -1628,3 +1770,126 @@ class BinningProcess(Base, BaseEstimator, BaseBinningProcess):
             df.to_csv(output_path, mode='a', index=False, header=(k == 0))
 
         return self
+
+    def plot(
+        self,
+        variable_names: list[str] | tuple[str, ...] | npt.NDArray | None = None,
+        ncols: int | None = None,
+        figsize: tuple[float, float] | None = None,
+        add_special: bool = True,
+        add_missing: bool = True,
+        show_bin_labels: bool = False,
+        share_metric: bool = True,
+        share_legend: bool = True,
+    ) -> tuple[Figure, npt.NDArray]:
+        """Plot fitted variables in a grid using their existing binning plots.
+
+        Parameters
+        ----------
+        variable_names : list of str or None (default=None)
+            Fitted variables to plot, in order. By default, plot the selected
+            variables returned by get_support(names=True).
+        ncols : int or None (default=None)
+            Maximum number of columns in the grid. By default, use the ceiling
+            of the square root of the number of plotted variables.
+        figsize : tuple or None (default=None)
+            Figure size. By default, allocate 6 by 4.5 inches per panel.
+        add_special : bool (default=True)
+            Whether to include special-code bins.
+        add_missing : bool (default=True)
+            Whether to include missing-value bins.
+        show_bin_labels : bool (default=False)
+            Whether to show bin labels instead of bin IDs.
+        share_metric : bool (default=True)
+            Share the secondary metric y-axis across panels, using limits that
+            cover all plotted variables. Count axes remain independent.
+        share_legend : bool (default=True)
+            Show one legend for the whole figure instead of a legend per panel.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure, which is neither shown nor closed automatically.
+        axes : numpy.ndarray
+            Two-dimensional array of primary axes. Unused panels are hidden;
+            each populated panel also has its existing secondary metric axis.
+
+        Notes
+        -----
+        Supports standard binary, continuous and multiclass binning tables.
+        Tables are built with default parameters if not already built. Uses
+        the existing default metrics and standard bin layout for each type.
+        """
+        self._check_is_fitted()
+        if not isinstance(share_legend, bool):
+            raise TypeError("share_legend must be a boolean.")
+        if not isinstance(share_metric, bool):
+            raise TypeError("share_metric must be a boolean.")
+        if ncols is not None and (
+                isinstance(ncols, bool) or
+                not isinstance(ncols, numbers.Integral) or ncols < 1):
+            raise ValueError("ncols must be a positive integer or None.")
+        if variable_names is None:
+            names = list(self.get_support(names=True))
+        else:
+            if not isinstance(variable_names, (list, tuple, np.ndarray)):
+                raise TypeError("variable_names must be a sequence of names.")
+            names = list(variable_names)
+        if not names:
+            raise ValueError("No variables to plot.")
+        if len(set(names)) != len(names):
+            raise ValueError("variable_names must not contain duplicates.")
+        tables = []
+        for name in names:
+            optb = self.get_binned_variable(name)
+            if isinstance(optb, _OPTBPW_TYPES):
+                raise TypeError("Piecewise binning plots are not supported.")
+            table = optb.binning_table
+            if not table._is_built:
+                table.build()
+            tables.append(table)
+
+        if ncols is None:
+            ncols = int(np.ceil(np.sqrt(len(names))))
+        ncols = min(ncols, len(names))
+        nrows = (len(names) + ncols - 1) // ncols
+        fig, axes = plt.subplots(
+            nrows, ncols, squeeze=False,
+            figsize=figsize if figsize is not None else (6*ncols, 4.5*nrows),
+            layout="constrained")
+        try:
+            metric_axes = []
+            for ax, table in zip(axes.flat, tables):
+                table.plot(ax=ax, add_special=add_special,
+                           add_missing=add_missing,
+                           show_bin_labels=show_bin_labels)
+                # Each standard table plot adds one secondary metric axis.
+                metric_axes.append(fig.axes[-1])
+            if share_legend:
+                handles, labels = [], []
+                for metric_ax in metric_axes:
+                    legend = metric_ax.get_legend()
+                    if legend is not None:
+                        for handle, text in zip(
+                                legend.legend_handles, legend.get_texts()):
+                            label = text.get_text()
+                            if label not in labels:
+                                handles.append(handle)
+                                labels.append(label)
+                        legend.remove()
+                if handles:
+                    fig.legend(handles, labels, loc="outside lower center",
+                               ncol=min(len(labels), 4), fontsize=12)
+            if share_metric:
+                limits = [ax.get_ylim() for ax in metric_axes]
+                for metric_ax in metric_axes[1:]:
+                    metric_ax.sharey(metric_axes[0])
+                metric_axes[0].set_ylim(
+                    min(low for low, high in limits),
+                    max(high for low, high in limits))
+            for ax in list(axes.flat)[len(tables):]:
+                ax.set_visible(False)
+        except Exception:
+            plt.close(fig)
+            raise
+        return fig, axes

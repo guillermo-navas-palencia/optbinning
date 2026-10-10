@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 
 from pytest import approx, raises
+from scipy import stats as scipy_stats
 
 from contextlib import redirect_stdout
 
@@ -493,7 +494,6 @@ def test_pvalues():
     # cross-check against the classical Wald test computed independently
     # (statsmodels is not a dependency; this recomputes the same formula
     # directly instead of importing it)
-    from scipy import stats as scipy_stats
     X_t = scorecard.binning_process_.transform(X, metric="woe")
     x_design = np.column_stack([np.ones(len(X_t)), X_t.values])
     clf = scorecard.estimator_

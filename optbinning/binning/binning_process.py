@@ -185,7 +185,7 @@ def _fit_variable(x, y, name, target_dtype, categorical_variables,
 
     optb.set_params(**params)
 
-    if target_dtype == "binary":
+    if target_dtype in _SAMPLE_WEIGHT_TARGETS:
         optb.fit(x, y, sample_weight)
     else:
         optb.fit(x, y)

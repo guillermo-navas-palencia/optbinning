@@ -420,7 +420,8 @@ class BaseBinningProcess:
                     "gini": optb.binning_table.gini,
                     "js": optb.binning_table.js,
                     "quality_score": optb.binning_table.quality_score,
-                    "monotonic_trend": optb.binning_table.monotonic_trend}
+                    "monotonic_trend": getattr(
+                        optb.binning_table, "monotonic_trend", None)}
             elif self._target_dtype == "multiclass":
                 metrics = {
                     "js": optb.binning_table.js,

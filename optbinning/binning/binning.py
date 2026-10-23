@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import numpy.typing as npt
 
+from sklearn.base import clone
 from sklearn.utils import check_array
 
 from ..information import solver_statistics
@@ -64,7 +65,8 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
                       max_pvalue_policy, gamma, outlier_detector,
                       outlier_params, class_weight, cat_cutoff, cat_unknown,
                       user_splits, user_splits_fixed, special_codes,
-                      split_digits, mip_solver, time_limit, verbose):
+                      split_digits, mip_solver, time_limit, verbose,
+                      prebinning_estimator=None):
 
     if not isinstance(name, str):
         raise TypeError("name must be a string.")
@@ -287,6 +289,16 @@ class OptimalBinning(BaseOptimalBinning):
         .. versionadded:: 1.1.0
            Set ``dtype=None`` to opt into automatic dtype detection.
 
+    prebinning_estimator : estimator or None, optional (default=None)
+        Custom numerical candidate-split provider. A fresh sklearn clone is
+        fitted with clean one-dimensional ``x``, ``y`` and ``sample_weight``;
+        it must expose finite, strictly increasing interior ``splits_`` with
+        at most ``max_n_prebins - 1`` entries. Overrides ``prebinning_method``.
+        Missing and special values are excluded before fitting. Built-in
+        ``min_prebin_size`` is not applied by the provider; final bin-size
+        constraints still apply. Incompatible with categorical inputs,
+        user splits, class weights and extra prebinning keyword arguments.
+
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
         decision tree, "mdlp" for Minimum Description Length Principle (MDLP),
@@ -503,12 +515,14 @@ class OptimalBinning(BaseOptimalBinning):
         mip_solver: str = "bop",
         time_limit: float = 100,
         verbose: bool = False,
+        prebinning_estimator=None,
         **prebinning_kwargs: Any,
     ) -> None:
 
         self.name = name
         self.dtype = dtype
         self.prebinning_method = prebinning_method
+        self.prebinning_estimator = prebinning_estimator
         self.solver = solver
         self.divergence = divergence
 
@@ -778,7 +792,7 @@ class OptimalBinning(BaseOptimalBinning):
             logger.info("Optimal binning started.")
             logger.info("Options: check parameters.")
 
-        _check_parameters(**self.get_params())
+        _check_parameters(**self.get_params(deep=False))
 
         # Determine variable dtype: use user-provided dtype, otherwise
         # infer it from the data. See GH issue #316.
@@ -786,6 +800,8 @@ class OptimalBinning(BaseOptimalBinning):
             self._dtype = _check_variable_dtype(pd.Series(x))
         else:
             self._dtype = self.dtype
+
+        self._check_prebinning_estimator()
 
         # Pre-processing
         if self.verbose:
@@ -966,6 +982,20 @@ class OptimalBinning(BaseOptimalBinning):
 
         return self
 
+    def _check_prebinning_estimator(self):
+        if hasattr(self, "prebinning_estimator_"):
+            del self.prebinning_estimator_
+        if self.prebinning_estimator is None:
+            return
+        if (self._dtype != "numerical" or self.user_splits is not None
+                or self.user_splits_fixed is not None
+                or getattr(self, "class_weight", None) is not None
+                or self.prebinning_kwargs):
+            raise ValueError("prebinning_estimator requires numerical data, "
+                             "no user splits, class weights or prebinning kwargs.")
+        if not callable(getattr(self.prebinning_estimator, "fit", None)):
+            raise TypeError("prebinning_estimator must implement fit.")
+
     def _fit_prebinning(self, x, y, y_missing, x_special, y_special, y_others,
                         class_weight=None, sw_clean=None, sw_missing=None,
                         sw_special=None, sw_others=None):
@@ -973,15 +1003,36 @@ class OptimalBinning(BaseOptimalBinning):
         min_bin_size = int(
             np.ceil(self.min_prebin_size * self._n_samples_weighted))
 
-        prebinning = PreBinning(method=self.prebinning_method,
-                                n_bins=self.max_n_prebins,
-                                min_bin_size=min_bin_size,
-                                problem_type=self._problem_type,
-                                class_weight=class_weight,
-                                **self.prebinning_kwargs
-                                ).fit(x, y, sw_clean)
+        if getattr(self, "prebinning_estimator", None) is None:
+            prebinning = PreBinning(method=self.prebinning_method,
+                                    n_bins=self.max_n_prebins,
+                                    min_bin_size=min_bin_size,
+                                    problem_type=self._problem_type,
+                                    class_weight=class_weight,
+                                    **self.prebinning_kwargs
+                                    ).fit(x, y, sw_clean)
+            splits = prebinning.splits
+        else:
+            # Clone and copy so fitting a provider cannot mutate caller data.
+            provider = clone(self.prebinning_estimator)
+            provider.fit(np.array(x, copy=True), np.array(y, copy=True),
+                         sample_weight=(None if sw_clean is None else
+                                        np.array(sw_clean, copy=True)))
+            if not hasattr(provider, "splits_"):
+                raise ValueError("prebinning_estimator must expose splits_.")
+            splits = np.asarray(provider.splits_, dtype=float)
+            if (splits.ndim != 1 or not np.all(np.isfinite(splits))
+                    or np.any(np.diff(splits) <= 0)
+                    or len(splits) >= self.max_n_prebins
+                    or (len(splits) and (not len(x)
+                        or splits[0] <= np.min(x)
+                        or splits[-1] >= np.max(x)))):
+                raise ValueError("Provider splits_ must be finite, strictly "
+                                 "increasing interior cuts with at most "
+                                 "max_n_prebins - 1 entries.")
+            self.prebinning_estimator_ = provider
 
-        return self._prebinning_refinement(prebinning.splits, x, y, y_missing,
+        return self._prebinning_refinement(splits, x, y, y_missing,
                                            x_special, y_special, y_others,
                                            sw_clean, sw_missing, sw_special,
                                            sw_others)

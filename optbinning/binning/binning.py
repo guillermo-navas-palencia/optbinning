@@ -30,6 +30,7 @@ from .binning_statistics import BinningTable
 from .binning_statistics import target_info_samples
 from .binning_statistics import target_info_special
 from .cp import BinningCP
+from .dp import solve_iv
 from .ls import BinningLS
 from .mip import BinningMIP
 from .prebinning import PreBinning
@@ -78,9 +79,9 @@ def _check_parameters(name, dtype, prebinning_method, solver, divergence,
                          'values are "cart", "mdlp", "quantile" '
                          'and "uniform".')
 
-    if solver not in ("cp", "ls", "mip"):
+    if solver not in ("cp", "ls", "mip", "auto"):
         raise ValueError('Invalid value for solver. Allowed string '
-                         'values are "cp", "ls" and "mip".')
+                         'values are "cp", "ls", "mip" and "auto".')
 
     if divergence not in ("iv", "js", "hellinger", "triangular"):
         raise ValueError('Invalid value for divergence. Allowed string '
@@ -300,7 +301,10 @@ class OptimalBinning(BaseOptimalBinning):
         The optimizer to solve the optimal binning problem. Supported solvers
         are "mip" to choose a mixed-integer programming solver, "cp" to choose
         a constrained programming solver or "ls" to choose `LocalSolver
-        <https://www.localsolver.com/>`_.
+        <https://www.localsolver.com/>`_. "auto" explicitly enables a restricted
+        exact integer-IV dynamic program, falling back to CP for unsupported
+        constraints/counts or if its short computation budget expires. The
+        default "cp" is unchanged. See the solver fast-path documentation.
 
     divergence : str, optional (default="iv")
         The divergence measure in the objective function to be maximized.
@@ -764,7 +768,7 @@ class OptimalBinning(BaseOptimalBinning):
         dict_user_options = self.get_params()
 
         print_binning_information(binning_type, print_level, self.name,
-                                  self._status, self.solver, solver,
+                                  self._status, getattr(self, "solver_backend_", self.solver), solver,
                                   self._time_total, self._time_preprocessing,
                                   self._time_prebinning, time_solver,
                                   self._time_optimizer,
@@ -987,6 +991,7 @@ class OptimalBinning(BaseOptimalBinning):
                                            sw_others)
 
     def _fit_optimizer(self, splits, n_nonevent, n_event):
+        self.solver_backend_ = "cp" if self.solver == "auto" else self.solver
         if self.verbose:
             logger.info("Optimizer started.")
 
@@ -1081,7 +1086,32 @@ class OptimalBinning(BaseOptimalBinning):
                 logger.info("Optimizer: monotonic trend set to {}."
                             .format(monotonic))
 
-        if self.solver == "cp":
+        if (self.solver == "auto" and self._dtype == "numerical"
+                and self.divergence == "iv"
+                and monotonic is None and not self.gamma
+                and not self.min_event_rate_diff and self.max_pvalue is None
+                and self.user_splits_fixed is None
+                and all(value is None for value in (
+                    min_bin_n_event, self.max_bin_n_event,
+                    min_bin_n_nonevent, self.max_bin_n_nonevent))):
+            result = solve_iv(n_nonevent, n_event, self.min_n_bins,
+                              self.max_n_bins, min_bin_size, max_bin_size,
+                              self.time_limit)
+            if result is not None:
+                status, solution, objective, elapsed = result
+                self.solver_backend_ = "dp"
+                self._status, self._solution = status, solution
+                self._optimizer = {"objective": objective,
+                                   "best_objective_bound": objective}
+                self._time_optimizer = elapsed
+                self._time_solver = time.perf_counter() - time_init
+                if self._dtype == "categorical" and self.user_splits is not None:
+                    self._splits_optimal = splits[solution]
+                else:
+                    self._splits_optimal = splits[solution[:-1]]
+                return
+
+        if self.solver in ("cp", "auto"):
             optimizer = BinningCP(monotonic, self.min_n_bins, self.max_n_bins,
                                   min_bin_size, max_bin_size,
                                   min_bin_n_event, self.max_bin_n_event,
@@ -1121,7 +1151,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._solution = solution
 
         self._optimizer, self._time_optimizer = solver_statistics(
-            self.solver, optimizer.solver_)
+            self.solver_backend_, optimizer.solver_)
         self._status = status
 
         if self._dtype == "categorical" and self.user_splits is not None:

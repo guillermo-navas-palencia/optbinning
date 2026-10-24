@@ -34,3 +34,9 @@ the sum of candidate interval scores in O(K m^2) time and O(K m) DP storage
 (in addition to candidate-score storage), where m is the refined prebin count.
 Run ``benchmarks/dp_fast_path/run.py`` and ``analyze.py`` for paired benchmarks.
 Use ``--smoke`` for a small run; generated results are retained as CI artifacts.
+
+The solver-only comparison of six versus unlimited final bins is available as
+``python benchmarks/dp_fast_path/compare_bin_limits.py``. It disables the DP
+count/time guards only in memory for benchmarking and records CP status and
+objective bounds alongside timings. The performance workflow retains results
+as artifacts; runtime is not a test assertion.

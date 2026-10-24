@@ -29,10 +29,12 @@ jobs:
         run: |
           python benchmarks/dp_fast_path/run.py
           python benchmarks/dp_fast_path/analyze.py
+      - name: Six-bin and unlimited-bin comparison
+        run: python benchmarks/dp_fast_path/compare_bin_limits.py
       - name: Preserve performance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dp-performance-${{ github.run_id }}
-          path: benchmark-artifacts/dp_fast_path/
+          path: benchmark-artifacts/
           retention-days: 90

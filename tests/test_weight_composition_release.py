@@ -50,10 +50,10 @@ def test_extreme_positive_scale_preserves_mass_rate_and_support(solver,scale):
     np.testing.assert_allclose(m.transform([0,1,2],metric='event_rate'),[.25,.5,.75],rtol=1e-12,atol=0)
 
 @pytest.mark.parametrize('solver',['cp','mip'])
-def test_effective_support_rejects_mass_exceeding_maximum(solver):
+def test_raw_support_accepts_mass_exceeding_maximum(solver):
     x,y=data();w=np.tile([.7,1.3],40)
     effective=w*np.where(y==0,.2,1.3)
     assert effective[x==2].sum()/effective.sum() > .55
     assert w[x==2].sum()/w.sum() <= .55
     m=model(solver,class_weight={0:.2,1:1.3},max_bin_size=.55).fit(x,y,sample_weight=w)
-    assert m.status=='INFEASIBLE'
+    assert m.status=='OPTIMAL'

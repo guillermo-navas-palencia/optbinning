@@ -1,30 +1,45 @@
 Fractional binary sample weights
 ================================
 
-Binary OptimalBinning retains fractional sample weights as mass through
-prebinning, optimization, tables and JSON, instead of truncating them to
-integer counts. CP and MIP support constraints use effective mass.
+Binary ``OptimalBinning`` preserves fractional sample weights in fitting,
+optimization, empirical transformations and JSON. Class weights multiply sample
+weights once. ``class_weight="balanced"`` uses class frequencies, not weight
+totals; the caller's weight array is not modified.
 
-Class weights multiply sample weights once, including CART prebinning. The
-caller's weight array is unchanged. ``class_weight="balanced"`` uses class
-frequencies, not exposure totals. Relative support uses the combined mass.
+Observation support and weighted statistics
+--------------------------------------------
+
+``min_bin_size`` and ``max_bin_size`` refer to actual observation counts,
+regardless of weights. Their denominator is the original input row count,
+including missing and special rows; the bounds apply to regular optimized bins.
+Minimum counts round up and maximum counts round down. Explicit event/non-event
+count constraints likewise refer to actual observations in each class.
+
+CART prebinning enforces ``min_prebin_size`` as an actual-row minimum per leaf
+while retaining weighted impurity. A custom ``min_samples_leaf`` can make this
+minimum stricter, but cannot relax it. Other prebinning algorithms retain their
+existing behavior; user-supplied cuts bypass CART's leaf-size constraint.
+Weights still affect the objective, event rates, WoE, monotonicity and statistical
+tests. This change does not add a separate weighted-mass size constraint.
+
+For weighted fits, ``binning_table.build()`` returns raw ``Count``,
+``Count (%)``, ``Non-event``, ``Event`` and ``Event rate`` columns, alongside
+explicit ``Weighted count``, ``Weighted count (%)``, ``Weighted non-event``,
+``Weighted event`` and ``Weighted event rate`` columns. WoE, IV and JS remain
+weighted statistics, as do empirical transformations. Plots retain weighted
+counts and rates, with explicit weighted labels. Unweighted tables retain their
+existing columns. JSON roundtrips preserve both views; older JSON files remain
+readable but their raw counts cannot be reconstructed from weighted masses.
 
 .. code-block:: python
 
    model = OptimalBinning(solver="cp", min_bin_size=0.05)
    model.fit(x_train, y_train, sample_weight=exposure)
+   table = model.binning_table.build()
+   # At least 5% of input rows per regular bin, not 5% of exposure.
+   print(table[["Count", "Weighted count", "Event rate", "Weighted event rate"]])
 
-Fractional mass constraints are implemented by excluding infeasible contiguous
-candidates, so CP/BOP receive Boolean constraints without rounding mass. A
-scale-aware floating-point tolerance handles summation at exact support bounds;
-it does not intentionally relax substantive violations. Nonzero gamma with
-fractional effective weights is explicitly rejected. CP and MIP (BOP/CBC) are
-covered; optional LocalSolver is not certified by these tests.
-
-This patch does not enable pure bins, change their default treatment or add
-exposure-specific calibration. Exposure-weighted event rates estimate a
-different quantity from unweighted rates; appropriate interpretation requires
-the modeling use case. Pure-bin support remains a separate independent PR.
-
-Tests cover mass conservation, empirical rates, missing/special values, JSON,
-CP/MIP support bounds, class/sample weight composition and wide weight scales.
+CP and MIP (BOP/CBC) are supported. Weighted LocalSolver fits are rejected rather
+than silently retaining different size semantics. Fractional effective weights
+with nonzero ``gamma`` remain unsupported and raise an explicit error. Pure-bin
+support and exposure-specific calibration are outside this change.

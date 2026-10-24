@@ -11,7 +11,6 @@ import numpy as np
 from ortools.linear_solver import pywraplp
 
 from .model_data import model_data
-from .model_data import mass_outside_bounds
 
 
 class BinningMIP:
@@ -46,7 +45,8 @@ class BinningMIP:
         self._n = None
         self._x = None
 
-    def build_model(self, divergence, n_nonevent, n_event, trend_change):
+    def build_model(self, divergence, n_nonevent, n_event, trend_change,
+                    raw_counts=None):
         # Parameters
         [D, V, pvalue_violation_indices,
          min_diff_violation_indices] = model_data(
@@ -55,6 +55,22 @@ class BinningMIP:
 
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
+        if self.gamma:
+            if (np.any(n_nonevent != np.floor(n_nonevent)) or
+                    np.any(n_event != np.floor(n_event))):
+                raise ValueError("Fractional weights with gamma regularization "
+                                 "are not supported; use gamma=0.")
+            n_records = np.asarray(n_records, dtype=np.int64)
+        # Objectives and rates use weighted masses; constraints use actual rows.
+        support_ne, support_e = ((n_nonevent, n_event) if raw_counts is None
+                                 else raw_counts)
+        if (np.any(support_ne != np.floor(support_ne)) or
+                np.any(support_e != np.floor(support_e))):
+            raise ValueError("Raw integer class counts are required for "
+                             "observation support constraints.")
+        support_ne = np.asarray(support_ne, dtype=np.int64)
+        support_e = np.asarray(support_e, dtype=np.int64)
+        support_records = support_ne + support_e
 
         # Initialize solver
         if self.mip_solver == "bop":
@@ -94,58 +110,35 @@ class BinningMIP:
         # Constraint: min / max bins
         self.add_constraint_min_max_bins(solver, n, x, d)
 
-        fractional = (np.any(n_nonevent != np.floor(n_nonevent)) or
-                      np.any(n_event != np.floor(n_event)) or
-                      any(v is not None and v != np.floor(v)
-                          for v in (self.min_bin_size, self.max_bin_size)))
-        if fractional:
-            # BOP accepts Boolean variables only. Exclude infeasible contiguous
-            # candidates instead of rounding mass or introducing real slack.
-            bounds = ((n_records, self.min_bin_size, self.max_bin_size),
-                      (n_event, self.min_bin_n_event, self.max_bin_n_event),
-                      (n_nonevent, self.min_bin_n_nonevent,
-                       self.max_bin_n_nonevent))
-            for values, lower, upper in bounds:
-                if lower is None and upper is None:
-                    continue
-                for i in range(n):
-                    for j in range(i + 1):
-                        if mass_outside_bounds(values[j:i+1].sum(), lower,
-                                               upper, len(values)):
-                            if j == 0:
-                                solver.Add(x[i, j] == 0)
-                            else:
-                                solver.Add(x[i, j] == x[i, j-1])
-        else:
-            # Constraint: min / max bin size
-            self.add_constraint_min_max_bin_size(solver, n, x, u, n_records,
-                                                 bin_size_diff)
+        # Constraint: min / max bin size
+        self.add_constraint_min_max_bin_size(solver, n, x, u, support_records,
+                                             bin_size_diff)
 
-            # Constraint: min / max n_nonevent per bin
-            if (self.min_bin_n_nonevent is not None or
-                    self.max_bin_n_nonevent is not None):
-                for i in range(n):
-                    bin_ne_size = solver.Sum([n_nonevent[j] * x[i, j]
-                                              for j in range(i + 1)])
+        # Constraint: min / max n_nonevent per bin
+        if (self.min_bin_n_nonevent is not None or
+                self.max_bin_n_nonevent is not None):
+            for i in range(n):
+                bin_ne_size = solver.Sum([support_ne[j] * x[i, j]
+                                          for j in range(i + 1)])
 
-                    if self.min_bin_n_nonevent is not None:
-                        solver.Add(bin_ne_size >= self.min_bin_n_nonevent*x[i, i])
+                if self.min_bin_n_nonevent is not None:
+                    solver.Add(bin_ne_size >= self.min_bin_n_nonevent*x[i, i])
 
-                    if self.max_bin_n_nonevent is not None:
-                        solver.Add(bin_ne_size <= self.max_bin_n_nonevent*x[i, i])
+                if self.max_bin_n_nonevent is not None:
+                    solver.Add(bin_ne_size <= self.max_bin_n_nonevent*x[i, i])
 
-            # Constraint: min / max n_event per bin
-            if (self.min_bin_n_event is not None or
-                    self.max_bin_n_event is not None):
-                for i in range(n):
-                    bin_e_size = solver.Sum([n_event[j] * x[i, j]
-                                             for j in range(i + 1)])
+        # Constraint: min / max n_event per bin
+        if (self.min_bin_n_event is not None or
+                self.max_bin_n_event is not None):
+            for i in range(n):
+                bin_e_size = solver.Sum([support_e[j] * x[i, j]
+                                         for j in range(i + 1)])
 
-                    if self.min_bin_n_event is not None:
-                        solver.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
+                if self.min_bin_n_event is not None:
+                    solver.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
 
-                    if self.max_bin_n_event is not None:
-                        solver.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
+                if self.max_bin_n_event is not None:
+                    solver.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
 
         # Constraints: monotonicity
         if self.monotonic_trend == "ascending":
@@ -255,9 +248,7 @@ class BinningMIP:
             # Range constraints auxiliary variables
             d = solver.IntVar(0, n_bin_diff, "n_bin_diff")
 
-        if (self.min_bin_size is not None and self.max_bin_size is not None
-                and self.min_bin_size == np.floor(self.min_bin_size)
-                and self.max_bin_size == np.floor(self.max_bin_size)):
+        if self.min_bin_size is not None and self.max_bin_size is not None:
             bin_size_diff = self.max_bin_size - self.min_bin_size
 
             # Range constraints auxiliary variables

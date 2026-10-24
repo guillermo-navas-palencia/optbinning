@@ -14,10 +14,10 @@ def test_weighted_mass_and_rates(scale,solver,tmp_path):
     np.testing.assert_allclose(r.transform([0,1]),m.transform([0,1]))
 
 
-def test_fractional_cp_class_bounds_forbid_infeasible_split():
+def test_fractional_cp_class_bounds_use_raw_events():
     x=np.repeat([0.,1.],20);y=np.r_[np.zeros(15),np.ones(5),np.zeros(5),np.ones(15)]
     m=OptimalBinning(min_bin_n_event=2,user_splits=[.5],user_splits_fixed=[True],monotonic_trend=None).fit(x,y,sample_weight=np.full(40,.3))
-    assert m.status=='INFEASIBLE'
+    assert m.status=='OPTIMAL'
 
 
 def test_fractional_gamma_rejected_explicitly():

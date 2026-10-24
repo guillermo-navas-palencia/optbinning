@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import numpy.typing as npt
 
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import check_array
 
 from ..information import solver_statistics
@@ -315,7 +316,8 @@ class OptimalBinning(BaseOptimalBinning):
 
     min_prebin_size : float (default=0.05)
         The fraction of mininum number of records for each prebin
-        (including missing and ``special_code`` groups).
+        (including missing and ``special_code`` groups). CART uses actual
+        observation counts even when sample or class weights are supplied.
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -328,12 +330,14 @@ class OptimalBinning(BaseOptimalBinning):
     min_bin_size : float or None, optional (default=None)
         The fraction of minimum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``min_bin_size = min_prebin_size``.
+        no explicit final-bin minimum is imposed. This fraction uses actual
+        rows, not weighted mass.
 
     max_bin_size : float or None, optional (default=None)
         The fraction of maximum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``max_bin_size = 1.0``.
+        no explicit final-bin maximum is imposed. This fraction uses actual
+        rows, not weighted mass.
 
     min_bin_n_nonevent : int or None, optional (default=None)
         The minimum number of non-event records for each bin. If None,
@@ -791,9 +795,41 @@ class OptimalBinning(BaseOptimalBinning):
         if self.verbose:
             logger.info("Pre-processing started.")
 
+        self._flag_min_n_event_nonevent = False
         self._n_samples = len(x)
         if sample_weight is not None:
-            self._n_samples_weighted = sum(sample_weight)
+            sample_weight = np.asarray(sample_weight, dtype=float)
+            if sample_weight.ndim == 0:
+                sample_weight = np.full(self._n_samples, sample_weight.item())
+            if sample_weight.shape != (self._n_samples,):
+                raise ValueError("sample_weight must match the number of samples.")
+        # Compose class and sample weights once, without mutating caller data.
+        # Support and fractional-mass checks must use this effective mass.
+        if self.class_weight is not None:
+            class_mass = compute_sample_weight(self.class_weight, y)
+            sample_weight = (class_mass if sample_weight is None else
+                             np.asarray(sample_weight) * class_mass)
+        if sample_weight is not None:
+            if (not np.isfinite(sample_weight).all() or
+                    np.any(sample_weight < 0)):
+                raise ValueError("Effective sample weights must be finite "
+                                 "and nonnegative.")
+            with np.errstate(over="ignore"):
+                total_weight = sample_weight.sum()
+            if not np.isfinite(total_weight) or total_weight <= 0:
+                raise ValueError("Effective sample weights must have finite "
+                                 "positive total mass.")
+        self._has_weights = sample_weight is not None
+        if self._has_weights and self.solver == "ls":
+            raise ValueError("Weighted binary binning requires solver='cp' "
+                             "or solver='mip'.")
+        self._fractional_weights = (sample_weight is not None and
+            np.any(np.asarray(sample_weight) != np.floor(sample_weight)))
+        if self._fractional_weights and self.gamma:
+            raise ValueError("Fractional weights with gamma regularization "
+                             "are not supported; use gamma=0.")
+        if sample_weight is not None:
+            self._n_samples_weighted = np.sum(sample_weight)
         else:
             self._n_samples_weighted = self._n_samples
 
@@ -813,7 +849,7 @@ class OptimalBinning(BaseOptimalBinning):
          sw_special, sw_others] = split_data(
             self._dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params, None, None, self.class_weight, sample_weight)
+            self.outlier_params, None, None, None, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -867,9 +903,10 @@ class OptimalBinning(BaseOptimalBinning):
                             .format(n_splits))
 
             if not n_splits:
-                splits = self.user_splits
-                n_nonevent = np.array([])
-                n_event = np.array([])
+                splits, n_nonevent, n_event = self._prebinning_refinement(
+                    np.asarray(self.user_splits), x_clean, y_clean, y_missing,
+                    x_special, y_special, y_others, sw_clean, sw_missing,
+                    sw_special, sw_others)
             else:
                 if self._dtype == "numerical":
                     user_splits = check_array(
@@ -898,8 +935,15 @@ class OptimalBinning(BaseOptimalBinning):
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, x_special, y_special, y_others,
-                self.class_weight, sw_clean, sw_missing, sw_special, sw_others)
+                None, sw_clean, sw_missing, sw_special, sw_others)
 
+        # Preserve observation support separately from weighted class masses.
+        right = self._dtype == "categorical" and self.user_splits is not None
+        indices = np.digitize(x_clean, splits, right=right)
+        n_raw_bins = max(1, len(n_nonevent))
+        raw_event = np.bincount(indices[y_clean != 0], minlength=n_raw_bins)
+        raw_nonevent = np.bincount(indices[y_clean == 0], minlength=n_raw_bins)
+        self._raw_prebin_counts = (raw_nonevent, raw_event)
         self._n_prebins = len(n_nonevent)
 
         self._categories = categories
@@ -944,10 +988,20 @@ class OptimalBinning(BaseOptimalBinning):
             min_x = None
             max_x = None
 
+        raw_special = target_info_special(
+            self.special_codes, x_special, y_special, np.ones(len(y_special)))
+        raw_missing = target_info_samples(y_missing, np.ones(len(y_missing)))
+        raw_others = target_info_samples(y_others, np.ones(len(y_others)))
+        raw_ne, raw_ev = bin_info(
+            self._solution, raw_nonevent, raw_event, *raw_missing,
+            *raw_special, *raw_others, cat_others)
+
         self._binning_table = BinningTable(
             self.name, self._dtype, self.special_codes, self._splits_optimal,
             self._n_nonevent, self._n_event, min_x, max_x, self._categories,
-            self._cat_others, self.user_splits)
+            self._cat_others, self.user_splits,
+            raw_n_nonevent=raw_ne if self._has_weights else None,
+            raw_n_event=raw_ev if self._has_weights else None)
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
@@ -970,14 +1024,16 @@ class OptimalBinning(BaseOptimalBinning):
                         class_weight=None, sw_clean=None, sw_missing=None,
                         sw_special=None, sw_others=None):
 
-        min_bin_size = int(
-            np.ceil(self.min_prebin_size * self._n_samples_weighted))
+        raw_support = hasattr(self, "_has_weights")
+        n_samples = self._n_samples if raw_support else self._n_samples_weighted
+        min_bin_size = int(np.ceil(self.min_prebin_size * n_samples))
 
         prebinning = PreBinning(method=self.prebinning_method,
                                 n_bins=self.max_n_prebins,
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
                                 class_weight=class_weight,
+                                min_n_rows=min_bin_size if raw_support else None,
                                 **self.prebinning_kwargs
                                 ).fit(x, y, sw_clean)
 
@@ -993,9 +1049,24 @@ class OptimalBinning(BaseOptimalBinning):
         time_init = time.perf_counter()
 
         if len(n_nonevent) <= 1:
-            self._status = "OPTIMAL"
+            raw_ne, raw_ev = self._raw_prebin_counts
+            count = int(raw_ne.sum() + raw_ev.sum())
+            invalid = (
+                (self.min_n_bins is not None and self.min_n_bins > 1)
+                or (self.min_bin_size is not None and
+                    count < np.ceil(self.min_bin_size * self._n_samples))
+                or (self.max_bin_size is not None and
+                    count > np.floor(self.max_bin_size * self._n_samples))
+                or any((lower is not None and value < lower) or
+                       (upper is not None and value > upper)
+                       for value, lower, upper in (
+                           (raw_ne.sum(), self.min_bin_n_nonevent,
+                            self.max_bin_n_nonevent),
+                           (raw_ev.sum(), self.min_bin_n_event,
+                            self.max_bin_n_event))))
+            self._status = "INFEASIBLE" if invalid else "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.zeros(len(splits), dtype=bool)
+            self._solution = np.ones(len(n_nonevent), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
@@ -1005,18 +1076,19 @@ class OptimalBinning(BaseOptimalBinning):
                 logger.info("Optimizer terminated. Time: 0s")
             return
 
-        # Min/max number of bins
-        if self.min_bin_size is not None:
-            min_bin_size = int(
-                np.ceil(self.min_bin_size * self._n_samples_weighted))
-        else:
-            min_bin_size = self.min_bin_size
+        # Bin-size fractions refer to original observations, never weight mass.
+        min_bin_size = (None if self.min_bin_size is None else
+                        int(np.ceil(self.min_bin_size * self._n_samples)))
+        max_bin_size = (None if self.max_bin_size is None else
+                        int(np.floor(self.max_bin_size * self._n_samples)))
 
-        if self.max_bin_size is not None:
-            max_bin_size = int(
-                np.ceil(self.max_bin_size * self._n_samples_weighted))
-        else:
-            max_bin_size = self.max_bin_size
+        if (min_bin_size is not None and max_bin_size is not None
+                and min_bin_size > max_bin_size):
+            self._status = "INFEASIBLE"
+            self._splits_optimal = np.asarray([])
+            self._solution = np.zeros(len(n_nonevent), dtype=bool)
+            self._solution[-1] = True
+            return
 
         # Min number of event and nonevent per bin
         if (self.divergence in ("hellinger", "triangular") and
@@ -1110,8 +1182,10 @@ class OptimalBinning(BaseOptimalBinning):
         if self.verbose:
             logger.info("Optimizer: build model...")
 
+        support = ({"raw_counts": self._raw_prebin_counts}
+                   if self.solver in ("cp", "mip") else {})
         optimizer.build_model(self.divergence, n_nonevent, n_event,
-                              trend_change)
+                              trend_change, **support)
 
         if self.verbose:
             logger.info("Optimizer: solve...")
@@ -1178,8 +1252,8 @@ class OptimalBinning(BaseOptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_nonevent = np.empty(n_bins, dtype=np.int64)
-        n_event = np.empty(n_bins, dtype=np.int64)
+        n_nonevent = np.empty(n_bins, dtype=float)
+        n_event = np.empty(n_bins, dtype=float)
 
         for i in range(n_bins):
             mask = (indices == i)
@@ -1294,6 +1368,9 @@ class OptimalBinning(BaseOptimalBinning):
 
         opt_bin_dict['n_nonevent'] = table.n_nonevent.tolist()
         opt_bin_dict['n_event'] = table.n_event.tolist()
+        if table.raw_n_event is not None:
+            opt_bin_dict['raw_n_nonevent'] = table.raw_n_nonevent.tolist()
+            opt_bin_dict['raw_n_event'] = table.raw_n_event.tolist()
 
         opt_bin_dict['min_x'] = table.min_x
         opt_bin_dict['max_x'] = table.max_x

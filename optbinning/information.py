@@ -98,6 +98,12 @@ def print_solver_statistics(
     solver_type: str,
     d_solver: dict,
 ) -> None:
+    if solver_type == "dp":
+        print("  Solver type: dp (exact integer-IV partition)")
+        print("    Objective: {}".format(d_solver["objective"]))
+        print("    Best bound: {}\n".format(d_solver["best_objective_bound"]))
+        return
+
     if solver_type == "cp":
         solver_stats = (
             "  Solver statistics\n"

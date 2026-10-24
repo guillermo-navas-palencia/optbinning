@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Generated performance evidence is uploaded by CI, not committed.
+/benchmark-artifacts/

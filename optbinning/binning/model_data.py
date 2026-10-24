@@ -16,6 +16,19 @@ from .metrics import hellinger
 from .metrics import triangular
 
 
+def mass_outside_bounds(mass, lower, upper, n_terms):
+    """Compare weighted masses allowing only relative summation roundoff."""
+    for bound, is_lower in ((lower, True), (upper, False)):
+        if bound is None:
+            continue
+        tolerance = (8 * np.finfo(float).eps * max(1, n_terms) *
+                     max(abs(mass), abs(bound)))
+        if (is_lower and mass < bound - tolerance or
+                not is_lower and mass > bound + tolerance):
+            return True
+    return False
+
+
 def test_proportions(
     e1: int,
     ne1: int,

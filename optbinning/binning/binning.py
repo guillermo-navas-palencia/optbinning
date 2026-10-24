@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import numpy.typing as npt
 
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import check_array
 
 from ..information import solver_statistics
@@ -793,7 +794,34 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._n_samples = len(x)
         if sample_weight is not None:
-            self._n_samples_weighted = sum(sample_weight)
+            sample_weight = np.asarray(sample_weight, dtype=float)
+            if sample_weight.ndim == 0:
+                sample_weight = np.full(self._n_samples, sample_weight.item())
+            if sample_weight.shape != (self._n_samples,):
+                raise ValueError("sample_weight must match the number of samples.")
+        # Compose class and sample weights once, without mutating caller data.
+        # Support and fractional-mass checks must use this effective mass.
+        if self.class_weight is not None:
+            class_mass = compute_sample_weight(self.class_weight, y)
+            sample_weight = (class_mass if sample_weight is None else
+                             np.asarray(sample_weight) * class_mass)
+        if sample_weight is not None:
+            if (not np.isfinite(sample_weight).all() or
+                    np.any(sample_weight < 0)):
+                raise ValueError("Effective sample weights must be finite "
+                                 "and nonnegative.")
+            with np.errstate(over="ignore"):
+                total_weight = sample_weight.sum()
+            if not np.isfinite(total_weight) or total_weight <= 0:
+                raise ValueError("Effective sample weights must have finite "
+                                 "positive total mass.")
+        self._fractional_weights = (sample_weight is not None and
+            np.any(np.asarray(sample_weight) != np.floor(sample_weight)))
+        if self._fractional_weights and self.gamma:
+            raise ValueError("Fractional weights with gamma regularization "
+                             "are not supported; use gamma=0.")
+        if sample_weight is not None:
+            self._n_samples_weighted = np.sum(sample_weight)
         else:
             self._n_samples_weighted = self._n_samples
 
@@ -813,7 +841,7 @@ class OptimalBinning(BaseOptimalBinning):
          sw_special, sw_others] = split_data(
             self._dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params, None, None, self.class_weight, sample_weight)
+            self.outlier_params, None, None, None, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 
@@ -898,7 +926,7 @@ class OptimalBinning(BaseOptimalBinning):
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, x_special, y_special, y_others,
-                self.class_weight, sw_clean, sw_missing, sw_special, sw_others)
+                None, sw_clean, sw_missing, sw_special, sw_others)
 
         self._n_prebins = len(n_nonevent)
 
@@ -1007,14 +1035,16 @@ class OptimalBinning(BaseOptimalBinning):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = int(
-                np.ceil(self.min_bin_size * self._n_samples_weighted))
+            min_bin_size = self.min_bin_size * self._n_samples_weighted
+            if not self._fractional_weights:
+                min_bin_size = int(np.ceil(min_bin_size))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(
-                np.ceil(self.max_bin_size * self._n_samples_weighted))
+            max_bin_size = self.max_bin_size * self._n_samples_weighted
+            if not self._fractional_weights:
+                max_bin_size = int(np.ceil(max_bin_size))
         else:
             max_bin_size = self.max_bin_size
 
@@ -1178,8 +1208,8 @@ class OptimalBinning(BaseOptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_nonevent = np.empty(n_bins, dtype=np.int64)
-        n_event = np.empty(n_bins, dtype=np.int64)
+        n_nonevent = np.empty(n_bins, dtype=float)
+        n_event = np.empty(n_bins, dtype=float)
 
         for i in range(n_bins):
             mask = (indices == i)

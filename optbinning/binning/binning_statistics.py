@@ -499,7 +499,7 @@ def bin_info(
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
 
-    return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
+    return np.asarray(n_nev, dtype=float), np.asarray(n_ev, dtype=float)
 
 
 def multiclass_bin_info(

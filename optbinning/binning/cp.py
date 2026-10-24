@@ -11,6 +11,7 @@ import numpy as np
 from ortools.sat.python import cp_model
 
 from .model_data import model_data
+from .model_data import mass_outside_bounds
 from .model_data import multiclass_model_data
 
 
@@ -57,6 +58,17 @@ class BinningCP:
             self.max_pvalue_policy, self.min_event_rate_diff, M)
 
         n = len(n_nonevent)
+        self._fractional_counts = (
+            np.any(n_nonevent != np.floor(n_nonevent)) or
+            np.any(n_event != np.floor(n_event)) or
+            any(v is not None and v != np.floor(v)
+                for v in (self.min_bin_size, self.max_bin_size)))
+        if self._fractional_counts and self.gamma:
+            raise ValueError("Fractional weights with CP gamma regularization "
+                             "are not supported; use gamma=0.")
+        if not self._fractional_counts:
+            n_nonevent = np.asarray(n_nonevent, dtype=np.int64)
+            n_event = np.asarray(n_event, dtype=np.int64)
         n_records = n_nonevent + n_event
 
         # Initialize model
@@ -90,34 +102,54 @@ class BinningCP:
         # Constraint: min / max bins
         self.add_constraint_min_max_bins(model, n, x, d)
 
-        # Constraint: min / max bin size
-        self.add_constraint_min_max_bin_size(model, n, x, u, n_records,
-                                             bin_size_diff)
+        if self._fractional_counts:
+            # For a contiguous candidate [j, i], its start indicator is
+            # x[i,j]-x[i,j-1] (or x[i,0]). Forbid candidates violating
+            # floating mass bounds; CP only receives Boolean constraints.
+            bounds = ((n_records, self.min_bin_size, self.max_bin_size),
+                      (n_event, self.min_bin_n_event, self.max_bin_n_event),
+                      (n_nonevent, self.min_bin_n_nonevent,
+                       self.max_bin_n_nonevent))
+            for values, lower, upper in bounds:
+                if lower is None and upper is None:
+                    continue
+                for i in range(n):
+                    for j in range(i + 1):
+                        mass = values[j:i+1].sum()
+                        if mass_outside_bounds(mass, lower, upper, len(values)):
+                            if j == 0:
+                                model.Add(x[i, j] == 0)
+                            else:
+                                model.Add(x[i, j] == x[i, j-1])
+        else:
+            # Constraint: min / max bin size
+            self.add_constraint_min_max_bin_size(model, n, x, u, n_records,
+                                                 bin_size_diff)
 
-        # Constraint: min / max n_nonevent per bin
-        if (self.min_bin_n_nonevent is not None or
-                self.max_bin_n_nonevent is not None):
-            for i in range(n):
-                bin_ne_size = sum([n_nonevent[j] * x[i, j]
-                                   for j in range(i + 1)])
+            # Constraint: min / max n_nonevent per bin
+            if (self.min_bin_n_nonevent is not None or
+                    self.max_bin_n_nonevent is not None):
+                for i in range(n):
+                    bin_ne_size = sum([n_nonevent[j] * x[i, j]
+                                       for j in range(i + 1)])
 
-                if self.min_bin_n_nonevent is not None:
-                    model.Add(bin_ne_size >= self.min_bin_n_nonevent * x[i, i])
+                    if self.min_bin_n_nonevent is not None:
+                        model.Add(bin_ne_size >= self.min_bin_n_nonevent * x[i, i])
 
-                if self.max_bin_n_nonevent is not None:
-                    model.Add(bin_ne_size <= self.max_bin_n_nonevent * x[i, i])
+                    if self.max_bin_n_nonevent is not None:
+                        model.Add(bin_ne_size <= self.max_bin_n_nonevent * x[i, i])
 
-        # Constraint: min / max n_event per bin
-        if (self.min_bin_n_event is not None or
-                self.max_bin_n_event is not None):
-            for i in range(n):
-                bin_e_size = sum([n_event[j] * x[i, j] for j in range(i + 1)])
+            # Constraint: min / max n_event per bin
+            if (self.min_bin_n_event is not None or
+                    self.max_bin_n_event is not None):
+                for i in range(n):
+                    bin_e_size = sum([n_event[j] * x[i, j] for j in range(i + 1)])
 
-                if self.min_bin_n_event is not None:
-                    model.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
+                    if self.min_bin_n_event is not None:
+                        model.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
 
-                if self.max_bin_n_event is not None:
-                    model.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
+                    if self.max_bin_n_event is not None:
+                        model.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
 
         # Constraints: monotonicity
         if self.monotonic_trend == "ascending":
@@ -307,7 +339,8 @@ class BinningCP:
             # Range constraints auxiliary variables
             d = model.NewIntVar(0, n_bin_diff, "n_bin_diff")
 
-        if self.min_bin_size is not None and self.max_bin_size is not None:
+        if (self.min_bin_size is not None and self.max_bin_size is not None
+                and not getattr(self, "_fractional_counts", False)):
             bin_size_diff = self.max_bin_size - self.min_bin_size
 
             # Range constraints auxiliary variables

@@ -11,6 +11,7 @@ import numpy as np
 from ortools.linear_solver import pywraplp
 
 from .model_data import model_data
+from .model_data import mass_outside_bounds
 
 
 class BinningMIP:
@@ -93,35 +94,58 @@ class BinningMIP:
         # Constraint: min / max bins
         self.add_constraint_min_max_bins(solver, n, x, d)
 
-        # Constraint: min / max bin size
-        self.add_constraint_min_max_bin_size(solver, n, x, u, n_records,
-                                             bin_size_diff)
+        fractional = (np.any(n_nonevent != np.floor(n_nonevent)) or
+                      np.any(n_event != np.floor(n_event)) or
+                      any(v is not None and v != np.floor(v)
+                          for v in (self.min_bin_size, self.max_bin_size)))
+        if fractional:
+            # BOP accepts Boolean variables only. Exclude infeasible contiguous
+            # candidates instead of rounding mass or introducing real slack.
+            bounds = ((n_records, self.min_bin_size, self.max_bin_size),
+                      (n_event, self.min_bin_n_event, self.max_bin_n_event),
+                      (n_nonevent, self.min_bin_n_nonevent,
+                       self.max_bin_n_nonevent))
+            for values, lower, upper in bounds:
+                if lower is None and upper is None:
+                    continue
+                for i in range(n):
+                    for j in range(i + 1):
+                        if mass_outside_bounds(values[j:i+1].sum(), lower,
+                                               upper, len(values)):
+                            if j == 0:
+                                solver.Add(x[i, j] == 0)
+                            else:
+                                solver.Add(x[i, j] == x[i, j-1])
+        else:
+            # Constraint: min / max bin size
+            self.add_constraint_min_max_bin_size(solver, n, x, u, n_records,
+                                                 bin_size_diff)
 
-        # Constraint: min / max n_nonevent per bin
-        if (self.min_bin_n_nonevent is not None or
-                self.max_bin_n_nonevent is not None):
-            for i in range(n):
-                bin_ne_size = solver.Sum([n_nonevent[j] * x[i, j]
-                                          for j in range(i + 1)])
+            # Constraint: min / max n_nonevent per bin
+            if (self.min_bin_n_nonevent is not None or
+                    self.max_bin_n_nonevent is not None):
+                for i in range(n):
+                    bin_ne_size = solver.Sum([n_nonevent[j] * x[i, j]
+                                              for j in range(i + 1)])
 
-                if self.min_bin_n_nonevent is not None:
-                    solver.Add(bin_ne_size >= self.min_bin_n_nonevent*x[i, i])
+                    if self.min_bin_n_nonevent is not None:
+                        solver.Add(bin_ne_size >= self.min_bin_n_nonevent*x[i, i])
 
-                if self.max_bin_n_nonevent is not None:
-                    solver.Add(bin_ne_size <= self.max_bin_n_nonevent*x[i, i])
+                    if self.max_bin_n_nonevent is not None:
+                        solver.Add(bin_ne_size <= self.max_bin_n_nonevent*x[i, i])
 
-        # Constraint: min / max n_event per bin
-        if (self.min_bin_n_event is not None or
-                self.max_bin_n_event is not None):
-            for i in range(n):
-                bin_e_size = solver.Sum([n_event[j] * x[i, j]
-                                         for j in range(i + 1)])
+            # Constraint: min / max n_event per bin
+            if (self.min_bin_n_event is not None or
+                    self.max_bin_n_event is not None):
+                for i in range(n):
+                    bin_e_size = solver.Sum([n_event[j] * x[i, j]
+                                             for j in range(i + 1)])
 
-                if self.min_bin_n_event is not None:
-                    solver.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
+                    if self.min_bin_n_event is not None:
+                        solver.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
 
-                if self.max_bin_n_event is not None:
-                    solver.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
+                    if self.max_bin_n_event is not None:
+                        solver.Add(bin_e_size <= self.max_bin_n_event * x[i, i])
 
         # Constraints: monotonicity
         if self.monotonic_trend == "ascending":
@@ -231,7 +255,9 @@ class BinningMIP:
             # Range constraints auxiliary variables
             d = solver.IntVar(0, n_bin_diff, "n_bin_diff")
 
-        if self.min_bin_size is not None and self.max_bin_size is not None:
+        if (self.min_bin_size is not None and self.max_bin_size is not None
+                and self.min_bin_size == np.floor(self.min_bin_size)
+                and self.max_bin_size == np.floor(self.max_bin_size)):
             bin_size_diff = self.max_bin_size - self.min_bin_size
 
             # Range constraints auxiliary variables

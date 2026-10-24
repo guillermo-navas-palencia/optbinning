@@ -1,0 +1,38 @@
+name: Solver performance benchmark
+on:
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - 'benchmarks/dp_fast_path/**'
+      - '.github/workflows/solver-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e ".[test]"
+      - name: Record environment
+        run: |
+          mkdir -p benchmark-artifacts/dp_fast_path
+          python -m pip freeze > benchmark-artifacts/dp_fast_path/environment.txt
+      - name: Paired performance benchmark
+        run: |
+          python benchmarks/dp_fast_path/run.py
+          python benchmarks/dp_fast_path/analyze.py
+      - name: Preserve performance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dp-performance-${{ github.run_id }}
+          path: benchmark-artifacts/dp_fast_path/
+          retention-days: 90

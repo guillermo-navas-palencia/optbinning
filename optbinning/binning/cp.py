@@ -9,6 +9,7 @@ Constraint programming implementation.
 import numpy as np
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 from .model_data import model_data
 from .model_data import multiclass_model_data
@@ -66,20 +67,20 @@ class BinningCP:
         x, y, t, d, u, bin_size_diff = self.decision_variables(model, n)
 
         # Objective function
+        objective = LinearExpr.Sum([
+            V[i][i] * x[i, i] + LinearExpr.WeightedSum(
+                [x[i, j] for j in range(i)],
+                [V[i][j] - V[i][j + 1] for j in range(i)])
+            for i in range(n)])
+
         if self.gamma:
             total_records = int(n_records.sum())
             regularization = int(np.ceil(M * self.gamma / total_records))
             pmax = model.NewIntVar(0, total_records, "pmax")
             pmin = model.NewIntVar(0, total_records, "pmin")
+            objective -= regularization * (pmax - pmin)
 
-            model.Maximize(sum([(V[i][i] * x[i, i]) +
-                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                for j in range(i)]) for i in range(n)]) -
-                           regularization * (pmax - pmin))
-        else:
-            model.Maximize(sum([(V[i][i] * x[i, i]) +
-                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                for j in range(i)]) for i in range(n)]))
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -98,8 +99,9 @@ class BinningCP:
         if (self.min_bin_n_nonevent is not None or
                 self.max_bin_n_nonevent is not None):
             for i in range(n):
-                bin_ne_size = sum([n_nonevent[j] * x[i, j]
-                                   for j in range(i + 1)])
+                bin_ne_size = LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i + 1)],
+                    [n_nonevent[j] for j in range(i + 1)])
 
                 if self.min_bin_n_nonevent is not None:
                     model.Add(bin_ne_size >= self.min_bin_n_nonevent * x[i, i])
@@ -111,7 +113,9 @@ class BinningCP:
         if (self.min_bin_n_event is not None or
                 self.max_bin_n_event is not None):
             for i in range(n):
-                bin_e_size = sum([n_event[j] * x[i, j] for j in range(i + 1)])
+                bin_e_size = LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i + 1)],
+                    [n_event[j] for j in range(i + 1)])
 
                 if self.min_bin_n_event is not None:
                     model.Add(bin_e_size >= self.min_bin_n_event * x[i, i])
@@ -153,7 +157,9 @@ class BinningCP:
         # Constraint: reduction of dominating bins
         if self.gamma:
             for i in range(n):
-                bin_size = sum([n_records[j] * x[i, j] for j in range(i + 1)])
+                bin_size = LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i + 1)],
+                    [n_records[j] for j in range(i + 1)])
 
                 model.Add(pmin <= total_records * (1 - x[i, i]) + bin_size)
                 model.Add(pmax >= bin_size)
@@ -197,10 +203,14 @@ class BinningCP:
         x, y, t, d = self.decision_variables_scenarios(model, n)
 
         # Objective function
-        model.Maximize(sum([w[s] * sum([(V[s][i][i] * x[i, i]) +
-                            sum([(V[s][i][j] - V[s][i][j+1]) * x[i, j]
-                                 for j in range(i)]) for i in range(n)])
-                            for s in range(n_scenarios)]))
+        objective = LinearExpr.Sum([
+            w[s] * LinearExpr.Sum([
+                V[s][i][i] * x[i, i] + LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i)],
+                    [V[s][i][j] - V[s][i][j + 1] for j in range(i)])
+                for i in range(n)])
+            for s in range(n_scenarios)])
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -346,7 +356,7 @@ class BinningCP:
 
     def add_constraint_unique_assignment(self, model, n, x):
         for j in range(n):
-            model.Add(sum([x[i, j] for i in range(j, n)]) == 1)
+            model.Add(LinearExpr.Sum([x[i, j] for i in range(j, n)]) == 1)
 
     def add_constraint_continuity(self, model, n, x):
         for i in range(n):
@@ -355,7 +365,7 @@ class BinningCP:
 
     def add_constraint_min_max_bins(self, model, n, x, d):
         if self.min_n_bins is not None or self.max_n_bins is not None:
-            trace = sum([x[i, i] for i in range(n)])
+            trace = LinearExpr.Sum([x[i, i] for i in range(n)])
 
             if self.min_n_bins is not None and self.max_n_bins is not None:
                 model.Add(d + trace - self.max_n_bins == 0)
@@ -368,7 +378,9 @@ class BinningCP:
                                         bin_size_diff):
         if self.min_bin_size is not None or self.max_bin_size is not None:
             for i in range(n):
-                bin_size = sum([n_records[j] * x[i, j] for j in range(i + 1)])
+                bin_size = LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i + 1)],
+                    [n_records[j] for j in range(i + 1)])
 
                 if (self.min_bin_size is not None and
                         self.max_bin_size is not None):
@@ -386,8 +398,9 @@ class BinningCP:
             n_scenarios = n_records.shape[1]
             for s in range(n_scenarios):
                 for i in range(n):
-                    bin_size = sum([n_records[j, s] * x[i, j]
-                                    for j in range(i + 1)])
+                    bin_size = LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i + 1)],
+                        [n_records[j, s] for j in range(i + 1)])
 
                     if self.min_bin_size is not None:
                         model.Add(bin_size >= self.min_bin_size[s] * x[i, i])
@@ -398,22 +411,27 @@ class BinningCP:
         for i in range(1, n):
             for z in range(i):
                 model.Add(
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) +
                     D[z][z] * x[z, z] - M - (D[i][i] - M) * x[i, i] -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) <= 0)
 
 
     def add_constraint_monotonic_descending(self, model, n, D, x, M):
         for i in range(1, n):
             for z in range(i):
                 model.Add(
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + D[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) +
+                        D[i][i] * x[i, i] -
                     M - (D[z][z] - M) * x[z, z] -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) <= 0)
 
 
     def add_constraint_monotonic_concave(self, model, n, D, x, M):
@@ -421,12 +439,18 @@ class BinningCP:
             for j in range(1, i):
                 for k in range(j):
                     model.Add(
-                        -(sum([(D[i][z] - D[i][z+1]) * x[i, z]
-                               for z in range(i)]) + D[i][i] * x[i, i]) +
-                        2 * (sum([(D[j][z] - D[j][z+1]) * x[j, z]
-                                  for z in range(j)]) + D[j][j] * x[j, j]) -
-                        (sum([(D[k][z] - D[k][z+1]) * x[k, z]
-                              for z in range(k)]) + D[k][k] * x[k, k]) >=
+                        -(LinearExpr.WeightedSum(
+                            [x[i, z] for z in range(i)],
+                            [D[i][z] - D[i][z + 1] for z in range(i)]) +
+                            D[i][i] * x[i, i]) +
+                        2 * (LinearExpr.WeightedSum(
+                            [x[j, z] for z in range(j)],
+                            [D[j][z] - D[j][z + 1] for z in range(j)]) +
+                            D[j][j] * x[j, j]) -
+                        (LinearExpr.WeightedSum(
+                            [x[k, z] for z in range(k)],
+                            [D[k][z] - D[k][z + 1] for z in range(k)]) +
+                            D[k][k] * x[k, k]) >=
                         M * (x[i, i] + x[j, j] + x[k, k] - 3))
 
     def add_constraint_monotonic_convex(self, model, n, D, x, M):
@@ -434,12 +458,18 @@ class BinningCP:
             for j in range(1, i):
                 for k in range(j):
                     model.Add(
-                        (sum([(D[i][z] - D[i][z+1]) * x[i, z]
-                              for z in range(i)]) + D[i][i] * x[i, i]) -
-                        2 * (sum([(D[j][z] - D[j][z+1]) * x[j, z]
-                                  for z in range(j)]) + D[j][j] * x[j, j]) +
-                        (sum([(D[k][z] - D[k][z+1]) * x[k, z]
-                              for z in range(k)]) + D[k][k] * x[k, k]) >=
+                        (LinearExpr.WeightedSum(
+                            [x[i, z] for z in range(i)],
+                            [D[i][z] - D[i][z + 1] for z in range(i)]) +
+                            D[i][i] * x[i, i]) -
+                        2 * (LinearExpr.WeightedSum(
+                            [x[j, z] for z in range(j)],
+                            [D[j][z] - D[j][z + 1] for z in range(j)]) +
+                            D[j][j] * x[j, j]) +
+                        (LinearExpr.WeightedSum(
+                            [x[k, z] for z in range(k)],
+                            [D[k][z] - D[k][z + 1] for z in range(k)]) +
+                            D[k][k] * x[k, k]) >=
                         M * (x[i, i] + x[j, j] + x[k, k] - 3))
 
     def add_constraint_monotonic_peak(self, model, n, D, x, y, M):
@@ -447,18 +477,22 @@ class BinningCP:
             for z in range(i):
                 model.Add(
                     M * (y[i] + y[z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)
 
                 model.Add(
                     M * (2 - y[i] - y[z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
     def add_constraint_monotonic_valley(self, model, n, D, x, y, M):
@@ -466,60 +500,74 @@ class BinningCP:
             for z in range(i):
                 model.Add(
                     M * (y[i] + y[z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
                 model.Add(
                     M * (2 - y[i] - y[z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)
 
     def add_constraint_monotonic_peak_heuristic(self, model, n, D, x, tc, M):
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) +
                     D[z][z] * x[z, z] - M - (D[i][i] - M) * x[i, i] -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) <= 0)
 
 
         for i in range(tc, n):
             for z in range(tc, i):
                 model.Add(
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + D[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) +
+                        D[i][i] * x[i, i] -
                     M - (D[z][z] - M) * x[z, z] -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) <= 0)
 
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, D, x, tc, M):
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + D[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) +
+                        D[i][i] * x[i, i] -
                     M - (D[z][z] - M) * x[z, z] -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) <= 0)
 
 
         for i in range(tc, n):
             for z in range(tc, i):
                 model.Add(
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) +
                     D[z][z] * x[z, z] - M - (D[i][i] - M) * x[i, i] -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0)
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) <= 0)
 
 
     def add_constraint_violation(self, model, x, violation_indices):

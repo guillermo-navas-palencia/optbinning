@@ -7,6 +7,7 @@ problem. Constraint programming implementation.
 # Copyright (C) 2019
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 from .cp import BinningCP
 from .model_data import multiclass_model_data
@@ -59,10 +60,14 @@ class MulticlassBinningCP(BinningCP):
             model, n, n_classes)
 
         # Objective function
-        model.Maximize(sum([sum([(V[c][i][i] * x[i, i]) +
-                            sum([(V[c][i][j] - V[c][i][j+1]) * x[i, j]
-                                 for j in range(i)]) for i in range(n)])
-                            for c in range(n_classes)]))
+        objective = LinearExpr.Sum([
+            LinearExpr.Sum([
+                V[c][i][i] * x[i, i] + LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i)],
+                    [V[c][i][j] - V[c][i][j + 1] for j in range(i)])
+                for i in range(n)])
+            for c in range(n_classes)])
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -175,18 +180,22 @@ class MulticlassBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[c, i] + y[c, z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)
 
                 model.Add(
                     M * (2 - y[c, i] - y[c, z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
     def add_constraint_monotonic_valley(self, model, n, D, x, c, y, M):
@@ -194,16 +203,20 @@ class MulticlassBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[c, i] + y[c, z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
                 model.Add(
                     M * (2 - y[c, i] - y[c, z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)

@@ -9,6 +9,7 @@ Constraint programming implementation.
 import numpy as np
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 
 class Binning2DCP:
@@ -56,16 +57,18 @@ class Binning2DCP:
         x, d = self.decision_variables(model, n_rectangles)
 
         # Objective function
+        objective = LinearExpr.WeightedSum(
+            [x[i] for i in range(n_rectangles)],
+            [c[i] for i in range(n_rectangles)])
+
         if self.gamma:
             total_records = int(n_records.sum())
             regularization = int(np.ceil(scale * self.gamma / total_records))
             pmax = model.NewIntVar(0, total_records, "pmax")
             pmin = model.NewIntVar(0, total_records, "pmin")
+            objective -= regularization * (pmax - pmin)
 
-            model.Maximize(sum([c[i] * x[i] for i in range(n_rectangles)]) -
-                           regularization * (pmax - pmin))
-        else:
-            model.Maximize(sum([c[i] * x[i] for i in range(n_rectangles)]))
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, x, n_grid, cols)
@@ -132,11 +135,11 @@ class Binning2DCP:
 
     def add_constraint_unique_assignment(self, model, x, n_grid, cols):
         for j in range(n_grid):
-            model.Add(sum([x[i] for i in cols[j]]) == 1)
+            model.Add(LinearExpr.Sum([x[i] for i in cols[j]]) == 1)
 
     def add_constraint_min_max_bins(self, model, n_rectangles, x, d):
         if self.min_n_bins is not None or self.max_n_bins is not None:
-            n_bins = sum([x[i] for i in range(n_rectangles)])
+            n_bins = LinearExpr.Sum([x[i] for i in range(n_rectangles)])
 
             if self.min_n_bins is not None and self.max_n_bins is not None:
                 model.Add(d + n_bins - self.max_n_bins == 0)
@@ -163,7 +166,7 @@ class Binning2DCP:
                             ind_x.append(j)
 
                 if ind_x:
-                    model.Add(sum([x[j] for j in ind_x]) <=
+                    model.Add(LinearExpr.Sum([x[j] for j in ind_x]) <=
                               len(ind_x) * (1 - x[i]))
 
                 for j in d_connected_y[i]:
@@ -175,7 +178,7 @@ class Binning2DCP:
                             ind_y.append(j)
 
                 if ind_y:
-                    model.Add(sum([x[j] for j in ind_y]) <=
+                    model.Add(LinearExpr.Sum([x[j] for j in ind_y]) <=
                               len(ind_y) * (1 - x[i]))
 
         elif self.monotonic_trend_x is not None:
@@ -190,7 +193,7 @@ class Binning2DCP:
                             ind_x.append(j)
 
                 if ind_x:
-                    model.Add(sum([x[j] for j in ind_x]) <=
+                    model.Add(LinearExpr.Sum([x[j] for j in ind_x]) <=
                               len(ind_x) * (1 - x[i]))
 
         elif self.monotonic_trend_y is not None:
@@ -205,5 +208,5 @@ class Binning2DCP:
                             ind_y.append(j)
 
                 if ind_y:
-                    model.Add(sum([x[j] for j in ind_y]) <=
+                    model.Add(LinearExpr.Sum([x[j] for j in ind_y]) <=
                               len(ind_y) * (1 - x[i]))

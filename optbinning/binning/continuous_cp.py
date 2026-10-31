@@ -9,6 +9,7 @@ problem. Constraint programming implementation.
 import numpy as np
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 from .cp import BinningCP
 from .model_data import continuous_model_data
@@ -55,20 +56,20 @@ class ContinuousBinningCP(BinningCP):
         # Decision variables
         x, y, t, d, u, bin_size_diff = self.decision_variables(model, n)
 
+        objective = LinearExpr.Sum([
+            V[i][i] * x[i, i] + LinearExpr.WeightedSum(
+                [x[i, j] for j in range(i)],
+                [V[i][j] - V[i][j + 1] for j in range(i)])
+            for i in range(n)])
+
         if self.gamma:
             total_records = int(n_records.sum())
             regularization = int(np.ceil(M * self.gamma / total_records))
             pmax = model.NewIntVar(0, total_records, "pmax")
             pmin = model.NewIntVar(0, total_records, "pmin")
+            objective -= regularization * (pmax - pmin)
 
-            model.Maximize(sum([(V[i][i] * x[i, i]) +
-                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                for j in range(i)]) for i in range(n)]) -
-                           regularization * (pmax - pmin))
-        else:
-            model.Maximize(sum([(V[i][i] * x[i, i]) +
-                           sum([(V[i][j] - V[i][j+1]) * x[i, j]
-                                for j in range(i)]) for i in range(n)]))
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -131,22 +132,27 @@ class ContinuousBinningCP(BinningCP):
         for i in range(1, n):
             for z in range(i):
                 model.Add(
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_descending(self, model, n, U, x, M):
         for i in range(1, n):
             for z in range(i):
                 model.Add(
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + U[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) +
+                        U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_concave(self, model, n, U, x):
@@ -154,12 +160,18 @@ class ContinuousBinningCP(BinningCP):
             for j in range(1, i):
                 for k in range(j):
                     model.Add(
-                        -(sum([(U[i][z] - U[i][z+1]) * x[i, z]
-                               for z in range(i)]) + U[i][i] * x[i, i]) +
-                        2 * (sum([(U[j][z] - U[j][z+1]) * x[j, z]
-                                  for z in range(j)]) + U[j][j] * x[j, j]) -
-                        (sum([(U[k][z] - U[k][z+1]) * x[k, z]
-                              for z in range(k)]) + U[k][k] * x[k, k]) >= 0
+                        -(LinearExpr.WeightedSum(
+                            [x[i, z] for z in range(i)],
+                            [U[i][z] - U[i][z + 1] for z in range(i)]) +
+                            U[i][i] * x[i, i]) +
+                        2 * (LinearExpr.WeightedSum(
+                            [x[j, z] for z in range(j)],
+                            [U[j][z] - U[j][z + 1] for z in range(j)]) +
+                            U[j][j] * x[j, j]) -
+                        (LinearExpr.WeightedSum(
+                            [x[k, z] for z in range(k)],
+                            [U[k][z] - U[k][z + 1] for z in range(k)]) +
+                            U[k][k] * x[k, k]) >= 0
                         ).OnlyEnforceIf([x[k, k], x[j, j], x[i, i]])
 
     def add_constraint_monotonic_convex(self, model, n, U, x):
@@ -167,12 +179,18 @@ class ContinuousBinningCP(BinningCP):
             for j in range(1, i):
                 for k in range(j):
                     model.Add(
-                        (sum([(U[i][z] - U[i][z+1]) * x[i, z]
-                              for z in range(i)]) + U[i][i] * x[i, i]) -
-                        2 * (sum([(U[j][z] - U[j][z+1]) * x[j, z]
-                                  for z in range(j)]) + U[j][j] * x[j, j]) +
-                        (sum([(U[k][z] - U[k][z+1]) * x[k, z]
-                              for z in range(k)]) + U[k][k] * x[k, k]) >= 0
+                        (LinearExpr.WeightedSum(
+                            [x[i, z] for z in range(i)],
+                            [U[i][z] - U[i][z + 1] for z in range(i)]) +
+                            U[i][i] * x[i, i]) -
+                        2 * (LinearExpr.WeightedSum(
+                            [x[j, z] for z in range(j)],
+                            [U[j][z] - U[j][z + 1] for z in range(j)]) +
+                            U[j][j] * x[j, j]) +
+                        (LinearExpr.WeightedSum(
+                            [x[k, z] for z in range(k)],
+                            [U[k][z] - U[k][z + 1] for z in range(k)]) +
+                            U[k][k] * x[k, k]) >= 0
                         ).OnlyEnforceIf([x[k, k], x[j, j], x[i, i]])
 
     def add_constraint_monotonic_peak(self, model, n, U, x, y):
@@ -184,18 +202,22 @@ class ContinuousBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[i] + y[z]) + U[z][z] * x[z, z] +
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) -
                     U[i][i] * x[i, i] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
                 model.Add(
                     M * (2 - y[i] - y[z]) + U[i][i] * x[i, i] +
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) -
                     U[z][z] * x[z, z] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_valley(self, model, n, U, x, y):
@@ -207,58 +229,72 @@ class ContinuousBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[i] + y[z]) + U[i][i] * x[i, i] +
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) -
                     U[z][z] * x[z, z] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
                 model.Add(
                     M * (2 - y[i] - y[z]) + U[z][z] * x[z, z] +
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) -
                     U[i][i] * x[i, i] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_peak_heuristic(self, model, n, U, x, tc, M):
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
         for i in range(tc, n):
             for z in range(tc, i):
                 model.Add(
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + U[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) +
+                        U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, U, x, tc, M):
         for i in range(1, tc):
             for z in range(i):
                 model.Add(
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) + U[i][i] * x[i, i] -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) +
+                        U[i][i] * x[i, i] -
                     U[z][z] * x[z, z] -
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])
 
         for i in range(tc, n):
             for z in range(tc, i):
                 model.Add(
-                    sum([(U[z][j] - U[z][j+1]) * x[z, j]
-                         for j in range(z)]) +
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [U[z][j] - U[z][j + 1] for j in range(z)]) +
                     U[z][z] * x[z, z] - U[i][i] * x[i, i] -
-                    sum([(U[i][j] - U[i][j + 1]) * x[i, j]
-                         for j in range(i)]) <= 0
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [U[i][j] - U[i][j + 1] for j in range(i)]) <= 0
                     ).OnlyEnforceIf([x[z, z], x[i, i]])

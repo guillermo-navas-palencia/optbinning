@@ -744,3 +744,40 @@ def test_woe_points_consistency():
     for _, row in radius_table.iterrows():
         assert row['Points'] == approx(row['WoE'] * row['Coefficient'],
                                        rel=1e-6)
+
+
+def test_pvalues_class_weight():
+    # class_weight="balanced" re-weights the likelihood; the inverse
+    # weighted Hessian alone understates the standard errors about 2x on an
+    # imbalanced target, so a pure-noise variable is reported significant
+    # far more often than the nominal 5%. The covariance must be the
+    # sandwich H^-1 M H^-1 of the re-weighted estimator.
+    rng = np.random.default_rng(0)
+    n = 4000
+    X = pd.DataFrame({"x1": rng.normal(size=n), "x2": rng.normal(size=n)})
+    eta = -3.0 + 0.8 * X["x1"].values
+    y = (rng.random(n) < 1 / (1 + np.exp(-eta))).astype(int)
+
+    binning_process = BinningProcess(variable_names=list(X.columns))
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(class_weight="balanced"),
+        scaling_method=None).fit(X, y)
+    detailed = scorecard.table(style="detailed")
+    se_by_var = detailed.groupby("Variable")["Std. Error"].first()
+
+    X_t = scorecard.binning_process_.transform(X, metric="woe")
+    clf = scorecard.estimator_
+    xd = np.column_stack([np.ones(len(X_t)), X_t.values])
+    p = clf.predict_proba(X_t)[:, 1]
+    n1 = y.sum()
+    cw = np.where(y == 1, n / (2 * n1), n / (2 * (n - n1)))
+    bread = xd.T @ (xd * (cw * p * (1 - p))[:, np.newaxis])
+    bread[1:, 1:] += np.eye(xd.shape[1] - 1) / clf.C
+    meat = xd.T @ (xd * ((cw * (y - p)) ** 2)[:, np.newaxis])
+    binv = np.linalg.inv(bread)
+    se = np.sqrt(np.diag(binv @ meat @ binv))
+    expected = pd.Series(se[1:], index=X_t.columns)
+
+    for variable in se_by_var.index:
+        assert se_by_var[variable] == approx(expected[variable], rel=1e-6)

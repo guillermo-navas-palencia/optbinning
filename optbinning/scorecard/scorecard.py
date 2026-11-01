@@ -21,6 +21,7 @@ from sklearn.linear_model import LogisticRegression
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils.multiclass import type_of_target
 
 from ..binning.base import Base
@@ -224,9 +225,22 @@ def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
         return None
 
     p = estimator.predict_proba(X)[:, 1]
-    w = p * (1 - p)
+    sw = np.ones(len(p))
     if sample_weight is not None:
-        w = w * sample_weight
+        sw = np.asarray(sample_weight, dtype=float)
+
+    # class_weight re-weights the likelihood that LogisticRegression
+    # maximizes (scikit-learn multiplies it into the sample weights), so it
+    # must enter the Hessian. Unlike frequency weights it does not add
+    # information: the covariance of the re-weighted estimator is the
+    # sandwich H^-1 M H^-1, not H^-1.
+    cw = None
+    if getattr(estimator, "class_weight", None) is not None:
+        cw = compute_sample_weight(estimator.class_weight, np.asarray(y))
+
+    w = p * (1 - p) * sw
+    if cw is not None:
+        w = w * cw
 
     x = np.asarray(X)
     x_design = np.column_stack([np.ones(len(x)), x])
@@ -241,6 +255,11 @@ def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
 
     try:
         cov = np.linalg.inv(hessian)
+        if cw is not None:
+            resid = np.asarray(y, dtype=float) - p
+            meat = x_design.T @ (
+                x_design * (sw * (cw * resid) ** 2)[:, np.newaxis])
+            cov = cov @ meat @ cov
     except np.linalg.LinAlgError:
         logger.warning("p-values are not available: the Hessian of the "
                        "fitted model is singular.")

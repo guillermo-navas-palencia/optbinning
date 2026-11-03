@@ -21,7 +21,7 @@ from sklearn.linear_model import LogisticRegression
 
 from sklearn.base import BaseEstimator
 from sklearn.base import clone
-from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils.multiclass import type_of_target
 
 from ..binning.base import Base
@@ -204,6 +204,26 @@ def _resolve_penalty(estimator):
         return "elasticnet"
 
 
+def _class_weight_factors(estimator, y, sample_weight=None):
+    """Per-sample class-weight factors exactly as the fitted
+    ``LogisticRegression`` applied them.
+
+    With ``class_weight="balanced"`` scikit-learn >= 1.7 balances the
+    sample-weighted class counts when ``sample_weight`` is given; earlier
+    versions balance the raw counts.
+    """
+    y = np.asarray(y)
+    classes = estimator.classes_
+    try:
+        weights = compute_class_weight(estimator.class_weight,
+                                       classes=classes, y=y,
+                                       sample_weight=sample_weight)
+    except TypeError:  # scikit-learn < 1.7
+        weights = compute_class_weight(estimator.class_weight,
+                                       classes=classes, y=y)
+    return weights[np.searchsorted(classes, y)]
+
+
 def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
     """Wald test standard errors, z-scores and p-values for a fitted
     binary ``LogisticRegression``.
@@ -236,7 +256,7 @@ def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
     # sandwich H^-1 M H^-1, not H^-1.
     cw = None
     if getattr(estimator, "class_weight", None) is not None:
-        cw = compute_sample_weight(estimator.class_weight, np.asarray(y))
+        cw = _class_weight_factors(estimator, y, sample_weight)
 
     w = p * (1 - p) * sw
     if cw is not None:
@@ -256,7 +276,10 @@ def _wald_pvalues(estimator, X, y, coefs, intercept, sample_weight=None):
     try:
         cov = np.linalg.inv(hessian)
         if cw is not None:
-            resid = np.asarray(y, dtype=float) - p
+            # residual of the event indicator: predict_proba[:, 1] is the
+            # probability of classes_[1], whatever its label value
+            event = (np.asarray(y) == estimator.classes_[1]).astype(float)
+            resid = event - p
             meat = x_design.T @ (
                 x_design * (sw * (cw * resid) ** 2)[:, np.newaxis])
             cov = cov @ meat @ cov

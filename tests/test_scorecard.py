@@ -19,6 +19,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.utils.class_weight import compute_class_weight
 from tests.datasets import load_boston
 
 
@@ -781,3 +782,72 @@ def test_pvalues_class_weight():
 
     for variable in se_by_var.index:
         assert se_by_var[variable] == approx(expected[variable], rel=1e-6)
+
+
+def _sandwich_se(scorecard, X, y, cw, sw):
+    X_t = scorecard.binning_process_.transform(X, metric="woe")
+    clf = scorecard.estimator_
+    xd = np.column_stack([np.ones(len(X_t)), X_t.values])
+    p = clf.predict_proba(X_t)[:, 1]
+    event = (y == clf.classes_[1]).astype(float)
+    bread = xd.T @ (xd * (sw * cw * p * (1 - p))[:, np.newaxis])
+    bread[1:, 1:] += np.eye(xd.shape[1] - 1) / clf.C
+    meat = xd.T @ (xd * (sw * (cw * (event - p)) ** 2)[:, np.newaxis])
+    binv = np.linalg.inv(bread)
+    se = np.sqrt(np.diag(binv @ meat @ binv))
+    return pd.Series(se[1:], index=X_t.columns)
+
+
+def test_pvalues_class_weight_sample_weight():
+    # With sample_weight, scikit-learn >= 1.7 balances the weighted class
+    # counts; the standard errors must use the factors the estimator used.
+    rng = np.random.default_rng(1)
+    n = 4000
+    X = pd.DataFrame({"x1": rng.normal(size=n), "x2": rng.normal(size=n)})
+    eta = -3.0 + 0.8 * X["x1"].values
+    y = (rng.random(n) < 1 / (1 + np.exp(-eta))).astype(int)
+    sw = rng.choice([0.5, 1.0, 3.0], size=n)
+
+    binning_process = BinningProcess(variable_names=list(X.columns))
+    scorecard = Scorecard(
+        binning_process=binning_process,
+        estimator=LogisticRegression(class_weight="balanced"),
+        scaling_method=None).fit(X, y, sample_weight=sw)
+    detailed = scorecard.table(style="detailed")
+    se_by_var = detailed.groupby("Variable")["Std. Error"].first()
+
+    classes = scorecard.estimator_.classes_
+    try:
+        weights = compute_class_weight("balanced", classes=classes, y=y,
+                                       sample_weight=sw)
+    except TypeError:  # scikit-learn < 1.7
+        weights = compute_class_weight("balanced", classes=classes, y=y)
+    cw = weights[np.searchsorted(classes, y)]
+    expected = _sandwich_se(scorecard, X, y, cw, sw)
+
+    for variable in se_by_var.index:
+        assert se_by_var[variable] == approx(expected[variable], rel=1e-6)
+
+
+def test_pvalues_class_weight_label_coding():
+    # predict_proba[:, 1] is the probability of classes_[1]; the sandwich
+    # residual must use that event indicator, so recoding the binary target
+    # from {0, 1} to {0, 2} must not change the standard errors.
+    rng = np.random.default_rng(2)
+    n = 3000
+    X = pd.DataFrame({"x1": rng.normal(size=n), "x2": rng.normal(size=n)})
+    eta = -3.0 + 0.8 * X["x1"].values
+    y = (rng.random(n) < 1 / (1 + np.exp(-eta))).astype(int)
+
+    def std_errors(target):
+        scorecard = Scorecard(
+            binning_process=BinningProcess(variable_names=list(X.columns)),
+            estimator=LogisticRegression(class_weight="balanced"),
+            scaling_method=None).fit(X, target)
+        detailed = scorecard.table(style="detailed")
+        return detailed.groupby("Variable")["Std. Error"].first()
+
+    se01 = std_errors(y)
+    se02 = std_errors(2 * y)
+    for variable in se01.index:
+        assert se02[variable] == approx(se01[variable], rel=1e-9)

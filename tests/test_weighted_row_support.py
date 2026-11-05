@@ -136,3 +136,33 @@ def test_single_categorical_group_preserves_raw_and_weighted_counts():
     assert table.loc[0, 'Count'] == 4
     assert table.loc[0, 'Weighted count'] == pytest.approx(1.4)
     assert table.loc['Totals', 'Count'] == 4
+
+
+@pytest.mark.parametrize('solver,mip', [('cp', 'bop'), ('mip', 'bop'),
+                                      ('mip', 'cbc')])
+@pytest.mark.parametrize('weighted', [False, True])
+@pytest.mark.parametrize('single_bin', [False, True])
+@pytest.mark.parametrize('bound,fraction,count,status', [
+    ('max_bin_size', .58, 58, 'OPTIMAL'),
+    ('max_bin_size', .579999, 58, 'INFEASIBLE'),
+    ('min_bin_size', .07, 7, 'OPTIMAL'),
+    ('min_bin_size', .070001, 7, 'INFEASIBLE'),
+])
+def test_bin_size_roundoff(solver, mip, weighted, single_bin, bound,
+                          fraction, count, status):
+    # Both groups have mixed classes; only the row-size bound can reject them.
+    x = np.r_[np.zeros(count), np.ones(100 - count)]
+    y = np.tile([0, 1], 50)
+    kwargs = dict(user_splits=[.5], user_splits_fixed=[True])
+    if single_bin:
+        x[count:] = -99
+        kwargs = dict(user_splits=[], special_codes=[-99])
+    model = OptimalBinning(solver=solver, mip_solver=mip,
+                           monotonic_trend=None, **kwargs,
+                           **{bound: fraction})
+    model.fit(x, y, sample_weight=np.full(100, .3) if weighted else None)
+    assert model.status == status
+    table = model.binning_table.build()
+    assert table.loc['Totals', 'Count'] == 100
+    if status == 'OPTIMAL':
+        assert table.loc[0, 'Count'] == count

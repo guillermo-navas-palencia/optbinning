@@ -1048,15 +1048,23 @@ class OptimalBinning(BaseOptimalBinning):
 
         time_init = time.perf_counter()
 
+        # Bin-size fractions refer to original observations, never weight mass.
+        # Allow one floating-point step of multiplication roundoff at integer
+        # boundaries (e.g. .58 * 100 < 58 and .07 * 100 > 7).
+        min_bin_size = (None if self.min_bin_size is None else
+                        int(np.ceil(np.nextafter(
+                            self.min_bin_size * self._n_samples, -np.inf))))
+        max_bin_size = (None if self.max_bin_size is None else
+                        int(np.floor(np.nextafter(
+                            self.max_bin_size * self._n_samples, np.inf))))
+
         if len(n_nonevent) <= 1:
             raw_ne, raw_ev = self._raw_prebin_counts
             count = int(raw_ne.sum() + raw_ev.sum())
             invalid = (
                 (self.min_n_bins is not None and self.min_n_bins > 1)
-                or (self.min_bin_size is not None and
-                    count < np.ceil(self.min_bin_size * self._n_samples))
-                or (self.max_bin_size is not None and
-                    count > np.floor(self.max_bin_size * self._n_samples))
+                or (min_bin_size is not None and count < min_bin_size)
+                or (max_bin_size is not None and count > max_bin_size)
                 or any((lower is not None and value < lower) or
                        (upper is not None and value > upper)
                        for value, lower, upper in (
@@ -1075,12 +1083,6 @@ class OptimalBinning(BaseOptimalBinning):
 
                 logger.info("Optimizer terminated. Time: 0s")
             return
-
-        # Bin-size fractions refer to original observations, never weight mass.
-        min_bin_size = (None if self.min_bin_size is None else
-                        int(np.ceil(self.min_bin_size * self._n_samples)))
-        max_bin_size = (None if self.max_bin_size is None else
-                        int(np.floor(self.max_bin_size * self._n_samples)))
 
         if (min_bin_size is not None and max_bin_size is not None
                 and min_bin_size > max_bin_size):

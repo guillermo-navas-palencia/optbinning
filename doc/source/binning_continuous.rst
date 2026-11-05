@@ -9,6 +9,19 @@ Optimal binning with continuous target
 Custom numerical prebinning
 --------------------------
 
-``prebinning_estimator`` uses the same provider contract and cleaning/refinement
-pipeline as the binary estimator. See :doc:`binning_binary` for a runnable
-standard k-means adapter and the supported combinations.
+CART remains the default for ``ContinuousOptimalBinning()``. To use k-means
+instead, define ``KMeansPrebins`` from the example in :doc:`binning_binary`
+and pass it explicitly::
+
+    from optbinning import ContinuousOptimalBinning
+
+    model = ContinuousOptimalBinning(
+        prebinning_estimator=KMeansPrebins(n_bins=10),
+        max_n_prebins=10,
+        min_bin_size=0.05,
+    )
+    model.fit(x, y)
+
+The same provider contract, cleaning/refinement pipeline and supported
+combinations apply. ``min_bin_size`` constrains the final bins; k-means does
+not enforce ``min_prebin_size``.

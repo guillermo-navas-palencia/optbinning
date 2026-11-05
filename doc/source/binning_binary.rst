@@ -9,6 +9,49 @@ Optimal binning with binary target
 Custom numerical prebinning
 --------------------------
 
+CART remains the default: ``OptimalBinning()`` still uses
+``prebinning_method="cart"`` and ``prebinning_estimator=None``. Existing
+calls keep their current prebinning behavior. K-means is an explicit opt-in.
+
+Use k-means instead of CART
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Define the small adapter below. It uses scikit-learn's standard
+`KBinsDiscretizer <https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.KBinsDiscretizer.html>`_
+with ``strategy="kmeans"``, forwards sample weights, and exposes the interior
+bin edges as candidate cuts. It uses only the predictor, not the target.
+
+.. literalinclude:: ../../examples/kmeans_prebinning.py
+   :language: python
+   :end-before: def main():
+
+With your training arrays ``x`` and ``y``, choose between the default and
+k-means as follows::
+
+    # Default: CART prebinning, unchanged.
+    default_model = OptimalBinning()
+    default_model.fit(x, y)
+
+    # Opt in to k-means candidate cuts; keep the usual final solver.
+    kmeans_model = OptimalBinning(
+        prebinning_estimator=KMeansPrebins(n_bins=10),
+        max_n_prebins=10,
+        min_bin_size=0.05,
+    )
+    kmeans_model.fit(x, y)
+
+The provider's ``n_bins`` controls the requested number of candidate bins;
+``max_n_prebins`` is OptBinning's upper limit. The final solver may merge
+candidates. K-means does not guarantee a minimum cluster size:
+``min_bin_size=0.05`` constrains final bins, while ``min_prebin_size`` remains
+a setting for built-in prebinners. Opt into this adapter with
+``prebinning_estimator=KMeansPrebins(...)``, not
+``prebinning_method="kmeans"``.
+
+To run a complete example on generated data, execute
+``python examples/kmeans_prebinning.py`` from the repository root.
+
+Custom provider interface
+~~~~~~~~~~~~~~~~~~~~~~~~~
 A custom provider proposes candidate cuts; OptBinning still refines these cuts
 and selects the final partition using its usual objective and constraints.
 The same interface is available on ``ContinuousOptimalBinning``.
@@ -50,20 +93,3 @@ OptBinning rejects excess cuts rather than truncating them. Parameters can be
 changed with ``set_params(prebinning_estimator__n_bins=...)``. In a
 ``BinningProcess``, pass the provider through the variable's
 ``binning_fit_params``; each variable fits its own clone.
-
-Standard k-means example
-~~~~~~~~~~~~~~~~~~~~~~~
-The following adapter uses scikit-learn's
-`KBinsDiscretizer <https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.KBinsDiscretizer.html>`_
-with ``strategy="kmeans"``. It reshapes the feature into one column and
-exposes the interior ``bin_edges_`` as ``splits_``. It uses the predictor
-only, forwards sample weights and disables subsampling. OptBinning then
-selects the final supervised partition from these candidate cuts.
-
-K-means does not guarantee a minimum prebin size. In this example,
-``min_bin_size=0.05`` constrains the final bins, not the k-means clusters.
-The adapter is an example of the generic interface; this PR does not add
-``"kmeans"`` to the built-in ``prebinning_method`` choices.
-
-.. literalinclude:: ../../examples/kmeans_prebinning.py
-   :language: python

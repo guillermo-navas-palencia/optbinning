@@ -93,3 +93,14 @@ OptBinning rejects excess cuts rather than truncating them. Parameters can be
 changed with ``set_params(prebinning_estimator__n_bins=...)``. In a
 ``BinningProcess``, pass the provider through the variable's
 ``binning_fit_params``; each variable fits its own clone.
+
+Effective weight validation
+---------------------------
+
+Sample weights (including scalar weights) are combined with class weights once.
+The resulting masses must be finite and nonnegative, with a finite positive
+total. Weight arrays must match the input length; column-shaped arrays are
+rejected rather than broadcast. Fractional masses remain masses rather than
+integer borrower counts and must not be passed as counts to Bayesian WoE.
+See :doc:`fractional_weights` for the distinction between raw-row support
+constraints and weighted fitting/statistics, and the current solver limitations.

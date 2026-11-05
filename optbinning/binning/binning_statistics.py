@@ -499,7 +499,7 @@ def bin_info(
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
 
-    return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
+    return np.asarray(n_nev, dtype=float), np.asarray(n_ev, dtype=float)
 
 
 def multiclass_bin_info(
@@ -900,6 +900,8 @@ class BinningTable:
         categories: npt.NDArray | list | None = None,
         cat_others: npt.NDArray | list | None = None,
         user_splits: npt.NDArray | None = None,
+        raw_n_nonevent=None,
+        raw_n_event=None,
     ) -> None:
 
         self.name = name
@@ -913,6 +915,10 @@ class BinningTable:
         self.categories = categories
         self.cat_others = cat_others if cat_others is not None else []
         self.user_splits = user_splits
+        self.raw_n_nonevent = (None if raw_n_nonevent is None else
+                              np.asarray(raw_n_nonevent, dtype=np.int64))
+        self.raw_n_event = (None if raw_n_event is None else
+                           np.asarray(raw_n_event, dtype=np.int64))
 
         self._n_records = None
         self._event_rate = None
@@ -1052,6 +1058,25 @@ class BinningTable:
                       t_event_rate, "", t_iv, t_js]
             df.loc["Totals"] = totals
 
+        if self.raw_n_event is not None:
+            # Keep weighted statistics visible without presenting mass as rows.
+            columns = ["Count", "Count (%)", "Non-event", "Event", "Event rate"]
+            for column in columns:
+                df["Weighted " + column.lower()] = df[column]
+            raw_e = self.raw_n_event
+            raw_ne = self.raw_n_nonevent
+            if add_totals:
+                raw_e = np.r_[raw_e, raw_e.sum()]
+                raw_ne = np.r_[raw_ne, raw_ne.sum()]
+            raw_n = raw_e + raw_ne
+            df["Count"] = raw_n
+            df["Count (%)"] = raw_n / max(1, (self.raw_n_event +
+                                              self.raw_n_nonevent).sum())
+            df["Non-event"] = raw_ne
+            df["Event"] = raw_e
+            df["Event rate"] = np.divide(
+                raw_e, raw_n, out=np.zeros(len(raw_n)), where=raw_n != 0)
+
         self._is_built = True
 
         return df
@@ -1164,7 +1189,8 @@ class BinningTable:
             metric_label = "WoE"
         elif metric == "event_rate":
             metric_values = self._event_rate
-            metric_label = "Event rate"
+            metric_label = ("Weighted event rate" if self.raw_n_event is not None
+                            else "Event rate")
         elif metric == "iv":
             metric_values = self._iv_values
             metric_label = "IV"
@@ -1202,10 +1228,12 @@ class BinningTable:
                          bottom=_n_event)
 
             handles = [p1[0], p2[0]]
-            labels = ['Non-event', 'Event']
+            labels = (['Weighted non-event', 'Weighted event']
+                      if self.raw_n_event is not None else ['Non-event', 'Event'])
 
             ax1.set_xlabel("Bin ID", fontsize=12)
-            ax1.set_ylabel("Bin count", fontsize=13)
+            ax1.set_ylabel("Weighted bin count" if self.raw_n_event is not None
+                           else "Bin count", fontsize=13)
 
             ax2 = ax1.twinx()
 
@@ -1305,10 +1333,12 @@ class BinningTable:
                          bottom=_n_event, align="edge")
 
             handles = [p1[0], p2[0]]
-            labels = ['Non-event', 'Event']
+            labels = (['Weighted non-event', 'Weighted event']
+                      if self.raw_n_event is not None else ['Non-event', 'Event'])
 
             ax1.set_xlabel("x", fontsize=12)
-            ax1.set_ylabel("Bin count", fontsize=13)
+            ax1.set_ylabel("Weighted bin count" if self.raw_n_event is not None
+                           else "Bin count", fontsize=13)
 
             ax2 = ax1.twinx()
 

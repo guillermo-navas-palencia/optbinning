@@ -1087,7 +1087,10 @@ class OptimalBinning(BaseOptimalBinning):
         if (min_bin_size is not None and max_bin_size is not None
                 and min_bin_size > max_bin_size):
             self._status = "INFEASIBLE"
-            self._splits_optimal = np.asarray([])
+            if self._dtype == "categorical" and self.user_splits is not None:
+                self._splits_optimal = splits[-1:]
+            else:
+                self._splits_optimal = np.asarray([])
             self._solution = np.zeros(len(n_nonevent), dtype=bool)
             self._solution[-1] = True
             return

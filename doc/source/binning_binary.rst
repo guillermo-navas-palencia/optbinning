@@ -15,38 +15,6 @@ The same interface is available on ``ContinuousOptimalBinning``.
 The provider must be sklearn-cloneable and implement
 ``fit(x, y, sample_weight=None)`` on one-dimensional arrays, exposing ``splits_``.
 
-For example, an unsupervised provider can ignore ``y`` while honoring weights::
-
-    import numpy as np
-    from sklearn.base import BaseEstimator
-    from optbinning import OptimalBinning
-
-    class WeightedQuantilePrebins(BaseEstimator):
-        def __init__(self, n_bins=5):
-            self.n_bins = n_bins
-
-        def fit(self, x, y, sample_weight=None):
-            weights = (np.ones(len(x)) if sample_weight is None
-                       else np.asarray(sample_weight))
-            order = np.argsort(x)
-            values, weights = x[order], weights[order]
-            keep = weights > 0
-            values, weights = values[keep], weights[keep]
-            if len(values) == 0:
-                raise ValueError("Positive training weight is required.")
-            cumulative = np.cumsum(weights) / np.sum(weights)
-            cuts = np.interp(np.arange(1, self.n_bins) / self.n_bins,
-                             cumulative, values)
-            self.splits_ = np.unique(cuts[(cuts > values[0]) &
-                                         (cuts < values[-1])])
-            return self
-
-    x = np.repeat(np.arange(20.), 4)
-    y = np.tile([0, 1, 0, 1], 20)
-    model = OptimalBinning(
-        prebinning_estimator=WeightedQuantilePrebins(n_bins=5))
-    model.fit(x, y)
-
 Only the clean numerical training rows reach the provider: missing values,
 special codes and configured outliers are handled by the existing preprocessing
 path. A cloned fitted provider is available as ``prebinning_estimator_``; the
@@ -66,3 +34,36 @@ optimization objective or introduce a new unsupervised estimator.
 Pickle preserves the fitted provider when its class is importable. JSON remains
 an inference-only binning-table export; it does not serialize arbitrary provider
 code or support reconstructing a refittable provider.
+
+Provider policy and integration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The provider owns the candidate-grid policy; OptBinning owns final binning.
+For example, set a provider's minimum row fraction to 5% if its candidate
+prebins must each contain at least 5% of the clean training rows. Setting
+OptBinning's ``min_prebin_size=0.05`` alone does not constrain a custom
+provider. OptBinning does not silently merge custom cuts to enforce that
+setting. Its normal refinement can still remove cuts, and ``min_bin_size``
+constrains the final partition.
+
+Choose the provider's bin budget consistently with ``max_n_prebins``;
+OptBinning rejects excess cuts rather than truncating them. Parameters can be
+changed with ``set_params(prebinning_estimator__n_bins=...)``. In a
+``BinningProcess``, pass the provider through the variable's
+``binning_fit_params``; each variable fits its own clone.
+
+Standard k-means example
+~~~~~~~~~~~~~~~~~~~~~~~
+The following adapter uses scikit-learn's
+`KBinsDiscretizer <https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.KBinsDiscretizer.html>`_
+with ``strategy="kmeans"``. It reshapes the feature into one column and
+exposes the interior ``bin_edges_`` as ``splits_``. It uses the predictor
+only, forwards sample weights and disables subsampling. OptBinning then
+selects the final supervised partition from these candidate cuts.
+
+K-means does not guarantee a minimum prebin size. In this example,
+``min_bin_size=0.05`` constrains the final bins, not the k-means clusters.
+The adapter is an example of the generic interface; this PR does not add
+``"kmeans"`` to the built-in ``prebinning_method`` choices.
+
+.. literalinclude:: ../../examples/kmeans_prebinning.py
+   :language: python

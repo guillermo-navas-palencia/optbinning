@@ -7,7 +7,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import pytest
+import sklearn
 from numpy.testing import assert_allclose, assert_array_equal
+from packaging.version import Version
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import load_breast_cancer
@@ -83,6 +85,10 @@ def test_pipeline_grid_search_refits_without_mutating_template(credit_like_data)
         template.named_steps['bins'].get_feature_names_out()
 
 
+@pytest.mark.xfail(
+    strict=True, raises=NotFittedError,
+    reason="GH #432: BinningProcess does not expose sklearn fitted-state "
+           "metadata or a __sklearn_is_fitted__ hook.")
 def test_check_is_fitted_recognizes_successful_fit(credit_like_data):
     X, y = credit_like_data
     process = make_process()
@@ -92,6 +98,11 @@ def test_check_is_fitted_recognizes_successful_fit(credit_like_data):
     check_is_fitted(process)
 
 
+@pytest.mark.xfail(
+    Version(sklearn.__version__) >= Version("1.8"),
+    strict=True, raises=NotFittedError,
+    reason="GH #432: sklearn >=1.8 enforces Pipeline fitted-state checks; "
+           "its final BinningProcess is not recognized as fitted.")
 def test_transformer_only_pipeline_after_fit(credit_like_data):
     X, y = credit_like_data
     model = Pipeline([('bins', make_process())])

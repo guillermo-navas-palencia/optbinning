@@ -1,0 +1,10 @@
+{
+  "baseline": "271c906d5250f17633396f88d246d64b4c449380",
+  "baseline_label": "OptBinning 1.0.0",
+  "updates": [
+    {
+      "revision": "d31da39481a6bc7fd187ec1d864948fbed3632e1",
+      "label": "Develop before CP changes"
+    }
+  ]
+}

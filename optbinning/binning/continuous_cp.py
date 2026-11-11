@@ -176,7 +176,10 @@ class ContinuousBinningCP(BinningCP):
                         ).OnlyEnforceIf([x[k, k], x[j, j], x[i, i]])
 
     def add_constraint_monotonic_peak(self, model, n, U, x, y):
-        M = max([abs(U[i][j]) for i in range(n) for j in range(i + 1)])
+        # Active segment means lie between these bounds. Their difference,
+        # not their absolute magnitude, must be relaxed across the turn.
+        means = [U[i][j] for i in range(n) for j in range(i + 1)]
+        M = max(means) - min(means)
         for i in range(1, n):
             for z in range(i):
                 model.Add(
@@ -196,7 +199,10 @@ class ContinuousBinningCP(BinningCP):
                     U[z][z] * x[z, z] >= 0).OnlyEnforceIf([x[z, z], x[i, i]])
 
     def add_constraint_monotonic_valley(self, model, n, U, x, y):
-        M = max([abs(U[i][j]) for i in range(n) for j in range(i + 1)])
+        # Active segment means lie between these bounds. Their difference,
+        # not their absolute magnitude, must be relaxed across the turn.
+        means = [U[i][j] for i in range(n) for j in range(i + 1)]
+        M = max(means) - min(means)
         for i in range(1, n):
             for z in range(i):
                 model.Add(

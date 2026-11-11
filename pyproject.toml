@@ -38,6 +38,7 @@ classifiers = [
 [project.optional-dependencies]
 distributed = ["pympler", "tdigest"]
 test = [
+    "docutils==0.21.2",
     "coverage",
     "flake8",
     "pytest",

@@ -1,0 +1,11 @@
+# Controlled runtime for release comparisons; update deliberately as a new protocol.
+numpy==2.0.2
+scipy==1.16.2
+pandas==2.3.3
+scikit-learn==1.6.0
+ortools==9.15.6755
+matplotlib==3.9.0
+ropwr==1.1.0
+cvxpy==1.6.0
+pytest==9.2.0
+docutils==0.21.2

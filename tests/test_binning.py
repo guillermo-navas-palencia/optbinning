@@ -290,7 +290,13 @@ def test_numerical_user_splits_fixed():
                           user_splits_fixed=user_splits_fixed)
     optb.fit(x, y)
 
-    assert optb.status == "INFEASIBLE"
+    # Merging 14--15 and 15--16 preserves a decreasing event rate and the
+    # required split at 16. Monotonic preprocessing must not exclude it.
+    assert optb.status == "OPTIMAL"
+    assert 16 in optb.splits
+    indices = np.digitize(x, optb.splits)
+    rates = [y[indices == i].mean() for i in range(len(optb.splits) + 1)]
+    assert np.all(np.diff(rates) <= 0)
 
     user_splits = [11, 12, 13, 14, 15, 17]
     user_splits_fixed = [False, True, False, False, False, False]

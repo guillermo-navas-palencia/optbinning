@@ -1,0 +1,114 @@
+name: CP benchmark documentation
+
+on:
+  repository_dispatch:
+    types: [documentation-published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Published or candidate code revision to measure (defaults to selected branch)
+        type: string
+        required: false
+      previous:
+        description: Optional preceding code revision for a direct paired comparison
+        type: string
+        required: false
+      refresh:
+        description: Remeasure registered updates instead of reusing their records
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Serial measurements and publication; no competing writes to the results branch.
+concurrency:
+  group: cp-benchmark-documentation
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      MPLCONFIGDIR: /tmp/cp-benchmark-matplotlib
+      BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.event.client_payload.ref || github.sha }}
+          persist-credentials: false
+      - name: Fetch pinned public comparison checkpoints
+        run: git fetch https://github.com/lcrmorin/optbinning.git refs/tags/cp-benchmark-correctness refs/tags/cp-benchmark-construction
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.8'
+      - name: Install controlled benchmark dependencies
+        run: python -m pip install -r benchmarks/cp/requirements.txt
+      - name: Restore published measurement records
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/benchmark-docs"
+          if gh api "repos/$REPOSITORY/git/ref/heads/benchmark-results" > "$RUNNER_TEMP/results-ref.json" 2> "$RUNNER_TEMP/results-error"; then
+            gh api "repos/$REPOSITORY/tarball/benchmark-results" > "$RUNNER_TEMP/results.tar.gz"
+            tar -xzf "$RUNNER_TEMP/results.tar.gz" -C "$RUNNER_TEMP/benchmark-docs" --strip-components=1
+          elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/results-error"; then
+            cat "$RUNNER_TEMP/results-error"
+            exit 1
+          fi
+      - name: Verify benchmark and reporting logic
+        run: python -m pytest -q benchmarks/cp
+      - name: Measure updates and regenerate documentation
+        env:
+          PREVIOUS: ${{ inputs.previous || github.event.client_payload.previous }}
+          UPDATE_LABEL: ${{ inputs.ref || github.event.client_payload.ref || github.ref_name }}
+          REFRESH: ${{ inputs.refresh }}
+        run: |
+          args=()
+          if [ -n "$PREVIOUS" ]; then args+=(--previous "$PREVIOUS"); fi
+          if [ "$REFRESH" = true ]; then args+=(--refresh); fi
+          python benchmarks/cp/track.py --repository . --candidate HEAD \
+            --label "$UPDATE_LABEL" --output "$RUNNER_TEMP/benchmark-docs" "${args[@]}"
+      - name: Retain rendered documentation and raw evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-documentation
+          path: ${{ runner.temp }}/benchmark-docs/
+          retention-days: 30
+          if-no-files-found: warn
+
+  publish:
+    needs: measure
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: results
+      - uses: actions/download-artifact@v4
+        with:
+          name: benchmark-documentation
+          path: report
+      - name: Update benchmark documentation branch
+        working-directory: results
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git show-ref --verify --quiet refs/remotes/origin/benchmark-results; then
+            git switch -C benchmark-results origin/benchmark-results
+          else
+            git switch --orphan benchmark-results
+          fi
+          cp -a ../report/. .
+          git add index.rst index.html history.json data
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update CP benchmark documentation'
+            git push origin HEAD:benchmark-results
+          fi

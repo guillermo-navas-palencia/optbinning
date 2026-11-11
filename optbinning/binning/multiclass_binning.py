@@ -797,19 +797,6 @@ class MulticlassOptimalBinning(OptimalBinning):
                     trend = auto_monotonic(n_nonevent[:, i], n_event[:, i],
                                            m_trend)
 
-                    if m_trend == "auto_heuristic":
-                        if trend in ("peak", "valley"):
-                            if trend == "peak":
-                                trend = "peak_heuristic"
-                            else:
-                                trend = "valley_heuristic"
-
-                            event_rate = n_event[:, i] / (n_nonevent[:, i] +
-                                                          n_event[:, i])
-                            trend_change = peak_valley_trend_change_heuristic(
-                                event_rate, trend)
-                            trend_changes[i] = trend_change
-
                     monotonic.append(trend)
 
                     if self.verbose:
@@ -822,6 +809,18 @@ class MulticlassOptimalBinning(OptimalBinning):
 
             if self.verbose:
                 logger.info("Optimizer: monotonic trend not set.")
+
+        for i, trend in enumerate(monotonic):
+            mode = (self.monotonic_trend[i]
+                    if isinstance(self.monotonic_trend, list)
+                    else self.monotonic_trend)
+            if mode == "auto_heuristic" and trend in ("peak", "valley"):
+                trend += "_heuristic"
+                monotonic[i] = trend
+            if trend in ("peak_heuristic", "valley_heuristic"):
+                event_rate = n_event[:, i] / (n_nonevent[:, i] + n_event[:, i])
+                trend_changes[i] = peak_valley_trend_change_heuristic(
+                    event_rate, trend)
 
         if self.solver == "cp":
             optimizer = MulticlassBinningCP(monotonic, self.min_n_bins,

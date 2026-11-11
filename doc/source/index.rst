@@ -17,6 +17,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    installation
    tutorials
    release_notes
+   cp_benchmarks
 
 .. toctree::
    :maxdepth: 1

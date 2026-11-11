@@ -1,0 +1,18 @@
+{
+  "baseline": "271c906d5250f17633396f88d246d64b4c449380",
+  "baseline_label": "OptBinning 1.0.0",
+  "updates": [
+    {
+      "revision": "d31da39481a6bc7fd187ec1d864948fbed3632e1",
+      "label": "Develop before CP changes"
+    },
+    {
+      "revision": "2999797f9e0535beea14da3d3d4f1e70af91536a",
+      "label": "CP/MIP formulation corrections"
+    },
+    {
+      "revision": "cebfbcce3a5390c827155c4d0c6c8861fe275e9e",
+      "label": "Native CP expression construction"
+    }
+  ]
+}

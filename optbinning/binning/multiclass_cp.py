@@ -7,6 +7,7 @@ problem. Constraint programming implementation.
 # Copyright (C) 2019
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 from .cp import BinningCP
 from .model_data import multiclass_model_data
@@ -47,7 +48,8 @@ class MulticlassBinningCP(BinningCP):
             self.min_event_rate_diff, M)
 
         n = len(n_nonevent)
-        n_records = n_nonevent + n_event
+        # One-vs-rest columns share the same total support per prebin.
+        n_records = (n_nonevent + n_event)[:, 0]
         n_classes = len(self.monotonic_trend)
 
         # Initialize model
@@ -58,10 +60,14 @@ class MulticlassBinningCP(BinningCP):
             model, n, n_classes)
 
         # Objective function
-        model.Maximize(sum([sum([(V[c][i][i] * x[i, i]) +
-                            sum([(V[c][i][j] - V[c][i][j+1]) * x[i, j]
-                                 for j in range(i)]) for i in range(n)])
-                            for c in range(n_classes)]))
+        objective = LinearExpr.Sum([
+            LinearExpr.Sum([
+                V[c][i][i] * x[i, i] + LinearExpr.WeightedSum(
+                    [x[i, j] for j in range(i)],
+                    [V[c][i][j] - V[c][i][j + 1] for j in range(i)])
+                for i in range(n)])
+            for c in range(n_classes)])
+        model.Maximize(objective)
 
         # Constraint: unique assignment
         self.add_constraint_unique_assignment(model, n, x)
@@ -84,6 +90,14 @@ class MulticlassBinningCP(BinningCP):
             if self.monotonic_trend[c] == "descending":
                 self.add_constraint_monotonic_descending(model, n, D[c], x, M)
 
+            elif self.monotonic_trend[c] == "concave":
+                self.add_constraint_monotonic_concave(
+                    model, n, D[c], x, M)
+
+            elif self.monotonic_trend[c] == "convex":
+                self.add_constraint_monotonic_convex(
+                    model, n, D[c], x, M)
+
             elif self.monotonic_trend[c] in ("peak", "valley"):
                 for i in range(n):
                     model.Add(t[c] >= i - n * (1 - y[c, i]))
@@ -96,11 +110,11 @@ class MulticlassBinningCP(BinningCP):
                     self.add_constraint_monotonic_valley(
                         model, n, D[c], x, c, y, M)
 
-            elif self.monotonic_trend == "peak_heuristic":
+            elif self.monotonic_trend[c] == "peak_heuristic":
                 self.add_constraint_monotonic_peak_heuristic(
                     model, n, D[c], x, trend_changes[c], M)
 
-            elif self.monotonic_trend == "valley_heuristic":
+            elif self.monotonic_trend[c] == "valley_heuristic":
                 self.add_constraint_monotonic_valley_heuristic(
                     model, n, D[c], x, trend_changes[c], M)
 
@@ -166,18 +180,22 @@ class MulticlassBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[c, i] + y[c, z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)
 
                 model.Add(
                     M * (2 - y[c, i] - y[c, z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
     def add_constraint_monotonic_valley(self, model, n, D, x, c, y, M):
@@ -185,16 +203,20 @@ class MulticlassBinningCP(BinningCP):
             for z in range(i):
                 model.Add(
                     M * (y[c, i] + y[c, z]) + M + (D[i][i] - M) * x[i, i] +
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
                     D[z][z] * x[z, z] >= 0)
 
                 model.Add(
                     M * (2 - y[c, i] - y[c, z]) + M + (D[z][z] - M) * x[z, z] +
-                    sum([(D[z][j] - D[z][j+1]) * x[z, j]
-                         for j in range(z)]) -
-                    sum([(D[i][j] - D[i][j + 1]) * x[i, j]
-                         for j in range(i)]) -
+                    LinearExpr.WeightedSum(
+                        [x[z, j] for j in range(z)],
+                        [D[z][j] - D[z][j + 1] for j in range(z)]) -
+                    LinearExpr.WeightedSum(
+                        [x[i, j] for j in range(i)],
+                        [D[i][j] - D[i][j + 1] for j in range(i)]) -
                     D[i][i] * x[i, i] >= 0)

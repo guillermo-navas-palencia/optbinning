@@ -8,7 +8,7 @@ OptimalBinningSketch testing.
 import numpy as np
 import pandas as pd
 
-from pytest import approx, raises
+from pytest import approx, mark, raises
 
 from optbinning import OptimalBinningSketch
 from optbinning.exceptions import NotSolvedError
@@ -271,6 +271,21 @@ def test_verbose():
     optb.solve()
 
     assert optb.status == "OPTIMAL"
+
+
+@mark.parametrize("dtype", ["numerical", "categorical"])
+@mark.parametrize("regular_count, status", [(20, "OPTIMAL"), (40, "INFEASIBLE")])
+def test_one_prebin_checks_max_bin_size(dtype, regular_count, status):
+    values = np.ones(40)
+    values[regular_count:] = np.nan
+    target = np.tile([0, 1], 20)
+    sketch = OptimalBinningSketch(dtype=dtype, max_bin_size=0.65)
+    sketch.add(values, target)
+    sketch.solve()
+
+    assert sketch.status == status
+    counts = sketch.binning_table.build(add_totals=False)["Count"]
+    assert counts.to_list() == [regular_count, 0, 40 - regular_count]
 
 
 def test_no_splits_missing_special_not_double_counted():

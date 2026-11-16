@@ -869,8 +869,15 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
 
         time_init = time.perf_counter()
 
+        max_bin_size = self.max_bin_size
+        if max_bin_size is not None:
+            max_bin_size = int(np.ceil(max_bin_size * self._bsketch.n))
+
         if len(n_nonevent) <= 1:
             self._status = "OPTIMAL"
+            if (max_bin_size is not None and
+                    n_nonevent.sum() + n_event.sum() > max_bin_size):
+                self._status = "INFEASIBLE"
             self._splits_optimal = splits
             self._solution = np.zeros(len(splits)).astype(bool)
 
@@ -887,11 +894,6 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
             min_bin_size = int(np.ceil(self.min_bin_size * self._bsketch.n))
         else:
             min_bin_size = self.min_bin_size
-
-        if self.max_bin_size is not None:
-            max_bin_size = int(np.ceil(self.max_bin_size * self._bsketch.n))
-        else:
-            max_bin_size = self.max_bin_size
 
         # Min number of event and nonevent per bin
         if (self.divergence in ("hellinger", "triangular") and

@@ -285,9 +285,26 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         # flags
         self._is_started = False
         self._is_solved = False
+        self._max_bin_size_initialized = True
 
         # Check parameters
         _check_parameters(**self.get_params())
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        if "_max_bin_size_initialized" in state:
+            return
+
+        # An older saved process can have a limit missing from its sketches.
+        self._max_bin_size_initialized = True
+        if self.max_bin_size is None:
+            return
+
+        fit_params = self.binning_fit_params or {}
+        for name, optb in self._binned_variables.items():
+            if (optb.max_bin_size is None and
+                    "max_bin_size" not in fit_params.get(name, {})):
+                optb.max_bin_size = self.max_bin_size
 
     def add(
         self,
@@ -344,6 +361,7 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
                         min_n_bins=self.min_n_bins,
                         max_n_bins=self.max_n_bins,
                         min_bin_size=self.min_bin_size,
+                        max_bin_size=self.max_bin_size,
                         max_pvalue=self.max_pvalue,
                         max_pvalue_policy=self.max_pvalue_policy,
                         special_codes=self.special_codes,

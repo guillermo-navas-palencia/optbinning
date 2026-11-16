@@ -5,9 +5,10 @@ BinningProcessSketch testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2021
 
+import numpy as np
 import pandas as pd
 
-from pytest import approx, mark, raises
+from pytest import approx, fixture, mark, raises
 
 from optbinning import BinningProcessSketch
 from optbinning import OptimalBinningSketch
@@ -90,6 +91,68 @@ def test_default():
 
     optb.binning_table.build()
     assert optb.binning_table.iv == approx(5.04392547, rel=1e-2)
+
+
+@fixture
+def bin_size_data():
+    amounts = np.repeat(np.arange(20, dtype=float), 20)
+    event_counts = np.r_[np.full(16, 2), np.full(4, 16)]
+    target = (np.arange(20) < event_counts[:, None]).astype(int).ravel()
+    return pd.DataFrame({"amount": amounts, "override": 3 * amounts + 10}), target
+
+
+@mark.parametrize("solver", ["cp", "mip"])
+@mark.parametrize("sketch", ["gk", "t-digest"])
+@mark.parametrize("merge", [False, True], ids=["batches", "merge"])
+def test_process_honors_max_bin_size(bin_size_data, solver, sketch, merge):
+    X, target = bin_size_data
+    fit_params = {name: {"solver": solver, "sketch": sketch,
+                         "monotonic_trend": None} for name in X.columns}
+    fit_params["override"]["max_bin_size"] = 0.55
+    params = dict(variable_names=list(X.columns), max_n_bins=2,
+                  max_n_prebins=10, max_bin_size=0.65,
+                  binning_fit_params=fit_params)
+    process = BinningProcessSketch(**params).add(X.iloc[:200], target[:200])
+    if merge:
+        other = BinningProcessSketch(**params).add(X.iloc[200:], target[200:])
+        process.merge(other)
+    else:
+        process.add(X.iloc[200:], target[200:])
+    process.solve()
+
+    for name, limit in [("amount", 0.65), ("override", 0.55)]:
+        variable = process.get_binned_variable(name)
+        assert variable.status == "OPTIMAL"
+        counts = variable.binning_table.build(add_totals=False)["Count"]
+        assert counts.sum() == len(X)
+        assert counts.max() <= np.ceil(limit * len(X))
+        assert variable.max_bin_size == limit
+
+
+def test_legacy_process_restores_max_bin_size(bin_size_data, tmp_path):
+    X, target = bin_size_data
+    params = dict(variable_names=list(X.columns), max_n_bins=2,
+                  max_n_prebins=10, max_bin_size=0.65,
+                  binning_fit_params={"override": {"max_bin_size": None}})
+    process = BinningProcessSketch(**params).add(X.iloc[:200], target[:200])
+    # Mimic a saved process whose child never got the process-wide limit.
+    process._binned_variables["amount"].max_bin_size = None
+    process.__dict__.pop("_max_bin_size_initialized", None)
+    path = str(tmp_path / "legacy_process.pkl")
+    process.save(path)
+
+    restored = BinningProcessSketch.load(path)
+    other = BinningProcessSketch(**params).add(X.iloc[200:], target[200:])
+    restored.merge(other)
+    restored.solve()
+
+    ordinary = restored.get_binned_variable("amount")
+    assert ordinary.max_bin_size == 0.65
+    assert ordinary.status == "OPTIMAL"
+    assert ordinary.binning_table.build(add_totals=False)["Count"].max() <= 260
+    override = restored.get_binned_variable("override")
+    assert override.max_bin_size is None
+    assert override.binning_table.build(add_totals=False)["Count"].max() == 320
 
 
 def test_default_merge():

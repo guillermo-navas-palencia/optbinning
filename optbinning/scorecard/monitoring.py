@@ -397,6 +397,13 @@ class ScorecardMonitoring(BaseEstimator):
         Returns
         -------
         psi_table : pandas.DataFrame
+
+        Notes
+        -----
+        The detailed table includes fitted bins observed in either dataset,
+        including special-code and missing bins. Values without a fitted bin
+        index appear in an ``Unknown`` row. A bin observed in just one dataset
+        contributes positive infinity to the PSI.
         """
         self._check_is_fitted()
 
@@ -801,29 +808,37 @@ class ScorecardMonitoring(BaseEstimator):
         l_df_psi = []
 
         for name in variables:
+            bins = sc_table.loc[sc_table.Variable == name, "Bin"].to_numpy()
+            n_bins = len(bins)
             optb = self.scorecard.binning_process_.get_binned_variable(name)
-            ta = optb.transform(X_actual[name], metric="indices")
-            te = optb.transform(X_expected[name], metric="indices")
+            counts = []
+            for X in (X_actual, X_expected):
+                indices = optb.transform(
+                    X[name], metric="indices", metric_special="empirical",
+                    metric_missing="empirical")
+                known = (indices >= 0) & (indices < n_bins)
+                counts.append(np.bincount(
+                    np.where(known, indices, n_bins), minlength=n_bins + 1))
 
-            n_bins = te.max() + 1
-
-            n_records_a = np.empty(n_bins, dtype=np.int64)
-            n_records_e = np.empty(n_bins, dtype=np.int64)
-
-            for i in range(n_bins):
-                n_records_a[i] = np.count_nonzero(ta == i)
-                n_records_e[i] = np.count_nonzero(te == i)
+            n_records_a, n_records_e = counts
+            observed = (n_records_a > 0) | (n_records_e > 0)
+            bins = np.append(bins, "Unknown")[observed]
+            n_records_a = n_records_a[observed]
+            n_records_e = n_records_e[observed]
 
             t_n_records_a = n_records_a.sum()
             t_n_records_e = n_records_e.sum()
             p_records_a = n_records_a / t_n_records_a
             p_records_e = n_records_e / t_n_records_e
 
-            psi = jeffrey(p_records_a, p_records_e, return_sum=False)
-            bins = sc_table[sc_table.Variable == name]["Bin"].values[:n_bins]
+            # Jeffreys divergence is infinite for one-sided zero counts.
+            common = (n_records_a > 0) & (n_records_e > 0)
+            psi = np.full(len(bins), np.inf)
+            if np.any(common):
+                psi[common] = jeffrey(p_records_a[common], p_records_e[common])
 
             df_psi = pd.DataFrame({
-                "Variable": [name] * n_bins,
+                "Variable": [name] * len(bins),
                 "Bin": bins,
                 "Count A": n_records_a,
                 "Count E": n_records_e,

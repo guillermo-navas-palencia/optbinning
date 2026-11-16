@@ -8,7 +8,7 @@ Scorecard monitoring testing.
 import numpy as np
 import pandas as pd
 
-from pytest import approx, raises
+from pytest import approx, mark, raises
 
 from contextlib import redirect_stdout
 
@@ -183,6 +183,71 @@ def test_default_continuous():
               "w") as f:
         with redirect_stdout(f):
             monitoring.system_stability_report()
+
+
+@mark.parametrize("target_dtype", ["binary", "continuous"])
+def test_variable_psi_counts_missing_and_special_bins(target_dtype):
+    X_expected = pd.DataFrame({"score_input": np.repeat([0., 1.], 40)})
+    X_actual = X_expected.copy()
+    X_actual.loc[:7, "score_input"] = -999
+    X_actual.loc[8:15, "score_input"] = np.nan
+    y = np.repeat([0, 1, 0, 1], [30, 10, 10, 30])
+    if target_dtype == "continuous":
+        y = y + np.linspace(0.1, 0.2, len(y))
+        estimator = LinearRegression()
+    else:
+        estimator = LogisticRegression()
+
+    binning_process = BinningProcess(
+        variable_names=["score_input"],
+        binning_fit_params={"score_input": {"special_codes": {
+            "Manual review": [-999], "Unused code": [-998]}}})
+    scorecard = Scorecard(binning_process, estimator).fit(X_expected, y)
+    monitoring = ScorecardMonitoring(scorecard, psi_method="uniform",
+                                     psi_n_bins=2)
+    monitoring.fit(X_actual, y, X_expected, y)
+
+    detail = monitoring.psi_variable_table(name="score_input",
+                                           style="detailed")
+    assert detail["Bin"].tolist()[-2:] == ["Manual review", "Missing"]
+    assert detail["Count A"].tolist() == [24, 40, 8, 8]
+    assert detail["Count E"].tolist() == [40, 40, 0, 0]
+    assert detail["Count A (%)"].tolist() == approx([0.3, 0.5, 0.1, 0.1])
+    assert detail["Count E (%)"].sum() == approx(1)
+    assert detail["PSI"].iloc[:2].tolist() == approx([-0.2 * np.log(0.6), 0])
+    assert np.isposinf(detail["PSI"].iloc[2:]).all()
+    assert np.isposinf(monitoring.psi_variable_table()["PSI"].iloc[0])
+
+
+@mark.parametrize("n_unseen", [8, 80])
+def test_variable_psi_counts_unseen_categories(n_unseen):
+    X_expected = pd.DataFrame({
+        "segment": ["A"] * 40 + ["B"] * 40,
+        "score_input": np.tile(np.repeat([0., 1.], 20), 2)})
+    X_actual = X_expected.copy()
+    X_actual.loc[:n_unseen - 1, "segment"] = "new"
+    y = np.tile(np.repeat([0, 1, 0, 1], [15, 5, 5, 15]), 2)
+
+    binning_process = BinningProcess(list(X_expected.columns))
+    scorecard = Scorecard(binning_process, LogisticRegression()).fit(
+        X_expected, y)
+    monitoring = ScorecardMonitoring(scorecard, psi_method="uniform",
+                                     psi_n_bins=2)
+    monitoring.fit(X_actual, y, X_expected, y)
+
+    detail = monitoring.psi_variable_table(name="segment", style="detailed")
+    assert detail["Count A"].sum() == len(X_actual)
+    assert detail["Count E"].sum() == len(X_expected)
+    assert detail["Count A (%)"].sum() == approx(1)
+    unknown = detail.iloc[-1]
+    assert unknown["Bin"] == "Unknown"
+    assert unknown["Count A"] == n_unseen
+    assert unknown["Count E"] == 0
+    one_sided = (detail["Count A"] == 0) ^ (detail["Count E"] == 0)
+    assert np.isposinf(detail.loc[one_sided, "PSI"]).all()
+    summary = monitoring.psi_variable_table().set_index("Variable")["PSI"]
+    assert np.isposinf(summary["segment"])
+    assert summary["score_input"] == approx(0)
 
 
 def test_information():

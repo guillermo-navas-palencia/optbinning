@@ -48,7 +48,8 @@ class BinningCP:
         self._n = None
         self._x = None
 
-    def build_model(self, divergence, n_nonevent, n_event, trend_change):
+    def build_model(self, divergence, n_nonevent, n_event, trend_change,
+                    raw_counts=None):
         # Parameters
         M = int(1e6)
         (D, V, pvalue_violation_indices,
@@ -58,6 +59,22 @@ class BinningCP:
 
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
+        if self.gamma:
+            if (np.any(n_nonevent != np.floor(n_nonevent)) or
+                    np.any(n_event != np.floor(n_event))):
+                raise ValueError("Fractional weights with gamma regularization "
+                                 "are not supported; use gamma=0.")
+            n_records = np.asarray(n_records, dtype=np.int64)
+        # Objectives and rates use weighted masses; constraints use actual rows.
+        support_ne, support_e = ((n_nonevent, n_event) if raw_counts is None
+                                 else raw_counts)
+        if (np.any(support_ne != np.floor(support_ne)) or
+                np.any(support_e != np.floor(support_e))):
+            raise ValueError("Raw integer class counts are required for "
+                             "observation support constraints.")
+        support_ne = np.asarray(support_ne, dtype=np.int64)
+        support_e = np.asarray(support_e, dtype=np.int64)
+        support_records = support_ne + support_e
 
         # Initialize model
         model = cp_model.CpModel()
@@ -91,14 +108,14 @@ class BinningCP:
         self.add_constraint_min_max_bins(model, n, x, d)
 
         # Constraint: min / max bin size
-        self.add_constraint_min_max_bin_size(model, n, x, u, n_records,
+        self.add_constraint_min_max_bin_size(model, n, x, u, support_records,
                                              bin_size_diff)
 
         # Constraint: min / max n_nonevent per bin
         if (self.min_bin_n_nonevent is not None or
                 self.max_bin_n_nonevent is not None):
             for i in range(n):
-                bin_ne_size = sum([n_nonevent[j] * x[i, j]
+                bin_ne_size = sum([support_ne[j] * x[i, j]
                                    for j in range(i + 1)])
 
                 if self.min_bin_n_nonevent is not None:
@@ -111,7 +128,7 @@ class BinningCP:
         if (self.min_bin_n_event is not None or
                 self.max_bin_n_event is not None):
             for i in range(n):
-                bin_e_size = sum([n_event[j] * x[i, j] for j in range(i + 1)])
+                bin_e_size = sum([support_e[j] * x[i, j] for j in range(i + 1)])
 
                 if self.min_bin_n_event is not None:
                     model.Add(bin_e_size >= self.min_bin_n_event * x[i, i])

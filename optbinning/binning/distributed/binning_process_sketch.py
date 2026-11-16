@@ -542,7 +542,8 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
         Returns
         -------
         X_new : pandas.DataFrame, shape = (n_samples, n_features_new)
-            Transformed array.
+            Transformed data with row labels from ``X`` when variables are
+            retained.
         """
         self._check_is_solved()
 
@@ -589,14 +590,11 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
             if self.binning_transform_params is not None:
                 params = self.binning_transform_params.get(name, {})
 
-            metric_missing = params.get("metric_missing", metric_missing)
-            metric_special = params.get("metric_special", metric_special)
-
             tparams = {
                 "x": x,
                 "metric": metric,
-                "metric_special": metric_special,
-                "metric_missing": metric_missing,
+                "metric_special": params.get("metric_special", metric_special),
+                "metric_missing": params.get("metric_missing", metric_missing),
                 "check_input": check_input,
                 "show_digits": show_digits
                 }
@@ -608,7 +606,8 @@ class BinningProcessSketch(BaseSketch, BaseEstimator, BaseBinningProcess):
 
             X_transform[:, i] = optb.transform(**tparams)
 
-        return pd.DataFrame(X_transform, columns=selected_variables)
+        return pd.DataFrame(X_transform, columns=selected_variables,
+                            index=X.index)
 
     def get_binned_variable(self, name: str) -> OptimalBinningSketch:
         """Return optimal binning sketch object for a given variable name.

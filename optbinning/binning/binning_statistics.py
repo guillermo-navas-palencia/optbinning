@@ -266,7 +266,10 @@ def target_info_special(
         for s in special_codes.values():
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
-            n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            if len(sw):
+                n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            else:
+                n_nev, n_ev = target_info_samples(y[mask], [], cl)
             n_nonevent.append(n_nev)
             n_event.append(n_ev)
 
@@ -1004,7 +1007,6 @@ class BinningTable:
         t_event_rate = t_n_event / t_n_records
         p_records = n_records / t_n_records
 
-        mask = (n_event > 0) & (n_nonevent > 0)
         event_rate = np.zeros(len(n_records))
         woe = np.zeros(len(n_records))
         iv = np.zeros(len(n_records))
@@ -1020,6 +1022,7 @@ class BinningTable:
         p_w_event = w_n_event / t_w_n_event
         p_w_nonevent = w_n_nonevent / t_w_n_nonevent
 
+        mask = (w_n_event > 0) & (w_n_nonevent > 0)
         event_rate[mask] = w_n_event[mask] / w_n_records[mask]
         constant = np.log(t_w_n_event / t_w_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant

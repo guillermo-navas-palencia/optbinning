@@ -743,7 +743,7 @@ class OptimalBinning(BaseOptimalBinning):
         self._check_is_fitted()
 
         return transform_binary_target(self._splits_optimal, self._dtype, x,
-                                       self._n_nonevent, self._n_event,
+                                       self._w_n_nonevent, self._w_n_event,
                                        self.special_codes, self._categories,
                                        self._cat_others, self.cat_unknown,
                                        metric, metric_special, metric_missing,
@@ -913,12 +913,14 @@ class OptimalBinning(BaseOptimalBinning):
                     self.user_splits_fixed = np.asarray(
                         self.user_splits_fixed)[sorted_idx]
 
-                splits, n_nonevent, n_event, w_n_nonevent, w_n_event = self._prebinning_refinement(
+                (splits, n_nonevent, n_event,
+                 w_n_nonevent, w_n_event) = self._prebinning_refinement(
                     user_splits, x_clean, y_clean, y_missing, x_special,
                     y_special, y_others, sw_clean, sw_missing, sw_special,
                     sw_others)
         else:
-            splits, n_nonevent, n_event, w_n_nonevent, w_n_event = self._fit_prebinning(
+            (splits, n_nonevent, n_event,
+             w_n_nonevent, w_n_event) = self._fit_prebinning(
                 x_clean, y_clean, y_missing, x_special, y_special, y_others,
                 sw_clean, sw_missing, sw_special, sw_others)
 
@@ -1271,8 +1273,6 @@ class OptimalBinning(BaseOptimalBinning):
 
     def _compute_weighted_prebins(self, splits_prebinning, x, y0, y1, sw):
         n_splits = len(splits_prebinning)
-        if not n_splits:
-            return splits_prebinning, np.array([]), np.array([])
 
         if self._dtype == "categorical" and self.user_splits is not None:
             indices = np.digitize(x, splits_prebinning, right=True)
@@ -1357,6 +1357,9 @@ class OptimalBinning(BaseOptimalBinning):
 
         opt_bin_dict['n_nonevent'] = table.n_nonevent.tolist()
         opt_bin_dict['n_event'] = table.n_event.tolist()
+        opt_bin_dict["weighted"] = table.weighted
+        opt_bin_dict["w_n_nonevent"] = table.w_n_nonevent.tolist()
+        opt_bin_dict["w_n_event"] = table.w_n_event.tolist()
 
         opt_bin_dict['min_x'] = table.min_x
         opt_bin_dict['max_x'] = table.max_x
@@ -1417,6 +1420,11 @@ class OptimalBinning(BaseOptimalBinning):
         self.special_codes = bin_table_attr['special_codes']
         self.user_splits = bin_table_attr.get('user_splits')
 
+        # backwards compatibility with older json files
+        bin_table_attr.setdefault("weighted", False)
+        bin_table_attr.setdefault("w_n_nonevent", bin_table_attr["n_nonevent"])
+        bin_table_attr.setdefault("w_n_event", bin_table_attr["n_event"])
+
         self._binning_table = BinningTable(**bin_table_attr)
 
         # Restore the internal state used by ``transform``. Without this,
@@ -1426,6 +1434,11 @@ class OptimalBinning(BaseOptimalBinning):
         self._splits_optimal = bin_table_attr['splits']
         self._n_nonevent = bin_table_attr['n_nonevent']
         self._n_event = bin_table_attr['n_event']
+
+        self._is_weighted = bin_table_attr["weighted"]
+        self._w_n_nonevent = bin_table_attr["w_n_nonevent"]
+        self._w_n_event = bin_table_attr["w_n_event"]
+
         self._categories = bin_table_attr.get('categories')
         self._cat_others = bin_table_attr.get('cat_others')
         self._is_fitted = True

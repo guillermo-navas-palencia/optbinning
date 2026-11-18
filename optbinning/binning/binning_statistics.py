@@ -416,14 +416,22 @@ def bin_info(
     solution: npt.NDArray | list,
     n_nonevent: npt.NDArray,
     n_event: npt.NDArray,
+    w_n_nonevent: npt.NDArray,
+    w_n_event: npt.NDArray,
     n_nonevent_missing: int,
     n_event_missing: int,
+    w_n_nonevent_missing: int,
+    w_n_event_missing: int,
     n_nonevent_special: int | list,
     n_event_special: int | list,
+    w_n_nonevent_special: int | list,
+    w_n_event_special: int | list,
     n_nonevent_cat_others: int,
     n_event_cat_others: int,
+    w_n_nonevent_cat_others: int,
+    w_n_event_cat_others: int,
     cat_others: list | None
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Compute binning information for binary target.
 
     Parameters
@@ -467,8 +475,13 @@ def bin_info(
         Final event counts.
     """
 
+    w_n_nev = []
+    w_n_ev = []
     n_nev = []
     n_ev = []
+
+    accum_w_nev = 0
+    accum_w_ev = 0
     accum_nev = 0
     accum_ev = 0
     for i, selected in enumerate(solution):
@@ -477,6 +490,11 @@ def bin_info(
             n_ev.append(n_event[i] + accum_ev)
             accum_nev = 0
             accum_ev = 0
+
+            w_n_nev.append(w_n_nonevent[i] + accum_w_nev)
+            w_n_ev.append(w_n_event[i] + accum_w_ev)
+            accum_w_nev = 0
+            accum_w_ev = 0
         else:
             accum_nev += n_nonevent[i]
             accum_ev += n_event[i]
@@ -484,22 +502,35 @@ def bin_info(
     if not len(solution):
         n_ev.append(n_event[0])
         n_nev.append(n_nonevent[0])
+        w_n_ev.append(w_n_event[0])
+        w_n_nev.append(w_n_nonevent[0])
 
     if len(cat_others):
         n_nev.append(n_nonevent_cat_others)
         n_ev.append(n_event_cat_others)
+        w_n_nev.append(w_n_nonevent_cat_others)
+        w_n_ev.append(w_n_event_cat_others)
 
     if isinstance(n_nonevent_special, list):
         n_nev.extend(n_nonevent_special)
         n_ev.extend(n_event_special)
+        w_n_nev.extend(w_n_nonevent_special)
+        w_n_ev.extend(w_n_event_special)
     else:
         n_nev.append(n_nonevent_special)
         n_ev.append(n_event_special)
+        w_n_nev.append(n_nonevent_special)
+        w_n_ev.append(n_event_special)
 
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
+    w_n_nev.append(n_nonevent_missing)
+    w_n_ev.append(n_event_missing)
 
-    return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
+    return (
+        np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64),
+        np.array(w_n_nev).astype(float), np.array(w_n_ev).astype(float)
+    )
 
 
 def multiclass_bin_info(
@@ -895,6 +926,8 @@ class BinningTable:
         splits: npt.NDArray,
         n_nonevent: npt.NDArray,
         n_event: npt.NDArray,
+        w_n_nonevent: npt.NDArray,
+        w_n_event: npt.NDArray,
         min_x: float | None = None,
         max_x: float | None = None,
         categories: npt.NDArray | list | None = None,
@@ -908,6 +941,8 @@ class BinningTable:
         self.splits = splits
         self.n_nonevent = n_nonevent
         self.n_event = n_event
+        self.w_n_nonevent = w_n_nonevent
+        self.w_n_event = w_n_event
         self.min_x = min_x
         self.max_x = max_x
         self.categories = categories
@@ -963,8 +998,8 @@ class BinningTable:
         t_event_rate = t_n_event / t_n_records
 
         p_records = n_records / t_n_records
-        p_event = n_event / t_n_event
-        p_nonevent = n_nonevent / t_n_nonevent
+        # p_event = n_event / t_n_event
+        # p_nonevent = n_nonevent / t_n_nonevent
 
         mask = (n_event > 0) & (n_nonevent > 0)
         event_rate = np.zeros(len(n_records))
@@ -972,17 +1007,25 @@ class BinningTable:
         iv = np.zeros(len(n_records))
         js = np.zeros(len(n_records))
 
-        # Compute weight of evidence and event rate
-        event_rate[mask] = n_event[mask] / n_records[mask]
-        constant = np.log(t_n_event / t_n_nonevent)
+        # Compute weight of evidence and event rate (use weighted)
+        w_n_nonevent = self.w_n_nonevent
+        w_n_event = self.w_n_event
+        w_n_records = w_n_nonevent + w_n_event
+        t_w_n_event = w_n_event.sum()
+        t_w_nonevent = w_n_nonevent.sum()
+        p_w_event = w_n_event / t_w_n_event
+        p_w_nonevent = w_n_nonevent / t_w_nonevent
+    
+        event_rate[mask] = w_n_event[mask] / w_n_records[mask]
+        constant = np.log(t_w_n_event / t_w_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
         # Compute Gini
-        self._gini = gini(self.n_event, self.n_nonevent)
+        self._gini = gini(self.w_n_event, self.w_n_nonevent)
 
         # Compute divergence measures
-        p_ev = p_event[mask]
-        p_nev = p_nonevent[mask]
+        p_ev = p_w_event[mask]
+        p_nev = p_w_nonevent[mask]
 
         iv[mask] = jeffrey(p_ev, p_nev, return_sum=False)
         js[mask] = jensen_shannon(p_ev, p_nev, return_sum=False)

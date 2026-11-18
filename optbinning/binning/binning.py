@@ -807,7 +807,7 @@ class OptimalBinning(BaseOptimalBinning):
         # Sample weights
         self._has_sample_weight = sample_weight is not None
         self._has_class_weight = self.class_weight is not None
-        self._is_weighted = self._has_sample_weight and self._has_class_weight
+        self._is_weighted = self._has_sample_weight or self._has_class_weight
 
         sample_weight = preprocessing_sample_weights(
             x=x, y=y, sample_weight=sample_weight,
@@ -922,12 +922,6 @@ class OptimalBinning(BaseOptimalBinning):
                 x_clean, y_clean, y_missing, x_special, y_special, y_others,
                 sw_clean, sw_missing, sw_special, sw_others)
 
-        print(splits)
-        print(n_nonevent)
-        print(n_event)
-        print(w_n_nonevent)
-        print(w_n_event)
-
         self._n_prebins = len(n_nonevent)
 
         self._categories = categories
@@ -977,14 +971,10 @@ class OptimalBinning(BaseOptimalBinning):
             min_x = None
             max_x = None
 
-        print(self._n_nonevent)
-        print(self._n_event)
-        print(self._w_n_nonevent)
-        print(self._w_n_event)
-
         self._binning_table = BinningTable(
             self.name, self._dtype, self.special_codes, self._splits_optimal,
-            self._n_nonevent, self._n_event, self._w_n_nonevent, self._w_n_event,
+            self._n_nonevent, self._n_event, self._is_weighted,
+            self._w_n_nonevent, self._w_n_event,
             min_x, max_x, self._categories,
             self._cat_others, self.user_splits)
 

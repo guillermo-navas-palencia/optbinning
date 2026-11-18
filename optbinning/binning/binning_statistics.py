@@ -498,6 +498,8 @@ def bin_info(
         else:
             accum_nev += n_nonevent[i]
             accum_ev += n_event[i]
+            accum_w_nev += w_n_nonevent[i]
+            accum_w_ev += w_n_event[i]
 
     if not len(solution):
         n_ev.append(n_event[0])
@@ -519,17 +521,19 @@ def bin_info(
     else:
         n_nev.append(n_nonevent_special)
         n_ev.append(n_event_special)
-        w_n_nev.append(n_nonevent_special)
-        w_n_ev.append(n_event_special)
+        w_n_nev.append(w_n_nonevent_special)
+        w_n_ev.append(w_n_event_special)
 
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
-    w_n_nev.append(n_nonevent_missing)
-    w_n_ev.append(n_event_missing)
+    w_n_nev.append(w_n_nonevent_missing)
+    w_n_ev.append(w_n_event_missing)
 
     return (
-        np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64),
-        np.array(w_n_nev).astype(float), np.array(w_n_ev).astype(float)
+        np.array(n_nev).astype(np.int64),
+        np.array(n_ev).astype(np.int64),
+        np.array(w_n_nev).astype(np.float64),
+        np.array(w_n_ev).astype(np.float64)
     )
 
 
@@ -926,13 +930,14 @@ class BinningTable:
         splits: npt.NDArray,
         n_nonevent: npt.NDArray,
         n_event: npt.NDArray,
+        weighted: bool, 
         w_n_nonevent: npt.NDArray,
         w_n_event: npt.NDArray,
         min_x: float | None = None,
         max_x: float | None = None,
         categories: npt.NDArray | list | None = None,
         cat_others: npt.NDArray | list | None = None,
-        user_splits: npt.NDArray | None = None,
+        user_splits: npt.NDArray | None = None
     ) -> None:
 
         self.name = name
@@ -941,6 +946,7 @@ class BinningTable:
         self.splits = splits
         self.n_nonevent = n_nonevent
         self.n_event = n_event
+        self.weighted = weighted
         self.w_n_nonevent = w_n_nonevent
         self.w_n_event = w_n_event
         self.min_x = min_x
@@ -996,10 +1002,7 @@ class BinningTable:
         t_n_event = n_event.sum()
         t_n_records = t_n_nonevent + t_n_event
         t_event_rate = t_n_event / t_n_records
-
         p_records = n_records / t_n_records
-        # p_event = n_event / t_n_event
-        # p_nonevent = n_nonevent / t_n_nonevent
 
         mask = (n_event > 0) & (n_nonevent > 0)
         event_rate = np.zeros(len(n_records))
@@ -1012,12 +1015,13 @@ class BinningTable:
         w_n_event = self.w_n_event
         w_n_records = w_n_nonevent + w_n_event
         t_w_n_event = w_n_event.sum()
-        t_w_nonevent = w_n_nonevent.sum()
+        t_w_n_nonevent = w_n_nonevent.sum()
+        t_w_event_rate = t_w_n_event / (t_w_n_event + t_w_n_nonevent)
         p_w_event = w_n_event / t_w_n_event
-        p_w_nonevent = w_n_nonevent / t_w_nonevent
-    
+        p_w_nonevent = w_n_nonevent / t_w_n_nonevent
+
         event_rate[mask] = w_n_event[mask] / w_n_records[mask]
-        constant = np.log(t_w_n_event / t_w_nonevent)
+        constant = np.log(t_w_n_event / t_w_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
         # Compute Gini
@@ -1078,22 +1082,43 @@ class BinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": n_records,
-            "Count (%)": p_records,
-            "Non-event": n_nonevent,
-            "Event": n_event,
-            "Event rate": event_rate,
-            "WoE": woe,
-            "IV": iv,
-            "JS": js
-            })
+        if self.weighted:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Weighted non-event": w_n_nonevent,
+                "Weighted event": w_n_event,
+                "Weighted event rate": event_rate,
+                "Weighted WoE": woe,
+                "Weighted IV": iv,
+                "Weighted JS": js
+                })
 
-        if add_totals:
-            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
-                      t_event_rate, "", t_iv, t_js]
-            df.loc["Totals"] = totals
+            if add_totals:
+                totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
+                          t_w_n_nonevent, t_w_n_event,
+                          t_w_event_rate, "", t_iv, t_js]
+                df.loc["Totals"] = totals
+        else:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Event rate": event_rate,
+                "WoE": woe,
+                "IV": iv,
+                "JS": js
+                })
+
+            if add_totals:
+                totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
+                        t_event_rate, "", t_iv, t_js]
+                df.loc["Totals"] = totals
 
         self._is_built = True
 
@@ -1211,6 +1236,9 @@ class BinningTable:
         elif metric == "iv":
             metric_values = self._iv_values
             metric_label = "IV"
+
+        if self.weighted:
+            metric_label = f"Weighted {metric_label}"
 
         owns_figure = ax is None
         if owns_figure:

@@ -652,16 +652,44 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
                                 (self._n_event_missing +
                                  self._n_event_special)])
 
-        self._n_nonevent, self._n_event = bin_info(
-            self._solution, n_nonevent, n_event, self._n_nonevent_missing,
-            self._n_event_missing, self._n_nonevent_special,
-            self._n_event_special, self._n_nonevent_cat_others,
-            self._n_event_cat_others, self._cat_others)
+        (self._n_nonevent, self._n_event,
+         self._w_n_nonevent, self._w_n_event) = bin_info(
+            solution=self._solution,
+            n_nonevent=n_nonevent,
+            n_event=n_event,
+            w_n_nonevent=n_nonevent,
+            w_n_event=n_event,
+            n_nonevent_missing=self._n_nonevent_missing,
+            n_event_missing=self._n_event_missing,
+            w_n_nonevent_missing=self._n_nonevent_missing,
+            w_n_event_missing=self._n_event_missing,
+            n_nonevent_special=self._n_nonevent_special,
+            n_event_special=self._n_event_special,
+            w_n_nonevent_special=self._n_nonevent_special,
+            w_n_event_special=self._n_event_special,
+            n_nonevent_cat_others=self._n_nonevent_cat_others,
+            n_event_cat_others=self._n_event_cat_others,
+            w_n_nonevent_cat_others=self._n_nonevent_cat_others,
+            w_n_event_cat_others=self._n_event_cat_others,
+            cat_others=self._cat_others
+        )
 
         self._binning_table = BinningTable(
-            self.name, self.dtype, self.special_codes, self._splits_optimal,
-            self._n_nonevent, self._n_event, None, None, self._categories,
-            self._cat_others, None)
+            name=self.name,
+            dtype=self.dtype,
+            special_codes=self.special_codes,
+            splits=self._splits_optimal,
+            n_nonevent=self._n_nonevent,
+            n_event=self._n_event,
+            weighted=False,
+            w_n_nonevent=self._w_n_nonevent,
+            w_n_event=self._w_n_event,
+            min_x=None,
+            max_x=None,
+            categories=self._categories,
+            cat_others=self._cat_others,
+            user_splits=None
+        )
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
@@ -977,8 +1005,14 @@ class OptimalBinningSketch(BaseSketch, BaseEstimator):
         if self.verbose:
             logger.info("Optimizer: build model...")
 
-        optimizer.build_model(self.divergence, n_nonevent, n_event,
-                              trend_change)
+        optimizer.build_model(
+            divergence=self.divergence,
+            n_nonevent=n_nonevent,
+            n_event=n_event,
+            w_n_nonevent=n_nonevent,
+            w_n_event=n_event,
+            trend_change=trend_change
+        )
 
         if self.verbose:
             logger.info("Optimizer: solve...")

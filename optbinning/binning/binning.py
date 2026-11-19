@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 import numpy.typing as npt
 
-from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils import check_array
+from sklearn.utils.validation import _check_sample_weight
 
 from ..information import solver_statistics
 from ..logging import Logger
@@ -555,6 +555,9 @@ class OptimalBinning(BaseOptimalBinning):
         # auxiliary
         self._dtype = None
         self._flag_min_n_event_nonevent = False
+        self._has_weights = False
+        self._fractional_weights = False
+        self._raw_prebin_counts = None
         self._categories = None
         self._cat_others = None
         self._n_event = None
@@ -797,41 +800,44 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._flag_min_n_event_nonevent = False
         self._n_samples = len(x)
-        if sample_weight is not None:
-            sample_weight = np.asarray(sample_weight, dtype=float)
-            if sample_weight.ndim == 0:
-                sample_weight = np.full(self._n_samples, sample_weight.item())
-            if sample_weight.shape != (self._n_samples,):
-                raise ValueError("sample_weight must match the number of samples.")
-        # Compose class and sample weights once, without mutating caller data.
-        # Support and fractional-mass checks must use this effective mass.
-        if self.class_weight is not None:
-            class_mass = compute_sample_weight(self.class_weight, y)
-            sample_weight = (class_mass if sample_weight is None else
-                             np.asarray(sample_weight) * class_mass)
-        if sample_weight is not None:
-            if (not np.isfinite(sample_weight).all() or
-                    np.any(sample_weight < 0)):
+        self._has_weights = (sample_weight is not None or
+                             self.class_weight is not None)
+        time_preprocessing = time.perf_counter()
+        if self._has_weights:
+            if (isinstance(sample_weight, np.ndarray)
+                    and sample_weight.ndim == 0):
+                sample_weight = sample_weight.item()
+            sample_weight = _check_sample_weight(
+                sample_weight, x, dtype=float, copy=True)
+
+        [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
+         y_others, categories, cat_others, sw_clean, sw_missing,
+         sw_special, sw_others, effective_weight] = split_data(
+            self._dtype, x, y, self.special_codes, self.cat_cutoff,
+            self.user_splits, check_input, self.outlier_detector,
+            self.outlier_params, None, None, self.class_weight, sample_weight)
+
+        self._fractional_weights = False
+        self._n_samples_weighted = self._n_samples
+        if effective_weight is not None:
+            if (not np.isfinite(effective_weight).all() or
+                    np.any(effective_weight < 0)):
                 raise ValueError("Effective sample weights must be finite "
                                  "and nonnegative.")
             with np.errstate(over="ignore"):
-                total_weight = sample_weight.sum()
+                total_weight = effective_weight.sum()
             if not np.isfinite(total_weight) or total_weight <= 0:
                 raise ValueError("Effective sample weights must have finite "
                                  "positive total mass.")
-        self._has_weights = sample_weight is not None
+            self._fractional_weights = np.any(
+                effective_weight != np.floor(effective_weight))
+            self._n_samples_weighted = total_weight
         if self._has_weights and self.solver == "ls":
             raise ValueError("Weighted binary binning requires solver='cp' "
                              "or solver='mip'.")
-        self._fractional_weights = (sample_weight is not None and
-            np.any(np.asarray(sample_weight) != np.floor(sample_weight)))
         if self._fractional_weights and self.gamma:
             raise ValueError("Fractional weights with gamma regularization "
                              "are not supported; use gamma=0.")
-        if sample_weight is not None:
-            self._n_samples_weighted = np.sum(sample_weight)
-        else:
-            self._n_samples_weighted = self._n_samples
 
         if self.verbose:
             if self._n_samples == self._n_samples_weighted:
@@ -841,15 +847,6 @@ class OptimalBinning(BaseOptimalBinning):
                 logger.info("Pre-processing: number of samples: {}. "
                             "Weighted samples: {}"
                             .format(self._n_samples, self._n_samples_weighted))
-
-        time_preprocessing = time.perf_counter()
-
-        [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         y_others, categories, cat_others, sw_clean, sw_missing,
-         sw_special, sw_others] = split_data(
-            self._dtype, x, y, self.special_codes, self.cat_cutoff,
-            self.user_splits, check_input, self.outlier_detector,
-            self.outlier_params, None, None, None, sample_weight)
 
         self._time_preprocessing = time.perf_counter() - time_preprocessing
 

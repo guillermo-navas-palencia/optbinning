@@ -16,6 +16,7 @@ import pandas as pd
 import numpy.typing as npt
 
 from sklearn.utils import check_array
+from sklearn.utils.validation import _check_sample_weight
 
 from ..information import solver_statistics
 from ..logging import Logger
@@ -663,10 +664,13 @@ class ContinuousOptimalBinning(OptimalBinning):
                             .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(
+                sample_weight, x, dtype=np.asarray(x).dtype)
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          y_others, categories, cat_others, sw_clean, sw_missing, sw_special,
-         sw_others] = split_data(
+         sw_others, _] = split_data(
             self._dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
             self.outlier_params, None, None, None, sample_weight)

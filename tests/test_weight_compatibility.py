@@ -138,3 +138,96 @@ def test_cart_kwargs_override_defaults(raw_support, override):
                         random_state=0).fit(x, y, weights)
     cuts = np.unique(expected.tree_.threshold)
     np.testing.assert_array_equal(actual.splits, cuts[cuts != -2])
+
+
+def test_split_data_composes_and_returns_full_weights_once():
+    from optbinning.binning.preprocessing import split_data
+
+    x = np.array([0., 1., -99., np.nan])
+    y = np.array([0, 1, 0, 1])
+    weights = np.array([.2, .4, .6, .8])
+    result = split_data('numerical', x, y, special_codes=[-99],
+                        class_weight={0: 2, 1: 3}, sample_weight=weights)
+    assert len(result) == 14
+    np.testing.assert_allclose(result[-1], [.4, 1.2, 1.2, 2.4])
+    np.testing.assert_allclose(result[9], [.4, 1.2])
+    np.testing.assert_allclose(result[10], [2.4])
+    np.testing.assert_allclose(result[11], [1.2])
+    unweighted = split_data('numerical', x, y, special_codes=[-99])
+    assert len(unweighted) == 14
+    assert unweighted[-1] is None
+    class_only = split_data('numerical', x, y, special_codes=[-99],
+                            class_weight={0: 2, 1: 3})
+    np.testing.assert_array_equal(class_only[-1], [2, 3, 2, 3])
+
+
+@pytest.mark.parametrize('weight', [.3, np.array(.3), np.full(4, .3)])
+def test_binary_scalar_and_vector_weights(weight):
+    model = OptimalBinning(user_splits=[.5], monotonic_trend=None).fit(
+        [0, 0, 1, 1], [0, 1, 0, 1], sample_weight=weight)
+    assert model.binning_table.n_event.sum() == pytest.approx(.6)
+    assert model.binning_table.n_nonevent.sum() == pytest.approx(.6)
+
+
+@pytest.mark.parametrize('weight', [np.nan, np.inf, -1., 0.])
+def test_binary_invalid_scalar_weight(weight):
+    with pytest.raises(ValueError):
+        OptimalBinning().fit([0, 1], [0, 1], sample_weight=weight)
+
+
+@pytest.mark.parametrize('class_weight', [{0: 0., 1: 0.}, {0: np.inf, 1: 1.},
+                                         {0: 1e308, 1: 1e308}])
+def test_binary_rejects_invalid_composed_mass(class_weight):
+    with np.errstate(over='ignore'):
+        with pytest.raises(ValueError, match='Effective sample weights'):
+            OptimalBinning(class_weight=class_weight).fit(
+                [0, 1], [0, 1], sample_weight=[2., 2.])
+
+
+@pytest.mark.parametrize('x_dtype', [np.float32, np.float64])
+def test_binary_weights_keep_precision_and_do_not_mutate_input(x_dtype):
+    x = np.array([0, 0, 1, 1, -99, np.nan], dtype=x_dtype)
+    y = np.array([0, 1, 0, 1, 0, 1])
+    weights = np.array([.123456789, .234567891, .345678912,
+                        .456789123, .567891234, .678912345])
+    before = weights.copy()
+    model = OptimalBinning(user_splits=[.5], special_codes=[-99],
+                           class_weight={0: 2, 1: 3},
+                           monotonic_trend=None).fit(x, y, sample_weight=weights)
+    np.testing.assert_array_equal(weights, before)
+    assert model.binning_table.n_event.sum() == pytest.approx(
+        3 * weights[y == 1].sum(), rel=1e-14)
+    assert model.binning_table.n_nonevent.sum() == pytest.approx(
+        2 * weights[y == 0].sum(), rel=1e-14)
+
+
+@pytest.mark.parametrize('x_dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('weights', [None, .3, [.2, .3, .4, .5]])
+def test_continuous_weights_retain_existing_conversion(x_dtype, weights,
+                                                      monkeypatch):
+    from sklearn.utils.validation import _check_sample_weight
+    from optbinning import ContinuousOptimalBinning
+    from optbinning.binning import continuous_binning
+
+    original_split_data = continuous_binning.split_data
+    x = np.array([0, 0, 1, 1], dtype=x_dtype)
+    expected = _check_sample_weight(weights, x, dtype=x.dtype)
+
+    def observe(*args, **kwargs):
+        result = original_split_data(*args, **kwargs)
+        np.testing.assert_array_equal(result[9], expected)
+        assert result[9].dtype == expected.dtype
+        assert len(result) == 14
+        if weights is None:
+            assert result[-1] is None
+        else:
+            np.testing.assert_array_equal(result[-1], expected)
+        return result
+
+    monkeypatch.setattr(continuous_binning, 'split_data', observe)
+    model = ContinuousOptimalBinning(user_splits=[.5], monotonic_trend=None)
+    if np.isscalar(weights) and weights is not None:
+        with pytest.raises(TypeError, match='not iterable'):
+            model.fit(x, [1., 2., 3., 4.], sample_weight=weights)
+    else:
+        model.fit(x, [1., 2., 3., 4.], sample_weight=weights)

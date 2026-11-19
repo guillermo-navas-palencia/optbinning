@@ -137,7 +137,7 @@ class BSketch:
         check_input : bool (default=False)
             Whether to check input arrays.
         """
-        xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _ = split_data(
+        xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _, _ = split_data(
             dtype=None,
             x=x,
             y=y,
@@ -355,7 +355,7 @@ class BCatSketch:
         check_input : bool (default=False)
             Whether to check input arrays.
         """
-        xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _ = split_data(
+        xc, yc, xm, ym, xs, ys, _, _, _, _, _, _, _, _ = split_data(
             dtype=None,
             x=x,
             y=y,

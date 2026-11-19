@@ -74,14 +74,14 @@ def test_cbc_fractional_support_without_pure_bins():
     [np.inf, 1, 1, 1], [1e308] * 4,
 ])
 def test_invalid_effective_weights_rejected(weights):
-    with pytest.raises(ValueError, match="Effective sample weights"):
+    with pytest.raises(ValueError, match="sample_weight|Effective sample weights"):
         OptimalBinning(user_splits=[]).fit(
             [0, 1, 2, 3], [0, 1, 0, 1], sample_weight=weights)
 
 
 @pytest.mark.parametrize("weights", [[[1], [1], [1], [1]], [1, 2]])
 def test_weights_cannot_broadcast_against_class_weights(weights):
-    with pytest.raises(ValueError, match="sample_weight must match"):
+    with pytest.raises(ValueError, match="Sample weights|sample_weight.shape"):
         OptimalBinning(class_weight={0: .5, 1: 1.5}).fit(
             [0, 1, 2, 3], [0, 1, 0, 1], sample_weight=weights)
 

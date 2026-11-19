@@ -224,6 +224,9 @@ def split_data(
     else:
         _special_codes = special_codes
 
+    if sample_weight is None:
+        sample_weight = np.ones(len(x))
+
     if special_codes is None:
         clean_mask = ~missing_mask
 

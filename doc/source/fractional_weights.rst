@@ -47,3 +47,12 @@ CP and MIP (BOP/CBC) are supported. Weighted LocalSolver fits are rejected rathe
 than silently retaining different size semantics. Fractional effective weights
 with nonzero ``gamma`` remain unsupported and raise an explicit error. Pure-bin
 support and exposure-specific calibration are outside this change.
+
+Compatibility
+-------------
+
+Unweighted and integer-weighted counts retain integer dtypes; only fractional
+weights require floating counts. Continuous and multiclass estimators retain
+their existing prebinning behavior. Reusing a binary estimator resets its
+pure-prebin flag, so a previous Hellinger/triangular fit cannot leave stale
+class-support state for the next fit.

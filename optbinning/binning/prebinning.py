@@ -85,7 +85,8 @@ class PreBinning:
             Target vector relative to x.
 
         sample_weight : array-like of shape (n_samples,) (default=None)
-            Array of weights that are assigned to individual samples.
+            Array of weights that are assigned to individual samples; ignored
+            if ``method != "cart"``.
 
         Returns
         -------

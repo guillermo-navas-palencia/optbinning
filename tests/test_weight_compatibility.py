@@ -231,3 +231,21 @@ def test_continuous_weights_retain_existing_conversion(x_dtype, weights,
             model.fit(x, [1., 2., 3., 4.], sample_weight=weights)
     else:
         model.fit(x, [1., 2., 3., 4.], sample_weight=weights)
+
+
+@pytest.mark.parametrize('divergence', ['hellinger', 'triangular'])
+def test_refit_clears_pure_prebin_state(divergence):
+    x = np.repeat([0., 1.], 20)
+    model = OptimalBinning(divergence=divergence, user_splits=[.5],
+                           monotonic_trend=None)
+    model.fit(x, np.repeat([0, 1], 20))
+    assert model._flag_min_n_event_nonevent
+    y = np.tile([0, 1], 20)
+    model.fit(x, y)
+    fresh = OptimalBinning(divergence=divergence, user_splits=[.5],
+                           monotonic_trend=None).fit(x, y)
+    assert not model._flag_min_n_event_nonevent
+    assert model.status == fresh.status
+    np.testing.assert_array_equal(model.splits, fresh.splits)
+    np.testing.assert_array_equal(model.binning_table.n_event,
+                                  fresh.binning_table.n_event)

@@ -420,7 +420,7 @@ def preprocessing_sample_weights(
 
     sample_weight = _check_sample_weight(
         sample_weight=sample_weight, X=x, dtype=np.float64,
-        ensure_non_negative=True, allow_all_zero_weights=False)
+        ensure_non_negative=True)
 
     if class_weight is not None:
         sample_weight = sample_weight * compute_sample_weight(

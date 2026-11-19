@@ -985,7 +985,8 @@ class OptimalBinning(BaseOptimalBinning):
             self._solution, n_nonevent, n_event, self._n_nonevent_missing,
             self._n_event_missing, self._n_nonevent_special,
             self._n_event_special, self._n_nonevent_cat_others,
-            self._n_event_cat_others, cat_others)
+            self._n_event_cat_others, cat_others,
+            fractional_weights=self._fractional_weights)
 
         if self._dtype == "numerical":
             min_x = x_clean.min()
@@ -1235,8 +1236,9 @@ class OptimalBinning(BaseOptimalBinning):
             indices = np.digitize(x, splits_prebinning, right=False)
             n_bins = n_splits + 1
 
-        n_nonevent = np.empty(n_bins, dtype=float)
-        n_event = np.empty(n_bins, dtype=float)
+        dtype = float if self._fractional_weights else np.int64
+        n_nonevent = np.empty(n_bins, dtype=dtype)
+        n_event = np.empty(n_bins, dtype=dtype)
 
         for i in range(n_bins):
             mask = (indices == i)

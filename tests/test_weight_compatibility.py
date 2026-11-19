@@ -1,7 +1,93 @@
+"""Compatibility contracts for binary weight handling."""
 import numpy as np
 import pytest
 
 from optbinning import OptimalBinning
+from optbinning.binning.binning_statistics import bin_info
+
+
+@pytest.mark.parametrize('weight,dtype', [(None, np.int64), (2, np.int64),
+                                         (.25, np.float64)])
+@pytest.mark.parametrize('solver', ['cp', 'mip'])
+def test_count_dtypes_and_json(weight, dtype, solver, tmp_path):
+    x = np.r_[np.repeat([0., 1.], 20), -99, -99, np.nan, np.nan]
+    y = np.r_[np.tile([0, 1], 20), 0, 1, 0, 1]
+    weights = None if weight is None else np.full(len(x), weight)
+    model = OptimalBinning(solver=solver, user_splits=[.5],
+                           user_splits_fixed=[True], special_codes=[-99],
+                           monotonic_trend=None).fit(x, y, sample_weight=weights)
+    assert model.binning_table.n_event.dtype == dtype
+    assert model.binning_table.n_nonevent.dtype == dtype
+    table = model.binning_table.build()
+    for column in ['Count', 'Non-event', 'Event']:
+        assert table[column].dtype == np.int64
+    if weight is not None:
+        assert table['Weighted count'].dtype == dtype
+    path = str(tmp_path / 'counts.json')
+    model.to_json(path)
+    # read_json mutates the estimator; it does not return it.
+    restored = OptimalBinning()
+    restored.read_json(path)
+    assert restored.binning_table.n_event.dtype == dtype
+    np.testing.assert_array_equal(restored.binning_table.n_event,
+                                  model.binning_table.n_event)
+
+
+def test_fractional_special_mass_is_not_truncated():
+    model = OptimalBinning(user_splits=[.5], special_codes=[-99],
+                           monotonic_trend=None).fit(
+        [0, 0, 1, 1, -99, -99], [0, 1, 0, 1, 0, 1],
+        sample_weight=[1, 1, 1, 1, .2, .3])
+    assert model.binning_table.n_event.dtype == np.float64
+    assert model.binning_table.n_event[-2] == pytest.approx(.3)
+
+
+@pytest.mark.parametrize('group', ['missing', 'special', 'others'])
+def test_fractional_mass_only_outside_regular_bins(group):
+    if group == 'others':
+        model = OptimalBinning(dtype='categorical',
+                               user_splits=[['a'], ['b']],
+                               monotonic_trend=None)
+        x = ['a', 'a', 'b', 'b', 'other', 'other']
+        index = -3
+    else:
+        model = OptimalBinning(user_splits=[.5], special_codes={'code': [-99]},
+                               monotonic_trend=None)
+        x = [0, 0, 1, 1] + ([np.nan] * 2 if group == 'missing' else [-99] * 2)
+        index = -1 if group == 'missing' else -2
+    model.fit(x, [0, 1, 0, 1, 0, 1], sample_weight=[1, 1, 1, 1, .2, .3])
+    assert model.binning_table.n_event[index] == pytest.approx(.3)
+    assert model.binning_table.n_nonevent[index] == pytest.approx(.2)
+    assert model.binning_table.n_event.dtype == np.float64
+
+
+@pytest.mark.parametrize('weights', [np.ones(4), np.full(4, 2.),
+                                    np.full(4, .25)])
+def test_weighted_target_sums_keep_original_behavior(weights):
+    from optbinning.binning.binning_statistics import target_info_samples
+
+    ne, ev = target_info_samples(np.array([0, 1, 0, 1]), weights)
+    expected = np.sum(weights[:2])
+    assert ne.dtype == ev.dtype == expected.dtype
+    assert ne == ev == expected
+
+
+@pytest.mark.parametrize('fractional', [False, True])
+def test_bin_info_explicit_fractional_flag(fractional):
+    ne, ev = bin_info([True], np.array([2.25]), np.array([3.5]),
+                      0., 0., 0., 0., 0., 0., [],
+                      fractional_weights=fractional)
+    assert ne.dtype == ev.dtype == (np.float64 if fractional else np.int64)
+    assert ne[0] == (2.25 if fractional else 2)
+    assert ev[0] == (3.5 if fractional else 3)
+
+
+def test_shared_bin_info_retains_integer_default():
+    # Scenario and sketch estimators share this helper but do not opt in to
+    # fractional binary weights.
+    ne, ev = bin_info([True], np.array([2.]), np.array([3.]),
+                      0., 0., 0., 0., 0., 0., [])
+    assert ne.dtype == ev.dtype == np.int64
 
 
 @pytest.mark.parametrize('weighted', [False, True])

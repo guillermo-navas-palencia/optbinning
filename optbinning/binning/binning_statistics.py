@@ -422,7 +422,8 @@ def bin_info(
     n_event_special: int | list,
     n_nonevent_cat_others: int,
     n_event_cat_others: int,
-    cat_others: list | None
+    cat_others: list | None,
+    fractional_weights: bool = False
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute binning information for binary target.
 
@@ -457,6 +458,10 @@ def bin_info(
 
     cat_others : list or None
         Categories grouped as "others".
+
+    fractional_weights : bool (default=False)
+        Preserve fractional effective counts as floats. Otherwise retain the
+        original integer output used by existing callers.
 
     Returns
     -------
@@ -499,7 +504,8 @@ def bin_info(
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
 
-    return np.asarray(n_nev, dtype=float), np.asarray(n_ev, dtype=float)
+    dtype = float if fractional_weights else np.int64
+    return np.asarray(n_nev, dtype=dtype), np.asarray(n_ev, dtype=dtype)
 
 
 def multiclass_bin_info(

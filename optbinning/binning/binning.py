@@ -952,19 +952,35 @@ class OptimalBinning(BaseOptimalBinning):
         time_postprocessing = time.perf_counter()
 
         if not len(splits):
-            t_info = target_info_samples(y_clean, sw_clean)
+            t_info = target_info_samples(y=y_clean, sw=[])
             n_nonevent = np.array([t_info[0]])
             n_event = np.array([t_info[1]])
 
-        self._n_nonevent, self._n_event, self._w_n_nonevent, self._w_n_event = bin_info(
-            self._solution, n_nonevent, n_event, w_n_nonevent, w_n_event,
-            self._n_nonevent_missing, self._n_event_missing,
-            self._w_n_nonevent_missing, self._w_n_event_missing,
-            self._n_nonevent_special, self._n_event_special,
-            self._w_n_nonevent_special, self._w_n_event_special,
-            self._n_nonevent_cat_others, self._n_event_cat_others,
-            self._w_n_nonevent_cat_others, self._w_n_event_cat_others,
-            cat_others)
+            w_t_info = target_info_samples(y=y_clean, sw=sw_clean)
+            w_n_nonevent = np.array([w_t_info[0]])
+            w_n_event = np.array([w_t_info[1]])
+
+        (self._n_nonevent, self._n_event,
+         self._w_n_nonevent, self._w_n_event) = bin_info(
+            solution=self._solution,
+            n_nonevent=n_nonevent,
+            n_event=n_event,
+            w_n_nonevent=w_n_nonevent,
+            w_n_event=w_n_event,
+            n_nonevent_missing=self._n_nonevent_missing,
+            n_event_missing=self._n_event_missing,
+            w_n_nonevent_missing=self._w_n_nonevent_missing,
+            w_n_event_missing=self._w_n_event_missing,
+            n_nonevent_special=self._n_nonevent_special,
+            n_event_special=self._n_event_special,
+            w_n_nonevent_special=self._w_n_nonevent_special,
+            w_n_event_special=self._w_n_event_special,
+            n_nonevent_cat_others=self._n_nonevent_cat_others,
+            n_event_cat_others=self._n_event_cat_others,
+            w_n_nonevent_cat_others=self._w_n_nonevent_cat_others,
+            w_n_event_cat_others=self._w_n_event_cat_others,
+            cat_others=cat_others
+        )
 
         if self._dtype == "numerical":
             min_x = x_clean.min()
@@ -974,11 +990,21 @@ class OptimalBinning(BaseOptimalBinning):
             max_x = None
 
         self._binning_table = BinningTable(
-            self.name, self._dtype, self.special_codes, self._splits_optimal,
-            self._n_nonevent, self._n_event, self._is_weighted,
-            self._w_n_nonevent, self._w_n_event,
-            min_x, max_x, self._categories,
-            self._cat_others, self.user_splits)
+            name=self.name,
+            dtype=self._dtype,
+            special_codes=self.special_codes,
+            splits=self._splits_optimal,
+            n_nonevent=self._n_nonevent,
+            n_event=self._n_event,
+            weighted=self._is_weighted,
+            w_n_nonevent=self._w_n_nonevent,
+            w_n_event=self._w_n_event,
+            min_x=min_x,
+            max_x=max_x,
+            categories=self._categories,
+            cat_others=self._cat_others,
+            user_splits=self.user_splits
+        )
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 
@@ -1427,10 +1453,7 @@ class OptimalBinning(BaseOptimalBinning):
 
         self._binning_table = BinningTable(**bin_table_attr)
 
-        # Restore the internal state used by ``transform``. Without this,
-        # a binning object reloaded via ``read_json`` raises a TypeError
-        # on ``transform`` because these attributes are only set during
-        # ``fit`` and remain None otherwise.
+        # Restore the internal state used by ``transform``.
         self._splits_optimal = bin_table_attr['splits']
         self._n_nonevent = bin_table_attr['n_nonevent']
         self._n_event = bin_table_attr['n_event']

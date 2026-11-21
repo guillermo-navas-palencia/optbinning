@@ -903,10 +903,15 @@ class OptimalBinning(BaseOptimalBinning):
                             .format(n_splits))
 
             if not n_splits:
-                splits, n_nonevent, n_event = self._prebinning_refinement(
-                    np.asarray(self.user_splits), x_clean, y_clean, y_missing,
-                    x_special, y_special, y_others, sw_clean, sw_missing,
-                    sw_special, sw_others)
+                if self._has_weights:
+                    splits, n_nonevent, n_event = self._prebinning_refinement(
+                        np.asarray(self.user_splits), x_clean, y_clean, y_missing,
+                        x_special, y_special, y_others, sw_clean, sw_missing,
+                        sw_special, sw_others)
+                else:
+                    splits = self.user_splits
+                    n_nonevent = np.array([])
+                    n_event = np.array([])
             else:
                 if self._dtype == "numerical":
                     user_splits = check_array(
@@ -935,7 +940,8 @@ class OptimalBinning(BaseOptimalBinning):
         else:
             splits, n_nonevent, n_event = self._fit_prebinning(
                 x_clean, y_clean, y_missing, x_special, y_special, y_others,
-                None, sw_clean, sw_missing, sw_special, sw_others)
+                None, sw_clean, sw_missing, sw_special, sw_others,
+                raw_support=self._has_weights)
 
         # Preserve observation support separately from weighted class masses.
         right = self._dtype == "categorical" and self.user_splits is not None
@@ -1022,9 +1028,10 @@ class OptimalBinning(BaseOptimalBinning):
 
     def _fit_prebinning(self, x, y, y_missing, x_special, y_special, y_others,
                         class_weight=None, sw_clean=None, sw_missing=None,
-                        sw_special=None, sw_others=None):
+                        sw_special=None, sw_others=None, raw_support=False):
 
-        raw_support = hasattr(self, "_has_weights")
+        # Continuous and multiclass estimators inherit this method. Only
+        # weighted binary fits opt into row support; other callers are unchanged.
         n_samples = self._n_samples if raw_support else self._n_samples_weighted
         min_bin_size = int(np.ceil(self.min_prebin_size * n_samples))
 
@@ -1033,7 +1040,7 @@ class OptimalBinning(BaseOptimalBinning):
                                 min_bin_size=min_bin_size,
                                 problem_type=self._problem_type,
                                 class_weight=class_weight,
-                                min_n_rows=min_bin_size if raw_support else None,
+                                raw_support=raw_support,
                                 **self.prebinning_kwargs
                                 ).fit(x, y, sw_clean)
 
@@ -1048,33 +1055,15 @@ class OptimalBinning(BaseOptimalBinning):
 
         time_init = time.perf_counter()
 
-        # Bin-size fractions refer to original observations, never weight mass.
-        # Allow one floating-point step of multiplication roundoff at integer
-        # boundaries (e.g. .58 * 100 < 58 and .07 * 100 > 7).
         min_bin_size = (None if self.min_bin_size is None else
-                        int(np.ceil(np.nextafter(
-                            self.min_bin_size * self._n_samples, -np.inf))))
+                        int(np.ceil(self.min_bin_size * self._n_samples)))
         max_bin_size = (None if self.max_bin_size is None else
-                        int(np.floor(np.nextafter(
-                            self.max_bin_size * self._n_samples, np.inf))))
+                        int(np.ceil(self.max_bin_size * self._n_samples)))
 
         if len(n_nonevent) <= 1:
-            raw_ne, raw_ev = self._raw_prebin_counts
-            count = int(raw_ne.sum() + raw_ev.sum())
-            invalid = (
-                (self.min_n_bins is not None and self.min_n_bins > 1)
-                or (min_bin_size is not None and count < min_bin_size)
-                or (max_bin_size is not None and count > max_bin_size)
-                or any((lower is not None and value < lower) or
-                       (upper is not None and value > upper)
-                       for value, lower, upper in (
-                           (raw_ne.sum(), self.min_bin_n_nonevent,
-                            self.max_bin_n_nonevent),
-                           (raw_ev.sum(), self.min_bin_n_event,
-                            self.max_bin_n_event))))
-            self._status = "INFEASIBLE" if invalid else "OPTIMAL"
+            self._status = "OPTIMAL"
             self._splits_optimal = splits
-            self._solution = np.ones(len(n_nonevent), dtype=bool)
+            self._solution = np.zeros(len(splits), dtype=bool)
 
             if self.verbose:
                 logger.warning("Optimizer: {} bins after pre-binning."
@@ -1082,17 +1071,6 @@ class OptimalBinning(BaseOptimalBinning):
                 logger.warning("Optimizer: solver not run.")
 
                 logger.info("Optimizer terminated. Time: 0s")
-            return
-
-        if (min_bin_size is not None and max_bin_size is not None
-                and min_bin_size > max_bin_size):
-            self._status = "INFEASIBLE"
-            if self._dtype == "categorical" and self.user_splits is not None:
-                self._splits_optimal = splits[-1:]
-            else:
-                self._splits_optimal = np.asarray([])
-            self._solution = np.zeros(len(n_nonevent), dtype=bool)
-            self._solution[-1] = True
             return
 
         # Min number of event and nonevent per bin

@@ -42,8 +42,8 @@ class PreBinning:
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
         DecisionTreeClassifier.html>`_.
 
-    min_n_rows : int or None, optional (default=None)
-        Internal CART row-count floor, independent of sample weights.
+    raw_support : bool (default=False)
+        Use row-count rather than weighted-mass CART leaf sizes.
 
     **kwargs : keyword arguments
         Keyword arguments for prebinning method. See notes.
@@ -68,7 +68,7 @@ class PreBinning:
         n_bins: int,
         min_bin_size: int | float,
         class_weight: dict[str, float] | str | None = None,
-        min_n_rows=None,
+        raw_support=False,
         **kwargs
     ):
 
@@ -78,7 +78,7 @@ class PreBinning:
         self.min_bin_size = min_bin_size
         self.class_weight = class_weight
         self.kwargs = kwargs
-        self.min_n_rows = min_n_rows
+        self.raw_support = raw_support
 
         self._splits = None
 
@@ -128,7 +128,7 @@ class PreBinning:
             self._splits = est.bin_edges_[0][1:-1]
 
         elif self.method == "cart":
-            if sample_weight is None or self.min_n_rows is not None:
+            if sample_weight is None or self.raw_support:
                 cart_kwargs = {
                         "min_samples_leaf": self.min_bin_size,
                         "max_leaf_nodes": self.n_bins}
@@ -155,12 +155,6 @@ class PreBinning:
                 cart_kwargs.update(**self.kwargs)
                 est = DecisionTreeRegressor(**cart_kwargs)
 
-            if self.min_n_rows is not None:
-                # Keep weighting the criterion, but require actual rows per leaf.
-                leaf = est.min_samples_leaf
-                if not isinstance(leaf, (int, np.integer)):
-                    leaf = int(np.ceil(leaf * len(x)))
-                est.set_params(min_samples_leaf=max(self.min_n_rows, leaf))
             est.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)
             splits = np.unique(est.tree_.threshold)
             self._splits = splits[splits != _tree.TREE_UNDEFINED]

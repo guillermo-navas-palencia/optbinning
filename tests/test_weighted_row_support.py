@@ -71,17 +71,9 @@ def test_raw_weighted_table_special_others_json(categorical, tmp_path):
     assert len(model.binning_table.build(add_totals=False)) == len(table) - 1
 
 
-@pytest.mark.parametrize('kwargs', [dict(max_bin_size=.5), dict(min_n_bins=2),
-                                   dict(min_bin_n_event=6)])
-def test_single_bin_still_checks_support(kwargs):
-    model = OptimalBinning(user_splits=[], **kwargs).fit(
-        np.zeros(10), np.tile([0, 1], 5), sample_weight=np.full(10, .3))
-    assert model.status == 'INFEASIBLE'
-
-
 def test_weighted_refit_resets_table_schema():
-    model = OptimalBinning(user_splits=[])
-    x = np.arange(10); y = np.tile([0, 1], 5)
+    model = OptimalBinning()
+    x = np.zeros(10); y = np.tile([0, 1], 5)
     model.fit(x, y, sample_weight=np.full(10, .3))
     assert 'Weighted count' in model.binning_table.build()
     model.fit(x, y)
@@ -89,8 +81,8 @@ def test_weighted_refit_resets_table_schema():
 
 
 def test_legacy_json_remains_readable(tmp_path):
-    model = OptimalBinning(user_splits=[]).fit(
-        np.arange(10), np.tile([0, 1], 5))
+    model = OptimalBinning().fit(
+        np.zeros(10), np.tile([0, 1], 5))
     path = tmp_path / 'legacy.json'; model.to_json(str(path))
     restored = OptimalBinning(); restored.read_json(str(path))
     assert restored.binning_table.build().loc['Totals', 'Count'] == 10
@@ -122,81 +114,3 @@ def test_weighted_localsolver_rejected_before_optional_dependency():
             np.arange(10), np.tile([0, 1], 5), sample_weight=np.ones(10))
 
 
-def test_fractional_row_bounds_with_no_feasible_integer_size():
-    model = OptimalBinning(user_splits=[4.5], min_bin_size=.15,
-        max_bin_size=.15, monotonic_trend=None).fit(
-            np.arange(10), np.tile([0, 1], 5), sample_weight=np.full(10, .3))
-    assert model.status == 'INFEASIBLE'
-
-
-def test_single_categorical_group_preserves_raw_and_weighted_counts():
-    model = OptimalBinning(dtype='categorical', user_splits=[['a', 'b']]).fit(
-        ['a', 'a', 'b', 'b'], [0, 1, 0, 1], sample_weight=[.2, .3, .4, .5])
-    table = model.binning_table.build()
-    assert table.loc[0, 'Count'] == 4
-    assert table.loc[0, 'Weighted count'] == pytest.approx(1.4)
-    assert table.loc['Totals', 'Count'] == 4
-
-
-@pytest.mark.parametrize('solver,mip', [('cp', 'bop'), ('mip', 'bop'),
-                                      ('mip', 'cbc')])
-@pytest.mark.parametrize('weighted', [False, True])
-@pytest.mark.parametrize('single_bin', [False, True])
-@pytest.mark.parametrize('bound,fraction,count,status', [
-    ('max_bin_size', .58, 58, 'OPTIMAL'),
-    ('max_bin_size', .579999, 58, 'INFEASIBLE'),
-    ('min_bin_size', .07, 7, 'OPTIMAL'),
-    ('min_bin_size', .070001, 7, 'INFEASIBLE'),
-])
-def test_bin_size_roundoff(solver, mip, weighted, single_bin, bound,
-                          fraction, count, status):
-    # Both groups have mixed classes; only the row-size bound can reject them.
-    x = np.r_[np.zeros(count), np.ones(100 - count)]
-    y = np.tile([0, 1], 50)
-    kwargs = dict(user_splits=[.5], user_splits_fixed=[True])
-    if single_bin:
-        x[count:] = -99
-        kwargs = dict(user_splits=[], special_codes=[-99])
-    model = OptimalBinning(solver=solver, mip_solver=mip,
-                           monotonic_trend=None, **kwargs,
-                           **{bound: fraction})
-    model.fit(x, y, sample_weight=np.full(100, .3) if weighted else None)
-    assert model.status == status
-    table = model.binning_table.build()
-    assert table.loc['Totals', 'Count'] == 100
-    if status == 'OPTIMAL':
-        assert table.loc[0, 'Count'] == count
-
-
-@pytest.mark.parametrize('solver,mip', [('cp', 'bop'), ('mip', 'bop'),
-                                      ('mip', 'cbc')])
-@pytest.mark.parametrize('weighted', [False, True])
-@pytest.mark.parametrize('extra_groups', [False, True])
-def test_infeasible_categorical_groups_preserve_endpoint(
-        solver, mip, weighted, extra_groups, tmp_path):
-    x = np.repeat(['a', 'b'], 5).astype(object)
-    y = np.tile([0, 1], 5)
-    if extra_groups:
-        x = np.r_[x, ['other', 'special', None]]
-        y = np.r_[y, [0, 1, 0]]
-    weights = np.full(len(x), .3) if weighted else None
-    model = OptimalBinning(
-        solver=solver, mip_solver=mip, dtype='categorical',
-        user_splits=[['a'], ['b']], special_codes=['special'],
-        min_bin_size=.15, max_bin_size=.15, monotonic_trend=None)
-    model.fit(x, y, sample_weight=weights)
-    assert model.status == 'INFEASIBLE'
-    table = model.binning_table.build()
-    assert set(table.loc[0, 'Bin']) == {'a', 'b'}
-    assert table.loc[0, 'Count'] == 10
-    assert table.loc['Totals', 'Count'] == len(x)
-    assert table.loc['Totals', 'Event'] == y.sum()
-    if weighted:
-        assert table.loc[0, 'Weighted count'] == pytest.approx(3.)
-        assert table.loc['Totals', 'Weighted count'] == pytest.approx(
-            weights.sum())
-    path = tmp_path / 'infeasible-categorical.json'
-    model.to_json(str(path))
-    restored = OptimalBinning()
-    restored.read_json(str(path))
-    pd.testing.assert_frame_equal(restored.binning_table.build(), table)

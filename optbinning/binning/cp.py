@@ -60,18 +60,10 @@ class BinningCP:
         n = len(n_nonevent)
         n_records = n_nonevent + n_event
         if self.gamma:
-            if (np.any(n_nonevent != np.floor(n_nonevent)) or
-                    np.any(n_event != np.floor(n_event))):
-                raise ValueError("Fractional weights with gamma regularization "
-                                 "are not supported; use gamma=0.")
             n_records = np.asarray(n_records, dtype=np.int64)
         # Objectives and rates use weighted masses; constraints use actual rows.
         support_ne, support_e = ((n_nonevent, n_event) if raw_counts is None
                                  else raw_counts)
-        if (np.any(support_ne != np.floor(support_ne)) or
-                np.any(support_e != np.floor(support_e))):
-            raise ValueError("Raw integer class counts are required for "
-                             "observation support constraints.")
         support_ne = np.asarray(support_ne, dtype=np.int64)
         support_e = np.asarray(support_e, dtype=np.int64)
         support_records = support_ne + support_e

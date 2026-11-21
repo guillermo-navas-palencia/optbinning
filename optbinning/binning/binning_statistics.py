@@ -1070,8 +1070,8 @@ class BinningTable:
                 raw_ne = np.r_[raw_ne, raw_ne.sum()]
             raw_n = raw_e + raw_ne
             df["Count"] = raw_n
-            df["Count (%)"] = raw_n / max(1, (self.raw_n_event +
-                                              self.raw_n_nonevent).sum())
+            df["Count (%)"] = raw_n / (self.raw_n_event +
+                                       self.raw_n_nonevent).sum()
             df["Non-event"] = raw_ne
             df["Event"] = raw_e
             df["Event rate"] = np.divide(

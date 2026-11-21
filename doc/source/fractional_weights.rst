@@ -12,13 +12,17 @@ Observation support and weighted statistics
 ``min_bin_size`` and ``max_bin_size`` refer to actual observation counts,
 regardless of weights. Their denominator is the original input row count,
 including missing and special rows; the bounds apply to regular optimized bins.
-Minimum counts round up and maximum counts round down. Explicit event/non-event
+Both bounds retain the existing upward rounding convention. Explicit event/non-event
 count constraints likewise refer to actual observations in each class.
 
-CART prebinning enforces ``min_prebin_size`` as an actual-row minimum per leaf
-while retaining weighted impurity. A custom ``min_samples_leaf`` can make this
-minimum stricter, but cannot relax it. Other prebinning algorithms retain their
+For weighted binary fits, CART uses ``min_prebin_size`` as its default
+actual-row minimum per leaf while retaining weighted impurity. Explicit
+``prebinning_kwargs`` override CART defaults, as for other prebinning methods.
+Unweighted fits retain their existing CART defaults. Other prebinning algorithms retain their
 existing behavior; user-supplied cuts bypass CART's leaf-size constraint.
+The existing single-bin shortcut also remains unchanged: it does not check
+final-bin feasibility when prebinning leaves no choice of partition. Correcting
+that shortcut across estimators is a separate change.
 Weights still affect the objective, event rates, WoE, monotonicity and statistical
 tests. This change does not add a separate weighted-mass size constraint.
 

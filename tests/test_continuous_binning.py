@@ -9,8 +9,9 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import ContinuousOptimalBinning
 from sklearn.exceptions import NotFittedError
@@ -479,6 +480,42 @@ def test_df_tests():
     # returned frame is a defensive copy
     df_tests["p-value"] = -1
     assert (table.df_tests["p-value"] != -1).all()
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = x + np.tile(np.linspace(-0.4, 0.4, 60), 3)
+    optb = ContinuousOptimalBinning(user_splits=[0.5, 1.5],
+                                    max_n_bins=n_bins,
+                                    monotonic_trend=None).fit(x, y)
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+
+    built = table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        statistic, pvalue = stats.ttest_ind_from_stats(
+            built.loc[i, "Mean"], table.stds[i], table.n_records[i],
+            built.loc[i+1, "Mean"], table.stds[i+1], table.n_records[i+1],
+            equal_var=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)
 
 
 def test_weighted_table_iv_shares():

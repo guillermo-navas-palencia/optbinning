@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from pytest import approx, raises, mark
 
@@ -754,6 +755,51 @@ def test_df_tests():
     # Fisher exact test renames "t-statistic" to "odd ratio"
     table.analysis(pvalue_test="fisher", print_output=False)
     assert "odd ratio" in table.df_tests.columns
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = np.concatenate([np.r_[np.zeros(60 - n), np.ones(n)]
+                        for n in [10, 30, 50]])
+    optb = OptimalBinning(user_splits=[0.5, 1.5], max_n_bins=n_bins,
+                          monotonic_trend=None).fit(x, y)
+    
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+    
+    table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        obs = np.array([table.n_nonevent[i:i+2], table.n_event[i:i+2]])
+        statistic, pvalue, _, _ = stats.chi2_contingency(obs, correction=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)
+
+    table.analysis(pvalue_test="fisher", print_output=False)
+    assert "t-statistic" not in table.df_tests
+    assert "odd ratio" in table.df_tests
+    
+    for i, row in table.df_tests.iterrows():
+        expected = stats.fisher_exact(np.array([
+            table.n_nonevent[i:i+2], table.n_event[i:i+2]]))
+        np.testing.assert_allclose([row["odd ratio"], row["p-value"]],
+                                   expected)
 
 
 def test_verbose():

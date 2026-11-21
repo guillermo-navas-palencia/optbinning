@@ -324,7 +324,8 @@ def target_info_special_continuous(
     x: npt.NDArray,
     y: npt.NDArray,
     sw: npt.NDArray
-) -> tuple[list | float, list | float, list | int, list | float | None,
+) -> tuple[list | float, list | float,
+           list | int, list | float | None,
            list | float | None, list | float | None]:
     """Compute target info for special codes (continuous target).
 
@@ -344,31 +345,28 @@ def target_info_special_continuous(
 
     Returns
     -------
-    n_records : list or float
+    n_records : numpy.ndarray or float
         Record counts for special codes.
 
-    sum_target : list or float
+    sum_target : numpy.ndarray or float
         Sum of target values for special codes.
 
-    n_zeros : list or int
+    n_zeros : numpy.ndarray or int
         Count of zero values for special codes.
 
-    std_target : list of float or None
+    std_target : numpy.ndarray or float or None
         Standard deviation of target for special codes.
 
-    min_target : list of float or None
+    min_target : numpy.ndarray or float or None
         Minimum target value for special codes.
 
-    max_target : list of float or None
+    max_target : numpy.ndarray or float or None
         Maximum target value for special codes.
     """
     if isinstance(special_codes, dict):
         n_records_special = []
         sum_special = []
         n_zeros_special = []
-        # Must always start as lists, never None: the loop below calls
-        # .append() on these per special-code group regardless of
-        # whether any group is empty (GH #340).
         std_special = []
         min_target_special = []
         max_target_special = []
@@ -377,12 +375,16 @@ def target_info_special_continuous(
         for s in special_codes.values():
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
+            ymask = y[mask]
+    
+            if len(sw):
+                n_records = np.sum(sw[mask])
+                sum_special.append(np.sum(sw[mask] * ymask))
+            else:
+                n_records = np.count_nonzero(mask)
+                sum_special.append(np.sum(ymask))
 
-            n_records = np.sum(sw[mask])
             n_records_special.append(n_records)
-
-            ymask = sw[mask] * y[mask]
-            sum_special.append(np.sum(ymask))
             n_zeros_special.append(np.count_nonzero(ymask == 0))
 
             if n_records:
@@ -395,17 +397,17 @@ def target_info_special_continuous(
                 max_target_special.append(0)
     else:
         if len(sw):
-            sw_y = sw * y
+            n_records_special = np.sum(sw)
+            sum_special = np.sum(sw * y)
         else:
-            sw_y = y
+            n_records_special = len(y)
+            sum_special = np.sum(y)
 
-        n_records_special = np.sum(sw)
-        sum_special = np.sum(sw_y)
-        n_zeros_special = np.count_nonzero(sw_y == 0)
+        n_zeros_special = np.count_nonzero(y == 0)
         if len(y):
-            std_special = np.std(sw_y)
-            min_target_special = np.min(sw_y)
-            max_target_special = np.max(sw_y)
+            std_special = np.std(y)
+            min_target_special = np.min(y)
+            max_target_special = np.max(y)
         else:
             std_special = None
             min_target_special = None
@@ -434,7 +436,7 @@ def bin_info(
     w_n_nonevent_cat_others: int,
     w_n_event_cat_others: int,
     cat_others: list | None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, ...]:
     """Compute binning information for binary target.
 
     Parameters
@@ -622,33 +624,44 @@ def nstd(
 def continuous_bin_info(
     solution: npt.NDArray | list,
     n_records: npt.NDArray,
+    w_n_records: npt.NDArray,
     sums: npt.NDArray,
+    w_sums: npt.NDArray,
     ssums: npt.NDArray,
+    w_ssums: npt.NDArray,
     stds: npt.NDArray,
     min_target: npt.NDArray,
     max_target: npt.NDArray,
     n_zeros: npt.NDArray,
     n_records_missing: int,
+    w_n_records_missing: float,
     sum_missing: float,
+    w_sum_missing: float,
+    w_ssum_missing: float,
     std_missing: float,
     min_target_missing: float,
     max_target_missing: float,
     n_zeros_missing: int,
     n_records_special: int | list,
+    w_n_records_special: float | list,
     sum_special: float | list,
+    w_sum_special: float | list,
+    w_ssum_special: float | list,
     std_special: float | list,
     min_target_special: float | list,
     max_target_special: float | list,
     n_zeros_special: int | list,
     n_records_cat_others: int,
+    w_n_records_cat_others: float,
     sum_cat_others: float,
+    w_sum_cat_others: float,
+    w_ssum_cat_others: float,
     std_cat_others: float,
     min_target_others: float,
     max_target_others: float,
     n_zeros_others: int,
     cat_others: list | None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray]:
+) -> tuple[np.ndarray, ...]:
     """Compute binning information for continuous target.
 
     Parameters
@@ -664,6 +677,15 @@ def continuous_bin_info(
 
     ssums : numpy.ndarray
         Sum of squared target values per bin.
+
+    w_ssums : numpy.ndarray
+        Weighted sum of squared target values per bin.
+
+    w_n_records : numpy.ndarray
+        Weighted record counts per bin.
+
+    w_sums : numpy.ndarray
+        Weighted sum of target values per bin.
 
     stds : numpy.ndarray
         Standard deviation per bin.
@@ -683,6 +705,12 @@ def continuous_bin_info(
     sum_missing : float
         Sum of target values for missing.
 
+    w_sum_missing : float
+        Weighted sum of target values for missing.
+
+    w_ssum_missing : float
+        Weighted sum of squared target values for missing.
+
     std_missing : float
         Standard deviation for missing.
 
@@ -701,6 +729,12 @@ def continuous_bin_info(
     sum_special : float or list
         Sum of target for special codes.
 
+    w_sum_special : float or list
+        Weighted sum of target for special codes.
+
+    w_ssum_special : float or list
+        Weighted sum of squared target for special codes.
+
     std_special : float or list
         Standard deviation for special codes.
 
@@ -718,6 +752,12 @@ def continuous_bin_info(
 
     sum_cat_others : float
         Sum of target for "others".
+
+    w_sum_cat_others : float
+        Weighted sum of target for "others".
+
+    w_ssum_cat_others : float
+        Weighted sum of squared target for "others".
 
     std_cat_others : float
         Standard deviation for "others".
@@ -753,6 +793,12 @@ def continuous_bin_info(
 
     n_zeros_final : numpy.ndarray
         Final count of zeros.
+
+    w_n_records_final : numpy.ndarray
+        Final weighted record counts.
+
+    w_sums_final : numpy.ndarray
+        Final weighted sum of target values.
     """
     r = []
     s = []
@@ -767,6 +813,12 @@ def continuous_bin_info(
     accum_z = 0
     accum_min_t = np.inf
     accum_max_t = -np.inf
+
+    w_r = []
+    w_s = []
+    w_accum_r = 0
+    w_accum_s = 0
+
     for i, selected in enumerate(solution):
         if selected:
             r.append(n_records[i] + accum_r)
@@ -777,12 +829,18 @@ def continuous_bin_info(
             min_t.append(min(accum_min_t, min_target[i]))
             max_t.append(max(accum_max_t, max_target[i]))
 
+            w_r.append(w_n_records[i] + w_accum_r)
+            w_s.append(w_sums[i] + w_accum_s)
+
             accum_r = 0
             accum_s = 0
             accum_ss = 0
             accum_z = 0
             accum_min_t = np.inf
             accum_max_t = -np.inf
+
+            w_accum_r = 0
+            w_accum_s = 0
         else:
             accum_r += n_records[i]
             accum_s += sums[i]
@@ -790,6 +848,9 @@ def continuous_bin_info(
             accum_z += n_zeros[i]
             accum_min_t = min(accum_min_t, min_target[i])
             accum_max_t = max(accum_max_t, max_target[i])
+
+            w_accum_r += w_n_records[i]
+            w_accum_s += w_sums[i]
 
     if not len(solution):
         r.append(n_records)
@@ -799,6 +860,9 @@ def continuous_bin_info(
         min_t.append(min_target)
         max_t.append(max_target)
 
+        w_r.append(w_n_records)
+        w_s.append(w_sums)
+
     if len(cat_others):
         r.append(n_records_cat_others)
         s.append(sum_cat_others)
@@ -807,13 +871,18 @@ def continuous_bin_info(
         min_t.append(min_target_others)
         max_t.append(max_target_others)
 
-    if isinstance(n_records_special, list):
+        w_r.append(w_n_records_cat_others)
+        w_s.append(w_sum_cat_others)
+
+    if isinstance(n_records_special, (list, np.ndarray)):
         r.extend(n_records_special)
         s.extend(sum_special)
         st.extend(std_special)
         z.extend(n_zeros_special)
         min_t.extend(min_target_special)
         max_t.extend(max_target_special)
+        w_r.extend(w_n_records_special)
+        w_s.extend(w_sum_special)
     else:
         r.append(n_records_special)
         s.append(sum_special)
@@ -821,6 +890,8 @@ def continuous_bin_info(
         z.append(n_zeros_special)
         min_t.append(min_target_special)
         max_t.append(max_target_special)
+        w_r.append(w_n_records_special)
+        w_s.append(w_sum_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
@@ -828,11 +899,14 @@ def continuous_bin_info(
     z.append(n_zeros_missing)
     min_t.append(min_target_missing)
     max_t.append(max_target_missing)
+    w_r.append(w_n_records_missing)
+    w_s.append(w_sum_missing)
 
     return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
             np.array(st).astype(np.float64),
             np.array(min_t).astype(np.float64),
-            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64))
+            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64),
+            np.array(w_r).astype(np.float64), np.array(w_s).astype(np.float64))
 
 
 def _check_build_parameters(
@@ -2244,6 +2318,9 @@ class ContinuousBinningTable:
         splits: npt.NDArray,
         n_records: npt.NDArray,
         sums: npt.NDArray,
+        weighted: bool,
+        w_n_records: npt.NDArray,
+        w_sums: npt.NDArray,
         stds: npt.NDArray,
         min_target: npt.NDArray,
         max_target: npt.NDArray,
@@ -2261,6 +2338,9 @@ class ContinuousBinningTable:
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
+        self.weighted = weighted
+        self.w_n_records = w_n_records
+        self.w_sums = w_sums
         self.stds = stds
         self.min_target = min_target
         self.max_target = max_target
@@ -2307,18 +2387,24 @@ class ContinuousBinningTable:
         """
         _check_build_parameters(show_digits, add_totals)
 
-        t_n_records = np.nansum(self.n_records)
-        t_sum = np.nansum(self.sums)
-        t_mean = t_sum / t_n_records
+        # Compute mean (use weighted)
+        t_sum = np.sum(self.sums)
+        t_n_records = np.sum(self.n_records)
         p_records = self.n_records / t_n_records
+
+        w_t_sum = np.sum(self.w_sums)
+        w_t_n_records = np.sum(self.w_n_records)
 
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
-        self._mean[mask] = self.sums[mask] / self.n_records[mask]
+        self._mean[mask] = self.w_sums[mask] / self.w_n_records[mask]
 
-        # Compute divergence measure (continuous adaptation)
+        # Divergence measure (continuous adaptation). Shares use weighted
+        # counts so that IV/WoE describe the weighted population.
+        t_mean = w_t_sum / w_t_n_records
         woe = self._mean - t_mean
-        iv = np.absolute(woe) * p_records
+        p_w_records = self.w_n_records / w_t_n_records
+        iv = np.absolute(woe) * p_w_records
         t_iv = iv.sum()
         t_woe = np.absolute(woe).sum()
 
@@ -2357,27 +2443,53 @@ class ContinuousBinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": self.n_records,
-            "Count (%)": p_records,
-            "Sum": self.sums,
-            "Std": self.stds,
-            "Mean": self._mean,
-            "Min": self.min_target,
-            "Max": self.max_target,
-            "Zeros count": self.n_zeros,
-            "WoE": woe,
-            "IV": iv,
-            })
+        if self.weighted:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Min": self.min_target,
+                "Max": self.max_target,
+                "Zeros count": self.n_zeros,
+                "Weighted count": self.w_n_records,
+                "Weighted sum": self.w_sums,
+                "Weighted mean": self._mean,
+                "Weighted WoE": woe,
+                "Weighted IV": iv,
+                })
 
-        if add_totals:
-            t_min = np.nanmin(self.min_target)
-            t_max = np.nanmax(self.max_target)
-            t_n_zeros = self.n_zeros.sum()
-            totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
-                      t_n_zeros, t_woe, t_iv]
-            df.loc["Totals"] = totals
+            if add_totals:
+                t_min = np.nanmin(self.min_target)
+                t_max = np.nanmax(self.max_target)
+                t_n_zeros = self.n_zeros.sum()
+                totals = ["", t_n_records, 1, t_sum, "", t_min, t_max,
+                        t_n_zeros, w_t_n_records, w_t_sum, t_mean,
+                        t_woe, t_iv]
+                df.loc["Totals"] = totals
+        else:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Mean": self._mean,
+                "Min": self.min_target,
+                "Max": self.max_target,
+                "Zeros count": self.n_zeros,
+                "WoE": woe,
+                "IV": iv,
+                })
+
+            if add_totals:
+                t_min = np.nanmin(self.min_target)
+                t_max = np.nanmax(self.max_target)
+                t_n_zeros = self.n_zeros.sum()
+                totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
+                        t_n_zeros, t_woe, t_iv]
+                df.loc["Totals"] = totals
 
         self._is_built = True
 
@@ -2493,6 +2605,9 @@ class ContinuousBinningTable:
         elif metric == "iv":
             metric_values = self._iv_values
             metric_label = "IV"
+
+        if self.weighted:
+            metric_label = f"Weighted {metric_label}"        
 
         owns_figure = ax is None
         if owns_figure:

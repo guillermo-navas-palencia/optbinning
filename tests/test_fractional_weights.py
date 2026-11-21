@@ -74,7 +74,7 @@ def test_cbc_fractional_support_without_pure_bins():
     [np.inf, 1, 1, 1], [1e308] * 4,
 ])
 def test_invalid_effective_weights_rejected(weights):
-    with pytest.raises(ValueError, match="sample_weight|Effective sample weights"):
+    with pytest.raises(ValueError, match="sample_weight|[Ss]ample weights"):
         OptimalBinning(user_splits=[]).fit(
             [0, 1, 2, 3], [0, 1, 0, 1], sample_weight=weights)
 

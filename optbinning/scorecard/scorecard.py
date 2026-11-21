@@ -32,6 +32,7 @@ logger = Logger(__name__).logger
 
 
 _SAMPLE_WEIGHT_TARGETS = ("binary", "continuous")
+_WEIGHTED_BT_COLUMN = {"WoE": "Weighted WoE", "Mean": "Weighted mean"}
 
 
 def _check_parameters(binning_process, estimator, scaling_method,
@@ -634,14 +635,9 @@ class Scorecard(Base, BaseEstimator):
 
         time_binning_process = time.perf_counter()
         self.binning_process_ = clone(self.binning_process)
-        # Suppress binning process verbosity
         self.binning_process_.set_params(verbose=False)
-        # Propagate the resolved target type so the wrapped BinningProcess
-        # does not re-detect it independently (GH issue #296).
         self.binning_process_.set_params(target_dtype=self._target_dtype)
 
-        # variable_names=None means "use all columns of X" (GH issue #343);
-        # only slice X when an explicit column subset was given.
         if self.binning_process.variable_names is None:
             X_bp = X
         else:
@@ -700,11 +696,12 @@ class Scorecard(Base, BaseEstimator):
             c = coefs[i]
             binning_table.loc[:, "Variable"] = variable
             binning_table.loc[:, "Coefficient"] = c
-            binning_table.loc[:, "Points"] = binning_table[bt_metric] * c
+            bt_col = bt_metric
+            if optb.binning_table.weighted:
+                bt_col = _WEIGHTED_BT_COLUMN[bt_metric]
+            binning_table.loc[:, "Points"] = binning_table[bt_col] * c
 
             # Resolve per-variable metric_special/metric_missing overrides
-            # (fallback: the global fit() values), matching the resolution
-            # BinningProcess.transform() already used to build X_t (GH #380).
             transform_params = {}
             if self.binning_process_.binning_transform_params is not None:
                 transform_params = (
@@ -796,9 +793,7 @@ class Scorecard(Base, BaseEstimator):
         binning_process = self.binning_process_
         if metric == "indices":
             # Points lookup requires actual bin indices, not per-variable
-            # training metrics or special/missing replacements (GH #412).
-            # A shallow copy retains fitted bins and validation without
-            # mutating the process used by prediction or concurrent calls.
+            # training metrics or special/missing replacements
             binning_process = copy(binning_process)
             binning_process.binning_transform_params = None
 

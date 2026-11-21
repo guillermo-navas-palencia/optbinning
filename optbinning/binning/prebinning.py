@@ -42,6 +42,9 @@ class PreBinning:
         <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
         DecisionTreeClassifier.html>`_.
 
+    raw_support : bool (default=False)
+        Use row-count rather than weighted-mass CART leaf sizes.
+
     **kwargs : keyword arguments
         Keyword arguments for prebinning method. See notes.
 
@@ -65,6 +68,7 @@ class PreBinning:
         n_bins: int,
         min_bin_size: int | float,
         class_weight: dict[str, float] | str | None = None,
+        raw_support=False,
         **kwargs
     ):
 
@@ -74,6 +78,7 @@ class PreBinning:
         self.min_bin_size = min_bin_size
         self.class_weight = class_weight
         self.kwargs = kwargs
+        self.raw_support = raw_support
 
         self._splits = None
 
@@ -123,7 +128,7 @@ class PreBinning:
             self._splits = est.bin_edges_[0][1:-1]
 
         elif self.method == "cart":
-            if sample_weight is None:
+            if sample_weight is None or self.raw_support:
                 cart_kwargs = {
                         "min_samples_leaf": self.min_bin_size,
                         "max_leaf_nodes": self.n_bins}

@@ -580,7 +580,7 @@ class MulticlassOptimalBinning(OptimalBinning):
         time_preprocessing = time.perf_counter()
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-         _, _, _, _, _, _, _] = split_data(
+         _, _, _, _, _, _, _, _] = split_data(
             self.dtype, x, y, special_codes=self.special_codes,
             check_input=check_input, outlier_detector=self.outlier_detector,
             outlier_params=self.outlier_params)

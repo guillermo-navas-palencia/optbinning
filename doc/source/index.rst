@@ -28,6 +28,7 @@ written in Python implementing a **rigorous** and **flexible** mathematical prog
    binning_process
    binning_tables
    binning_utilities
+   fractional_weights
 
 .. toctree::
    :maxdepth: 1

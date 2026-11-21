@@ -16,6 +16,7 @@ import pandas as pd
 import numpy.typing as npt
 
 from sklearn.utils import check_array
+from sklearn.utils.validation import _check_sample_weight
 
 from ..information import solver_statistics
 from ..logging import Logger
@@ -59,7 +60,8 @@ def _check_parameters(
     special_codes: npt.NDArray | dict | list | None,
     split_digits: int | None,
     time_limit: int,
-    verbose: bool
+    verbose: bool,
+    prebinning_estimator=None
 ) -> None:
 
     if not isinstance(name, str):
@@ -225,6 +227,16 @@ class ContinuousOptimalBinning(OptimalBinning):
         .. versionadded:: 1.1.0
            Set ``dtype=None`` to opt into automatic dtype detection.
 
+    prebinning_estimator : estimator or None, optional (default=None)
+        Custom numerical candidate-split provider. A fresh sklearn clone is
+        fitted with clean one-dimensional ``x``, ``y`` and ``sample_weight``;
+        it must expose finite, strictly increasing interior ``splits_`` with
+        at most ``max_n_prebins - 1`` entries. Overrides ``prebinning_method``.
+        Missing and special values are excluded before fitting. Built-in
+        ``min_prebin_size`` is not applied by the provider; final bin-size
+        constraints still apply. Incompatible with categorical inputs,
+        user splits and extra prebinning keyword arguments.
+
     prebinning_method : str, optional (default="cart")
         The pre-binning method. Supported methods are "cart" for a CART
         decision tree, "quantile" to generate prebins with approximately same
@@ -380,12 +392,14 @@ class ContinuousOptimalBinning(OptimalBinning):
         split_digits: int | None = None,
         time_limit: int = 100,
         verbose: bool = False,
+        prebinning_estimator=None,
         **prebinning_kwargs
     ) -> None:
 
         self.name = name
         self.dtype = dtype
         self.prebinning_method = prebinning_method
+        self.prebinning_estimator = prebinning_estimator
         self.solver = "cp"
 
         self.max_n_prebins = max_n_prebins
@@ -633,7 +647,7 @@ class ContinuousOptimalBinning(OptimalBinning):
             logger.info("Optimal binning started.")
             logger.info("Options: check parameters.")
 
-        _check_parameters(**self.get_params())
+        _check_parameters(**self.get_params(deep=False))
 
         # Determine variable dtype: use user-provided dtype, otherwise
         # infer it from the data. See GH issue #316.
@@ -641,6 +655,8 @@ class ContinuousOptimalBinning(OptimalBinning):
             self._dtype = _check_variable_dtype(pd.Series(x))
         else:
             self._dtype = self.dtype
+
+        self._check_prebinning_estimator()
 
         # Pre-processing
         if self.verbose:
@@ -663,10 +679,13 @@ class ContinuousOptimalBinning(OptimalBinning):
                             .format(self._n_samples, self._n_samples_weighted))
 
         time_preprocessing = time.perf_counter()
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(
+                sample_weight, x, dtype=np.asarray(x).dtype)
 
         [x_clean, y_clean, x_missing, y_missing, x_special, y_special,
          y_others, categories, cat_others, sw_clean, sw_missing, sw_special,
-         sw_others] = split_data(
+         sw_others, _] = split_data(
             self._dtype, x, y, self.special_codes, self.cat_cutoff,
             self.user_splits, check_input, self.outlier_detector,
             self.outlier_params, None, None, None, sample_weight)

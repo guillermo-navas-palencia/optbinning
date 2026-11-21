@@ -84,7 +84,8 @@ def split_data(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
            np.ndarray | list, np.ndarray | list, np.ndarray | list,
            np.ndarray | list, np.ndarray | list, np.ndarray | list,
-           np.ndarray | list, np.ndarray | list, np.ndarray | list]:
+           np.ndarray | list, np.ndarray | list, np.ndarray | list,
+           np.ndarray | None]:
     """Split data into clean, missing and special values data.
 
     Parameters
@@ -178,6 +179,10 @@ def split_data(
 
     sw_others : array-like
         Others data sample weight.
+
+    effective_weight : array of shape (n_samples,) or None
+        Full composed weights before filtering, or None when neither sample
+        nor class weights were supplied.
     """
     if outlier_detector is not None:
         if outlier_detector not in ("range", "zscore", "yquantile"):
@@ -215,7 +220,10 @@ def split_data(
     x = np.asarray(x)
     y = np.asarray(y)
 
-    sample_weight = _check_sample_weight(sample_weight, x, dtype=x.dtype)
+    has_weights = sample_weight is not None or class_weight is not None
+    weight_dtype = (np.asarray(sample_weight).dtype
+                    if sample_weight is not None else x.dtype)
+    sample_weight = _check_sample_weight(sample_weight, x, dtype=weight_dtype)
 
     if class_weight is not None:
         classes = np.unique(y)
@@ -223,6 +231,8 @@ def split_data(
         class_weight_ = compute_class_weight(
             class_weight=class_weight, classes=classes, y=y)
         sample_weight *= class_weight_[le.fit_transform(y)]
+
+    effective_weight = sample_weight if has_weights else None
 
     if np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number):
         missing_mask = np.isnan(x) | np.isnan(y)
@@ -316,12 +326,14 @@ def split_data(
 
         categories, x_clean = categorical_transform(x_clean, y_clean)
 
-        return (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-                y_others, categories, others, sw_clean, sw_missing, sw_special,
-                sw_others)
+        result = (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
+                  y_others, categories, others, sw_clean, sw_missing, sw_special,
+                  sw_others)
     else:
-        return (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
-                [], [], [], sw_clean, sw_missing, sw_special, [])
+        result = (x_clean, y_clean, x_missing, y_missing, x_special, y_special,
+                  [], [], [], sw_clean, sw_missing, sw_special, [])
+
+    return result + (effective_weight,)
 
 
 def split_data_scenarios(
@@ -346,7 +358,7 @@ def split_data_scenarios(
         x = X[s]
         y = Y[s]
 
-        x_c, y_c, x_m, y_m, x_s, y_s, _, _, _, _, _, _, _ = split_data(
+        x_c, y_c, x_m, y_m, x_s, y_s, _, _, _, _, _, _, _, _ = split_data(
             "numerical", x, y, special_codes=special_codes,
             check_input=check_input)
 

@@ -270,6 +270,21 @@ def test_target_dtype_explicit_override():
     assert scorecard._target_dtype == "continuous"
 
 
+def test_inferred_names_with_continuous_target_override():
+    X = pd.DataFrame({'x': np.repeat([0., 1., 2.], 40)})
+    y = np.tile(np.arange(40), 3) + X.x.to_numpy().astype(int) * 10
+
+    binning_process = BinningProcess(target_dtype='continuous')
+    scorecard = Scorecard(binning_process, LinearRegression()).fit(X, y)
+    
+    assert scorecard.binning_process_.variable_names is None
+    assert list(scorecard.binning_process_.get_feature_names_out()) == ['x']
+    assert scorecard.binning_process_._target_dtype == 'continuous'
+
+    assert np.isfinite(scorecard.predict(X)).all()
+    assert np.isfinite(scorecard.score(X)).all()
+
+
 def test_target_dtype_invalid():
     data = load_breast_cancer()
     variable_names = data.feature_names

@@ -793,8 +793,6 @@ class OptimalBinning(BaseOptimalBinning):
 
         _check_parameters(**self.get_params())
 
-        # Determine variable dtype: use user-provided dtype, otherwise
-        # infer it from the data. See GH issue #316.
         if self.dtype is None:
             self._dtype = _check_variable_dtype(pd.Series(x))
         else:

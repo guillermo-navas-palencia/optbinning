@@ -4,3 +4,5 @@ pytest
 pyarrow
 pympler
 tdigest
+
+docutils==0.21.2

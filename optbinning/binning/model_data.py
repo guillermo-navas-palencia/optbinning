@@ -288,9 +288,37 @@ def continuous_model_data(
     min_mean_diff: float,
     scale: int | float | None = None,
 ) -> tuple[list, ...]:
-    # n_records and sums are weighted; w2 holds sum of squared weights.
-    # The p-value test uses the Kish effective sample size (sum w)^2 / sum w^2.
+    """Compute the model data for the continuous optimizer.
 
+    The p-value test uses the Kish effective sample size
+    ``(sum w)^2 / sum w^2``.
+
+    Parameters
+    ----------
+    n_records : numpy.ndarray
+        Weighted record counts per prebin.
+
+    sums : numpy.ndarray
+        Weighted sum of target values per prebin.
+
+    ssums : numpy.ndarray
+        Weighted sum of squared target values per prebin.
+
+    w2 : numpy.ndarray
+        Sum of squared sample weights per prebin.
+
+    max_pvalue : float or None
+        Maximum p-value allowed between consecutive bins.
+
+    max_pvalue_policy : str
+        Policy for applying the p-value constraint.
+
+    min_mean_diff : float
+        Minimum mean difference between consecutive bins.
+
+    scale : int, float or None, optional (default=None)
+        Scaling factor for the model data.
+    """
     n = len(n_records)
 
     U = []

@@ -450,11 +450,23 @@ def bin_info(
     n_event : numpy.ndarray
         Event counts per bin.
 
+    w_n_nonevent : numpy.ndarray
+        Weighted non-event counts per bin.
+
+    w_n_event : numpy.ndarray
+        Weighted event counts per bin.
+
     n_nonevent_missing : int
         Non-event count for missing values.
 
     n_event_missing : int
         Event count for missing values.
+
+    w_n_nonevent_missing : int
+        Weighted non-event count for missing values.
+
+    w_n_event_missing : int
+        Weighted event count for missing values.
 
     n_nonevent_special : int or list
         Non-event count(s) for special codes.
@@ -462,11 +474,23 @@ def bin_info(
     n_event_special : int or list
         Event count(s) for special codes.
 
+    w_n_nonevent_special : int or list
+        Weighted non-event count(s) for special codes.
+
+    w_n_event_special : int or list
+        Weighted event count(s) for special codes.
+
     n_nonevent_cat_others : int
         Non-event count for "others" category.
 
     n_event_cat_others : int
         Event count for "others" category.
+
+    w_n_nonevent_cat_others : int
+        Weighted non-event count for "others" category.
+
+    w_n_event_cat_others : int
+        Weighted event count for "others" category.
 
     cat_others : list or None
         Categories grouped as "others".
@@ -702,6 +726,9 @@ def continuous_bin_info(
     n_records_missing : int
         Record count for missing values.
 
+    w_n_records_missing : float
+        Weighted record count for missing values.
+
     sum_missing : float
         Sum of target values for missing.
 
@@ -726,6 +753,9 @@ def continuous_bin_info(
     n_records_special : int or list
         Record count(s) for special codes.
 
+    w_n_records_special : float or list
+        Weighted record count(s) for special codes.
+
     sum_special : float or list
         Sum of target for special codes.
 
@@ -749,6 +779,9 @@ def continuous_bin_info(
 
     n_records_cat_others : int
         Record count for "others" category.
+
+    w_n_records_cat_others : float
+        Weighted record count for "others" category.
 
     sum_cat_others : float
         Sum of target for "others".
@@ -977,6 +1010,15 @@ class BinningTable:
 
     n_event : numpy.ndarray
         Number of events.
+
+    weighted : bool
+        Whether sample weights were used.
+
+    w_n_nonevent : numpy.ndarray
+        Weighted number of non-events.
+
+    w_n_event : numpy.ndarray
+        Weighted number of events.
 
     min_x : float or None (default=None)
         Mininum value of x.
@@ -2276,6 +2318,15 @@ class ContinuousBinningTable:
 
     sums : numpy.ndarray
         Target sums.
+
+    weighted : bool
+        Whether sample weights were used.
+
+    w_n_records : numpy.ndarray
+        Weighted number of records.
+
+    w_sums : numpy.ndarray
+        Weighted target sums.
 
     stds : numpy.ndarray
         Target stds.

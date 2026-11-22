@@ -16,6 +16,7 @@ from optbinning import BinningProcess
 from optbinning import Scorecard
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_diabetes
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
@@ -270,6 +271,19 @@ def test_target_dtype_explicit_override():
     assert scorecard._target_dtype == "continuous"
 
 
+def test_scorecard_target_dtype_overrides_binning_process():
+    x = np.linspace(0, 1, 100)
+    X = pd.DataFrame({'x': x})
+    y = np.floor(x * 20) + 10
+
+    binning_process = BinningProcess(['x'], target_dtype='binary')
+    scorecard = Scorecard(binning_process, LinearRegression(),
+                          target_dtype='continuous').fit(X, y)
+
+    assert scorecard._target_dtype == 'continuous'
+    assert scorecard.binning_process_._target_dtype == 'continuous'
+
+
 def test_inferred_names_with_continuous_target_override():
     X = pd.DataFrame({'x': np.repeat([0., 1., 2.], 40)})
     y = np.tile(np.arange(40), 3) + X.x.to_numpy().astype(int) * 10
@@ -447,8 +461,6 @@ def test_rounding_pdo_odds():
 
 
 def test_estimator_not_coef():
-    from sklearn.ensemble import RandomForestClassifier
-
     data = load_breast_cancer()
     variable_names = data.feature_names
     X = pd.DataFrame(data.data, columns=variable_names)

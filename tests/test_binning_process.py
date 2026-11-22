@@ -10,7 +10,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from pytest import approx, fixture, raises
+from pytest import approx, fixture, mark, raises
 
 from contextlib import redirect_stdout
 
@@ -280,6 +280,27 @@ def test_default_from_dict():
     assert optb.splits == approx([11.42500019, 12.32999992, 13.09499979,
                                   13.70499992, 15.04500008, 16.92500019],
                                  rel=1e-6)
+
+
+def test_fit_from_dict_uses_inferred_dtype(capsys):
+    # With dtype=None the resolved dtype lives in _dtype, not dtype.
+    names = variable_names[:3]
+    df = pd.DataFrame(X, columns=variable_names)
+
+    dict_optb = {}
+    for name in names:
+        optb = OptimalBinning(name=name, dtype=None)
+        optb.fit(df[name], y)
+        dict_optb[name] = optb
+
+    process = BinningProcess(names)
+    process.fit_from_dict(dict_optb)
+    process.information(print_level=1)
+
+    out = capsys.readouterr().out
+    line = next(line for line in out.splitlines()
+                if "Number of numerical" in line)
+    assert int(line.split()[-1]) == len(names)
 
 
 def test_auto_modes():
@@ -886,6 +907,19 @@ def test_target_dtype_invalid():
     with raises(ValueError):
         process = BinningProcess(variable_names=[], target_dtype="bad_value")
         process.fit(X, y)
+
+
+@mark.parametrize('target', [[1, np.nan], [1, np.inf], [[1], [2]],
+                             [], ['a', 'b'], [1+1j, 2+1j]])
+def test_invalid_continuous_override(target):
+    with raises((ValueError, TypeError)):
+        resolve_target_dtype(target, 'continuous')
+
+
+@mark.parametrize('target', [[0, 1, 2], [0.1, 0.7], [0, 0]])
+def test_invalid_binary_override(target):
+    with raises(ValueError):
+        resolve_target_dtype(target, 'binary')
 
 
 def test_reject_multiclass_sample_weight():

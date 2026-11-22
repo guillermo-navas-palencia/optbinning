@@ -1035,6 +1035,21 @@ def test_json_class_weight(tmp_path):
                                    fitted.transform(x, metric=metric))
 
 
+@mark.parametrize("solver", ["cp", "mip"])
+def test_min_bin_size_counts_rows_under_weights(solver):
+    min_bin_size = 0.1
+    unweighted = OptimalBinning(solver=solver, min_bin_size=min_bin_size)
+    unweighted.fit(x, y)
+    weighted = OptimalBinning(solver=solver, min_bin_size=min_bin_size)
+    weighted.fit(x, y, sample_weight=np.full(len(x), 5.0))
+
+    np.testing.assert_allclose(weighted.splits, unweighted.splits)
+
+    bin_indices = np.searchsorted(weighted.splits, x, side="right")
+    counts = np.bincount(bin_indices)
+    assert counts.min() >= np.ceil(min_bin_size * len(x))
+
+
 def test_json_sample_weight(tmp_path):
     sample_weight = np.ones(len(x))
     sample_weight[:20] = 3

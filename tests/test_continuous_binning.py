@@ -5,10 +5,13 @@ ContinuousOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import warnings
+
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import ContinuousOptimalBinning
 from sklearn.exceptions import NotFittedError
@@ -458,9 +461,6 @@ def test_special_codes_dict_none_present():
 
 
 def test_df_tests():
-    # ContinuousBinningTable.df_tests exposes the per-adjacent-bin
-    # significance tests computed by analysis(), instead of only
-    # printing them. See GH issue #283.
     optb = ContinuousOptimalBinning()
     optb.fit(x, y)
     table = optb.binning_table
@@ -480,3 +480,84 @@ def test_df_tests():
     # returned frame is a defensive copy
     df_tests["p-value"] = -1
     assert (table.df_tests["p-value"] != -1).all()
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = x + np.tile(np.linspace(-0.4, 0.4, 60), 3)
+    optb = ContinuousOptimalBinning(user_splits=[0.5, 1.5],
+                                    max_n_bins=n_bins,
+                                    monotonic_trend=None).fit(x, y)
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+
+    built = table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        statistic, pvalue = stats.ttest_ind_from_stats(
+            built.loc[i, "Mean"], table.stds[i], table.n_records[i],
+            built.loc[i+1, "Mean"], table.stds[i+1], table.n_records[i+1],
+            equal_var=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)
+
+
+def test_weighted_table_iv_shares():
+    rng = np.random.default_rng(0)
+    n = 1000
+    x_w = rng.normal(size=n)
+    y_w = 2.0 * x_w + rng.normal(size=n)
+    w = rng.uniform(0.5, 2.0, size=n)
+
+    optb = ContinuousOptimalBinning(max_n_prebins=8, min_prebin_size=0.05)
+    optb.fit(x_w, y_w, sample_weight=w)
+    table = optb.binning_table
+    table.build(add_totals=False)
+
+    # Weighted IV uses weighted record shares.
+    idx = np.digitize(x_w, optb.splits, right=False)
+    n_bins = len(optb.splits) + 1
+
+    w_n = np.array([w[idx == i].sum() for i in range(n_bins)])
+    w_s = np.array([(w * y_w)[idx == i].sum() for i in range(n_bins)])
+    m_bar = w_s.sum() / w_n.sum()
+    expected_iv = np.sum(w_n / w_n.sum() * np.abs(w_s / w_n - m_bar))
+
+    assert table.iv == approx(expected_iv)
+
+
+def test_weighted_fit_special_codes_dict():
+    rng = np.random.default_rng(0)
+    n = 1000
+    x_w = rng.normal(size=n)
+    y_w = 2.0 * x_w + rng.normal(size=n)
+    w = rng.uniform(0.5, 2.0, size=n)
+    x_w[:10] = -9
+    x_w[20:30] = -8
+
+    optb = ContinuousOptimalBinning(
+        max_n_prebins=8, min_prebin_size=0.05,
+        special_codes={'special_1': -8, 'special_2': -9})
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        optb.fit(x_w, y_w, sample_weight=w)
+        optb.binning_table.build()
+
+    assert not [r for r in record if issubclass(r.category, RuntimeWarning)]

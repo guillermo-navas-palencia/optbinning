@@ -10,8 +10,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import MulticlassOptimalBinning
 from optbinning.binning.binning_statistics import MulticlassBinningTable
@@ -335,3 +336,39 @@ def test_df_tests():
     # returned frame is a defensive copy
     df_tests["p-value"] = -1
     assert (table.df_tests["p-value"] != -1).all()
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = np.concatenate([np.repeat([0, 1, 2], counts)
+                        for counts in [[30, 20, 10], [10, 30, 20],
+                                       [20, 10, 30]]])
+
+    optb = MulticlassOptimalBinning(user_splits=[0.5, 1.5],
+                                    max_n_bins=n_bins,
+                                    monotonic_trend=None).fit(x, y)
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+    table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        statistic, pvalue, _, _ = stats.chi2_contingency(
+            table.n_event[i:i+2], correction=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)

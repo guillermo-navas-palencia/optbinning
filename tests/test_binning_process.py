@@ -10,7 +10,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from pytest import approx, raises
+from pytest import approx, fixture, mark, raises
 
 from contextlib import redirect_stdout
 
@@ -282,6 +282,27 @@ def test_default_from_dict():
                                  rel=1e-6)
 
 
+def test_fit_from_dict_uses_inferred_dtype(capsys):
+    # With dtype=None the resolved dtype lives in _dtype, not dtype.
+    names = variable_names[:3]
+    df = pd.DataFrame(X, columns=variable_names)
+
+    dict_optb = {}
+    for name in names:
+        optb = OptimalBinning(name=name, dtype=None)
+        optb.fit(df[name], y)
+        dict_optb[name] = optb
+
+    process = BinningProcess(names)
+    process.fit_from_dict(dict_optb)
+    process.information(print_level=1)
+
+    out = capsys.readouterr().out
+    line = next(line for line in out.splitlines()
+                if "Number of numerical" in line)
+    assert int(line.split()[-1]) == len(names)
+
+
 def test_auto_modes():
     df = pd.DataFrame(data.data, columns=data.feature_names)
 
@@ -426,6 +447,43 @@ def test_transformer_mixin_pandas_output():
     pipeline.fit(frame, y)
     assert list(pipeline.named_steps["classifier"].feature_names_in_) == names
     assert pipeline.predict(frame).shape == (len(y),)
+
+@fixture
+def inferred_names_sample():
+    x = np.repeat([0., 1., 2.], 40)
+    y = np.concatenate([np.r_[np.zeros(40-n), np.ones(n)] for n in [5, 20, 35]])
+    return pd.DataFrame({'a': x, 'b': x + 1}), y
+
+
+def test_inferred_names_survive_input_check_and_refit(inferred_names_sample):
+    frame, target = inferred_names_sample
+    process = BinningProcess().fit(frame, target, check_input=True)
+    assert list(process.get_feature_names_out()) == ['a', 'b']
+    assert process.variable_names is None
+    assert clone(process).variable_names is None
+    process.fit(frame[['a']].rename(columns={'a': 'new'}), target)
+    assert list(process.summary()['name']) == ['new']
+    assert list(process.get_feature_names_out()) == ['new']
+    assert list(process.transform(
+        frame.rename(columns={'a': 'new'})).columns) == ['new']
+
+
+def test_failed_refit_does_not_reuse_old_fit(inferred_names_sample):
+    frame, target = inferred_names_sample
+    process = BinningProcess().fit(frame, target)
+    with raises(TypeError):
+        process.fit("invalid", target)
+    with raises(NotFittedError):
+        process.transform(frame)
+
+
+def test_explicit_names_snapshot(inferred_names_sample):
+    frame, target = inferred_names_sample
+    names = ['a', 'b']
+    process = BinningProcess(names).fit(frame, target)
+    names[0] = 'changed'
+    assert list(process.get_support(names=True)) == ['a', 'b']
+
 
 def test_fit_params():
     binning_fit_params = {"mean radius": {"max_n_bins": 4}}
@@ -849,6 +907,19 @@ def test_target_dtype_invalid():
     with raises(ValueError):
         process = BinningProcess(variable_names=[], target_dtype="bad_value")
         process.fit(X, y)
+
+
+@mark.parametrize('target', [[1, np.nan], [1, np.inf], [[1], [2]],
+                             [], ['a', 'b'], [1+1j, 2+1j]])
+def test_invalid_continuous_override(target):
+    with raises((ValueError, TypeError)):
+        resolve_target_dtype(target, 'continuous')
+
+
+@mark.parametrize('target', [[0, 1, 2], [0.1, 0.7], [0, 0]])
+def test_invalid_binary_override(target):
+    with raises(ValueError):
+        resolve_target_dtype(target, 'binary')
 
 
 def test_reject_multiclass_sample_weight():

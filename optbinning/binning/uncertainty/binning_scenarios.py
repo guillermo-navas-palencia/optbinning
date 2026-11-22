@@ -642,12 +642,6 @@ class SBOptimalBinning(OptimalBinning):
             if max_xs > max_x:
                 max_x = max_xs
 
-            # s_n_nonevent, s_n_event = bin_info(
-            #     self._solution, n_nonevent[:, s], n_event[:, s],
-            #     self._n_nonevent_missing[s], self._n_event_missing[s],
-            #     self._n_nonevent_special[s], self._n_event_special[s], None,
-            #     None, [])
-
             s_n_nonevent, s_n_event, _, _ = bin_info(
                 solution=self._solution,
                 n_nonevent=n_nonevent[:, s],
@@ -655,9 +649,9 @@ class SBOptimalBinning(OptimalBinning):
                 w_n_nonevent=n_nonevent[:, s],
                 w_n_event=n_event[:, s],
                 n_nonevent_missing=self._n_nonevent_missing[s],
-                n_event_missing= self._n_event_missing[s],
+                n_event_missing=self._n_event_missing[s],
                 w_n_nonevent_missing=self._n_nonevent_missing[s],
-                w_n_event_missing= self._n_event_missing[s],
+                w_n_event_missing=self._n_event_missing[s],
                 n_nonevent_special=self._n_nonevent_special[s],
                 n_event_special=self._n_event_special[s],
                 w_n_nonevent_special=self._n_nonevent_special[s],

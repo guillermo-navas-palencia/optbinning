@@ -508,9 +508,9 @@ class ContinuousOptimalBinning(OptimalBinning):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Weights are used for the weighted bin counts and statistics
-            (WoE, IV, event rate or mean, p-value), for any
-            ``prebinning_method``. With ``prebinning_method="cart"``, they
-            are also used to fit the decision tree.
+            (WoE, IV, mean, p-value), for any ``prebinning_method``.
+            With ``prebinning_method="cart"``, they are also used to fit the
+            decision tree.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -548,9 +548,9 @@ class ContinuousOptimalBinning(OptimalBinning):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Weights are used for the weighted bin counts and statistics
-            (WoE, IV, event rate or mean, p-value), for any
-            ``prebinning_method``. With ``prebinning_method="cart"``, they
-            are also used to fit the decision tree.
+            (WoE, IV, mean, p-value), for any ``prebinning_method``.
+            With ``prebinning_method="cart"``, they are also used to fit the
+            decision tree.
 
         metric : str (default="mean")
             The metric used to transform the input vector. Supported metrics

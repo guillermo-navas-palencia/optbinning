@@ -1782,7 +1782,7 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
 
     def plot(
         self,
-        variable_names: list[str] | tuple[str, ...] | npt.NDArray | None = None,
+        variable_names: list[str] | tuple[str] | npt.NDArray | None = None,
         ncols: int | None = None,
         figsize: tuple[float, float] | None = None,
         add_special: bool = True,

@@ -376,7 +376,7 @@ def target_info_special_continuous(
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
             ymask = y[mask]
-    
+
             if len(sw):
                 n_records = np.sum(sw[mask])
                 sum_special.append(np.sum(sw[mask] * ymask))
@@ -1007,7 +1007,7 @@ class BinningTable:
         splits: npt.NDArray,
         n_nonevent: npt.NDArray,
         n_event: npt.NDArray,
-        weighted: bool, 
+        weighted: bool,
         w_n_nonevent: npt.NDArray,
         w_n_event: npt.NDArray,
         min_x: float | None = None,
@@ -1194,7 +1194,7 @@ class BinningTable:
 
             if add_totals:
                 totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
-                        t_event_rate, "", t_iv, t_js]
+                          t_event_rate, "", t_iv, t_js]
                 df.loc["Totals"] = totals
 
         self._is_built = True
@@ -2465,8 +2465,8 @@ class ContinuousBinningTable:
                 t_max = np.nanmax(self.max_target)
                 t_n_zeros = self.n_zeros.sum()
                 totals = ["", t_n_records, 1, t_sum, "", t_min, t_max,
-                        t_n_zeros, w_t_n_records, w_t_sum, t_mean,
-                        t_woe, t_iv]
+                          t_n_zeros, w_t_n_records, w_t_sum, t_mean,
+                          t_woe, t_iv]
                 df.loc["Totals"] = totals
         else:
             df = pd.DataFrame({
@@ -2488,7 +2488,7 @@ class ContinuousBinningTable:
                 t_max = np.nanmax(self.max_target)
                 t_n_zeros = self.n_zeros.sum()
                 totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
-                        t_n_zeros, t_woe, t_iv]
+                          t_n_zeros, t_woe, t_iv]
                 df.loc["Totals"] = totals
 
         self._is_built = True
@@ -2607,7 +2607,7 @@ class ContinuousBinningTable:
             metric_label = "IV"
 
         if self.weighted:
-            metric_label = f"Weighted {metric_label}"        
+            metric_label = f"Weighted {metric_label}"
 
         owns_figure = ax is None
         if owns_figure:

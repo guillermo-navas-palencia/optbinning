@@ -621,9 +621,9 @@ class OptimalBinning(BaseOptimalBinning):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Weights are used for the weighted bin counts and statistics
-            (WoE, IV, event rate or mean, p-value), for any
-            ``prebinning_method``. With ``prebinning_method="cart"``, they
-            are also used to fit the decision tree.
+            (WoE, IV, mean, p-value), for any ``prebinning_method``.
+            With ``prebinning_method="cart"``, they are also used to fit the
+            decision tree.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -661,9 +661,9 @@ class OptimalBinning(BaseOptimalBinning):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             Weights are used for the weighted bin counts and statistics
-            (WoE, IV, event rate or mean, p-value), for any
-            ``prebinning_method``. With ``prebinning_method="cart"``, they
-            are also used to fit the decision tree.
+            (WoE, IV, event rate, p-value), for any ``prebinning_method``.
+            With ``prebinning_method="cart"``, they are also used to fit the
+            decision tree.
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
@@ -1048,7 +1048,8 @@ class OptimalBinning(BaseOptimalBinning):
                                            sw_clean, sw_missing, sw_special,
                                            sw_others)
 
-    def _fit_optimizer(self, splits, n_nonevent, n_event, w_n_nonevent, w_n_event):
+    def _fit_optimizer(self, splits, n_nonevent, n_event,
+                       w_n_nonevent, w_n_event):
         if self.verbose:
             logger.info("Optimizer started.")
 
@@ -1205,13 +1206,15 @@ class OptimalBinning(BaseOptimalBinning):
         self._n_nonevent_special, self._n_event_special = target_info_special(
             self.special_codes, x_special, y_special, [])
 
-        self._w_n_nonevent_special, self._w_n_event_special = target_info_special(
+        (self._w_n_nonevent_special,
+         self._w_n_event_special) = target_info_special(
             self.special_codes, x_special, y_special, sw_special)
 
         self._n_nonevent_missing, self._n_event_missing = target_info_samples(
             y_missing, [])
 
-        self._w_n_nonevent_missing, self._w_n_event_missing = target_info_samples(
+        (self._w_n_nonevent_missing,
+         self._w_n_event_missing) = target_info_samples(
             y_missing, sw_missing)
 
         if len(y_others):

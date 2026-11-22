@@ -35,13 +35,6 @@ class PreBinning:
     min_bin_size : int, float
         The minimum bin size.
 
-    class_weight : dict, "balanced" or None, optional (default=None)
-        Weights associated with classes in the form ``{class_label: weight}``.
-        If None, all classes are supposed to have weight one. Check
-        `sklearn.tree.DecisionTreeClassifier
-        <https://scikit-learn.org/stable/modules/generated/sklearn.tree.
-        DecisionTreeClassifier.html>`_.
-
     **kwargs : keyword arguments
         Keyword arguments for prebinning method. See notes.
 
@@ -64,7 +57,6 @@ class PreBinning:
         method: str,
         n_bins: int,
         min_bin_size: int | float,
-        class_weight: dict[str, float] | str | None = None,
         **kwargs
     ):
 
@@ -72,7 +64,6 @@ class PreBinning:
         self.method = method
         self.n_bins = n_bins
         self.min_bin_size = min_bin_size
-        self.class_weight = class_weight
         self.kwargs = kwargs
 
         self._splits = None
@@ -94,7 +85,8 @@ class PreBinning:
             Target vector relative to x.
 
         sample_weight : array-like of shape (n_samples,) (default=None)
-            Array of weights that are assigned to individual samples.
+            Array of weights that are assigned to individual samples; ignored
+            if ``method != "cart"``.
 
         Returns
         -------
@@ -123,31 +115,13 @@ class PreBinning:
             self._splits = est.bin_edges_[0][1:-1]
 
         elif self.method == "cart":
-            if sample_weight is None:
-                cart_kwargs = {
-                        "min_samples_leaf": self.min_bin_size,
-                        "max_leaf_nodes": self.n_bins}
-            else:
-                # https://scikit-learn.org/stable/modules/tree.html#tips-on-practical-use  # noqa:501
-                # If the samples are weighted, it will be easier to optimize
-                # the tree structure using weight-based pre-pruning criterion
-                # such as min_weight_fraction_leaf, which ensure that leaf
-                # nodes contain at least a fraction of the overall sum of the
-                # sample weights.
-                cart_kwargs = {
-                    "min_weight_fraction_leaf": min(
-                        0.5, self.min_bin_size / np.sum(sample_weight)
-                        ),
-                    "max_leaf_nodes": self.n_bins
-                }
-
+            cart_kwargs = {
+                "min_samples_leaf": self.min_bin_size,
+                "max_leaf_nodes": self.n_bins}
+            cart_kwargs.update(**self.kwargs)
             if self.problem_type == "classification":
-                cart_kwargs["class_weight"] = self.class_weight
-                cart_kwargs.update(**self.kwargs)
-
                 est = DecisionTreeClassifier(**cart_kwargs)
             else:
-                cart_kwargs.update(**self.kwargs)
                 est = DecisionTreeRegressor(**cart_kwargs)
 
             est.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)

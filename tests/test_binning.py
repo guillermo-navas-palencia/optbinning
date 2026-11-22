@@ -5,12 +5,17 @@ OptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import OptimalBinning
+from optbinning.binning.binning_statistics import BinningTable
 from sklearn.datasets import load_breast_cancer
 from sklearn.exceptions import NotFittedError
 
@@ -213,15 +218,20 @@ def test_split_digits_negative():
 
 
 def test_binning_table_hhi_masked_bins():
-    from optbinning.binning.binning_statistics import BinningTable
+    weighted = False
+    n_nonevent = np.array([1, 0, 2, 0, 0])
+    n_event = np.array([2, 0, 3, 0, 0])
 
     table = BinningTable(
         name="test",
         dtype="numerical",
         special_codes=None,
         splits=np.array([1.0, 2.0]),
-        n_nonevent=np.array([1, 0, 2, 0, 0]),
-        n_event=np.array([2, 0, 3, 0, 0]),
+        n_nonevent=n_nonevent,
+        n_event=n_event,
+        weighted=weighted,
+        w_n_nonevent=n_nonevent,
+        w_n_event=n_event
     )
 
     table.build(add_totals=False)
@@ -365,6 +375,74 @@ def test_categorical_default_user_splits():
     assert optb.status == "OPTIMAL"
 
 
+def test_dtype_autodetect():
+    x_cat = np.array([
+        'Working', 'State servant', 'Working', 'Working', 'Working',
+        'State servant', 'Commercial associate', 'State servant',
+        'Pensioner', 'Working', 'Working', 'Pensioner', 'Working',
+        'Working', 'Working', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Working', 'Working', 'Working',
+        'State servant', 'Working', 'Commercial associate', 'Working',
+        'Working', 'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Working', 'Pensioner', 'Working',
+        'Commercial associate', 'Working', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'State servant', 'Commercial associate', 'Working',
+        'Commercial associate', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Working', 'Commercial associate', 'Working',
+        'Pensioner', 'Working', 'Commercial associate',
+        'Commercial associate', 'State servant', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner', 'Working', 'Pensioner',
+        'Working', 'Working', 'Pensioner', 'Working', 'State servant',
+        'Working', 'Working', 'Working', 'Working', 'Working',
+        'Commercial associate', 'Commercial associate',
+        'Commercial associate', 'Working', 'Commercial associate',
+        'Working', 'Working', 'Pensioner'], dtype=object)
+
+    y_cat = np.array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+
+    optb = OptimalBinning(dtype=None)
+    assert optb.dtype is None
+
+    optb = OptimalBinning(dtype=None)
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+    assert optb.status == "OPTIMAL"
+
+    optb = OptimalBinning(dtype=None, solver="mip", cat_cutoff=0.1)
+    optb.fit(x_cat, y_cat)
+    assert optb._dtype == "categorical"
+    assert optb.status == "OPTIMAL"
+
+    x_cat_unicode = np.array(x_cat, dtype=str)
+    optb = OptimalBinning(dtype=None, solver="mip", cat_cutoff=0.1)
+    optb.fit(x_cat_unicode, y_cat)
+    assert optb._dtype == "categorical"
+
+    x_coded = pd.Series(pd.Categorical(
+        np.random.RandomState(0).choice([1, 2, 3], size=len(x_cat))))
+    optb = OptimalBinning(dtype=None, solver="mip", cat_cutoff=0.1)
+    optb.fit(x_coded, y_cat)
+    assert optb._dtype == "categorical"
+
+    optb = OptimalBinning(dtype="numerical")
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    with raises(ValueError):
+        optb = OptimalBinning(dtype="nominal")
+        optb.fit(x, y)
+
+
 def test_categorical_user_splits():
     np.random.seed(0)
     n = 100000
@@ -455,15 +533,6 @@ def test_numerical_regularization():
 
     assert len(optb_mip.splits) < 6
     assert len(optb_cp.splits) < 6
-
-
-# def test_numerical_prebinning_kwargs():
-#     optb_kwargs = OptimalBinning(solver="mip", prebinning_method="mdlp",
-#                                  **{"max_candidates": 64})
-
-#     optb_kwargs.fit(x, y)
-#     optb_kwargs.binning_table.build()
-#     assert optb_kwargs.binning_table.iv == approx(4.37337682, rel=1e-6)
 
 
 def test_min_event_rate_diff():
@@ -591,6 +660,148 @@ def test_information():
     optb.information(print_level=2)
 
 
+def test_numerical_transform_indices_and_bins():
+    optb = OptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    splits = optb.splits
+    n_bins = len(splits) + 1
+
+    indices = optb.transform(x, metric="indices")
+    bins = optb.transform(x, metric="bins")
+    woe = optb.transform(x, metric="woe")
+    event_rate = optb.transform(x, metric="event_rate")
+
+    assert ((indices >= 0) & (indices < n_bins)).all()
+
+    table = optb.binning_table.build()
+    table_woe = table["WoE"].values[:n_bins].astype(float)
+    table_event_rate = table["Event rate"].values[:n_bins].astype(float)
+
+    assert woe == approx(table_woe[indices], rel=1e-6)
+    assert event_rate == approx(table_event_rate[indices], rel=1e-6)
+
+    bin_edges = np.concatenate([[-np.inf], splits, [np.inf]])
+    for xi, bi, idx in zip(x, bins, indices):
+        lo, hi = bin_edges[idx], bin_edges[idx + 1]
+        assert lo <= xi < hi
+        assert bi == table["Bin"].values[idx]
+
+
+def test_numerical_transform_no_splits():
+    optb = OptimalBinning(name=variable, dtype="numerical", max_n_bins=1)
+    optb.fit(x, y)
+
+    assert len(optb.splits) == 0
+
+    for metric in ("woe", "event_rate", "indices", "bins"):
+        x_transform = optb.transform(x, metric=metric)
+        assert len(np.unique(x_transform)) == 1
+
+
+def test_categorical_transform_indices_and_bins():
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randint(0, 2, 500)
+
+    optb = OptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    n_bins = len(optb.splits)
+
+    x_test = np.concatenate([
+        x_cat[:50],
+        np.array(['unseen_cat'], dtype=object),
+        np.array([np.nan], dtype=object)])
+
+    indices = optb.transform(x_test, metric="indices")
+    woe = optb.transform(x_test, metric="woe")
+    event_rate = optb.transform(x_test, metric="event_rate")
+
+    table = optb.binning_table.build()
+    table_woe = table["WoE"].values[:n_bins].astype(float)
+    table_event_rate = table["Event rate"].values[:n_bins].astype(float)
+
+    assert ((indices[:50] >= 0) & (indices[:50] < n_bins)).all()
+    assert woe[:50] == approx(table_woe[indices[:50]], rel=1e-6)
+    assert event_rate[:50] == approx(
+        table_event_rate[indices[:50]], rel=1e-6)
+
+    default_woe = optb.transform(['unseen_cat'], metric="woe")[0]
+    assert woe[50] == approx(default_woe, rel=1e-6)
+    assert not np.isnan(woe[51])  # missing value has its own default
+
+
+def test_df_tests():
+    optb = OptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value", "P[A > B]", "P[B > A]"]
+    assert len(df_tests) == len(table.n_event[:-2]) - 1
+
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()
+
+    # Fisher exact test renames "t-statistic" to "odd ratio"
+    table.analysis(pvalue_test="fisher", print_output=False)
+    assert "odd ratio" in table.df_tests.columns
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = np.concatenate([np.r_[np.zeros(60 - n), np.ones(n)]
+                        for n in [10, 30, 50]])
+    optb = OptimalBinning(user_splits=[0.5, 1.5], max_n_bins=n_bins,
+                          monotonic_trend=None).fit(x, y)
+    
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+    
+    table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        obs = np.array([table.n_nonevent[i:i+2], table.n_event[i:i+2]])
+        statistic, pvalue, _, _ = stats.chi2_contingency(obs, correction=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)
+
+    table.analysis(pvalue_test="fisher", print_output=False)
+    assert "t-statistic" not in table.df_tests
+    assert "odd ratio" in table.df_tests
+    
+    for i, row in table.df_tests.iterrows():
+        expected = stats.fisher_exact(np.array([
+            table.n_nonevent[i:i+2], table.n_event[i:i+2]]))
+        np.testing.assert_allclose([row["odd ratio"], row["p-value"]],
+                                   expected)
+
+
 def test_verbose():
     optb = OptimalBinning(verbose=True)
     optb.fit(x, y)
@@ -599,8 +810,6 @@ def test_verbose():
 
 
 def test_to_json_read_json(tmp_path):
-    # A binning object reloaded via read_json must reproduce the same
-    # transform as the originally fitted object. See GH issue #387.
     optb = OptimalBinning(name=variable, dtype="numerical")
     optb.fit(x, y)
 
@@ -616,10 +825,6 @@ def test_to_json_read_json(tmp_path):
 
 
 def test_to_json_read_json_categorical(tmp_path):
-    # categories/cat_others are pandas/numpy array-likes and must be made
-    # JSON-serializable before being written out, otherwise to_json raises
-    # (e.g. "Object of type ndarray/ArrowStringArray is not JSON
-    # serializable"). See GH issue #387.
     rng = np.random.RandomState(0)
     x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
     y_cat = rng.randint(0, 2, 500)
@@ -635,3 +840,235 @@ def test_to_json_read_json_categorical(tmp_path):
 
     assert optb_loaded.transform(x_cat) == approx(
         optb.transform(x_cat), rel=1e-6)
+
+
+@mark.parametrize(
+    "groups", [None, [["a", "b"], ["c", "d"]], [["a"], ["b", "c", "d"]]]
+    )
+@mark.parametrize("as_array", [False, True])
+@mark.parametrize(
+    "special_codes", [
+        None,
+        np.array(["special"]),
+        {"flagged": np.array(["special", "unused"])}
+    ])
+def test_categorical_json_roundtrip(tmp_path, groups, as_array, special_codes):
+    values = np.repeat(["a", "b", "c", "d", "other", "special"], 100)
+
+    target = np.concatenate([
+        np.r_[np.zeros(100 - events), np.ones(events)]
+        for events in [10, 20, 70, 80, 40, 30]])
+
+    values = np.r_[values.astype(object), [np.nan] * 100]
+    target = np.r_[target, np.tile([0, 1], 50)]
+    user_splits = groups
+
+    if as_array and groups is not None:
+        user_splits = np.array(groups, dtype=object)
+
+    path = str(tmp_path / "category.json")
+    fitted = OptimalBinning(
+        name="category", dtype="categorical", user_splits=user_splits,
+        special_codes=special_codes).fit(values, target)
+    exported = fitted.to_dict()
+    json.dumps(exported)
+    
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+    sample = np.array(["a", "b", "c", "d", "other", "special", np.nan,
+                       "unknown"], dtype=object)
+
+    for metric in ["woe", "event_rate", "indices"]:
+        params = dict(metric=metric, metric_special="empirical",
+                      metric_missing="empirical")
+        actual = restored.transform(sample, **params)
+        expected = fitted.transform(sample, **params)
+        np.testing.assert_allclose(actual, expected)
+
+    assert [list(group) for group in restored.splits] == [
+        list(group) for group in fitted.splits]
+
+    pd.testing.assert_frame_equal(
+        restored.binning_table.build().drop(columns="Bin"),
+        fitted.binning_table.build().drop(columns="Bin"))
+
+    assert restored.to_dict() == exported
+    assert restored.name == fitted.name
+    assert restored.dtype == "categorical"
+
+
+def test_numerical_json_numpy_values(tmp_path):
+    values = np.repeat(np.array([1, 2, 3, -999], dtype=np.int64), 100)
+    target = np.concatenate([
+        np.r_[np.zeros(100 - events), np.ones(events)]
+        for events in [10, 30, 80, 20]])
+
+    path = str(tmp_path / "numerical.json")
+    fitted = OptimalBinning(special_codes={"flagged": np.array([-999])})
+    fitted.fit(values, target)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    for metric in ["woe", "indices"]:
+        params = dict(metric=metric, metric_special="empirical")
+        np.testing.assert_allclose(restored.transform(values, **params),
+                                   fitted.transform(values, **params))
+
+
+def test_read_json_1_0_0_fixture():
+    path = Path(__file__).parent / "datasets/json/optimal_binning_1_0_0.json"
+    loaded = OptimalBinning()
+    loaded.read_json(str(path))
+    
+    sample = np.array(["a", "b", "c", "d", "other", "special", np.nan],
+                      dtype=object)
+    rates = np.array([0.15, 0.15, 0.75, 0.75, 0.4, 0.3, 0.5])
+    
+    expected = {
+        "indices": [0, 0, 1, 1, 2, 3, 4],
+        "event_rate": rates,
+        "woe": np.log((1 - rates) / rates * 300 / 400)}
+    
+    for metric, values in expected.items():
+        np.testing.assert_allclose(loaded.transform(
+            sample, metric=metric, metric_special="empirical",
+            metric_missing="empirical"), values)
+    
+    table = loaded.binning_table.build(add_totals=False)
+    
+    np.testing.assert_array_equal(table["Count"], [200, 200, 100, 100, 100])
+    np.testing.assert_array_equal(table["Event"], [30, 150, 40, 30, 50])
+    
+    assert loaded.dtype == "categorical"
+    assert loaded.special_codes == {"flagged": ["special"]}
+    assert loaded.user_splits == [["a", "b"], ["c", "d"]]
+    assert loaded.cat_unknown is None
+
+
+def test_json_numpy_special_key(tmp_path):
+    values = np.repeat([1., 2., 3., -999.], 100)
+    target = np.concatenate([np.r_[np.zeros(100-n), np.ones(n)]
+                             for n in [10, 30, 80, 20]])
+    
+    path = str(tmp_path / "numpy_key.json")
+    fitted = OptimalBinning(special_codes={np.int64(1): [-999]}).fit(
+        values, target)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    np.testing.assert_allclose(
+        restored.transform(values, metric_special="empirical"),
+        fitted.transform(values, metric_special="empirical"))
+
+
+def test_json_mixed_cat_others(tmp_path):
+    values = np.array(["a"] * 100 + ["b"] * 100 + [1] * 10 + ["1"] * 10,
+                      dtype=object)
+    target = np.concatenate([np.r_[np.zeros(100-n), np.ones(n)]
+                             for n in [20, 80]] + [np.tile([0, 1], 10)])
+
+    path = str(tmp_path / "mixed_others.json")
+    fitted = OptimalBinning(dtype="categorical", cat_cutoff=0.1)
+    fitted.fit(values, target)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    for metric in ["indices", "woe", "event_rate"]:
+        np.testing.assert_allclose(restored.transform(values, metric=metric),
+                                   fitted.transform(values, metric=metric))
+    assert set(map(type, restored._cat_others)) == {int, str}
+
+
+@mark.parametrize("unknown", [999, "unseen"])
+def test_json_cat_unknown(tmp_path, unknown):
+    values = np.repeat(["a", "b"], 100)
+    target = np.r_[np.tile([0, 0, 0, 1], 25), np.tile([0, 1, 1, 1], 25)]
+    
+    path = str(tmp_path / "unknown.json")
+    fitted = OptimalBinning(dtype="categorical", cat_unknown=unknown)
+    fitted.fit(values, target)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    assert restored.cat_unknown == unknown
+
+    if isinstance(unknown, str):
+        metrics = ["bins"]
+        sample = ["new"]
+    else:
+        metrics = ["indices", "woe", "event_rate"]
+        sample = ["a", "new"]
+
+    for metric in metrics:
+        np.testing.assert_array_equal(
+            restored.transform(sample, metric=metric),
+            fitted.transform(sample, metric=metric))
+
+
+def test_json_class_weight(tmp_path):
+    path = str(tmp_path / "class_weight.json")
+    fitted = OptimalBinning(name=variable, class_weight="balanced")
+    fitted.fit(x, y)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    assert restored.binning_table.weighted
+    np.testing.assert_allclose(restored.binning_table.w_n_event,
+                            fitted.binning_table.w_n_event)
+    np.testing.assert_allclose(restored.binning_table.w_n_nonevent,
+                            fitted.binning_table.w_n_nonevent)
+
+    for metric in ["event_rate", "woe", "indices"]:
+        np.testing.assert_allclose(restored.transform(x, metric=metric),
+                                   fitted.transform(x, metric=metric))
+
+
+@mark.parametrize("solver", ["cp", "mip"])
+def test_min_bin_size_counts_rows_under_weights(solver):
+    min_bin_size = 0.1
+    unweighted = OptimalBinning(solver=solver, min_bin_size=min_bin_size)
+    unweighted.fit(x, y)
+    weighted = OptimalBinning(solver=solver, min_bin_size=min_bin_size)
+    weighted.fit(x, y, sample_weight=np.full(len(x), 5.0))
+
+    np.testing.assert_allclose(weighted.splits, unweighted.splits)
+
+    bin_indices = np.searchsorted(weighted.splits, x, side="right")
+    counts = np.bincount(bin_indices)
+    assert counts.min() >= np.ceil(min_bin_size * len(x))
+
+
+def test_json_sample_weight(tmp_path):
+    sample_weight = np.ones(len(x))
+    sample_weight[:20] = 3
+    sample_weight[-70:] = 2
+
+    path = str(tmp_path / "sample_weight.json")
+    fitted = OptimalBinning(name=variable)
+    fitted.fit(x, y, sample_weight)
+    fitted.to_json(path)
+
+    restored = OptimalBinning()
+    restored.read_json(path)
+
+    assert restored.binning_table.weighted
+    np.testing.assert_allclose(restored.binning_table.w_n_event,
+                            fitted.binning_table.w_n_event)
+    np.testing.assert_allclose(restored.binning_table.w_n_nonevent,
+                            fitted.binning_table.w_n_nonevent)
+
+    for metric in ["event_rate", "woe", "indices"]:
+        np.testing.assert_allclose(restored.transform(x, metric=metric),
+                                   fitted.transform(x, metric=metric))

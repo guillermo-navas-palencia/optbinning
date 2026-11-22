@@ -53,6 +53,20 @@ def _fit_scorecard(target_dtype, X_train, y_train):
     return scorecard
 
 
+def test_monitoring_continuous_target_dtype_and_nan_target():
+    x = np.linspace(0, 1, 100)
+    X = pd.DataFrame({'x': x})
+    y = np.floor(x * 20) + 10
+    model = Scorecard(BinningProcess(['x'], target_dtype='continuous'),
+                      LinearRegression()).fit(X, y)
+
+    monitor = ScorecardMonitoring(model).fit(X, y, X, y)
+    assert monitor._target_dtype == 'continuous'
+
+    with raises(ValueError):
+        ScorecardMonitoring(model).fit(X, np.full(100, np.nan), X, y)
+
+
 def test_params():
     X_train, y_train, X_test, y_test = _data("binary")
     scorecard = _fit_scorecard("binary", X_train, y_train)

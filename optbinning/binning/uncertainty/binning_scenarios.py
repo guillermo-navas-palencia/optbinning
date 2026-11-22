@@ -642,26 +642,65 @@ class SBOptimalBinning(OptimalBinning):
             if max_xs > max_x:
                 max_x = max_xs
 
-            s_n_nonevent, s_n_event = bin_info(
-                self._solution, n_nonevent[:, s], n_event[:, s],
-                self._n_nonevent_missing[s], self._n_event_missing[s],
-                self._n_nonevent_special[s], self._n_event_special[s], None,
-                None, [])
+            s_n_nonevent, s_n_event, _, _ = bin_info(
+                solution=self._solution,
+                n_nonevent=n_nonevent[:, s],
+                n_event=n_event[:, s],
+                w_n_nonevent=n_nonevent[:, s],
+                w_n_event=n_event[:, s],
+                n_nonevent_missing=self._n_nonevent_missing[s],
+                n_event_missing=self._n_event_missing[s],
+                w_n_nonevent_missing=self._n_nonevent_missing[s],
+                w_n_event_missing=self._n_event_missing[s],
+                n_nonevent_special=self._n_nonevent_special[s],
+                n_event_special=self._n_event_special[s],
+                w_n_nonevent_special=self._n_nonevent_special[s],
+                w_n_event_special=self._n_event_special[s],
+                n_nonevent_cat_others=None,
+                n_event_cat_others=None,
+                w_n_nonevent_cat_others=None,
+                w_n_event_cat_others=None,
+                cat_others=[]
+            )
 
             self._n_nonevent += s_n_nonevent
             self._n_event += s_n_event
 
             binning_table = BinningTable(
-                self.name, self.dtype, self.special_codes,
-                self._splits_optimal, s_n_nonevent, s_n_event, min_xs, max_xs,
-                None, None, self.user_splits)
+                name=self.name,
+                dtype=self.dtype,
+                special_codes=self.special_codes,
+                splits=self._splits_optimal,
+                n_nonevent=s_n_nonevent,
+                n_event=s_n_event,
+                weighted=False,
+                w_n_nonevent=s_n_nonevent,
+                w_n_event=s_n_event,
+                min_x=min_xs,
+                max_x=max_xs,
+                categories=None,
+                cat_others=None,
+                user_splits=self.user_splits
+            )
 
             self._binning_tables.append(binning_table)
 
         self._binning_table = BinningTable(
-            self.name, self.dtype, self.special_codes, self._splits_optimal,
-            self._n_nonevent, self._n_event, min_x, max_x, None, None,
-            self.user_splits)
+            name=self.name,
+            dtype=self.dtype,
+            special_codes=self.special_codes,
+            splits=self._splits_optimal,
+            n_nonevent=self._n_nonevent,
+            n_event=self._n_event,
+            weighted=False,
+            w_n_nonevent=self._n_nonevent,
+            w_n_event=self._n_event,
+            min_x=min_x,
+            max_x=max_x,
+            categories=None,
+            cat_others=None,
+            user_splits=self.user_splits
+        )
 
         self._time_postprocessing = time.perf_counter() - time_postprocessing
 

@@ -282,12 +282,43 @@ def continuous_model_data(
     n_records: npt.NDArray,
     sums: npt.NDArray,
     ssums: npt.NDArray,
+    w2: npt.NDArray,
     max_pvalue: float | None,
     max_pvalue_policy: str,
     min_mean_diff: float,
     scale: int | float | None = None,
 ) -> tuple[list, ...]:
+    """Compute the model data for the continuous optimizer.
 
+    The p-value test uses the Kish effective sample size
+    ``(sum w)^2 / sum w^2``.
+
+    Parameters
+    ----------
+    n_records : numpy.ndarray
+        Weighted record counts per prebin.
+
+    sums : numpy.ndarray
+        Weighted sum of target values per prebin.
+
+    ssums : numpy.ndarray
+        Weighted sum of squared target values per prebin.
+
+    w2 : numpy.ndarray
+        Sum of squared sample weights per prebin.
+
+    max_pvalue : float or None
+        Maximum p-value allowed between consecutive bins.
+
+    max_pvalue_policy : str
+        Policy for applying the p-value constraint.
+
+    min_mean_diff : float
+        Minimum mean difference between consecutive bins.
+
+    scale : int, float or None, optional (default=None)
+        Scaling factor for the model data.
+    """
     n = len(n_records)
 
     U = []
@@ -302,6 +333,7 @@ def continuous_model_data(
         s_n_records = n_records[:i][::-1].cumsum()[::-1]
         s_sums = sums[:i][::-1].cumsum()[::-1]
         s_ssums = ssums[:i][::-1].cumsum()[::-1]
+        s_w2 = w2[:i][::-1].cumsum()[::-1]
 
         mean = s_sums / s_n_records
         std = np.sqrt(s_ssums / s_n_records - mean ** 2)
@@ -324,7 +356,7 @@ def continuous_model_data(
             UP.append(mean)
 
         if max_pvalue is not None:
-            R.append(s_n_records)
+            R.append(s_n_records ** 2 / s_w2)
             S.append(std)
 
     if max_pvalue is not None:

@@ -5,10 +5,13 @@ ContinuousOptimalBinning testing.
 # Guillermo Navas-Palencia <g.navas.palencia@gmail.com>
 # Copyright (C) 2020
 
+import warnings
+
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import ContinuousOptimalBinning
 from sklearn.exceptions import NotFittedError
@@ -203,6 +206,55 @@ def test_categorical_user_splits():
         assert optb.status == "OPTIMAL"
 
 
+def test_dtype_autodetect():
+    # Explicit dtype=None infers the variable type from the data.
+    # See GH issue #316.
+    np.random.seed(0)
+    n = 300
+    x_cat = np.random.choice(
+        ["Working", "Pensioner", "Student"], size=n).astype(object)
+    y_cat = np.random.normal(size=n)
+
+    # automatic detection is opt-in
+    optb = ContinuousOptimalBinning(dtype=None)
+    assert optb.dtype is None
+
+    # numerical data is inferred as "numerical"
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # object-dtype string array is inferred as "categorical"
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_cat, y_cat)
+    assert optb._dtype == "categorical"
+
+    # plain numpy unicode string array (not dtype=object) is also
+    # inferred as "categorical"
+    x_cat_unicode = np.array(x_cat, dtype=str)
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_cat_unicode, y_cat)
+    assert optb._dtype == "categorical"
+
+    # pandas category dtype with *numeric* categories is inferred as
+    # "categorical", not "numerical"
+    x_coded = pd.Series(pd.Categorical(
+        np.random.choice([1, 2, 3], size=n)))
+    optb = ContinuousOptimalBinning(dtype=None)
+    optb.fit(x_coded, y_cat)
+    assert optb._dtype == "categorical"
+
+    # explicit dtype still overrides auto-detection
+    optb = ContinuousOptimalBinning(dtype="numerical")
+    optb.fit(x, y)
+    assert optb._dtype == "numerical"
+
+    # invalid explicit dtype values are still rejected
+    with raises(ValueError):
+        optb = ContinuousOptimalBinning(dtype="nominal")
+        optb.fit(x, y)
+
+
 def test_numerical_max_pvalue():
     optb0 = ContinuousOptimalBinning(max_pvalue=0.05,
                                      max_pvalue_policy="consecutive")
@@ -272,6 +324,87 @@ def test_numerical_default_fit_transform():
                                       30.47142857], rel=1e-6)
 
 
+def test_numerical_transform_indices_and_bins():
+    # transform()'s numerical branch gathers per-sample values via
+    # np.digitize indices instead of a per-bin masking loop (GH issue
+    # #388). Cross-check "indices"/"bins" against "mean" and the binning
+    # table itself, and confirm every sample's bin actually contains its
+    # value.
+    optb = ContinuousOptimalBinning(name=variable, dtype="numerical")
+    optb.fit(x, y)
+
+    splits = optb.splits
+    n_bins = len(splits) + 1
+
+    indices = optb.transform(x, metric="indices")
+    bins = optb.transform(x, metric="bins")
+    mean = optb.transform(x, metric="mean")
+
+    assert ((indices >= 0) & (indices < n_bins)).all()
+
+    table = optb.binning_table.build()
+    table_mean = table["Mean"].values[:n_bins].astype(float)
+
+    assert mean == approx(table_mean[indices], rel=1e-6)
+
+    bin_edges = np.concatenate([[-np.inf], splits, [np.inf]])
+    for xi, bi, idx in zip(x, bins, indices):
+        lo, hi = bin_edges[idx], bin_edges[idx + 1]
+        assert lo <= xi < hi
+        assert bi == table["Bin"].values[idx]
+
+
+def test_numerical_transform_no_splits():
+    # Edge case: a single-bin solution has no splits at all, so
+    # np.digitize is skipped and ``indices`` is built as a float array of
+    # zeros (see transform_continuous_target). The vectorized gather must
+    # still handle this (it requires integer indices for fancy indexing).
+    optb = ContinuousOptimalBinning(name=variable, dtype="numerical",
+                                    max_n_bins=1)
+    optb.fit(x, y)
+
+    assert len(optb.splits) == 0
+
+    for metric in ("mean", "indices", "bins"):
+        x_transform = optb.transform(x, metric=metric)
+        assert len(np.unique(x_transform)) == 1
+
+
+def test_categorical_transform_indices_and_bins():
+    # transform()'s categorical branch resolves each sample's bin via
+    # pd.factorize instead of looping over bins and testing membership
+    # against the whole array each time (GH issue #388). Cross-check
+    # "indices" against "mean" and the binning table, and exercise the
+    # edge cases the rewrite has to handle explicitly: a category never
+    # seen during fit, and a missing (NaN) value.
+    rng = np.random.RandomState(0)
+    x_cat = rng.choice(np.array(['a', 'b', 'c', 'd', 'e']), size=500)
+    y_cat = rng.randn(500)
+
+    optb = ContinuousOptimalBinning(name="x_cat", dtype="categorical")
+    optb.fit(x_cat, y_cat)
+
+    n_bins = len(optb.splits)
+
+    x_test = np.concatenate([
+        x_cat[:50],
+        np.array(['unseen_cat'], dtype=object),
+        np.array([np.nan], dtype=object)])
+
+    indices = optb.transform(x_test, metric="indices")
+    mean = optb.transform(x_test, metric="mean")
+
+    table = optb.binning_table.build()
+    table_mean = table["Mean"].values[:n_bins].astype(float)
+
+    assert ((indices[:50] >= 0) & (indices[:50] < n_bins)).all()
+    assert mean[:50] == approx(table_mean[indices[:50]], rel=1e-6)
+
+    default_mean = optb.transform(['unseen_cat'], metric="mean")[0]
+    assert mean[50] == approx(default_mean, rel=1e-6)
+    assert not np.isnan(mean[51])  # missing value has its own default
+
+
 def test_verbose():
     optb = ContinuousOptimalBinning(verbose=True)
     optb.fit(x, y)
@@ -325,3 +458,106 @@ def test_special_codes_dict_none_present():
 
     assert optb.status == "OPTIMAL"
     optb.binning_table.build()
+
+
+def test_df_tests():
+    optb = ContinuousOptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    assert len(df_tests) > 0
+
+    # returned frame is a defensive copy
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = x + np.tile(np.linspace(-0.4, 0.4, 60), 3)
+    optb = ContinuousOptimalBinning(user_splits=[0.5, 1.5],
+                                    max_n_bins=n_bins,
+                                    monotonic_trend=None).fit(x, y)
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+
+    built = table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        statistic, pvalue = stats.ttest_ind_from_stats(
+            built.loc[i, "Mean"], table.stds[i], table.n_records[i],
+            built.loc[i+1, "Mean"], table.stds[i+1], table.n_records[i+1],
+            equal_var=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)
+
+
+def test_weighted_table_iv_shares():
+    rng = np.random.default_rng(0)
+    n = 1000
+    x_w = rng.normal(size=n)
+    y_w = 2.0 * x_w + rng.normal(size=n)
+    w = rng.uniform(0.5, 2.0, size=n)
+
+    optb = ContinuousOptimalBinning(max_n_prebins=8, min_prebin_size=0.05)
+    optb.fit(x_w, y_w, sample_weight=w)
+    table = optb.binning_table
+    table.build(add_totals=False)
+
+    # Weighted IV uses weighted record shares.
+    idx = np.digitize(x_w, optb.splits, right=False)
+    n_bins = len(optb.splits) + 1
+
+    w_n = np.array([w[idx == i].sum() for i in range(n_bins)])
+    w_s = np.array([(w * y_w)[idx == i].sum() for i in range(n_bins)])
+    m_bar = w_s.sum() / w_n.sum()
+    expected_iv = np.sum(w_n / w_n.sum() * np.abs(w_s / w_n - m_bar))
+
+    assert table.iv == approx(expected_iv)
+
+
+def test_weighted_fit_special_codes_dict():
+    rng = np.random.default_rng(0)
+    n = 1000
+    x_w = rng.normal(size=n)
+    y_w = 2.0 * x_w + rng.normal(size=n)
+    w = rng.uniform(0.5, 2.0, size=n)
+    x_w[:10] = -9
+    x_w[20:30] = -8
+
+    optb = ContinuousOptimalBinning(
+        max_n_prebins=8, min_prebin_size=0.05,
+        special_codes={'special_1': -8, 'special_2': -9})
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        optb.fit(x_w, y_w, sample_weight=w)
+        optb.binning_table.build()
+
+    assert not [r for r in record if issubclass(r.category, RuntimeWarning)]

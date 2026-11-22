@@ -11,10 +11,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_array
 from sklearn.utils import check_consistent_length
-from sklearn.utils import compute_class_weight
+from sklearn.utils import compute_sample_weight
 from sklearn.utils.validation import _check_sample_weight
 
 from .outlier import ModifiedZScoreDetector
@@ -22,12 +21,29 @@ from .outlier import RangeDetector
 from .outlier import YQuantileDetector
 
 
+def _check_variable_dtype(x):
+    """Infer whether a variable is numerical or categorical from its
+    values. Shared by ``OptimalBinning`` and ``BinningProcess`` (kept
+    here since neither module can import from the other).
+
+    A pandas ``category`` column is always categorical, regardless of
+    its categories' dtype; otherwise, anything not numeric (including
+    raw numpy string/unicode arrays) is categorical. See GH issue #316.
+    """
+    if isinstance(x.dtype, pd.CategoricalDtype):
+        return "categorical"
+    elif pd.api.types.is_numeric_dtype(x):
+        return "numerical"
+    else:
+        return "categorical"
+
+
 def categorical_transform(
     x: list | npt.NDArray,
     y: list | npt.NDArray,
 ) -> tuple[np.ndarray, ...]:
     event_rate = pd.Series(y).groupby(x).mean()
-    sorted_categories = event_rate.sort_values().index.values
+    sorted_categories = event_rate.sort_values().index.to_numpy(dtype=object)
     d = dict(map(reversed, enumerate(sorted_categories)))
 
     return sorted_categories, pd.Series(x).map(d).values
@@ -62,7 +78,6 @@ def split_data(
     outlier_params: dict | None = None,
     fix_lb: float | None = None,
     fix_ub: float | None = None,
-    class_weight: str | dict | None = None,
     sample_weight: list | npt.NDArray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
            np.ndarray | list, np.ndarray | list, np.ndarray | list,
@@ -113,10 +128,6 @@ def split_data(
 
     fix_ub : float or None (default=None)
         Upper bound or maximum admissible value.
-
-    class_weight : dict, "balanced" or None, optional (default=None)
-        Weights associated with classes in the form ``{class_label: weight}``.
-        If None, all classes are supposed to have weight one.
 
     sample_weight : array-like of shape (n_samples,) (default=None)
         Array of weights that are assigned to individual samples.
@@ -198,15 +209,6 @@ def split_data(
     x = np.asarray(x)
     y = np.asarray(y)
 
-    sample_weight = _check_sample_weight(sample_weight, x, dtype=x.dtype)
-
-    if class_weight is not None:
-        classes = np.unique(y)
-        le = LabelEncoder()
-        class_weight_ = compute_class_weight(
-            class_weight=class_weight, classes=classes, y=y)
-        sample_weight *= class_weight_[le.fit_transform(y)]
-
     if np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number):
         missing_mask = np.isnan(x) | np.isnan(y)
     else:
@@ -221,6 +223,9 @@ def split_data(
                 _special_codes.append(s)
     else:
         _special_codes = special_codes
+
+    if sample_weight is None:
+        sample_weight = np.ones(len(x))
 
     if special_codes is None:
         clean_mask = ~missing_mask
@@ -405,3 +410,23 @@ def preprocessing_user_splits_categorical(
 
     return (sorted_splits, splits_nominal, x_clean_nominal, y_clean, y_others,
             cat_others, sw_clean, sw_others, sorted_idx)
+
+
+def preprocessing_sample_weights(
+    x: list | npt.NDArray,
+    y: list | npt.NDArray,
+    class_weight: str | dict | None = None,
+    sample_weight: list | npt.NDArray | None = None,
+) -> npt.NDArray:
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    sample_weight = _check_sample_weight(
+        sample_weight=sample_weight, X=x, dtype=np.float64,
+        ensure_non_negative=True)
+
+    if class_weight is not None:
+        sample_weight = sample_weight * compute_sample_weight(
+            class_weight=class_weight, y=y)
+
+    return sample_weight

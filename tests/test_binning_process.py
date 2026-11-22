@@ -10,7 +10,7 @@ import os
 import pandas as pd
 import numpy as np
 
-from pytest import approx, raises
+from pytest import approx, fixture, mark, raises
 
 from contextlib import redirect_stdout
 
@@ -20,9 +20,16 @@ from optbinning import ContinuousOptimalPWBinning
 from optbinning import MulticlassOptimalBinning
 from optbinning import OptimalBinning
 from optbinning import OptimalPWBinning
+from optbinning.binning.binning_process import _check_selection_criteria
+from optbinning.binning.binning_process import resolve_target_dtype
+from sklearn.base import TransformerMixin, clone
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from sklearn.datasets import load_wine
 from sklearn.exceptions import NotFittedError
+from sklearn.utils.multiclass import type_of_target
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
 from tests.datasets import load_boston
 
 
@@ -275,6 +282,27 @@ def test_default_from_dict():
                                  rel=1e-6)
 
 
+def test_fit_from_dict_uses_inferred_dtype(capsys):
+    # With dtype=None the resolved dtype lives in _dtype, not dtype.
+    names = variable_names[:3]
+    df = pd.DataFrame(X, columns=variable_names)
+
+    dict_optb = {}
+    for name in names:
+        optb = OptimalBinning(name=name, dtype=None)
+        optb.fit(df[name], y)
+        dict_optb[name] = optb
+
+    process = BinningProcess(names)
+    process.fit_from_dict(dict_optb)
+    process.information(print_level=1)
+
+    out = capsys.readouterr().out
+    line = next(line for line in out.splitlines()
+                if "Number of numerical" in line)
+    assert int(line.split()[-1]) == len(names)
+
+
 def test_auto_modes():
     df = pd.DataFrame(data.data, columns=data.feature_names)
 
@@ -339,6 +367,124 @@ def test_categorical_variables():
         df_summary.name == "CHAS"]["dtype"].values[0] == "categorical"
 
 
+def test_variable_names_none_dataframe():
+    # variable_names=None infers column names from a DataFrame at fit time.
+    # See GH issue #343.
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+
+    process = BinningProcess(variable_names=None)
+    process.fit(df, y)
+
+    assert process._variable_names == list(data.feature_names)
+
+    optb = process.get_binned_variable("mean radius")
+    assert optb.status == "OPTIMAL"
+
+
+def test_variable_names_none_array():
+    # variable_names=None with a plain ndarray falls back to x0, x1, ...
+    process = BinningProcess(variable_names=None)
+    process.fit(X, y)
+
+    expected = ["x{}".format(i) for i in range(X.shape[1])]
+    assert process._variable_names == expected
+
+    optb = process.get_binned_variable("x0")
+    assert optb.status == "OPTIMAL"
+
+
+def test_variable_names_none_disk():
+    # fit_disk cannot infer variable_names from a file path.
+    process = BinningProcess(variable_names=None)
+
+    with raises(ValueError):
+        process.fit_disk(input_path="tests/data/breast_cancer.csv",
+                         target="target")
+
+def test_transformer_mixin():
+    # BinningProcess is a proper sklearn TransformerMixin. See GH issue #343.
+    assert isinstance(BinningProcess(variable_names), TransformerMixin)
+
+    process = BinningProcess(variable_names)
+
+    # Preserve the existing fit_transform options, including metric and weights.
+    Xt = process.fit_transform(X, y, metric="woe")
+    assert Xt.shape == X.shape
+
+    # clone/get_params/set_params still work with the mixin added.
+    process2 = clone(process)
+    assert list(process2.get_params()["variable_names"]) == list(
+        variable_names)
+
+    # works as a Pipeline step
+    pipe = Pipeline([("bp", BinningProcess(variable_names)),
+                     ("clf", LogisticRegression())])
+    pipe.fit(X, y)
+    assert pipe.predict(X).shape == (X.shape[0],)
+
+
+
+def test_transformer_mixin_pandas_output():
+    names = list(variable_names[:2])
+    frame = pd.DataFrame(X[:, :2], columns=names,
+                         index=pd.Index(range(1000, 1000 + len(y)), name="row"))
+    process = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).set_output(transform="pandas")
+    transformed = process.fit_transform(frame, y, metric="event_rate")
+    assert isinstance(transformed, pd.DataFrame)
+    assert list(transformed.columns) == list(process.get_support(names=True))
+    assert transformed.shape == (len(y), 1)
+    pd.testing.assert_index_equal(transformed.index, frame.index)
+    expected = BinningProcess(
+        names, selection_criteria={"iv": {"strategy": "highest", "top": 1}}
+    ).fit_transform(frame, y, metric="event_rate")
+    pd.testing.assert_frame_equal(transformed, expected)
+
+    pipeline = Pipeline([("binning", BinningProcess(names)),
+                         ("classifier", LogisticRegression())])
+    pipeline.set_output(transform="pandas")
+    pipeline.fit(frame, y)
+    assert list(pipeline.named_steps["classifier"].feature_names_in_) == names
+    assert pipeline.predict(frame).shape == (len(y),)
+
+@fixture
+def inferred_names_sample():
+    x = np.repeat([0., 1., 2.], 40)
+    y = np.concatenate([np.r_[np.zeros(40-n), np.ones(n)] for n in [5, 20, 35]])
+    return pd.DataFrame({'a': x, 'b': x + 1}), y
+
+
+def test_inferred_names_survive_input_check_and_refit(inferred_names_sample):
+    frame, target = inferred_names_sample
+    process = BinningProcess().fit(frame, target, check_input=True)
+    assert list(process.get_feature_names_out()) == ['a', 'b']
+    assert process.variable_names is None
+    assert clone(process).variable_names is None
+    process.fit(frame[['a']].rename(columns={'a': 'new'}), target)
+    assert list(process.summary()['name']) == ['new']
+    assert list(process.get_feature_names_out()) == ['new']
+    assert list(process.transform(
+        frame.rename(columns={'a': 'new'})).columns) == ['new']
+
+
+def test_failed_refit_does_not_reuse_old_fit(inferred_names_sample):
+    frame, target = inferred_names_sample
+    process = BinningProcess().fit(frame, target)
+    with raises(TypeError):
+        process.fit("invalid", target)
+    with raises(NotFittedError):
+        process.transform(frame)
+
+
+def test_explicit_names_snapshot(inferred_names_sample):
+    frame, target = inferred_names_sample
+    names = ['a', 'b']
+    process = BinningProcess(names).fit(frame, target)
+    names[0] = 'changed'
+    assert list(process.get_support(names=True)) == ['a', 'b']
+
+
 def test_fit_params():
     binning_fit_params = {"mean radius": {"max_n_bins": 4}}
 
@@ -389,6 +535,40 @@ def test_default_transform_pandas():
 
     assert optb.transform(x, metric="woe") == approx(
         X_transform.values[:, 5], rel=1e-6)
+
+
+def test_selection_criteria_iv_continuous():
+    # "iv" was not accepted as a selection_criteria metric for continuous
+    # targets, even though ContinuousBinningTable already exposes it via
+    # its .iv property (same as the binary case). See GH issue #307.
+    data = load_boston()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert "iv" in summary.columns
+
+    for name in variable_names:
+        optb = process.get_binned_variable(name)
+        row_iv = summary.loc[summary["name"] == name, "iv"].iloc[0]
+        assert row_iv == approx(optb.binning_table.iv, rel=1e-6)
+
+    # selection_criteria on "iv" must work for continuous targets exactly
+    # like it already does for binary/multiclass metrics.
+    selection_criteria = {"iv": {"min": 4.0}}
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    summary = process.summary()
+    assert summary.loc[summary["selected"], "iv"].min() >= 4.0
+    assert summary.loc[~summary["selected"], "iv"].max() < 4.0
+    assert summary["selected"].sum() > 0
+    assert summary["selected"].sum() < len(summary)
 
 
 def test_default_transform_continuous():
@@ -621,3 +801,130 @@ def test_dataframe_index():
     X_train = pd.DataFrame(X, columns=variable_names, index=[2 * i for i in range(len(X))])
     X_transform = process.fit_transform(X_train, y, metric="indices")
     pd.testing.assert_index_equal(X_train.index, X_transform.index)
+
+
+def test_get_feature_names_out():
+    """Test get_feature_names_out method for sklearn compatibility (issue #382)."""
+    process = BinningProcess(variable_names)
+
+    # Should raise NotFittedError before fitting
+    with raises(NotFittedError):
+        process.get_feature_names_out()
+
+    process.fit(X, y)
+
+    # Test basic functionality
+    feature_names_out = process.get_feature_names_out()
+    assert isinstance(feature_names_out, np.ndarray)
+    assert feature_names_out.dtype.kind in ('U', 'O')  # string or object dtype
+
+    # Should return same result as get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # With no selection criteria, all variables should be selected
+    assert len(feature_names_out) == len(variable_names)
+
+
+def test_get_feature_names_out_with_selection():
+    """Test get_feature_names_out with selection_criteria."""
+    selection_criteria = {"iv": {"min": 0.1, "max": 0.6,
+                                 "strategy": "highest", "top": 10}}
+
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria)
+    process.fit(X, y)
+
+    feature_names_out = process.get_feature_names_out()
+
+    # Should match get_support(names=True)
+    assert all(feature_names_out == process.get_support(names=True))
+
+    # Number of features should match selection criteria
+    assert len(feature_names_out) == np.count_nonzero(process.get_support())
+
+    # Verify specific selected features
+    expected_names = [
+        'mean fractal dimension', 'texture error', 'smoothness error',
+        'symmetry error', 'fractal dimension error',
+        'worst fractal dimension']
+    assert all(feature_names_out == expected_names)
+
+
+def test_get_feature_names_out_input_features_ignored():
+    """Test that input_features parameter is ignored (sklearn API consistency)."""
+    process = BinningProcess(variable_names)
+    process.fit(X, y)
+
+    # input_features should be ignored
+    result_none = process.get_feature_names_out(input_features=None)
+    result_with_input = process.get_feature_names_out(
+        input_features=["a", "b", "c"])
+
+    assert all(result_none == result_with_input)
+
+
+def test_target_dtype_autodetect_unchanged():
+    # type_of_target classifies an integer-valued continuous target
+    # (e.g. load_diabetes().target) as "multiclass". Auto-detection
+    # (target_dtype=None) must stay exactly as sklearn provides it. See
+    # GH issue #296.
+    data = load_diabetes()
+    y = data.target
+
+    assert type_of_target(y) == "multiclass"
+    assert resolve_target_dtype(y) == "multiclass"
+
+    with raises(ValueError):
+        _check_selection_criteria({"woe": {"min": 0.01}}, "multiclass")
+
+
+def test_target_dtype_explicit_override():
+    # target_dtype overrides auto-detection entirely. See GH issue #296.
+    data = load_diabetes()
+    variable_names = data.feature_names
+    X = data.data
+    y = data.target
+
+    assert resolve_target_dtype(y, "continuous") == "continuous"
+
+    selection_criteria = {"woe": {"min": 0.01}}
+    process = BinningProcess(variable_names=variable_names,
+                             selection_criteria=selection_criteria,
+                             target_dtype="continuous")
+    process.fit(X, y)
+
+    assert process._target_dtype == "continuous"
+    summary = process.summary()
+    assert "woe" in summary.columns
+
+    # An integer-dtype target (e.g. load_wine()) is unaffected.
+    y_wine = load_wine().target
+    assert y_wine.dtype.kind == "i"
+    assert resolve_target_dtype(y_wine) == "multiclass"
+
+
+def test_target_dtype_invalid():
+    with raises(ValueError):
+        process = BinningProcess(variable_names=[], target_dtype="bad_value")
+        process.fit(X, y)
+
+
+@mark.parametrize('target', [[1, np.nan], [1, np.inf], [[1], [2]],
+                             [], ['a', 'b'], [1+1j, 2+1j]])
+def test_invalid_continuous_override(target):
+    with raises((ValueError, TypeError)):
+        resolve_target_dtype(target, 'continuous')
+
+
+@mark.parametrize('target', [[0, 1, 2], [0.1, 0.7], [0, 0]])
+def test_invalid_binary_override(target):
+    with raises(ValueError):
+        resolve_target_dtype(target, 'binary')
+
+
+def test_reject_multiclass_sample_weight():
+    X = pd.DataFrame({'x': np.tile(np.arange(3), 40)})
+    y = np.tile(np.arange(3), 40)
+
+    with raises(ValueError, match="does not support sample weight"):
+        BinningProcess(['x']).fit(X, y, sample_weight=np.ones(y.size))

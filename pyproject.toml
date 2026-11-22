@@ -14,7 +14,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "matplotlib",
+    "matplotlib>=3.7",
     "numpy>=1.16.1",
     "ortools>=9.15",
     "pandas",
@@ -33,6 +33,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.optional-dependencies]

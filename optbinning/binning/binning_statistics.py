@@ -10,6 +10,7 @@ import numbers
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from matplotlib.axes import Axes
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -265,7 +266,10 @@ def target_info_special(
         for s in special_codes.values():
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
-            n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            if len(sw):
+                n_nev, n_ev = target_info_samples(y[mask], sw[mask], cl)
+            else:
+                n_nev, n_ev = target_info_samples(y[mask], [], cl)
             n_nonevent.append(n_nev)
             n_event.append(n_ev)
 
@@ -320,7 +324,8 @@ def target_info_special_continuous(
     x: npt.NDArray,
     y: npt.NDArray,
     sw: npt.NDArray
-) -> tuple[list | float, list | float, list | int, list | float | None,
+) -> tuple[list | float, list | float,
+           list | int, list | float | None,
            list | float | None, list | float | None]:
     """Compute target info for special codes (continuous target).
 
@@ -340,31 +345,28 @@ def target_info_special_continuous(
 
     Returns
     -------
-    n_records : list or float
+    n_records : numpy.ndarray or float
         Record counts for special codes.
 
-    sum_target : list or float
+    sum_target : numpy.ndarray or float
         Sum of target values for special codes.
 
-    n_zeros : list or int
+    n_zeros : numpy.ndarray or int
         Count of zero values for special codes.
 
-    std_target : list of float or None
+    std_target : numpy.ndarray or float or None
         Standard deviation of target for special codes.
 
-    min_target : list of float or None
+    min_target : numpy.ndarray or float or None
         Minimum target value for special codes.
 
-    max_target : list of float or None
+    max_target : numpy.ndarray or float or None
         Maximum target value for special codes.
     """
     if isinstance(special_codes, dict):
         n_records_special = []
         sum_special = []
         n_zeros_special = []
-        # Must always start as lists, never None: the loop below calls
-        # .append() on these per special-code group regardless of
-        # whether any group is empty (GH #340).
         std_special = []
         min_target_special = []
         max_target_special = []
@@ -373,12 +375,16 @@ def target_info_special_continuous(
         for s in special_codes.values():
             sl = s if isinstance(s, (list, np.ndarray)) else [s]
             mask = xt.isin(sl).values
+            ymask = y[mask]
 
-            n_records = np.sum(sw[mask])
+            if len(sw):
+                n_records = np.sum(sw[mask])
+                sum_special.append(np.sum(sw[mask] * ymask))
+            else:
+                n_records = np.count_nonzero(mask)
+                sum_special.append(np.sum(ymask))
+
             n_records_special.append(n_records)
-
-            ymask = sw[mask] * y[mask]
-            sum_special.append(np.sum(ymask))
             n_zeros_special.append(np.count_nonzero(ymask == 0))
 
             if n_records:
@@ -391,17 +397,17 @@ def target_info_special_continuous(
                 max_target_special.append(0)
     else:
         if len(sw):
-            sw_y = sw * y
+            n_records_special = np.sum(sw)
+            sum_special = np.sum(sw * y)
         else:
-            sw_y = y
+            n_records_special = len(y)
+            sum_special = np.sum(y)
 
-        n_records_special = np.sum(sw)
-        sum_special = np.sum(sw_y)
-        n_zeros_special = np.count_nonzero(sw_y == 0)
+        n_zeros_special = np.count_nonzero(y == 0)
         if len(y):
-            std_special = np.std(sw_y)
-            min_target_special = np.min(sw_y)
-            max_target_special = np.max(sw_y)
+            std_special = np.std(y)
+            min_target_special = np.min(y)
+            max_target_special = np.max(y)
         else:
             std_special = None
             min_target_special = None
@@ -415,14 +421,22 @@ def bin_info(
     solution: npt.NDArray | list,
     n_nonevent: npt.NDArray,
     n_event: npt.NDArray,
+    w_n_nonevent: npt.NDArray,
+    w_n_event: npt.NDArray,
     n_nonevent_missing: int,
     n_event_missing: int,
+    w_n_nonevent_missing: int,
+    w_n_event_missing: int,
     n_nonevent_special: int | list,
     n_event_special: int | list,
+    w_n_nonevent_special: int | list,
+    w_n_event_special: int | list,
     n_nonevent_cat_others: int,
     n_event_cat_others: int,
+    w_n_nonevent_cat_others: int,
+    w_n_event_cat_others: int,
     cat_others: list | None
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, ...]:
     """Compute binning information for binary target.
 
     Parameters
@@ -436,11 +450,23 @@ def bin_info(
     n_event : numpy.ndarray
         Event counts per bin.
 
+    w_n_nonevent : numpy.ndarray
+        Weighted non-event counts per bin.
+
+    w_n_event : numpy.ndarray
+        Weighted event counts per bin.
+
     n_nonevent_missing : int
         Non-event count for missing values.
 
     n_event_missing : int
         Event count for missing values.
+
+    w_n_nonevent_missing : int
+        Weighted non-event count for missing values.
+
+    w_n_event_missing : int
+        Weighted event count for missing values.
 
     n_nonevent_special : int or list
         Non-event count(s) for special codes.
@@ -448,11 +474,23 @@ def bin_info(
     n_event_special : int or list
         Event count(s) for special codes.
 
+    w_n_nonevent_special : int or list
+        Weighted non-event count(s) for special codes.
+
+    w_n_event_special : int or list
+        Weighted event count(s) for special codes.
+
     n_nonevent_cat_others : int
         Non-event count for "others" category.
 
     n_event_cat_others : int
         Event count for "others" category.
+
+    w_n_nonevent_cat_others : int
+        Weighted non-event count for "others" category.
+
+    w_n_event_cat_others : int
+        Weighted event count for "others" category.
 
     cat_others : list or None
         Categories grouped as "others".
@@ -466,8 +504,13 @@ def bin_info(
         Final event counts.
     """
 
+    w_n_nev = []
+    w_n_ev = []
     n_nev = []
     n_ev = []
+
+    accum_w_nev = 0
+    accum_w_ev = 0
     accum_nev = 0
     accum_ev = 0
     for i, selected in enumerate(solution):
@@ -476,29 +519,51 @@ def bin_info(
             n_ev.append(n_event[i] + accum_ev)
             accum_nev = 0
             accum_ev = 0
+
+            w_n_nev.append(w_n_nonevent[i] + accum_w_nev)
+            w_n_ev.append(w_n_event[i] + accum_w_ev)
+            accum_w_nev = 0
+            accum_w_ev = 0
         else:
             accum_nev += n_nonevent[i]
             accum_ev += n_event[i]
+            accum_w_nev += w_n_nonevent[i]
+            accum_w_ev += w_n_event[i]
 
     if not len(solution):
         n_ev.append(n_event[0])
         n_nev.append(n_nonevent[0])
+        w_n_ev.append(w_n_event[0])
+        w_n_nev.append(w_n_nonevent[0])
 
     if len(cat_others):
         n_nev.append(n_nonevent_cat_others)
         n_ev.append(n_event_cat_others)
+        w_n_nev.append(w_n_nonevent_cat_others)
+        w_n_ev.append(w_n_event_cat_others)
 
     if isinstance(n_nonevent_special, list):
         n_nev.extend(n_nonevent_special)
         n_ev.extend(n_event_special)
+        w_n_nev.extend(w_n_nonevent_special)
+        w_n_ev.extend(w_n_event_special)
     else:
         n_nev.append(n_nonevent_special)
         n_ev.append(n_event_special)
+        w_n_nev.append(w_n_nonevent_special)
+        w_n_ev.append(w_n_event_special)
 
     n_nev.append(n_nonevent_missing)
     n_ev.append(n_event_missing)
+    w_n_nev.append(w_n_nonevent_missing)
+    w_n_ev.append(w_n_event_missing)
 
-    return np.array(n_nev).astype(np.int64), np.array(n_ev).astype(np.int64)
+    return (
+        np.array(n_nev).astype(np.int64),
+        np.array(n_ev).astype(np.int64),
+        np.array(w_n_nev).astype(np.float64),
+        np.array(w_n_ev).astype(np.float64)
+    )
 
 
 def multiclass_bin_info(
@@ -583,33 +648,44 @@ def nstd(
 def continuous_bin_info(
     solution: npt.NDArray | list,
     n_records: npt.NDArray,
+    w_n_records: npt.NDArray,
     sums: npt.NDArray,
+    w_sums: npt.NDArray,
     ssums: npt.NDArray,
+    w_ssums: npt.NDArray,
     stds: npt.NDArray,
     min_target: npt.NDArray,
     max_target: npt.NDArray,
     n_zeros: npt.NDArray,
     n_records_missing: int,
+    w_n_records_missing: float,
     sum_missing: float,
+    w_sum_missing: float,
+    w_ssum_missing: float,
     std_missing: float,
     min_target_missing: float,
     max_target_missing: float,
     n_zeros_missing: int,
     n_records_special: int | list,
+    w_n_records_special: float | list,
     sum_special: float | list,
+    w_sum_special: float | list,
+    w_ssum_special: float | list,
     std_special: float | list,
     min_target_special: float | list,
     max_target_special: float | list,
     n_zeros_special: int | list,
     n_records_cat_others: int,
+    w_n_records_cat_others: float,
     sum_cat_others: float,
+    w_sum_cat_others: float,
+    w_ssum_cat_others: float,
     std_cat_others: float,
     min_target_others: float,
     max_target_others: float,
     n_zeros_others: int,
     cat_others: list | None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray]:
+) -> tuple[np.ndarray, ...]:
     """Compute binning information for continuous target.
 
     Parameters
@@ -626,6 +702,15 @@ def continuous_bin_info(
     ssums : numpy.ndarray
         Sum of squared target values per bin.
 
+    w_ssums : numpy.ndarray
+        Weighted sum of squared target values per bin.
+
+    w_n_records : numpy.ndarray
+        Weighted record counts per bin.
+
+    w_sums : numpy.ndarray
+        Weighted sum of target values per bin.
+
     stds : numpy.ndarray
         Standard deviation per bin.
 
@@ -641,8 +726,17 @@ def continuous_bin_info(
     n_records_missing : int
         Record count for missing values.
 
+    w_n_records_missing : float
+        Weighted record count for missing values.
+
     sum_missing : float
         Sum of target values for missing.
+
+    w_sum_missing : float
+        Weighted sum of target values for missing.
+
+    w_ssum_missing : float
+        Weighted sum of squared target values for missing.
 
     std_missing : float
         Standard deviation for missing.
@@ -659,8 +753,17 @@ def continuous_bin_info(
     n_records_special : int or list
         Record count(s) for special codes.
 
+    w_n_records_special : float or list
+        Weighted record count(s) for special codes.
+
     sum_special : float or list
         Sum of target for special codes.
+
+    w_sum_special : float or list
+        Weighted sum of target for special codes.
+
+    w_ssum_special : float or list
+        Weighted sum of squared target for special codes.
 
     std_special : float or list
         Standard deviation for special codes.
@@ -677,8 +780,17 @@ def continuous_bin_info(
     n_records_cat_others : int
         Record count for "others" category.
 
+    w_n_records_cat_others : float
+        Weighted record count for "others" category.
+
     sum_cat_others : float
         Sum of target for "others".
+
+    w_sum_cat_others : float
+        Weighted sum of target for "others".
+
+    w_ssum_cat_others : float
+        Weighted sum of squared target for "others".
 
     std_cat_others : float
         Standard deviation for "others".
@@ -714,6 +826,12 @@ def continuous_bin_info(
 
     n_zeros_final : numpy.ndarray
         Final count of zeros.
+
+    w_n_records_final : numpy.ndarray
+        Final weighted record counts.
+
+    w_sums_final : numpy.ndarray
+        Final weighted sum of target values.
     """
     r = []
     s = []
@@ -728,6 +846,12 @@ def continuous_bin_info(
     accum_z = 0
     accum_min_t = np.inf
     accum_max_t = -np.inf
+
+    w_r = []
+    w_s = []
+    w_accum_r = 0
+    w_accum_s = 0
+
     for i, selected in enumerate(solution):
         if selected:
             r.append(n_records[i] + accum_r)
@@ -738,12 +862,18 @@ def continuous_bin_info(
             min_t.append(min(accum_min_t, min_target[i]))
             max_t.append(max(accum_max_t, max_target[i]))
 
+            w_r.append(w_n_records[i] + w_accum_r)
+            w_s.append(w_sums[i] + w_accum_s)
+
             accum_r = 0
             accum_s = 0
             accum_ss = 0
             accum_z = 0
             accum_min_t = np.inf
             accum_max_t = -np.inf
+
+            w_accum_r = 0
+            w_accum_s = 0
         else:
             accum_r += n_records[i]
             accum_s += sums[i]
@@ -751,6 +881,9 @@ def continuous_bin_info(
             accum_z += n_zeros[i]
             accum_min_t = min(accum_min_t, min_target[i])
             accum_max_t = max(accum_max_t, max_target[i])
+
+            w_accum_r += w_n_records[i]
+            w_accum_s += w_sums[i]
 
     if not len(solution):
         r.append(n_records)
@@ -760,6 +893,9 @@ def continuous_bin_info(
         min_t.append(min_target)
         max_t.append(max_target)
 
+        w_r.append(w_n_records)
+        w_s.append(w_sums)
+
     if len(cat_others):
         r.append(n_records_cat_others)
         s.append(sum_cat_others)
@@ -768,13 +904,18 @@ def continuous_bin_info(
         min_t.append(min_target_others)
         max_t.append(max_target_others)
 
-    if isinstance(n_records_special, list):
+        w_r.append(w_n_records_cat_others)
+        w_s.append(w_sum_cat_others)
+
+    if isinstance(n_records_special, (list, np.ndarray)):
         r.extend(n_records_special)
         s.extend(sum_special)
         st.extend(std_special)
         z.extend(n_zeros_special)
         min_t.extend(min_target_special)
         max_t.extend(max_target_special)
+        w_r.extend(w_n_records_special)
+        w_s.extend(w_sum_special)
     else:
         r.append(n_records_special)
         s.append(sum_special)
@@ -782,6 +923,8 @@ def continuous_bin_info(
         z.append(n_zeros_special)
         min_t.append(min_target_special)
         max_t.append(max_target_special)
+        w_r.append(w_n_records_special)
+        w_s.append(w_sum_special)
 
     r.append(n_records_missing)
     s.append(sum_missing)
@@ -789,11 +932,14 @@ def continuous_bin_info(
     z.append(n_zeros_missing)
     min_t.append(min_target_missing)
     max_t.append(max_target_missing)
+    w_r.append(w_n_records_missing)
+    w_s.append(w_sum_missing)
 
     return (np.array(r).astype(np.int64), np.array(s).astype(np.float64),
             np.array(st).astype(np.float64),
             np.array(min_t).astype(np.float64),
-            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64))
+            np.array(max_t).astype(np.float64), np.array(z).astype(np.int64),
+            np.array(w_r).astype(np.float64), np.array(w_s).astype(np.float64))
 
 
 def _check_build_parameters(
@@ -865,6 +1011,15 @@ class BinningTable:
     n_event : numpy.ndarray
         Number of events.
 
+    weighted : bool
+        Whether sample weights were used.
+
+    w_n_nonevent : numpy.ndarray
+        Weighted number of non-events.
+
+    w_n_event : numpy.ndarray
+        Weighted number of events.
+
     min_x : float or None (default=None)
         Mininum value of x.
 
@@ -894,11 +1049,14 @@ class BinningTable:
         splits: npt.NDArray,
         n_nonevent: npt.NDArray,
         n_event: npt.NDArray,
+        weighted: bool,
+        w_n_nonevent: npt.NDArray,
+        w_n_event: npt.NDArray,
         min_x: float | None = None,
         max_x: float | None = None,
         categories: npt.NDArray | list | None = None,
         cat_others: npt.NDArray | list | None = None,
-        user_splits: npt.NDArray | None = None,
+        user_splits: npt.NDArray | None = None
     ) -> None:
 
         self.name = name
@@ -907,6 +1065,9 @@ class BinningTable:
         self.splits = splits
         self.n_nonevent = n_nonevent
         self.n_event = n_event
+        self.weighted = weighted
+        self.w_n_nonevent = w_n_nonevent
+        self.w_n_event = w_n_event
         self.min_x = min_x
         self.max_x = max_x
         self.categories = categories
@@ -925,6 +1086,7 @@ class BinningTable:
         self._n_specials = None
         self._quality_score = None
         self._ks = None
+        self._df_tests = None
 
         self._bin_str = False
         self._is_built = False
@@ -959,28 +1121,34 @@ class BinningTable:
         t_n_event = n_event.sum()
         t_n_records = t_n_nonevent + t_n_event
         t_event_rate = t_n_event / t_n_records
-
         p_records = n_records / t_n_records
-        p_event = n_event / t_n_event
-        p_nonevent = n_nonevent / t_n_nonevent
 
-        mask = (n_event > 0) & (n_nonevent > 0)
         event_rate = np.zeros(len(n_records))
         woe = np.zeros(len(n_records))
         iv = np.zeros(len(n_records))
         js = np.zeros(len(n_records))
 
-        # Compute weight of evidence and event rate
-        event_rate[mask] = n_event[mask] / n_records[mask]
-        constant = np.log(t_n_event / t_n_nonevent)
+        # Compute weight of evidence and event rate (use weighted)
+        w_n_nonevent = self.w_n_nonevent
+        w_n_event = self.w_n_event
+        w_n_records = w_n_nonevent + w_n_event
+        t_w_n_event = w_n_event.sum()
+        t_w_n_nonevent = w_n_nonevent.sum()
+        t_w_event_rate = t_w_n_event / (t_w_n_event + t_w_n_nonevent)
+        p_w_event = w_n_event / t_w_n_event
+        p_w_nonevent = w_n_nonevent / t_w_n_nonevent
+
+        mask = (w_n_event > 0) & (w_n_nonevent > 0)
+        event_rate[mask] = w_n_event[mask] / w_n_records[mask]
+        constant = np.log(t_w_n_event / t_w_n_nonevent)
         woe[mask] = np.log(1 / event_rate[mask] - 1) + constant
 
         # Compute Gini
-        self._gini = gini(self.n_event, self.n_nonevent)
+        self._gini = gini(self.w_n_event, self.w_n_nonevent)
 
         # Compute divergence measures
-        p_ev = p_event[mask]
-        p_nev = p_nonevent[mask]
+        p_ev = p_w_event[mask]
+        p_nev = p_w_nonevent[mask]
 
         iv[mask] = jeffrey(p_ev, p_nev, return_sum=False)
         js[mask] = jensen_shannon(p_ev, p_nev, return_sum=False)
@@ -1033,22 +1201,43 @@ class BinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": n_records,
-            "Count (%)": p_records,
-            "Non-event": n_nonevent,
-            "Event": n_event,
-            "Event rate": event_rate,
-            "WoE": woe,
-            "IV": iv,
-            "JS": js
-            })
+        if self.weighted:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Weighted non-event": w_n_nonevent,
+                "Weighted event": w_n_event,
+                "Weighted event rate": event_rate,
+                "Weighted WoE": woe,
+                "Weighted IV": iv,
+                "Weighted JS": js
+                })
 
-        if add_totals:
-            totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
-                      t_event_rate, "", t_iv, t_js]
-            df.loc["Totals"] = totals
+            if add_totals:
+                totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
+                          t_w_n_nonevent, t_w_n_event,
+                          t_w_event_rate, "", t_iv, t_js]
+                df.loc["Totals"] = totals
+        else:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": n_records,
+                "Count (%)": p_records,
+                "Non-event": n_nonevent,
+                "Event": n_event,
+                "Event rate": event_rate,
+                "WoE": woe,
+                "IV": iv,
+                "JS": js
+                })
+
+            if add_totals:
+                totals = ["", t_n_records, 1, t_n_nonevent, t_n_event,
+                          t_event_rate, "", t_iv, t_js]
+                df.loc["Totals"] = totals
 
         self._is_built = True
 
@@ -1064,7 +1253,8 @@ class BinningTable:
         savefig: str | None = None,
         figsize: tuple | None = None,
         save_kwargs: dict | None = None,
-    ) -> None:
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize the non-event and event count, and the Weight of Evidence or
@@ -1101,8 +1291,20 @@ class BinningTable:
 
         save_kwargs : dict or None (default=None)
             Additional keyword arguments to be passed to `plt.savefig`.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if metric not in ("event_rate", "woe", "iv"):
             raise ValueError('Invalid value for metric. Allowed string '
@@ -1154,7 +1356,15 @@ class BinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        if self.weighted:
+            metric_label = f"Weighted {metric_label}"
+
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         if style == "bin":
             n_bins = len(self._n_records)
@@ -1306,18 +1516,19 @@ class BinningTable:
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
@@ -1328,8 +1539,12 @@ class BinningTable:
                 if not isinstance(save_kwargs, dict):
                     raise TypeError("save_kwargs must be a dictionary; got {}."
                                     .format(save_kwargs))
-            plt.savefig(savefig, **save_kwargs)
-            plt.close()
+            fig.savefig(savefig, **save_kwargs)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,
@@ -1420,6 +1635,8 @@ class BinningTable:
 
         if pvalue_test == "fisher":
             df_tests.rename(columns={"t-statistic": "odd ratio"}, inplace=True)
+
+        self._df_tests = df_tests
 
         tab = 4
         if len(df_tests):
@@ -1559,6 +1776,31 @@ class BinningTable:
 
         return self._quality_score
 
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" (or
+        "odd ratio" when ``pvalue_test="fisher"``), "p-value", "P[A > B]"
+        and "P[B > A]" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()
+
 
 class MulticlassBinningTable:
     """Binning table to summarize optimal binning of a numerical variable with
@@ -1605,6 +1847,7 @@ class MulticlassBinningTable:
         self._hhi_norm = None
         self._n_specials = None
         self._quality_score = None
+        self._df_tests = None
 
         self._bin_str = False
         self._is_built = False
@@ -1709,7 +1952,8 @@ class MulticlassBinningTable:
         show_bin_labels: bool = False,
         savefig: str | None = None,
         figsize: tuple | None = None,
-    ) -> None:
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize event count and event rate values for each class.
@@ -1733,8 +1977,20 @@ class MulticlassBinningTable:
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if not isinstance(add_special, bool):
             raise TypeError("add_special must be a boolean; got {}."
@@ -1756,7 +2012,12 @@ class MulticlassBinningTable:
         n_metric = n_bins - 1 - self._n_specials
         n_classes = len(self.classes)
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         colors = COLORS_RGB[:n_classes]
         colors = [tuple(c / 255. for c in color) for color in colors]
@@ -1859,24 +2120,29 @@ class MulticlassBinningTable:
             ax1.set_xticks(np.arange(len(bin_str)))
             ax1.set_xticklabels(bin_str, rotation=45, ha="right")
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, self._bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
-            plt.close()
+            fig.savefig(savefig)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,
@@ -1927,6 +2193,8 @@ class MulticlassBinningTable:
                 "t-statistic": t_statistics,
                 "p-value": p_values
             })
+
+        self._df_tests = df_tests
 
         tab = 4
         if len(df_tests):
@@ -1999,6 +2267,30 @@ class MulticlassBinningTable:
 
         return self._quality_score
 
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" and
+        "p-value" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()
+
 
 class ContinuousBinningTable:
     """Binning table to summarize optimal binning of a numerical or categorical
@@ -2026,6 +2318,15 @@ class ContinuousBinningTable:
 
     sums : numpy.ndarray
         Target sums.
+
+    weighted : bool
+        Whether sample weights were used.
+
+    w_n_records : numpy.ndarray
+        Weighted number of records.
+
+    w_sums : numpy.ndarray
+        Weighted target sums.
 
     stds : numpy.ndarray
         Target stds.
@@ -2068,6 +2369,9 @@ class ContinuousBinningTable:
         splits: npt.NDArray,
         n_records: npt.NDArray,
         sums: npt.NDArray,
+        weighted: bool,
+        w_n_records: npt.NDArray,
+        w_sums: npt.NDArray,
         stds: npt.NDArray,
         min_target: npt.NDArray,
         max_target: npt.NDArray,
@@ -2085,6 +2389,9 @@ class ContinuousBinningTable:
         self.splits = splits
         self.n_records = n_records
         self.sums = sums
+        self.weighted = weighted
+        self.w_n_records = w_n_records
+        self.w_sums = w_sums
         self.stds = stds
         self.min_target = min_target
         self.max_target = max_target
@@ -2104,6 +2411,7 @@ class ContinuousBinningTable:
         self._hhi = None
         self._hhi_norm = None
         self._n_specials = None
+        self._df_tests = None
 
         self._bin_str = None
         self._is_built = False
@@ -2130,18 +2438,24 @@ class ContinuousBinningTable:
         """
         _check_build_parameters(show_digits, add_totals)
 
-        t_n_records = np.nansum(self.n_records)
-        t_sum = np.nansum(self.sums)
-        t_mean = t_sum / t_n_records
+        # Compute mean (use weighted)
+        t_sum = np.sum(self.sums)
+        t_n_records = np.sum(self.n_records)
         p_records = self.n_records / t_n_records
+
+        w_t_sum = np.sum(self.w_sums)
+        w_t_n_records = np.sum(self.w_n_records)
 
         mask = (self.n_records > 0)
         self._mean = np.zeros(len(self.n_records))
-        self._mean[mask] = self.sums[mask] / self.n_records[mask]
+        self._mean[mask] = self.w_sums[mask] / self.w_n_records[mask]
 
-        # Compute divergence measure (continuous adaptation)
+        # Divergence measure (continuous adaptation). Shares use weighted
+        # counts so that IV/WoE describe the weighted population.
+        t_mean = w_t_sum / w_t_n_records
         woe = self._mean - t_mean
-        iv = np.absolute(woe) * p_records
+        p_w_records = self.w_n_records / w_t_n_records
+        iv = np.absolute(woe) * p_w_records
         t_iv = iv.sum()
         t_woe = np.absolute(woe).sum()
 
@@ -2180,27 +2494,53 @@ class ContinuousBinningTable:
 
         self._bin_str = bin_str
 
-        df = pd.DataFrame({
-            "Bin": bin_str,
-            "Count": self.n_records,
-            "Count (%)": p_records,
-            "Sum": self.sums,
-            "Std": self.stds,
-            "Mean": self._mean,
-            "Min": self.min_target,
-            "Max": self.max_target,
-            "Zeros count": self.n_zeros,
-            "WoE": woe,
-            "IV": iv,
-            })
+        if self.weighted:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Min": self.min_target,
+                "Max": self.max_target,
+                "Zeros count": self.n_zeros,
+                "Weighted count": self.w_n_records,
+                "Weighted sum": self.w_sums,
+                "Weighted mean": self._mean,
+                "Weighted WoE": woe,
+                "Weighted IV": iv,
+                })
 
-        if add_totals:
-            t_min = np.nanmin(self.min_target)
-            t_max = np.nanmax(self.max_target)
-            t_n_zeros = self.n_zeros.sum()
-            totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
-                      t_n_zeros, t_woe, t_iv]
-            df.loc["Totals"] = totals
+            if add_totals:
+                t_min = np.nanmin(self.min_target)
+                t_max = np.nanmax(self.max_target)
+                t_n_zeros = self.n_zeros.sum()
+                totals = ["", t_n_records, 1, t_sum, "", t_min, t_max,
+                          t_n_zeros, w_t_n_records, w_t_sum, t_mean,
+                          t_woe, t_iv]
+                df.loc["Totals"] = totals
+        else:
+            df = pd.DataFrame({
+                "Bin": bin_str,
+                "Count": self.n_records,
+                "Count (%)": p_records,
+                "Sum": self.sums,
+                "Std": self.stds,
+                "Mean": self._mean,
+                "Min": self.min_target,
+                "Max": self.max_target,
+                "Zeros count": self.n_zeros,
+                "WoE": woe,
+                "IV": iv,
+                })
+
+            if add_totals:
+                t_min = np.nanmin(self.min_target)
+                t_max = np.nanmax(self.max_target)
+                t_n_zeros = self.n_zeros.sum()
+                totals = ["", t_n_records, 1, t_sum, "", t_mean, t_min, t_max,
+                          t_n_zeros, t_woe, t_iv]
+                df.loc["Totals"] = totals
 
         self._is_built = True
 
@@ -2214,8 +2554,9 @@ class ContinuousBinningTable:
         show_bin_labels: bool = False,
         savefig: str | None = None,
         figsize: tuple | None = None,
-        metric: str = 'mean'
-    ) -> None:
+        metric: str = 'mean',
+        ax: Axes | None = None,
+    ) -> Axes | None:
         """Plot the binning table.
 
         Visualize records count and mean values.
@@ -2251,8 +2592,20 @@ class ContinuousBinningTable:
 
         figsize : tuple or None (default=None)
             Size of the plot.
+
+        ax : matplotlib.axes.Axes or None (default=None)
+            Draw into these axes instead of creating a figure. The caller's
+            figure is not shown or closed; figsize is ignored in this case.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes or None
+            The supplied axes, or None for the existing standalone behavior.
         """
         _check_is_built(self)
+
+        if ax is not None and not isinstance(ax, Axes):
+            raise TypeError("ax must be a matplotlib Axes or None.")
 
         if not isinstance(add_special, bool):
             raise TypeError("add_special must be a boolean; got {}."
@@ -2304,7 +2657,15 @@ class ContinuousBinningTable:
             metric_values = self._iv_values
             metric_label = "IV"
 
-        fig, ax1 = plt.subplots(figsize=figsize)
+        if self.weighted:
+            metric_label = f"Weighted {metric_label}"
+
+        owns_figure = ax is None
+        if owns_figure:
+            fig, ax1 = plt.subplots(figsize=figsize)
+        else:
+            ax1 = ax
+            fig = ax.figure
 
         if style == "bin":
             n_bins = len(self.n_records)
@@ -2446,24 +2807,29 @@ class ContinuousBinningTable:
 
             ax2.set_ylabel(metric_label, fontsize=13)
 
-        plt.title(self.name, fontsize=14)
+        ax1.set_title(self.name, fontsize=14)
 
         if show_bin_labels:
             legend_high = max(map(len, bin_str)) / 70 + 0.2
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -legend_high), ncol=2, fontsize=12)
         else:
-            plt.legend(handles, labels, loc="upper center",
+            ax2.legend(handles, labels, loc="upper center",
                        bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=12)
 
         if savefig is None:
-            plt.show()
+            if owns_figure:
+                plt.show()
         else:
             if not isinstance(savefig, str):
                 raise TypeError("savefig must be a string path; got {}."
                                 .format(savefig))
-            plt.savefig(savefig)
-            plt.close()
+            fig.savefig(savefig)
+            if owns_figure:
+                plt.close(fig)
+
+        if not owns_figure:
+            return ax1
 
     def analysis(
         self,
@@ -2524,6 +2890,8 @@ class ContinuousBinningTable:
                 "t-statistic": t_statistics,
                 "p-value": p_values
             })
+
+        self._df_tests = df_tests
 
         tab = 4
         if len(df_tests):
@@ -2617,3 +2985,27 @@ class ContinuousBinningTable:
         _check_is_analyzed(self)
 
         return self._quality_score
+
+    @property
+    def df_tests(self) -> pd.DataFrame:
+        """Statistical significance tests between consecutive bins,
+        computed by :meth:`analysis`.
+
+        Returns a table with columns "Bin A", "Bin B", "t-statistic" and
+        "p-value" -- one row per pair of adjacent regular bins.
+
+        Returns
+        -------
+        df_tests : pandas.DataFrame
+            A copy of the results from the most recent successful analysis.
+            Empty when fewer than two regular bins are available. Special,
+            missing and (when present) other-category bins are excluded.
+
+        Raises
+        ------
+        NotFittedError
+            If :meth:`analysis` has not been called successfully.
+        """
+        _check_is_analyzed(self)
+
+        return self._df_tests.copy()

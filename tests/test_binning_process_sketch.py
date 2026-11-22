@@ -7,7 +7,7 @@ BinningProcessSketch testing.
 
 import pandas as pd
 
-from pytest import approx, raises
+from pytest import approx, mark, raises
 
 from optbinning import BinningProcessSketch
 from optbinning import OptimalBinningSketch
@@ -162,6 +162,50 @@ def test_default_transform():
 
     assert optb.transform(x, metric="woe") == approx(
         X_transform["mean radius"], rel=1e-6)
+
+
+@mark.parametrize("metric", ["woe", "event_rate"])
+def test_transform_isolates_variable_overrides(metric):
+    first, second, third = df.columns[:3]
+    names = [first, second, third]
+    process = BinningProcessSketch(
+        names,
+        special_codes=[-999],
+        binning_transform_params={
+            first: {"metric_missing": 0.125, "metric_special": 0.25},
+            second: {"metric_special": 0.5},
+        },
+    )
+    process.add(df[names], y).solve()
+
+    incoming = pd.DataFrame({name: [float("nan"), -999] for name in names})
+    result = process.transform(incoming, metric=metric, metric_missing=0.75,
+                               metric_special=0.875)
+
+    expected = pd.DataFrame({first: [0.125, 0.25], second: [0.75, 0.5],
+                             third: [0.75, 0.875]})
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_transform_preserves_input_index_across_batches():
+    names = list(df.columns[:2])
+    process = BinningProcessSketch(names).add(df[names], y).solve()
+    incoming = df[names].iloc[[12, 5, 12]].rename_axis("record_id")
+
+    result = process.transform(incoming)
+    pd.testing.assert_index_equal(result.index, incoming.index, exact=True)
+
+    chunked = pd.concat([process.transform(incoming.iloc[:2]),
+                         process.transform(incoming.iloc[2:])])
+    pd.testing.assert_frame_equal(chunked, result)
+
+
+def test_explicit_names_summary():
+    names = list(variable_names[:2])
+    sketch = BinningProcessSketch(names, selection_criteria={'iv': {'min': 0}})
+    sketch.add(df[names], y)
+    sketch.solve()
+    assert list(sketch.summary()['name']) == names
 
 
 def test_information():

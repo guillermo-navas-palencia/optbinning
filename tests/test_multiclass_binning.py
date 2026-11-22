@@ -10,8 +10,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-from pytest import approx, raises
+from pytest import approx, raises, mark
 
 from optbinning import MulticlassOptimalBinning
 from optbinning.binning.binning_statistics import MulticlassBinningTable
@@ -252,6 +253,43 @@ def test_classes():
     assert optb.classes == approx([0, 1, 2])
 
 
+def test_transform_indices_and_bins():
+    # transform() gathers per-sample values via np.digitize indices
+    # instead of a per-bin masking loop (GH issue #388). Confirm
+    # "indices"/"bins" are valid and every sample's bin actually
+    # contains its value.
+    optb = MulticlassOptimalBinning(name=variable)
+    optb.fit(x, y)
+
+    splits = optb.splits
+    n_bins = len(splits) + 1
+
+    indices = optb.transform(x, metric="indices")
+    bins = optb.transform(x, metric="bins")
+
+    assert ((indices >= 0) & (indices < n_bins)).all()
+
+    bin_edges = np.concatenate([[-np.inf], splits, [np.inf]])
+    for xi, bi, idx in zip(x, bins, indices):
+        lo, hi = bin_edges[idx], bin_edges[idx + 1]
+        assert lo <= xi < hi
+
+
+def test_transform_no_splits():
+    # Edge case: a single-bin solution has no splits at all, so
+    # np.digitize is skipped and ``indices`` is built as a float array of
+    # zeros (see transform_multiclass_target). The vectorized gather must
+    # still handle this (it requires integer indices for fancy indexing).
+    optb = MulticlassOptimalBinning(name=variable, max_n_bins=1)
+    optb.fit(x, y)
+
+    assert len(optb.splits) == 0
+
+    for metric in ("mean_woe", "indices", "bins"):
+        x_transform = optb.transform(x, metric=metric)
+        assert len(np.unique(x_transform)) == 1
+
+
 def test_verbose():
     optb = MulticlassOptimalBinning(verbose=True)
     optb.fit(x, y)
@@ -273,3 +311,64 @@ def test_to_json_read_json(tmp_path):
 
     assert (optb_loaded.transform(x, metric="mean_woe") ==
             approx(optb.transform(x, metric="mean_woe"), rel=1e-5))
+
+
+def test_df_tests():
+    # MulticlassBinningTable.df_tests exposes the per-adjacent-bin
+    # significance tests computed by analysis(), instead of only
+    # printing them. See GH issue #283.
+    optb = MulticlassOptimalBinning()
+    optb.fit(x, y)
+    table = optb.binning_table
+    table.build()
+
+    with raises(NotFittedError):
+        table.df_tests
+
+    table.analysis(print_output=False)
+
+    df_tests = table.df_tests
+    assert isinstance(df_tests, pd.DataFrame)
+    assert list(df_tests.columns) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+    assert len(df_tests) > 0
+
+    # returned frame is a defensive copy
+    df_tests["p-value"] = -1
+    assert (table.df_tests["p-value"] != -1).all()
+
+
+@mark.parametrize("n_bins", [1, 3])
+def test_df_tests_values(n_bins):
+    x = np.repeat([0., 1., 2.], 60)
+    y = np.concatenate([np.repeat([0, 1, 2], counts)
+                        for counts in [[30, 20, 10], [10, 30, 20],
+                                       [20, 10, 30]]])
+
+    optb = MulticlassOptimalBinning(user_splits=[0.5, 1.5],
+                                    max_n_bins=n_bins,
+                                    monotonic_trend=None).fit(x, y)
+    table = optb.binning_table
+    with raises(NotFittedError):
+        table.df_tests
+    table.build(add_totals=False)
+    table.analysis(print_output=False)
+    result = table.df_tests
+
+    assert len(result) == n_bins - 1
+    assert list(result.columns[:4]) == [
+        "Bin A", "Bin B", "t-statistic", "p-value"]
+
+    for i, row in result.iterrows():
+        assert row["Bin A"] == i
+        assert row["Bin B"] == i + 1
+
+        statistic, pvalue, _, _ = stats.chi2_contingency(
+            table.n_event[i:i+2], correction=False)
+
+        np.testing.assert_allclose([row["t-statistic"], row["p-value"]],
+                                   [statistic, pvalue])
+    snapshot = result.copy()
+    result["p-value"] = -1
+
+    pd.testing.assert_frame_equal(table.df_tests, snapshot)

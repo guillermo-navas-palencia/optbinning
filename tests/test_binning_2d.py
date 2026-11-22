@@ -316,6 +316,19 @@ def test_categorical_categorical_transform():
     assert z_transform[:5] == approx([2.86295531] * 5, rel=1e-6)
 
 
+def test_categorical_binning_table_labels():
+    x_cat = pd.array(["a", "b", "c", "d"] * 50, dtype="string[pyarrow]")
+    y_num = [float(i) for i in range(200)]
+    z_bin = [int(c in ("a", "c")) for c in x_cat]
+
+    optb = OptimalBinning2D(dtype_x="categorical", dtype_y="numerical")
+    optb.fit(x_cat, y_num, z_bin)
+
+    table = optb.binning_table.build(show_bin_xy=True)
+    assert all(isinstance(label, str) for label in table["Bin"])
+    assert not any("ArrowStringArray" in label for label in table["Bin"])
+
+
 def test_information():
     optb = OptimalBinning2D(solver="cp")
 

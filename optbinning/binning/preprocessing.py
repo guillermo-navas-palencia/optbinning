@@ -43,7 +43,7 @@ def categorical_transform(
     y: list | npt.NDArray,
 ) -> tuple[np.ndarray, ...]:
     event_rate = pd.Series(y).groupby(x).mean()
-    sorted_categories = event_rate.sort_values().index.values
+    sorted_categories = event_rate.sort_values().index.to_numpy(dtype=object)
     d = dict(map(reversed, enumerate(sorted_categories)))
 
     return sorted_categories, pd.Series(x).map(d).values

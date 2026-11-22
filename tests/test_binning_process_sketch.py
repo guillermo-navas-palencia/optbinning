@@ -200,6 +200,14 @@ def test_transform_preserves_input_index_across_batches():
     pd.testing.assert_frame_equal(chunked, result)
 
 
+def test_explicit_names_summary():
+    names = list(variable_names[:2])
+    sketch = BinningProcessSketch(names, selection_criteria={'iv': {'min': 0}})
+    sketch.add(df[names], y)
+    sketch.solve()
+    assert list(sketch.summary()['name']) == names
+
+
 def test_information():
     bpsketch = BinningProcessSketch(variable_names)
 

@@ -317,7 +317,11 @@ class Scorecard(Base, BaseEstimator):
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            This option is only available for binary and continuous targets.
+            Weights are used for the weighted bin counts and statistics
+            (WoE, IV, event rate or mean, p-value), for any
+            ``prebinning_method``. With ``prebinning_method="cart"``, they
+            are also used to fit the decision tree. This option is only
+            available for binary and continuous targets.
 
         metric_special : float or str (default=0)
             The metric value to transform special codes in the input vector.

@@ -315,8 +315,9 @@ class OptimalBinning(BaseOptimalBinning):
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin
-        (including missing and ``special_code`` groups).
+        The fraction of minimum number of records for each prebin
+        (including missing and ``special_code`` groups). Counted in records,
+        regardless of ``sample_weight``.
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -329,12 +330,14 @@ class OptimalBinning(BaseOptimalBinning):
     min_bin_size : float or None, optional (default=None)
         The fraction of minimum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``min_bin_size = min_prebin_size``.
+        ``min_bin_size = min_prebin_size``. Counted in records, regardless of
+        ``sample_weight``.
 
     max_bin_size : float or None, optional (default=None)
         The fraction of maximum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``max_bin_size = 1.0``.
+        ``max_bin_size = 1.0``. Counted in records, regardless of
+        ``sample_weight``.
 
     min_bin_n_nonevent : int or None, optional (default=None)
         The minimum number of non-event records for each bin. If None,
@@ -617,7 +620,10 @@ class OptimalBinning(BaseOptimalBinning):
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``.
+            Weights are used for the weighted bin counts and statistics
+            (WoE, IV, event rate or mean, p-value), for any
+            ``prebinning_method``. With ``prebinning_method="cart"``, they
+            are also used to fit the decision tree.
 
         check_input : bool (default=False)
             Whether to check input arrays.
@@ -654,7 +660,10 @@ class OptimalBinning(BaseOptimalBinning):
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``.
+            Weights are used for the weighted bin counts and statistics
+            (WoE, IV, event rate or mean, p-value), for any
+            ``prebinning_method``. With ``prebinning_method="cart"``, they
+            are also used to fit the decision tree.
 
         metric : str (default="woe")
             The metric used to transform the input vector. Supported metrics
@@ -1060,14 +1069,12 @@ class OptimalBinning(BaseOptimalBinning):
 
         # Min/max number of bins
         if self.min_bin_size is not None:
-            min_bin_size = int(
-                np.ceil(self.min_bin_size * self._n_samples))
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
         else:
             min_bin_size = self.min_bin_size
 
         if self.max_bin_size is not None:
-            max_bin_size = int(
-                np.ceil(self.max_bin_size * self._n_samples))
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
         else:
             max_bin_size = self.max_bin_size
 

@@ -542,8 +542,9 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         The maximum number of bins after pre-binning (prebins).
 
     min_prebin_size : float (default=0.05)
-        The fraction of mininum number of records for each prebin
-        (including missing and ``special_code`` groups).
+        The fraction of minimum number of records for each prebin
+        (including missing and ``special_code`` groups). Counted in records,
+        regardless of ``sample_weight``.
 
     min_n_bins : int or None, optional (default=None)
         The minimum number of bins. If None, then ``min_n_bins`` is
@@ -556,12 +557,14 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
     min_bin_size : float or None, optional (default=None)
         The fraction of minimum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``min_bin_size = min_prebin_size``.
+        ``min_bin_size = min_prebin_size``. Counted in records, regardless of
+        ``sample_weight``.
 
     max_bin_size : float or None, optional (default=None)
         The fraction of maximum number of records for each bin
         (including missing and ``special_code`` groups). If None,
-        ``max_bin_size = 1.0``.
+        ``max_bin_size = 1.0``. Counted in records, regardless of
+        ``sample_weight``.
 
     max_pvalue : float or None, optional (default=None)
         The maximum p-value among bins.
@@ -746,7 +749,10 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``. This option is only
+            Weights are used for the weighted bin counts and statistics
+            (WoE, IV, event rate or mean, p-value), for any
+            ``prebinning_method``. With ``prebinning_method="cart"``, they
+            are also used to fit the decision tree. This option is only
             available for binary and continuous targets.
 
         check_input : bool (default=False)
@@ -824,8 +830,11 @@ class BinningProcess(Base, TransformerMixin, BaseEstimator,
         sample_weight : array-like of shape (n_samples,) (default=None)
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            Only applied if ``prebinning_method="cart"``. This option is only
-            available binary and continuous targets.
+            Weights are used for the weighted bin counts and statistics
+            (WoE, IV, event rate or mean, p-value), for any
+            ``prebinning_method``. With ``prebinning_method="cart"``, they
+            are also used to fit the decision tree. This option is only
+            available for binary and continuous targets.
 
         metric : str or None, (default=None)
             The metric used to transform the input vector. If None, the default

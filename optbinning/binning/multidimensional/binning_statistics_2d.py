@@ -421,8 +421,9 @@ class BinningTable2D(BinningTable):
                     self.P == p, axis=1).max() for p in path], [])
 
             er = er + [er[-1]]
+            path_str = str([int(p) for p in path])
             axtop.step(np.arange(self.n + 1) - 0.5, er,
-                       label=str(path), where="post")
+                       label=path_str, where="post")
 
         for i in range(self.n):
             axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
@@ -452,7 +453,8 @@ class BinningTable2D(BinningTable):
                     self.P == p, axis=0).max()) for p in path], [])
 
             er = er + [er[-1]]
-            axright.step(er, np.arange(self.m + 1) - 0.5, label=str(path),
+            path_str = str([int(p) for p in path])
+            axright.step(er, np.arange(self.m + 1) - 0.5, label=path_str,
                          where="pre")
 
         for j in range(self.m):
@@ -831,8 +833,9 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                     self.P == p, axis=1).max() for p in path], [])
 
             er = er + [er[-1]]
+            path_str = str([int(p) for p in path])
             axtop.step(np.arange(self.n + 1) - 0.5, er,
-                       label=str(path), where="post")
+                       label=path_str, where="post")
 
         for i in range(self.n):
             axtop.axvline(i + 0.5, color="grey", linestyle="--", alpha=0.5)
@@ -862,7 +865,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                     self.P == p, axis=0).max()) for p in path], [])
 
             er = er + [er[-1]]
-            axright.step(er, np.arange(self.m + 1) - 0.5, label=str(path),
+            path_str = str([int(p) for p in path])
+            axright.step(er, np.arange(self.m + 1) - 0.5, label=path_str,
                          where="pre")
 
         for j in range(self.m):

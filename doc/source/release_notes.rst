@@ -1,5 +1,54 @@
 Release Notes
 =============
+
+Version 1.1.0 (2026-11-22)
+--------------------------
+
+This release adds sample weight support to the binning process and scorecard, makes ``BinningProcess`` a scikit-learn transformer, and extends the plotting and significance testing tools.
+Weighted cases are handled consistently: sample and class weights drive the weighted binning metrics, while ``min_bin_size`` and ``min_prebin_size`` continue to count raw records.
+
+New features:
+
+   - Add ``sample_weight`` support to ``OptimalBinning``, ``ContinuousOptimalBinning``, ``BinningProcess`` and ``Scorecard`` for binary and continuous targets (`Issue 420 <https://github.com/guillermo-navas-palencia/optbinning/issues/420>`_).
+   - Add ``get_feature_names_out`` to ``BinningProcess`` for scikit-learn pipeline compatibility (`Issue 382 <https://github.com/guillermo-navas-palencia/optbinning/issues/382>`_).
+   - Add ``target_dtype`` to override the target type detection in ``BinningProcess`` (`Issue 296 <https://github.com/guillermo-navas-palencia/optbinning/issues/296>`_).
+   - Allow ``iv`` as a ``selection_criteria`` metric for continuous targets (`Issue 307 <https://github.com/guillermo-navas-palencia/optbinning/issues/307>`_).
+   - Expose per-bin significance tests through ``BinningTable.df_tests`` (`Issue 283 <https://github.com/guillermo-navas-palencia/optbinning/issues/283>`_).
+   - Add a binning process plot grid with an automatic near-square layout, shared metric axes and a shared legend by default (`Issue 315 <https://github.com/guillermo-navas-palencia/optbinning/issues/315>`_).
+
+Improvements:
+
+   - Make ``BinningProcess`` a scikit-learn ``TransformerMixin``, with ``variable_names`` now optional (`Issue 343 <https://github.com/guillermo-navas-palencia/optbinning/issues/343>`_).
+   - Vectorize ``transform()`` using NumPy and pandas gather operations (`Issue 388 <https://github.com/guillermo-navas-palencia/optbinning/issues/388>`_).
+   - Auto-detect the dtype in ``OptimalBinning`` and ``ContinuousOptimalBinning`` (`Issue 316 <https://github.com/guillermo-navas-palencia/optbinning/issues/316>`_).
+
+Bugfixes:
+
+   - Fix ``min_bin_size`` and ``min_prebin_size`` to count raw records, not class-reweighted mass. Weighted metrics are still computed from the weighted counts. (`Issue 385 <https://github.com/guillermo-navas-palencia/optbinning/issues/385>`_, `PR 443 <https://github.com/guillermo-navas-palencia/optbinning/pull/443>`_).
+   - Fix the WoE and IV formula in the continuous-target tutorial (`Issue 370 <https://github.com/guillermo-navas-palencia/optbinning/issues/370>`_, `PR 397 <https://github.com/guillermo-navas-palencia/optbinning/pull/397>`_).
+   - Fix scorecard bin lookup when per-variable transform overrides are used (`Issue 412 <https://github.com/guillermo-navas-palencia/optbinning/issues/412>`_).
+   - Fix NumPy value serialization and categorical state restoration in JSON round trips; preserve unknown categories and mixed values (`Issue 317 <https://github.com/guillermo-navas-palencia/optbinning/issues/317>`_, `PR 416 <https://github.com/guillermo-navas-palencia/optbinning/pull/416>`_).
+   - Fix streaming binning ``transform`` overrides and row alignment (`PR 438 <https://github.com/guillermo-navas-palencia/optbinning/pull/438>`_).
+   - Fix 2D binning table plot legends showing NumPy scalar representations such as np.int64(1) instead of plain integers.
+
+Packaging and dependencies:
+
+   - Require Matplotlib 3.7 or newer for the shared-legend plotting layout.
+   - Add Python 3.14 to the continuous integration matrix and package classifiers.
+
+Documentation:
+
+   - Add a multi-variable overview to the Telco churn tutorial (`PR 418 <https://github.com/guillermo-navas-palencia/optbinning/pull/418>`_).
+   - Document the plotting API and significance results.
+   - Add ``CONTRIBUTING.md`` with the contribution guidelines.
+
+Contributors:
+
+   - `Lucas Morin <https://github.com/lcrmorin>`_: plotting API and grids, significance tests, scikit-learn transformer compatibility, vectorized ``transform``, JSON fixes, and the continuous-target tutorial fix.
+   - `Jorge Suit <https://github.com/josp70>`_: ``get_feature_names_out`` implementation (`Issue 382 <https://github.com/guillermo-navas-palencia/optbinning/issues/382>`_, `PR 383 <https://github.com/guillermo-navas-palencia/optbinning/pull/383>`_).
+   - `Swapnil Dwivedi <https://github.com/Swapnil-byte-798>`_: fix for streaming binning transform overrides and row alignment (`PR 438 <https://github.com/guillermo-navas-palencia/optbinning/pull/438>`_).
+
+
 Version 1.0.0 (2026-09-12)
 ---------------------------
 

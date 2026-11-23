@@ -289,14 +289,6 @@ class BinningMIP:
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                                 for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(n - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_descending(self, solver, n, D, x):
         for i in range(1, n):
@@ -308,14 +300,6 @@ class BinningMIP:
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
                                 for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(n - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_concave(self, solver, n, D, x):
         for i in range(2, n):
@@ -395,14 +379,6 @@ class BinningMIP:
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                                 for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(tc - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(tc - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -413,14 +389,6 @@ class BinningMIP:
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
                                 for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(tc, n - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(tc, n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_valley_heuristic(self, solver, n, D, x, tc):
         for i in range(1, tc):
@@ -432,14 +400,6 @@ class BinningMIP:
                     solver.Sum([(D[z][j] - D[z][j+1]) * x[z, j]
                                 for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(tc - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(tc - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -450,14 +410,6 @@ class BinningMIP:
                     solver.Sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                                 for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0:
-            for i in range(tc, n - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    solver.Add(x[i, i] == 0)
-                    for j in range(tc, n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            solver.Add(x[i+j, i+j] == 0)
 
     def add_constraint_violation(self, solver, x, violation_indices):
         for (i, j), (z, l) in violation_indices:

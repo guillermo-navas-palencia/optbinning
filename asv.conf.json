@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "project": "optbinning",
+  "project_url": "https://gnpalencia.org/optbinning/",
+  "repo": ".",
+  "branches": [
+    "develop"
+  ],
+  "show_commit_url": "https://github.com/guillermo-navas-palencia/optbinning/commit/",
+  "environment_type": "virtualenv",
+  "pythons": [
+    "3.12"
+  ],
+  "benchmark_dir": "benchmarks",
+  "env_dir": "build/asv/env",
+  "results_dir": "build/asv/results",
+  "html_dir": "build/asv/html",
+  "build_command": [
+    "python -m pip wheel --no-deps --no-build-isolation -w {build_cache_dir} {build_dir}"
+  ],
+  "install_command": [
+    "in-dir={env_dir} python -m pip install --no-deps --force-reinstall {wheel_file}"
+  ],
+  "matrix": {
+    "numpy": [
+      "2.0.2"
+    ],
+    "scipy": [
+      "1.16.2"
+    ],
+    "pandas": [
+      "2.3.3"
+    ],
+    "scikit-learn": [
+      "1.6.0"
+    ],
+    "ortools": [
+      "9.15.6755"
+    ],
+    "matplotlib": [
+      "3.9.0"
+    ],
+    "ropwr": [
+      "1.1.0"
+    ],
+    "cvxpy": [
+      "1.6.0"
+    ],
+    "setuptools": [
+      "80.9.0"
+    ],
+    "wheel": [
+      "0.45.1"
+    ]
+  }
+}

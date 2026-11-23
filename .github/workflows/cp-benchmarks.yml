@@ -1,0 +1,108 @@
+name: CP benchmark documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Code revision to measure (defaults to the selected branch)
+        type: string
+      previous:
+        description: Optional previous revision to measure alongside 1.0.0
+        type: string
+  repository_dispatch:
+    types: [documentation-published]
+
+permissions:
+  contents: read
+concurrency:
+  group: cp-benchmark-documentation
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.8'
+      - run: python -m pip install asv==0.6.5 virtualenv==20.35.4
+      - name: Restore benchmark history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p build/asv
+          if gh api "repos/$REPOSITORY/git/ref/heads/benchmark-results" > /dev/null 2> "$RUNNER_TEMP/results-error"; then
+            gh api "repos/$REPOSITORY/tarball/benchmark-results" > "$RUNNER_TEMP/results.tar.gz"
+            tar -xzf "$RUNNER_TEMP/results.tar.gz" -C build/asv --strip-components=1
+          elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/results-error"; then
+            cat "$RUNNER_TEMP/results-error"
+            exit 1
+          fi
+      - name: Measure revisions and build the ASV report
+        env:
+          CANDIDATE: ${{ inputs.ref || github.event.client_payload.ref || github.sha }}
+          PREVIOUS: ${{ inputs.previous || github.event.client_payload.previous }}
+        run: |
+          baseline=271c906d5250f17633396f88d246d64b4c449380
+          candidate=$(git rev-parse --verify --end-of-options "${CANDIDATE}^{commit}")
+          printf '%s\n' "$baseline" "$candidate" > "$RUNNER_TEMP/revisions"
+          if [ -n "$PREVIOUS" ]; then
+            git rev-parse --verify --end-of-options "${PREVIOUS}^{commit}" >> "$RUNNER_TEMP/revisions"
+          fi
+          sort -u "$RUNNER_TEMP/revisions" -o "$RUNNER_TEMP/revisions"
+          cpu=$(lscpu | sed -n 's/^Model name: *//p' | sha256sum | cut -c1-12)
+          machine="github-ubuntu24-${cpu}"
+          asv machine --yes --machine "$machine"
+          asv run "HASHFILE:$RUNNER_TEMP/revisions" --machine "$machine" --record-samples --show-stderr
+          asv publish
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: cp-benchmarks-${{ github.run_id }}
+          path: |
+            build/asv/results/
+            build/asv/html/
+          if-no-files-found: warn
+
+  publish:
+    needs: measure
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: cp-benchmarks-${{ github.run_id }}
+          path: ${{ runner.temp }}/report
+      - name: Publish verified results
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git show-ref --verify --quiet refs/remotes/origin/benchmark-results; then
+            git switch -C benchmark-results origin/benchmark-results
+            git rm -rf .
+          else
+            git switch --orphan benchmark-results
+            git rm -rf .
+          fi
+          cp -a "$RUNNER_TEMP/report/." .
+          git add results html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update ASV benchmark results'
+            git push origin HEAD:benchmark-results
+          fi

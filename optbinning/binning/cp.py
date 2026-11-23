@@ -405,14 +405,6 @@ class BinningCP:
                     sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                          for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(n - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_descending(self, model, n, D, x, M):
         for i in range(1, n):
@@ -424,14 +416,6 @@ class BinningCP:
                     sum([(D[z][j] - D[z][j+1]) * x[z, j]
                          for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(n - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_concave(self, model, n, D, x, M):
         for i in range(2, n):
@@ -507,14 +491,6 @@ class BinningCP:
                     sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                          for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(tc - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(tc - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            model.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -525,14 +501,6 @@ class BinningCP:
                     sum([(D[z][j] - D[z][j+1]) * x[z, j]
                          for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(tc, n - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(tc, n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_monotonic_valley_heuristic(self, model, n, D, x, tc, M):
         for i in range(1, tc):
@@ -544,14 +512,6 @@ class BinningCP:
                     sum([(D[z][j] - D[z][j+1]) * x[z, j]
                          for j in range(z)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(tc - 1):
-                if D[i+1][i] - D[i+1][i+1] < 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(tc - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] < 0:
-                            model.Add(x[i+j, i+j] == 0)
 
         for i in range(tc, n):
             for z in range(tc, i):
@@ -562,14 +522,6 @@ class BinningCP:
                     sum([(D[i][j] - D[i][j + 1]) * x[i, j]
                          for j in range(i)]) <= 0)
 
-        # Preprocessing
-        if self.min_event_rate_diff == 0 and not self._is_scenario_binning:
-            for i in range(tc, n - 1):
-                if D[i+1][i] - D[i+1][i+1] > 0:
-                    model.Add(x[i, i] == 0)
-                    for j in range(tc, n - i - 1):
-                        if D[i+1+j][i] - D[i+1+j][i+1+j] > 0:
-                            model.Add(x[i+j, i+j] == 0)
 
     def add_constraint_violation(self, model, x, violation_indices):
         for (i, j), (z, l) in violation_indices:

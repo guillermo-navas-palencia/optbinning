@@ -84,6 +84,45 @@ def bin_xy_str_format(
     return bins_xy
 
 
+def bin_missing_str_format(
+    dtype_x: str,
+    dtype_y: str,
+    splits_y_missing_x,
+    splits_x_missing_y,
+    show_digits: int,
+) -> tuple[list, list]:
+    """Return the x and y labels of the bins of the records with only x
+    missing, binned on y, and only y missing, binned on x."""
+    show_digits = 2 if show_digits is None else show_digits
+
+    bins = []
+    for dtype, splits in ((dtype_y, splits_y_missing_x),
+                          (dtype_x, splits_x_missing_y)):
+        if dtype == "numerical":
+            bins.append([_bin_fmt(split, show_digits) for split in splits])
+        else:
+            bins.append(list(splits))
+
+    bins_y, bins_x = bins
+
+    return (["Missing"] * len(bins_y) + bins_x,
+            bins_y + ["Missing"] * len(bins_x))
+
+
+def bin_missing_xy_str_format(
+    dtype_x: str,
+    dtype_y: str,
+    splits_y_missing_x,
+    splits_x_missing_y,
+    show_digits: int,
+) -> list[str]:
+    bins_x, bins_y = bin_missing_str_format(
+        dtype_x, dtype_y, splits_y_missing_x, splits_x_missing_y,
+        show_digits)
+
+    return [r"{} $\cup$ {}".format(bx, by) for bx, by in zip(bins_x, bins_y)]
+
+
 def bin_str_format(
     dtype: str,
     bins,
@@ -187,6 +226,12 @@ class BinningTable2D(BinningTable):
     categories_y : numpy.ndarray or None (default=None)
         List of categories in variable y.
 
+    splits_y_missing_x : list (default=())
+        Bins on variable y of the records with only x missing.
+
+    splits_x_missing_y : list (default=())
+        Bins on variable x of the records with only y missing.
+
     Warning
     -------
     This class is not intended to be instantiated by the user. It is
@@ -209,6 +254,8 @@ class BinningTable2D(BinningTable):
         P: npt.NDArray,
         categories_x: npt.NDArray | list | None = None,
         categories_y: npt.NDArray | list | None = None,
+        splits_y_missing_x=(),
+        splits_x_missing_y=(),
     ) -> None:
 
         self.name_x = name_x
@@ -225,6 +272,8 @@ class BinningTable2D(BinningTable):
         self.P = P
         self.categories_x = categories_x
         self.categories_y = categories_y
+        self.splits_y_missing_x = splits_y_missing_x
+        self.splits_x_missing_y = splits_x_missing_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -324,6 +373,9 @@ class BinningTable2D(BinningTable):
                 self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
                 show_digits, self.categories_x, self.categories_y)
 
+            bin_xy_str.extend(bin_missing_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_y_missing_x,
+                self.splits_x_missing_y, show_digits))
             bin_xy_str.extend(["Special", "Missing"])
 
             df = pd.DataFrame({
@@ -343,8 +395,12 @@ class BinningTable2D(BinningTable):
             bin_y_str = bin_str_format(
                 self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
-            bin_x_str.extend(["Special", "Missing"])
-            bin_y_str.extend(["Special", "Missing"])
+            bin_x_missing_str, bin_y_missing_str = bin_missing_str_format(
+                self.dtype_x, self.dtype_y, self.splits_y_missing_x,
+                self.splits_x_missing_y, show_digits)
+
+            bin_x_str.extend(bin_x_missing_str + ["Special", "Missing"])
+            bin_y_str.extend(bin_y_missing_str + ["Special", "Missing"])
 
             df = pd.DataFrame({
                 "Bin x": bin_x_str,
@@ -647,6 +703,12 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
     P : numpy-ndarray
         Bin indices 2D array.
 
+    splits_y_missing_x : list (default=())
+        Bins on variable y of the records with only x missing.
+
+    splits_x_missing_y : list (default=())
+        Bins on variable x of the records with only y missing.
+
     Warning
     -------
     This class is not intended to be instantiated by the user. It is
@@ -670,6 +732,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         P: npt.NDArray,
         categories_x: npt.NDArray | list | None = None,
         categories_y: npt.NDArray | list | None = None,
+        splits_y_missing_x=(),
+        splits_x_missing_y=(),
     ) -> None:
 
         self.name_x = name_x
@@ -687,6 +751,8 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
         self.P = P
         self.categories_x = categories_x
         self.categories_y = categories_y
+        self.splits_y_missing_x = splits_y_missing_x
+        self.splits_x_missing_y = splits_x_missing_y
 
         self._is_built = False
         self._is_analyzed = False
@@ -756,6 +822,9 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
                 self.dtype_x, self.dtype_y, self.splits_x, self.splits_y,
                 show_digits, self.categories_x, self.categories_y)
 
+            bin_xy_str.extend(bin_missing_xy_str_format(
+                self.dtype_x, self.dtype_y, self.splits_y_missing_x,
+                self.splits_x_missing_y, show_digits))
             bin_xy_str.extend(["Special", "Missing"])
 
             df = pd.DataFrame({
@@ -775,8 +844,12 @@ class ContinuousBinningTable2D(ContinuousBinningTable):
             bin_y_str = bin_str_format(
                 self.dtype_y, self.splits_y, show_digits, self.categories_y)
 
-            bin_x_str.extend(["Special", "Missing"])
-            bin_y_str.extend(["Special", "Missing"])
+            bin_x_missing_str, bin_y_missing_str = bin_missing_str_format(
+                self.dtype_x, self.dtype_y, self.splits_y_missing_x,
+                self.splits_x_missing_y, show_digits)
+
+            bin_x_str.extend(bin_x_missing_str + ["Special", "Missing"])
+            bin_y_str.extend(bin_y_missing_str + ["Special", "Missing"])
 
             df = pd.DataFrame({
                 "Bin x": bin_x_str,

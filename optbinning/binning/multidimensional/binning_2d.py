@@ -12,6 +12,7 @@ from typing import Self
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 
 from joblib import effective_n_jobs
 from sklearn.tree import DecisionTreeClassifier
@@ -21,6 +22,7 @@ from ...logging import Logger
 from ..binning import OptimalBinning
 from ..binning_statistics import target_info
 from ..prebinning import PreBinning
+from ..preprocessing import categorical_transform
 from .binning_statistics_2d import BinningTable2D
 from .binning_statistics_2d import bin_categorical
 from .cp_2d import Binning2DCP
@@ -28,10 +30,17 @@ from .mip_2d import Binning2DMIP
 from .model_data_2d import model_data
 from .model_data_cart_2d import model_data_cart
 from .preprocessing_2d import split_data_2d
+from .transformations_2d import _mask_missing_x_y
+from .transformations_2d import _missing_bin_indices
 from .transformations_2d import transform_binary_target
 
 
 logger = Logger(__name__).logger
+
+
+def _in_range(value, lower, upper):
+    return ((lower is None or value >= lower) and
+            (upper is None or value <= upper))
 
 
 def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
@@ -41,8 +50,8 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
                       min_bin_n_nonevent, max_bin_n_nonevent, min_bin_n_event,
                       max_bin_n_event, monotonic_trend_x, monotonic_trend_y,
                       min_event_rate_diff_x, min_event_rate_diff_y, gamma,
-                      special_codes_x, special_codes_y, split_digits, n_jobs,
-                      time_limit, verbose):
+                      special_codes_x, special_codes_y, split_missing,
+                      split_digits, n_jobs, time_limit, verbose):
 
     if not isinstance(name_x, str):
         raise TypeError("name_x must be a string.")
@@ -193,6 +202,10 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
         if not isinstance(special_codes_y, (np.ndarray, list)):
             raise TypeError("special_codes_y must be a list or numpy.ndarray.")
 
+    if not isinstance(split_missing, bool):
+        raise TypeError("split_missing must be a boolean; got {}."
+                        .format(split_missing))
+
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
                 split_digits > 8):
@@ -336,6 +349,18 @@ class OptimalBinning2D(OptimalBinning):
         List of special codes for the variable y. Use special codes to specify
         the data values that must be treated separately.
 
+    split_missing : bool (default=False)
+        Whether to bin the records with only one variable missing on the other
+        variable. Records with only x missing are binned on y, and records with
+        only y missing are binned on x, using an optimal binning 1D with the
+        settings of that variable. The new bins satisfy the bin size
+        constraints of the 2D bins, counted in records of all the samples;
+        otherwise, those records remain in the missing bin. Records with both
+        variables missing, or with one variable missing and the other a
+        special code, remain in the missing bin.
+
+        .. versionadded:: 1.3.0
+
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
         to 0, the split points are integers. Negative values round to the
@@ -381,6 +406,7 @@ class OptimalBinning2D(OptimalBinning):
         gamma: float = 0,
         special_codes_x: list | npt.NDArray | None = None,
         special_codes_y: list | npt.NDArray | None = None,
+        split_missing: bool = False,
         split_digits: int | None = None,
         n_jobs: int = 1,
         time_limit: float = 100,
@@ -418,6 +444,7 @@ class OptimalBinning2D(OptimalBinning):
 
         self.special_codes_x = special_codes_x
         self.special_codes_y = special_codes_y
+        self.split_missing = split_missing
         self.split_digits = split_digits
 
         self.n_jobs = n_jobs
@@ -428,6 +455,8 @@ class OptimalBinning2D(OptimalBinning):
         # auxiliary
         self._categories_x = None
         self._categories_y = None
+        self._splits_y_missing_x = []
+        self._splits_x_missing_y = []
         self._n_event = None
         self._n_nonevent = None
         self._n_event_special = None
@@ -602,7 +631,8 @@ class OptimalBinning2D(OptimalBinning):
             self._splits_y_optimal, x, y, self._n_nonevent, self._n_event,
             self.special_codes_x, self.special_codes_y, self._categories_x,
             self._categories_y, metric, metric_special, metric_missing,
-            show_digits, check_input)
+            show_digits, check_input, self._splits_y_missing_x,
+            self._splits_x_missing_y)
 
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()
@@ -672,6 +702,10 @@ class OptimalBinning2D(OptimalBinning):
         splits_y = self._fit_prebinning(self.dtype_y, y_clean, z_clean,
                                         self.max_n_prebins_y,
                                         self.min_prebin_size_y)
+
+        [x_missing, y_missing, z_missing, z_bins_missing] = self._fit_missing(
+            x_missing, y_missing, z_missing, self.min_event_rate_diff_x,
+            self.min_event_rate_diff_y)
 
         NE, E = self._prebinning_matrices(
             splits_x, splits_y, x_clean, y_clean, z_clean, x_missing,
@@ -751,7 +785,7 @@ class OptimalBinning2D(OptimalBinning):
         self._selected_rows = selected_rows
         self._m, self._n = m, n
 
-        n_selected_rows = selected_rows.shape[0] + 2
+        n_selected_rows = selected_rows.shape[0] + len(z_bins_missing) + 2
 
         opt_n_nonevent = np.empty(n_selected_rows, dtype=int)
         opt_n_event = np.empty(n_selected_rows, dtype=int)
@@ -765,6 +799,9 @@ class OptimalBinning2D(OptimalBinning):
             D[r] = _event_rate
             opt_n_nonevent[i] = _n_nonevent
             opt_n_event[i] = _n_event
+
+        for i, z_bin in enumerate(z_bins_missing, len(selected_rows)):
+            opt_n_nonevent[i], opt_n_event[i] = target_info(z_bin)
 
         opt_n_nonevent[-2] = self._n_nonevent_special
         opt_n_event[-2] = self._n_event_special
@@ -789,7 +826,8 @@ class OptimalBinning2D(OptimalBinning):
         self._binning_table = BinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_nonevent,
-            opt_n_event, D, P, self._categories_x, self._categories_y)
+            opt_n_event, D, P, self._categories_x, self._categories_y,
+            self._splits_y_missing_x, self._splits_x_missing_y)
 
         self.name = "-".join((self.name_x, self.name_y))
 
@@ -809,6 +847,136 @@ class OptimalBinning2D(OptimalBinning):
         self._is_fitted = True
 
         return self
+
+    def _fit_missing(self, x_missing, y_missing, z_missing, min_diff_x,
+                     min_diff_y):
+        """Bin the records with only x missing on y, and the records with only
+        y missing on x. Return the records that remain missing and the target
+        of the records in each new bin."""
+        self._splits_y_missing_x = []
+        self._splits_x_missing_y = []
+
+        if not self.split_missing:
+            return x_missing, y_missing, z_missing, []
+
+        # Min/max bin size in records of all the samples, as in the 2D bins
+        if self.min_bin_size is not None:
+            min_bin_size = int(np.ceil(self.min_bin_size * self._n_samples))
+        else:
+            min_bin_size = None
+
+        if self.max_bin_size is not None:
+            max_bin_size = int(np.ceil(self.max_bin_size * self._n_samples))
+        else:
+            max_bin_size = None
+
+        mask_x, mask_y = _mask_missing_x_y(
+            x_missing, y_missing, self.special_codes_x, self.special_codes_y)
+        mask_x &= ~pd.isnull(z_missing)
+        mask_y &= ~pd.isnull(z_missing)
+        mask_missing = np.ones(len(z_missing), dtype=bool)
+
+        splits = []
+        z_bins = []
+        for dtype, x, mask, max_n_prebins, min_prebin_size, trend, diff in (
+                (self.dtype_y, y_missing, mask_x, self.max_n_prebins_y,
+                 self.min_prebin_size_y, self.monotonic_trend_y, min_diff_y),
+                (self.dtype_x, x_missing, mask_y, self.max_n_prebins_x,
+                 self.min_prebin_size_x, self.monotonic_trend_x, min_diff_x)):
+
+            optb = self._binning_1d(dtype, max_n_prebins, trend, diff)
+            x = x[mask]
+            z = z_missing[mask]
+
+            bins = self._fit_missing_bins(optb, x, z, min_prebin_size,
+                                          min_bin_size, max_bin_size)
+            indices = _missing_bin_indices(dtype, bins, x)
+            z_bin = [z[indices == i] for i in range(len(bins))]
+
+            if self._check_missing_bins(z_bin, min_bin_size, max_bin_size):
+                mask_missing &= ~mask
+                splits.append(bins)
+                z_bins.extend(z_bin)
+            else:
+                splits.append([])
+
+        self._splits_y_missing_x, self._splits_x_missing_y = splits
+
+        if self.verbose:
+            logger.info("Pre-binning: number of bins with x missing: {}, "
+                        "with y missing: {}".format(*map(len, splits)))
+
+        return (x_missing[mask_missing], y_missing[mask_missing],
+                z_missing[mask_missing], z_bins)
+
+    def _fit_missing_bins(self, optb, x, z, min_prebin_size, min_bin_size,
+                          max_bin_size):
+        """Fit the optimal binning 1D on the records with the other variable
+        missing and return its bins."""
+        n_records = len(x)
+
+        if not n_records:
+            return []
+
+        # Sizes in records of all the samples. The 1D binning computes sizes
+        # as ceil(fraction * n_records), so pass the fraction that gives the
+        # same number of records.
+        def fraction(size):
+            return None if size is None else (size - 0.5) / n_records
+
+        min_prebin_size = int(np.ceil(min_prebin_size * self._n_samples))
+
+        if n_records < 2 * max(min_prebin_size, min_bin_size or 0):
+            # Too few records for two bins
+            if optb.dtype == "numerical":
+                return [[-np.inf, np.inf]]
+            else:
+                return [categorical_transform(x, z)[0]]
+
+        if max_bin_size is not None and max_bin_size >= n_records:
+            max_bin_size = None
+
+        optb.set_params(min_prebin_size=fraction(min_prebin_size),
+                        min_bin_size=fraction(min_bin_size),
+                        max_bin_size=fraction(max_bin_size))
+        optb.fit(x, z)
+
+        if optb.dtype == "numerical":
+            splits = np.concatenate([[-np.inf], optb.splits, [np.inf]])
+            return [[splits[i], splits[i + 1]] for i in range(len(splits) - 1)]
+        else:
+            return list(optb.splits)
+
+    def _binning_1d(self, dtype, max_n_prebins, monotonic_trend, min_diff):
+        """Return the optimal binning 1D for the records with the other
+        variable missing."""
+        return OptimalBinning(
+            dtype=dtype, prebinning_method=self.prebinning_method,
+            solver=self.solver, divergence=self.divergence,
+            max_n_prebins=max_n_prebins,
+            min_bin_n_nonevent=self.min_bin_n_nonevent,
+            max_bin_n_nonevent=self.max_bin_n_nonevent,
+            min_bin_n_event=self.min_bin_n_event,
+            max_bin_n_event=self.max_bin_n_event,
+            monotonic_trend=monotonic_trend, min_event_rate_diff=min_diff,
+            gamma=self.gamma, split_digits=self.split_digits,
+            time_limit=self.time_limit)
+
+    def _check_missing_bins(self, z_bins, min_bin_size, max_bin_size):
+        """Check that the bins satisfy the constraints of the 2D bins."""
+        for z in z_bins:
+            n_nonevent, n_event = target_info(z)
+
+            if not (n_nonevent and n_event and
+                    _in_range(n_nonevent + n_event, min_bin_size,
+                              max_bin_size) and
+                    _in_range(n_nonevent, self.min_bin_n_nonevent,
+                              self.max_bin_n_nonevent) and
+                    _in_range(n_event, self.min_bin_n_event,
+                              self.max_bin_n_event)):
+                return False
+
+        return len(z_bins) > 0
 
     def _fit_prebinning(self, dtype, x, z, max_n_prebins, min_prebin_size):
         # Pre-binning algorithm

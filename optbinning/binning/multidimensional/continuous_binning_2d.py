@@ -18,6 +18,8 @@ from sklearn.tree import DecisionTreeRegressor
 
 from ...information import solver_statistics
 from ...logging import Logger
+from ..continuous_binning import ContinuousOptimalBinning
+from .binning_2d import _in_range
 from .binning_2d import OptimalBinning2D
 from .binning_statistics_2d import ContinuousBinningTable2D
 from .cp_2d import Binning2DCP
@@ -37,7 +39,8 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
                       max_n_bins, min_bin_size, max_bin_size,
                       monotonic_trend_x, monotonic_trend_y, min_mean_diff_x,
                       min_mean_diff_y, gamma, special_codes_x, special_codes_y,
-                      split_digits, n_jobs, time_limit, verbose):
+                      split_missing, split_digits, n_jobs, time_limit,
+                      verbose):
 
     if not isinstance(name_x, str):
         raise TypeError("name_x must be a string.")
@@ -145,6 +148,10 @@ def _check_parameters(name_x, name_y, dtype_x, dtype_y, prebinning_method,
     if special_codes_y is not None:
         if not isinstance(special_codes_y, (np.ndarray, list)):
             raise TypeError("special_codes_y must be a list or numpy.ndarray.")
+
+    if not isinstance(split_missing, bool):
+        raise TypeError("split_missing must be a boolean; got {}."
+                        .format(split_missing))
 
     if split_digits is not None:
         if (not isinstance(split_digits, numbers.Integral) or
@@ -271,6 +278,18 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         List of special codes for the variable y. Use special codes to specify
         the data values that must be treated separately.
 
+    split_missing : bool (default=False)
+        Whether to bin the records with only one variable missing on the other
+        variable. Records with only x missing are binned on y, and records with
+        only y missing are binned on x, using an optimal binning 1D with the
+        settings of that variable. The new bins satisfy the bin size
+        constraints of the 2D bins, counted in records of all the samples;
+        otherwise, those records remain in the missing bin. Records with both
+        variables missing, or with one variable missing and the other a
+        special code, remain in the missing bin.
+
+        .. versionadded:: 1.3.0
+
     split_digits : int or None, optional (default=None)
         The significant digits of the split points. If ``split_digits`` is set
         to 0, the split points are integers. Negative values round to the
@@ -311,6 +330,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         gamma: float = 0,
         special_codes_x: list | npt.NDArray | None = None,
         special_codes_y: list | npt.NDArray | None = None,
+        split_missing: bool = False,
         split_digits: int | None = None,
         n_jobs: int = 1,
         time_limit: float = 100,
@@ -343,6 +363,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
 
         self.special_codes_x = special_codes_x
         self.special_codes_y = special_codes_y
+        self.split_missing = split_missing
         self.split_digits = split_digits
 
         self.n_jobs = n_jobs
@@ -353,6 +374,8 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         # auxiliary
         self._categories_x = None
         self._categories_y = None
+        self._splits_y_missing_x = []
+        self._splits_x_missing_y = []
         self._n_records_special = None
         self._n_records_missing = None
         self._sum_special = None
@@ -525,7 +548,8 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             self._splits_y_optimal, x, y, self._n_records, self._sums,
             self.special_codes_x, self.special_codes_y, self._categories_x,
             self._categories_y, metric, metric_special, metric_missing,
-            show_digits, check_input)
+            show_digits, check_input, self._splits_y_missing_x,
+            self._splits_x_missing_y)
 
     def _fit(self, x, y, z, check_input):
         time_init = time.perf_counter()
@@ -595,6 +619,10 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         splits_y = self._fit_prebinning(self.dtype_y, y_clean, z_clean,
                                         self.max_n_prebins_y,
                                         self.min_prebin_size_y)
+
+        [x_missing, y_missing, z_missing, z_bins_missing] = self._fit_missing(
+            x_missing, y_missing, z_missing, self.min_mean_diff_x,
+            self.min_mean_diff_y)
 
         R, S, SS = self._prebinning_matrices(
             splits_x, splits_y, x_clean, y_clean, z_clean, x_missing,
@@ -674,7 +702,7 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._selected_rows = selected_rows
         self._m, self._n = m, n
 
-        n_selected_rows = selected_rows.shape[0] + 2
+        n_selected_rows = selected_rows.shape[0] + len(z_bins_missing) + 2
 
         opt_sums = np.empty(n_selected_rows, dtype=float)
         opt_n_records = np.empty(n_selected_rows, dtype=int)
@@ -691,6 +719,11 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
             opt_sums[i] = _sums
             opt_n_records[i] = _n_records
             opt_stds[i] = _stds
+
+        for i, z_bin in enumerate(z_bins_missing, len(selected_rows)):
+            opt_sums[i] = np.sum(z_bin)
+            opt_n_records[i] = len(z_bin)
+            opt_stds[i] = np.std(z_bin)
 
         opt_n_records[-2] = self._n_records_special
         opt_sums[-2] = self._sum_special
@@ -717,7 +750,8 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._binning_table = ContinuousBinningTable2D(
             self.name_x, self.name_y, self.dtype_x, self.dtype_y,
             splits_x_optimal, splits_y_optimal, m, n, opt_n_records,
-            opt_sums, opt_stds, D, P, self._categories_x, self._categories_y)
+            opt_sums, opt_stds, D, P, self._categories_x, self._categories_y,
+            self._splits_y_missing_x, self._splits_x_missing_y)
 
         self.name = "-".join((self.name_x, self.name_y))
 
@@ -737,6 +771,23 @@ class ContinuousOptimalBinning2D(OptimalBinning2D):
         self._is_fitted = True
 
         return self
+
+    def _binning_1d(self, dtype, max_n_prebins, monotonic_trend, min_diff):
+        """Return the optimal binning 1D for the records with the other
+        variable missing."""
+        return ContinuousOptimalBinning(
+            dtype=dtype, prebinning_method=self.prebinning_method,
+            max_n_prebins=max_n_prebins, monotonic_trend=monotonic_trend,
+            min_mean_diff=min_diff, gamma=self.gamma,
+            split_digits=self.split_digits, time_limit=self.time_limit)
+
+    def _check_missing_bins(self, z_bins, min_bin_size, max_bin_size):
+        """Check that the bins satisfy the constraints of the 2D bins."""
+        for z in z_bins:
+            if not (len(z) and _in_range(len(z), min_bin_size, max_bin_size)):
+                return False
+
+        return len(z_bins) > 0
 
     def _prebinning_matrices(self, splits_x, splits_y, x_clean, y_clean,
                              z_clean, x_missing, y_missing, z_missing,
